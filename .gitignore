@@ -1,0 +1,38 @@
+# build output
+dist/
+.vercel/
+.netlify/
+.output/
+
+# astro
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# env
+.env
+.env.production
+.env.*.local
+!.env.example
+
+# editor
+.idea
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# lockfiles — keep package-lock.json for reproducible builds
+yarn.lock
+pnpm-lock.yaml
+
+# temporary scraping artifacts
+scraped/

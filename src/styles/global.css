@@ -1,0 +1,226 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   PR Tracker — Brand Design Tokens (MIV Faísca Design)
+   Tailwind 4 CSS-first theme config.
+   Gera utilities: bg-brand-navy, text-brand-lime, font-display, etc.
+   ========================================================================== */
+
+@theme {
+  /* === Brand colors === */
+  --color-brand-navy: #01002a;
+  --color-brand-lime: #d8ff2c;
+  --color-brand-white: #ffffff;
+  --color-brand-gray: #4d4d51;
+  --color-brand-black: #000000;
+
+  /* Navy tonal scale for subtle surfaces */
+  --color-navy-50: #f5f5fa;
+  --color-navy-100: #e6e6f0;
+  --color-navy-200: #b8b8d0;
+  --color-navy-300: #8585a8;
+  --color-navy-400: #4a4a75;
+  --color-navy-500: #22224a;
+  --color-navy-600: #141435;
+  --color-navy-700: #0a0a2e;
+  --color-navy-800: #040425;
+  --color-navy-900: #01002a;
+
+  /* === Anilhas (IWF Pantone + BRIEF) === */
+  --color-plate-25: #da291c;
+  --color-plate-20: #0057b8;
+  --color-plate-15: #ffc72c;
+  --color-plate-10: #43b02a;
+  --color-plate-5: #111111;
+  --color-plate-2-5: #2563eb;
+  --color-plate-1-25: #c0c5cc;
+
+  /* === Typography (MIV) === */
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Kanit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-product: "Archivo Black", "Inter", sans-serif;
+  --font-logo: "Area Variable", "Inter", sans-serif;
+
+  /* === Spacing rhythm === */
+  --spacing-section: 5rem;
+
+  /* === Shadows === */
+  --shadow-card: 0 1px 3px rgb(1 0 42 / 0.08), 0 4px 12px rgb(1 0 42 / 0.04);
+  --shadow-card-hover: 0 4px 12px rgb(1 0 42 / 0.12), 0 12px 32px rgb(1 0 42 / 0.08);
+  --shadow-lime: 0 8px 24px rgb(216 255 44 / 0.35);
+
+  /* === Radii === */
+  --radius-card: 1.25rem;
+  --radius-button: 9999px;
+
+  /* === Breakpoints (override defaults if needed) === */
+  --breakpoint-xs: 24rem;
+}
+
+/* ==========================================================================
+   Self-hosted fonts (via @fontsource)
+   ========================================================================== */
+
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
+@import "@fontsource/inter/900.css";
+
+@import "@fontsource/kanit/400.css";
+@import "@fontsource/kanit/500.css";
+@import "@fontsource/kanit/600.css";
+
+@import "@fontsource/archivo-black/400.css";
+
+/* ==========================================================================
+   Global base
+   ========================================================================== */
+
+@layer base {
+  html {
+    font-family: var(--font-body);
+    color: var(--color-brand-navy);
+    background: var(--color-brand-white);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100dvh;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--color-brand-navy);
+  }
+
+  h1 { font-size: clamp(2.25rem, 4vw + 1rem, 4.5rem); font-weight: 900; }
+  h2 { font-size: clamp(1.875rem, 2.5vw + 1rem, 3rem); }
+  h3 { font-size: clamp(1.375rem, 1vw + 1rem, 1.875rem); }
+
+  p { line-height: 1.65; }
+
+  ::selection {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+
+  /* Respect user's reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Focus visible — accessibility baseline */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Skip link */
+  .skip-link {
+    position: absolute;
+    top: -100px;
+    left: 1rem;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    z-index: 9999;
+    transition: top 150ms ease-out;
+  }
+  .skip-link:focus {
+    top: 1rem;
+  }
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+
+  .font-product-upper {
+    font-family: var(--font-product);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .container-page {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+    max-width: 80rem;
+  }
+  @media (min-width: 768px) {
+    .container-page { padding-inline: 2rem; }
+  }
+
+  /* Button primitives */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.75rem;
+    border-radius: var(--radius-button);
+    font-weight: 700;
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+    transition: transform 150ms ease, box-shadow 200ms ease, background-color 150ms ease;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: var(--shadow-lime);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+  }
+  .btn-secondary:hover:not(:disabled) { background: #0a0a2e; }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--color-brand-navy);
+    border: 2px solid var(--color-brand-navy);
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+  }
+
+  .card {
+    background: var(--color-brand-white);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 200ms ease, transform 200ms ease;
+  }
+  .card:hover { box-shadow: var(--shadow-card-hover); }
+}
