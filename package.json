@@ -10,7 +10,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "fetch:images": "node scripts/fetch-product-images.mjs",
+    "sync:images": "node scripts/sync-images-from-folder.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",

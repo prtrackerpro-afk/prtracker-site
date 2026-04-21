@@ -1,0 +1,36 @@
+{
+  "slug": "anilhas",
+  "title": "Anilhas Avulsas",
+  "tagline": "Bateu PR? Atualize seu troféu.",
+  "category": "anilhas",
+  "priceBase": 1000,
+  "priceFrom": true,
+  "shortDescription": "Pares de anilhas avulsas para adicionar ao seu PR Tracker existente. Escolha peso e cor. Bateu PR? Atualize seu troféu.",
+  "longDescriptionHtml": "<p>Evoluiu no treino e bateu um PR maior? <strong>Encomende novos pares de anilhas e atualize o seu PR Tracker</strong> sem precisar comprar o set inteiro.</p><p>Cores no padrão Olímpico, logo <strong>PR Tracker</strong> moldado na peça e acabamento premium — as mesmas anilhas que compõem nossos sets.</p><p>Mesma qualidade, mesmo encaixe, pronta para deixar seu troféu sempre fiel ao seu PR atual.</p>",
+  "images": [
+    { "src": "/images/products/anilhas/Anilhas_0007_todas-anilhas.png", "alt": "Anilhas avulsas — todos os pesos" },
+    { "src": "/images/products/anilhas/Anilhas_0006_25.png", "alt": "Anilhas 25 kg — vermelho" },
+    { "src": "/images/products/anilhas/Anilhas_0005_20.png", "alt": "Anilhas 20 kg — azul" },
+    { "src": "/images/products/anilhas/Anilhas_0004_15-.png", "alt": "Anilhas 15 kg — amarelo" },
+    { "src": "/images/products/anilhas/Anilhas_0003_10-.png", "alt": "Anilhas 10 kg — verde" },
+    { "src": "/images/products/anilhas/Anilhas_0002_5.png", "alt": "Anilhas 5 kg — preto" },
+    { "src": "/images/products/anilhas/Anilhas_0001_25.png", "alt": "Anilhas 2.5 kg — azul claro" },
+    { "src": "/images/products/anilhas/Anilhas_0000_125.png", "alt": "Anilhas 1.25 kg — cinza" }
+  ],
+  "specs": [
+    { "label": "Material", "value": "Plástico ABS de alta densidade" },
+    { "label": "Diâmetro", "value": "42 mm" },
+    { "label": "Espessura", "value": "4 mm – 8 mm (proporcional ao peso)" },
+    { "label": "Cores", "value": "Padrão olímpico IWF com logo PR Tracker" },
+    { "label": "Venda", "value": "Sempre por pares" }
+  ],
+  "faq": [
+    { "question": "Elas servem em qualquer PR Tracker Set?", "answer": "Sim. Todas as anilhas têm o mesmo diâmetro (42 mm) e encaixam na barra padrão de todos os nossos sets." },
+    { "question": "Posso comprar só 1 anilha?", "answer": "A venda é sempre em pares para manter a simetria da barra. O configurador acima só permite números pares." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Produção sob demanda: 5-10 dias úteis + prazo dos Correios. Enviamos para todo o Brasil com rastreio." },
+    { "question": "Posso escolher cores diferentes do padrão olímpico?", "answer": "Não. Mantemos o padrão olímpico IWF em todas as peças para garantir consistência com o catálogo." }
+  ],
+  "configurator": { "enabled": true, "isAnilhasOnly": true, "hasExerciseSelector": false },
+  "featured": false,
+  "priority": 50
+}

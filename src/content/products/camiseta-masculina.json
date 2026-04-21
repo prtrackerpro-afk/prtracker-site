@@ -1,0 +1,28 @@
+{
+  "slug": "camiseta-masculina",
+  "title": "Camiseta Masculina",
+  "tagline": "Para os seus treinos mais pesados.",
+  "category": "camisetas",
+  "priceBase": 8000,
+  "priceFrom": false,
+  "shortDescription": "Camiseta PR Tracker masculina. Feita com tecnologia que garante durabilidade, leveza e conforto para bater os seus PRs.",
+  "longDescriptionHtml": "<p>As camisetas <strong>PR Tracker</strong> são ideais para os <strong>seus treinos mais pesados</strong>. Feita com tecnologia que garante durabilidade, leveza e conforto para bater os seus PRs.</p><p>Tecido respirável, corte regular e estampa duradoura — pensada para aguentar o ritmo do box sem perder o visual.</p>",
+  "images": [
+    { "src": "/images/products/camiseta-masculina/FT-C.png", "alt": "Camiseta Masculina PR Tracker — vista frontal" },
+    { "src": "/images/products/camiseta-masculina/FT2-C-M-600x600.png", "alt": "Camiseta Masculina PR Tracker — vista 2" }
+  ],
+  "specs": [
+    { "label": "Modelagem", "value": "Regular masculina" },
+    { "label": "Tamanhos", "value": "P · M · G · GG" },
+    { "label": "Composição", "value": "Tecido respirável de alta durabilidade" }
+  ],
+  "faq": [
+    { "question": "Qual tamanho eu peço?", "answer": "Consulte a tabela de medidas nas specs acima. Em caso de dúvida, fale com a gente pelo WhatsApp (51) 98206-1914 antes de finalizar." },
+    { "question": "Encolhe na lavagem?", "answer": "Não significativamente. Recomendamos lavagem em água fria, do avesso, e secagem na sombra para preservar a estampa." },
+    { "question": "Posso trocar se não servir?", "answer": "Sim. Você tem 7 dias após o recebimento para solicitar troca, conforme o Código de Defesa do Consumidor. Detalhes em /politicas/troca-e-devolucao." }
+  ],
+  "configurator": { "enabled": false, "isAnilhasOnly": false, "hasExerciseSelector": false },
+  "sizes": ["P", "M", "G", "GG"],
+  "featured": false,
+  "priority": 60
+}

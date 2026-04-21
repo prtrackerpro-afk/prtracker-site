@@ -1,0 +1,30 @@
+{
+  "slug": "deadlift-set",
+  "title": "Deadlift Set",
+  "tagline": "O mais bruto dos PRs.",
+  "category": "pr-trackers",
+  "priceBase": 11990,
+  "priceFrom": true,
+  "shortDescription": "Base de MDF + borracha, barra em aço inox. O troféu do levantamento terra para quem puxa peso de verdade.",
+  "longDescriptionHtml": "<p>O <strong>Deadlift Set</strong> simboliza força bruta e superação. Cada detalhe foi pensado para representar aquele momento em que você puxa o peso do chão e quebra seu próprio limite.</p><p>Feito com materiais premium e acabamento preciso, é o troféu perfeito para eternizar o seu novo PR no levantamento terra.</p><p>A barra é usinada em aço inoxidável com alto relevo, reproduzindo com fidelidade o equipamento que você usa nos treinos. A base de <strong>Deadlift</strong> é feita de MDF e borracha, replicando em miniatura a plataforma do seu treino.</p><p>As anilhas coloridas com o logo <strong>PR Tracker</strong> seguem padrão Olímpico, moldadas em plástico de alta densidade, criando um visual realista e vibrante.</p>",
+  "images": [
+    { "src": "/images/products/deadlift-set/Deadlift.png", "alt": "Deadlift Set — vista principal" },
+    { "src": "/images/products/deadlift-set/Deadlift-2.png", "alt": "Deadlift Set — vista 2" },
+    { "src": "/images/products/deadlift-set/Deadlift-3.png", "alt": "Deadlift Set — vista 3" }
+  ],
+  "specs": [
+    { "label": "Base de deadlift", "value": "MDF + Borracha · 6 × 240 × 90 mm" },
+    { "label": "Barra", "value": "Aço inoxidável usinado · 220 × Ø 5 mm" },
+    { "label": "Anilhas", "value": "Plástico ABS · Ø 42 mm · padrão olímpico" },
+    { "label": "Presilhas", "value": "Aço" }
+  ],
+  "faq": [
+    { "question": "Como funciona a personalização?", "answer": "Escolha quantas anilhas de cada peso você quer na barra. O configurador acima monta a barra em tempo real e calcula o peso e o preço total." },
+    { "question": "Posso comprar só anilhas extras depois?", "answer": "Sim. Se você bater um PR maior, é só comprar as Anilhas Avulsas pelo mesmo preço e atualizar seu troféu." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Produção sob demanda: 5-10 dias úteis + prazo dos Correios. Enviamos para todo o Brasil com rastreio." },
+    { "question": "Tem garantia?", "answer": "Sim. Garantia contra defeitos de fabricação. Em caso de problema, fale com a gente pelo WhatsApp (51) 98206-1914." }
+  ],
+  "configurator": { "enabled": true, "isAnilhasOnly": false, "hasExerciseSelector": false },
+  "featured": true,
+  "priority": 20
+}

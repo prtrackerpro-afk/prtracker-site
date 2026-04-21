@@ -1,0 +1,31 @@
+{
+  "slug": "my-pr-set",
+  "title": "My PR Set",
+  "tagline": "Seu LPO favorito está aqui.",
+  "category": "pr-trackers",
+  "priceBase": 13490,
+  "priceFrom": true,
+  "shortDescription": "O mais personalizável: escolha o exercício (back squat, snatch, clean & jerk...) e as anilhas para criar o troféu do seu PR exato.",
+  "longDescriptionHtml": "<p>O <strong>My PR Set</strong> é o mais personalizável da coleção. Você escolhe o exercício, as anilhas e monta um troféu único — feito sob medida para a sua conquista.</p><p>Uma peça que traduz sua trajetória no treino e o significado de cada PR.</p><p>A barra é usinada em aço inoxidável com alto relevo, reproduzindo com fidelidade o equipamento que você usa. A base de acrílico transparente projeta a peça no ambiente em que for exposta, elevando a presença do troféu.</p><p>As anilhas coloridas com o logo <strong>PR Tracker</strong> seguem padrão Olímpico, moldadas em plástico de alta densidade, criando um visual realista e vibrante.</p>",
+  "images": [
+    { "src": "/images/products/my-pr-set/MY-PR-SET.png", "alt": "My PR Set — vista principal" },
+    { "src": "/images/products/my-pr-set/MY-PR-SET2.png", "alt": "My PR Set — vista 2" },
+    { "src": "/images/products/my-pr-set/MY-PR-SET3.png", "alt": "My PR Set — vista 3" },
+    { "src": "/images/products/my-pr-set/MY-PR-SET4.png", "alt": "My PR Set — vista 4" }
+  ],
+  "specs": [
+    { "label": "Base", "value": "Acrílico · 40 × 20 × 40 mm" },
+    { "label": "Barra", "value": "Aço inoxidável usinado · 220 × Ø 5 mm" },
+    { "label": "Anilhas", "value": "Plástico ABS · Ø 42 mm · padrão olímpico" },
+    { "label": "Presilhas", "value": "Aço" }
+  ],
+  "faq": [
+    { "question": "Como funciona a escolha do exercício?", "answer": "No configurador acima você seleciona um entre 20 exercícios (Back Squat, Snatch, Clean & Jerk, e muito mais). O nome do exercício acompanha seu pedido." },
+    { "question": "Tem gravação do peso ou da data do PR?", "answer": "Não. O troféu representa o PR através da configuração da barra e do exercício escolhido — sem gravação de peso ou data." },
+    { "question": "Posso comprar só anilhas extras depois?", "answer": "Sim. Se você bater um PR maior, é só comprar as Anilhas Avulsas pelo mesmo preço e atualizar seu troféu." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Produção sob demanda: 5-10 dias úteis + prazo dos Correios. Enviamos para todo o Brasil com rastreio." }
+  ],
+  "configurator": { "enabled": true, "isAnilhasOnly": false, "hasExerciseSelector": true },
+  "featured": true,
+  "priority": 10
+}
