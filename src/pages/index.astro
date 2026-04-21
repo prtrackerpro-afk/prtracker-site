@@ -1,16 +1,556 @@
 ---
+import { getCollection } from "astro:content";
 import BaseLayout from "~/layouts/BaseLayout.astro";
+import ProductCard from "~/components/ProductCard.astro";
+import ArrowRight from "@lucide/astro/icons/arrow-right";
+import Sparkles from "@lucide/astro/icons/sparkles";
+import Trophy from "@lucide/astro/icons/trophy";
+import Truck from "@lucide/astro/icons/truck";
+import ShieldCheck from "@lucide/astro/icons/shield-check";
+
+const products = await getCollection("products");
+const prTrackers = products
+  .filter((p) => p.data.category === "pr-trackers")
+  .sort((a, b) => a.data.priority - b.data.priority);
+const anilhas = products.find((p) => p.data.slug === "anilhas")!;
+const camisetas = products
+  .filter((p) => p.data.category === "camisetas")
+  .sort((a, b) => a.data.priority - b.data.priority);
+
+const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br").replace(/\/$/, "");
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "PR Tracker",
+    url: SITE_URL,
+    logo: `${SITE_URL}/favicon.svg`,
+    contactPoint: {
+      "@type": "ContactPoint",
+      telephone: "+55-51-98206-1914",
+      contactType: "customer service",
+      areaServed: "BR",
+      availableLanguage: ["Portuguese"],
+    },
+    sameAs: ["https://instagram.com/pr.tracker"],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "PR Tracker",
+    url: SITE_URL,
+    inLanguage: "pt-BR",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${SITE_URL}/?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  },
+];
 ---
 
 <BaseLayout
   title="PR Tracker — Seu PR merece mais do que uma foto"
-  description="Miniaturas-troféu premium para celebrar seus PRs de CrossFit, powerlifting e halterofilismo. Configure a barra, escolha o exercício, receba seu troféu."
+  description="Miniaturas-troféu premium feitas sob medida para celebrar seus PRs de CrossFit, powerlifting e halterofilismo. Configure a barra, escolha o exercício, receba seu troféu."
   transparentHeader
+  jsonLd={jsonLd}
 >
-  <section style="padding: 6rem 0; text-align: center;">
+  <!-- ========================= HERO ========================= -->
+  <section class="hero">
+    <div class="hero__inner container-page">
+      <div class="hero__copy">
+        <p class="hero__eyebrow">
+          <Sparkles size={16} aria-hidden="true" />
+          <span>Miniaturas-troféu sob medida</span>
+        </p>
+        <h1 class="hero__title text-balance">
+          Seu PR merece mais<br />
+          do que uma foto.
+        </h1>
+        <p class="hero__subtitle text-pretty">
+          Transforme cada recorde em um troféu físico. Escolha o exercício,
+          monte a barra, receba a peça que conta sua história no treino.
+        </p>
+        <div class="hero__cta">
+          <a href="#produtos" class="btn btn-primary btn-lg">
+            <span>Monte seu troféu</span>
+            <ArrowRight size={18} aria-hidden="true" />
+          </a>
+          <a href="#como-funciona" class="btn btn-ghost-on-dark">
+            Como funciona
+          </a>
+        </div>
+        <ul class="hero__trust">
+          <li>
+            <Truck size={16} aria-hidden="true" />
+            Envio para todo Brasil
+          </li>
+          <li>
+            <ShieldCheck size={16} aria-hidden="true" />
+            Pix com 5 % OFF
+          </li>
+          <li>
+            <Trophy size={16} aria-hidden="true" />
+            Padrão olímpico IWF
+          </li>
+        </ul>
+      </div>
+
+      <div class="hero__visual">
+        <img
+          src="/images/products/power-rack-set/Power-Rack-base-diagonal.jpeg"
+          alt="Power Rack Set — miniatura-troféu PR Tracker"
+          width="800"
+          height="800"
+          fetchpriority="high"
+          loading="eager"
+          decoding="async"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= PRODUTOS ========================= -->
+  <section id="produtos" class="section section--light">
     <div class="container-page">
-      <h1>Setup funcionando.</h1>
-      <p style="margin-top: 1rem; color: var(--color-brand-gray);">Home real chegando na próxima etapa.</p>
+      <div class="section__header">
+        <h2>Miniaturas que guardam sua história</h2>
+        <p>Cada set é uma réplica fiel do equipamento. Você configura. Nós produzimos. Você expõe.</p>
+      </div>
+      <div class="product-grid">
+        {prTrackers.map((p, i) => (
+          <ProductCard product={p} eager={i < 2} />
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= COMO FUNCIONA ========================= -->
+  <section id="como-funciona" class="section section--navy">
+    <div class="container-page">
+      <div class="section__header section__header--on-dark">
+        <h2>Em 3 passos seu PR vira troféu</h2>
+      </div>
+      <ol class="steps">
+        <li class="step">
+          <span class="step__num">1</span>
+          <h3 class="step__title">Escolha o set</h3>
+          <p class="step__desc">Power Rack, Bench Press, Deadlift ou My PR Set (com 20 exercícios). Cada um é uma miniatura fiel do equipamento real.</p>
+        </li>
+        <li class="step">
+          <span class="step__num">2</span>
+          <h3 class="step__title">Monte sua barra</h3>
+          <p class="step__desc">Configure anilhas no padrão olímpico IWF. A barra atualiza em tempo real no configurador.</p>
+        </li>
+        <li class="step">
+          <span class="step__num">3</span>
+          <h3 class="step__title">Receba em casa</h3>
+          <p class="step__desc">Produção sob demanda, envio para todo o Brasil com rastreio. Seu PR, feito troféu.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ========================= ANILHAS DESTACADAS ========================= -->
+  <section class="section section--light">
+    <div class="container-page banner banner--lime">
+      <div class="banner__text">
+        <p class="banner__eyebrow">Bateu PR?</p>
+        <h2 class="banner__title">Atualize seu troféu com novos pares de anilhas.</h2>
+        <p class="banner__sub">Mesmo padrão olímpico, mesmo encaixe, R$ 10,00 o par.</p>
+        <a href={`/product/${anilhas.data.slug}`} class="btn btn-secondary mt-6">
+          <span>Ver anilhas avulsas</span>
+          <ArrowRight size={18} aria-hidden="true" />
+        </a>
+      </div>
+      <div class="banner__media">
+        <img
+          src={anilhas.data.images[0]!.src}
+          alt={anilhas.data.images[0]!.alt}
+          width="600"
+          height="600"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= CAMISETAS ========================= -->
+  <section class="section section--light">
+    <div class="container-page">
+      <div class="section__header">
+        <h2>Veste o box</h2>
+        <p>Camisetas PR Tracker — para os seus treinos mais pesados.</p>
+      </div>
+      <div class="product-grid product-grid--2">
+        {camisetas.map((p) => <ProductCard product={p} />)}
+      </div>
+      <div class="text-center mt-10">
+        <a href="/product-category/camisetas" class="btn btn-outline">
+          Ver todas
+          <ArrowRight size={18} aria-hidden="true" />
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= SOBRE / TRUST ========================= -->
+  <section class="section section--light">
+    <div class="container-page about">
+      <div class="about__col">
+        <p class="about__eyebrow">Sobre a PR Tracker</p>
+        <h2>Não é souvenir. Não é brinquedo. É troféu.</h2>
+        <p>
+          Primeira marca brasileira de miniaturas premium no universo da força.
+          Cada peça é produzida sob demanda com barra em aço inoxidável usinado,
+          anilhas em plástico de alta densidade no padrão olímpico IWF, e base
+          específica por produto — alumínio, acrílico ou MDF + borracha.
+        </p>
+        <p>
+          A PR Tracker nasceu pra celebrar quem treina de verdade. Cada PR
+          merece mais do que uma foto na galeria do celular.
+        </p>
+      </div>
+      <div class="about__stats">
+        <div class="stat">
+          <span class="stat__value">20</span>
+          <span class="stat__label">exercícios no My PR Set</span>
+        </div>
+        <div class="stat">
+          <span class="stat__value">7</span>
+          <span class="stat__label">pesos de anilhas olímpicas</span>
+        </div>
+        <div class="stat">
+          <span class="stat__value">100 %</span>
+          <span class="stat__label">produzido no Brasil</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= CTA FINAL ========================= -->
+  <section class="section section--navy final-cta">
+    <div class="container-page text-center">
+      <h2 class="text-brand-white text-balance">Seu próximo PR já tem troféu.</h2>
+      <p class="mt-4 text-white/75 max-w-xl mx-auto text-pretty">
+        Monte o seu no configurador, finalize pelo Pix com 5 % OFF e receba em casa.
+      </p>
+      <a href="#produtos" class="btn btn-primary btn-lg mt-8">
+        <span>Começar agora</span>
+        <ArrowRight size={18} aria-hidden="true" />
+      </a>
     </div>
   </section>
 </BaseLayout>
+
+<style>
+  /* ======================= HERO ======================= */
+  .hero {
+    position: relative;
+    color: var(--color-brand-white);
+    background:
+      radial-gradient(ellipse at top right, #1a1a5e 0%, transparent 60%),
+      radial-gradient(ellipse at bottom left, #2a1055 0%, transparent 60%),
+      linear-gradient(180deg, var(--color-brand-navy), #020025);
+    padding-top: clamp(6rem, 14vh, 9rem);
+    padding-bottom: clamp(4rem, 10vh, 7rem);
+    overflow: hidden;
+  }
+  .hero::before {
+    /* Subtle lime accent glow */
+    content: "";
+    position: absolute;
+    top: 30%;
+    left: -5%;
+    width: 30rem;
+    height: 30rem;
+    background: radial-gradient(circle, rgb(216 255 44 / 0.08), transparent 65%);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+  .hero__inner {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  @media (min-width: 900px) {
+    .hero__inner {
+      grid-template-columns: 1.1fr 1fr;
+      gap: 4rem;
+    }
+  }
+  .hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 9999px;
+    background: rgb(216 255 44 / 0.12);
+    color: var(--color-brand-lime);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin: 0 0 1.5rem;
+    width: fit-content;
+  }
+  .hero__title {
+    color: var(--color-brand-white);
+    margin: 0;
+    letter-spacing: -0.035em;
+  }
+  .hero__subtitle {
+    max-width: 28rem;
+    margin: 1.5rem 0 2.25rem;
+    color: rgb(255 255 255 / 0.78);
+    font-size: clamp(1.0625rem, 1vw + 0.7rem, 1.25rem);
+    line-height: 1.55;
+  }
+  .hero__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2.5rem;
+  }
+  .hero__trust {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 2rem;
+    color: rgb(255 255 255 / 0.65);
+    font-size: 0.85rem;
+  }
+  .hero__trust li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .hero__visual {
+    position: relative;
+  }
+  .hero__visual img {
+    width: 100%;
+    height: auto;
+    max-height: 540px;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 40px rgb(0 0 0 / 0.4));
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero__visual img { animation: none; }
+  }
+
+  /* ======================= SECTIONS ======================= */
+  .section {
+    padding: clamp(3.5rem, 7vw, 6rem) 0;
+  }
+  .section--light { background: var(--color-brand-white); }
+  .section--navy  {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+  }
+  .section--muted { background: #fafafc; }
+
+  .section__header {
+    text-align: center;
+    max-width: 48rem;
+    margin: 0 auto 3rem;
+  }
+  .section__header p {
+    margin-top: 1rem;
+    color: var(--color-brand-gray);
+    font-size: 1.125rem;
+  }
+  .section__header--on-dark h2 { color: var(--color-brand-white); }
+  .section__header--on-dark p  { color: rgb(255 255 255 / 0.72); }
+
+  /* ======================= PRODUCT GRID ======================= */
+  .product-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  .product-grid--2 {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    max-width: 48rem;
+    margin: 0 auto;
+  }
+
+  /* ======================= STEPS ======================= */
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .step {
+    position: relative;
+    padding: 2rem 1.5rem 1.5rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: var(--radius-card);
+    background: rgb(255 255 255 / 0.02);
+    text-align: left;
+  }
+  .step__num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 900;
+    margin-bottom: 1rem;
+  }
+  .step__title {
+    color: var(--color-brand-white);
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem;
+  }
+  .step__desc {
+    color: rgb(255 255 255 / 0.7);
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  /* ======================= BANNER ======================= */
+  .banner {
+    display: grid;
+    align-items: center;
+    gap: 2rem;
+    padding: 2.5rem;
+    border-radius: var(--radius-card);
+    background: linear-gradient(135deg, #f7ffd8 0%, var(--color-brand-lime) 100%);
+  }
+  @media (min-width: 768px) {
+    .banner { grid-template-columns: 1.2fr 1fr; padding: 3.5rem 3.5rem; }
+  }
+  .banner__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-brand-navy);
+    opacity: 0.6;
+    margin: 0 0 0.5rem;
+  }
+  .banner__title {
+    font-size: clamp(1.5rem, 2vw + 1rem, 2.25rem);
+    margin: 0 0 0.75rem;
+    max-width: 22ch;
+    letter-spacing: -0.02em;
+  }
+  .banner__sub {
+    color: rgb(1 0 42 / 0.72);
+    margin: 0;
+    font-size: 1.05rem;
+  }
+  .banner__media {
+    display: flex;
+    justify-content: center;
+  }
+  .banner__media img {
+    max-width: 380px;
+    width: 100%;
+    height: auto;
+  }
+
+  /* ======================= ABOUT ======================= */
+  .about {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+  @media (min-width: 900px) {
+    .about { grid-template-columns: 1.2fr 1fr; }
+  }
+  .about__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    margin: 0 0 1rem;
+    filter: brightness(0.6);
+  }
+  .about p {
+    color: var(--color-brand-gray);
+    margin-top: 1.25rem;
+    font-size: 1.05rem;
+    max-width: 38rem;
+  }
+
+  .about__stats {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 480px) { .about__stats { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 900px) { .about__stats { grid-template-columns: 1fr; gap: 2rem; } }
+  .stat {
+    padding: 1.5rem;
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    text-align: center;
+  }
+  @media (min-width: 900px) { .stat { text-align: left; } }
+  .stat__value {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2.5rem, 3vw + 1rem, 3.5rem);
+    line-height: 1;
+    color: var(--color-brand-navy);
+    letter-spacing: -0.03em;
+  }
+  .stat__label {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--color-brand-gray);
+    font-size: 0.95rem;
+  }
+
+  /* ======================= FINAL CTA ======================= */
+  .final-cta {
+    background:
+      radial-gradient(ellipse at center, #1a1a5e 0%, transparent 55%),
+      var(--color-brand-navy);
+  }
+
+  /* ======================= BUTTON SIZES ======================= */
+  :global(.btn-lg) { padding: 1.1rem 2.25rem; font-size: 1.05rem; }
+  :global(.btn-ghost-on-dark) {
+    background: transparent;
+    color: var(--color-brand-white);
+    border: 1.5px solid rgb(255 255 255 / 0.25);
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+  :global(.btn-ghost-on-dark:hover) {
+    background: rgb(255 255 255 / 0.08);
+    border-color: rgb(255 255 255 / 0.4);
+  }
+
+  /* Text color utility used inline */
+  :global(.text-brand-white) { color: var(--color-brand-white); }
+  :global(.text-brand-gray)  { color: var(--color-brand-gray); }
+</style>

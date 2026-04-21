@@ -1,0 +1,133 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { formatBRL } from "~/lib/format";
+
+interface Props {
+  product: CollectionEntry<"products">;
+  /** Prioritize image loading (hero cards). */
+  eager?: boolean;
+}
+
+const { product, eager = false } = Astro.props;
+const { title, tagline, priceBase, priceFrom, images, slug } = product.data;
+const primary = images[0]!;
+---
+
+<a href={`/product/${slug}`} class="product-card" aria-label={`${title} — ver produto`}>
+  <div class="product-card__media">
+    <img
+      src={primary.src}
+      alt={primary.alt}
+      width={primary.width ?? 800}
+      height={primary.height ?? 800}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      fetchpriority={eager ? "high" : "auto"}
+      class="product-card__img"
+    />
+  </div>
+  <div class="product-card__body">
+    <h3 class="product-card__title">{title}</h3>
+    {tagline && <p class="product-card__tagline">{tagline}</p>}
+    <p class="product-card__price">
+      {priceFrom && <span class="product-card__price-prefix">A partir de</span>}
+      <span class="product-card__price-value">{formatBRL(priceBase)}</span>
+    </p>
+    <span class="product-card__cta" aria-hidden="true">Saiba mais</span>
+  </div>
+</a>
+
+<style>
+  .product-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-brand-white);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 220ms ease, transform 220ms ease;
+  }
+  .product-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-4px);
+  }
+  .product-card:hover .product-card__cta {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+  .product-card:hover .product-card__img {
+    transform: scale(1.03);
+  }
+
+  .product-card__media {
+    aspect-ratio: 1 / 1;
+    background: #f7f7fb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    overflow: hidden;
+  }
+  .product-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .product-card__body {
+    padding: 1.25rem 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  .product-card__title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--color-brand-navy);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .product-card__tagline {
+    font-size: 0.95rem;
+    color: var(--color-brand-gray);
+    margin: 0;
+    line-height: 1.4;
+  }
+  .product-card__price {
+    margin: 0.35rem 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .product-card__price-prefix {
+    font-size: 0.8rem;
+    color: var(--color-brand-gray);
+  }
+  .product-card__price-value {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--color-brand-navy);
+  }
+  .product-card__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.75rem auto 0;
+    padding: 0.65rem 1.75rem;
+    border-radius: 9999px;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.875rem;
+    letter-spacing: 0.02em;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+</style>
