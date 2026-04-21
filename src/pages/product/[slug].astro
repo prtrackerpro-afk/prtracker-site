@@ -10,19 +10,37 @@ import { formatBRL, centsToReaisString } from "~/lib/format";
 import { CATEGORY_LABELS } from "~/lib/catalog";
 import ChevronRight from "@lucide/astro/icons/chevron-right";
 
+/* Plate-accent mapping (mirror of ProductCard) */
+const PLATE_ACCENT: Record<string, { color: string; weight: string; name: string }> = {
+  "power-rack-set":              { color: "var(--color-plate-10)",  weight: "10 KG · VERDE",       name: "SET DE AGACHAMENTO" },
+  "bench-press-set":             { color: "var(--color-plate-25)",  weight: "25 KG · VERMELHO",    name: "SET DE SUPINO" },
+  "deadlift-set":                { color: "var(--color-plate-15)",  weight: "15 KG · AMARELO",     name: "SET DE LEVANTAMENTO TERRA" },
+  "my-pr-set":                   { color: "var(--color-plate-20)",  weight: "20 KG · AZUL",        name: "SET PERSONALIZÁVEL" },
+  "anilhas":                     { color: "var(--color-plate-5)",   weight: "AVULSAS",              name: "PARES DE ANILHAS" },
+  "camiseta-masculina":          { color: "var(--color-brand-navy)", weight: "FIT M",               name: "CAMISETA MASCULINA" },
+  "camiseta-feminina-baby-look": { color: "var(--color-brand-lime)", weight: "FIT F",               name: "BABY LOOK FEMININA" },
+};
+
 export async function getStaticPaths() {
   const products = await getCollection("products");
+  const ordered = [...products].sort((a, b) => a.data.priority - b.data.priority);
   return products.map((product) => ({
     params: { slug: product.data.slug },
-    props: { product },
+    props: {
+      product,
+      serialIndex: ordered.findIndex((p) => p.data.slug === product.data.slug) + 1,
+      total: ordered.length,
+    },
   }));
 }
 
 interface Props {
   product: CollectionEntry<"products">;
+  serialIndex: number;
+  total: number;
 }
 
-const { product } = Astro.props;
+const { product, serialIndex, total } = Astro.props;
 const {
   slug,
   title,
@@ -42,6 +60,9 @@ const {
 
 const categoryLabel = CATEGORY_LABELS[category] ?? category;
 const primary = images[0]!;
+const accent = PLATE_ACCENT[slug] ?? { color: "var(--color-brand-navy)", weight: "", name: "" };
+const serial = String(serialIndex).padStart(2, "0");
+const serialTotal = String(total).padStart(2, "0");
 const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br").replace(/\/$/, "");
 
 const jsonLd = {
@@ -72,37 +93,53 @@ const metaDescription = seo.metaDescription ?? shortDescription;
   ogType="product"
   jsonLd={jsonLd}
 >
-  <!-- Breadcrumbs -->
-  <nav aria-label="Breadcrumb" class="breadcrumb container-page">
-    <ol>
-      <li><a href="/">Início</a></li>
-      <ChevronRight size={14} aria-hidden="true" />
-      {category === "camisetas" ? (
-        <>
-          <li><a href="/product-category/camisetas">Camisetas</a></li>
-          <ChevronRight size={14} aria-hidden="true" />
-        </>
-      ) : (
-        <>
-          <li><a href="/#produtos">{categoryLabel}</a></li>
-          <ChevronRight size={14} aria-hidden="true" />
-        </>
-      )}
-      <li aria-current="page">{title}</li>
-    </ol>
+  <!-- Breadcrumb strip -->
+  <nav aria-label="Breadcrumb" class="breadcrumb">
+    <div class="container-page breadcrumb__inner">
+      <ol>
+        <li><a href="/">INÍCIO</a></li>
+        <ChevronRight size={12} aria-hidden="true" />
+        {category === "camisetas" ? (
+          <>
+            <li><a href="/product-category/camisetas">VESTUÁRIO</a></li>
+            <ChevronRight size={12} aria-hidden="true" />
+          </>
+        ) : (
+          <>
+            <li><a href="/#produtos">{categoryLabel.toUpperCase()}</a></li>
+            <ChevronRight size={12} aria-hidden="true" />
+          </>
+        )}
+        <li aria-current="page">{title.toUpperCase()}</li>
+      </ol>
+      <span class="breadcrumb__serial">// PR·{serial}/{serialTotal}</span>
+    </div>
   </nav>
 
-  <!-- Product main -->
+  <!-- Main product layout -->
   <section class="product">
     <div class="container-page product__grid">
-      <div class="product__gallery">
+      <!-- Gallery (left) -->
+      <div class="product__gallery-wrap" style={`--accent: ${accent.color}`}>
+        <span class="tick tick--tl" aria-hidden="true"></span>
+        <span class="tick tick--tr" aria-hidden="true"></span>
+        <span class="tick tick--bl" aria-hidden="true"></span>
+        <span class="tick tick--br" aria-hidden="true"></span>
         <ProductGallery images={images} title={title} />
       </div>
 
+      <!-- Info (right) -->
       <div class="product__info">
-        <p class="product__category">{categoryLabel}</p>
+        <div class="product__info-head">
+          <span class="mono-label">// {categoryLabel.toUpperCase()} · PR·{serial}</span>
+          <span class="product__weight-pill" style={`--accent: ${accent.color}`}>
+            <span class="product__weight-dot"></span>
+            {accent.weight}
+          </span>
+        </div>
+
         <h1 class="product__title">{title}</h1>
-        {tagline && <p class="product__tagline">{tagline}</p>}
+        {tagline && <p class="product__tagline">"{tagline}"</p>}
         <p class="product__short">{shortDescription}</p>
 
         <div class="product__buy">
@@ -129,12 +166,17 @@ const metaDescription = seo.metaDescription ?? shortDescription;
     </div>
   </section>
 
-  <!-- Long description + specs + FAQ -->
+  <!-- Detail sheet -->
   <section class="product-details">
+    <div class="container-page product-details__head">
+      <span class="mono-label">// DETALHES / {accent.name || "SPEC SHEET"}</span>
+      <span class="rule" aria-hidden="true"></span>
+    </div>
+
     <div class="container-page product-details__grid">
       <div class="product-details__main">
         <section class="prose" aria-labelledby="desc-title">
-          <h2 id="desc-title">Sobre este produto</h2>
+          <h2 id="desc-title" class="prose__title">Sobre este produto</h2>
           <div class="prose-body" set:html={longDescriptionHtml} />
         </section>
 
@@ -149,10 +191,18 @@ const metaDescription = seo.metaDescription ?? shortDescription;
 </BaseLayout>
 
 <style>
+  /* ======================= BREADCRUMB ======================= */
   .breadcrumb {
-    padding: 1.5rem 1.25rem 0.5rem;
+    background: var(--color-paper);
+    border-bottom: 1px solid rgb(1 0 42 / 0.1);
   }
-  @media (min-width: 768px) { .breadcrumb { padding: 1.75rem 2rem 0.75rem; } }
+  .breadcrumb__inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-block: 0.85rem;
+  }
   .breadcrumb ol {
     list-style: none;
     padding: 0;
@@ -161,7 +211,10 @@ const metaDescription = seo.metaDescription ?? shortDescription;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
     color: var(--color-brand-gray);
   }
   .breadcrumb a {
@@ -172,64 +225,152 @@ const metaDescription = seo.metaDescription ?? shortDescription;
   .breadcrumb a:hover { color: var(--color-brand-navy); }
   .breadcrumb [aria-current="page"] {
     color: var(--color-brand-navy);
+    font-weight: 700;
+  }
+  .breadcrumb__serial {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
     font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--color-brand-navy);
   }
 
+  /* ======================= PRODUCT MAIN ======================= */
   .product {
-    padding: 2rem 0 4rem;
+    padding: clamp(2rem, 5vw, 4rem) 0 clamp(3rem, 6vw, 5rem);
+    background: var(--color-brand-white);
   }
   .product__grid {
     display: grid;
-    gap: 2.5rem;
+    gap: 3rem;
+    align-items: start;
   }
-  @media (min-width: 900px) {
-    .product__grid { grid-template-columns: 1.15fr 1fr; gap: 3.5rem; }
+  @media (min-width: 960px) {
+    .product__grid { grid-template-columns: 1.15fr 1fr; gap: 4rem; }
   }
-  @media (min-width: 900px) {
-    .product__gallery {
+
+  /* Gallery frame with tickmarks */
+  .product__gallery-wrap {
+    position: relative;
+    padding: 1.25rem;
+    border: 1px solid rgb(1 0 42 / 0.1);
+    background: var(--color-paper);
+  }
+  @media (min-width: 960px) {
+    .product__gallery-wrap {
       position: sticky;
       top: 6rem;
       align-self: start;
     }
   }
 
-  .product__category {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 0.78rem;
+  .tick {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    color: var(--accent, var(--color-brand-navy));
+    z-index: 2;
+  }
+  .tick::before, .tick::after {
+    content: "";
+    position: absolute;
+    background: currentColor;
+  }
+  .tick::before { width: 12px; height: 1px; }
+  .tick::after  { width: 1px; height: 12px; }
+  .tick--tl { top: -1px; left: -1px; }
+  .tick--tr { top: -1px; right: -1px; transform: scaleX(-1); }
+  .tick--bl { bottom: -1px; left: -1px; transform: scaleY(-1); }
+  .tick--br { bottom: -1px; right: -1px; transform: scale(-1, -1); }
+
+  /* ======================= INFO COLUMN ======================= */
+  .product__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .product__info-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dashed rgb(1 0 42 / 0.15);
+  }
+  .product__weight-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--accent, var(--color-brand-navy));
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--color-brand-lime);
-    filter: brightness(0.55);
-    margin: 0 0 0.75rem;
+    color: var(--color-brand-navy);
+    background: var(--color-brand-white);
   }
+  .product__weight-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--accent, var(--color-brand-navy));
+    border-radius: 50%;
+  }
+
   .product__title {
-    font-size: clamp(1.875rem, 3vw + 1rem, 2.75rem);
-    margin: 0 0 0.5rem;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2.25rem, 4vw + 1rem, 4.25rem);
+    line-height: 0.9;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+    color: var(--color-brand-navy);
+    margin: 0.5rem 0 0;
   }
   .product__tagline {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 1.05rem;
+    font-family: var(--font-body);
+    font-style: italic;
+    font-size: 1.1rem;
     color: var(--color-brand-navy);
     opacity: 0.7;
-    margin: 0 0 1rem;
+    margin: 0;
+    line-height: 1.3;
   }
   .product__short {
     color: var(--color-brand-gray);
     line-height: 1.6;
     font-size: 1rem;
-    margin: 0 0 2rem;
+    margin: 0 0 1rem;
     max-width: 44ch;
   }
   .product__buy {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
   }
 
+  /* ======================= DETAILS ======================= */
   .product-details {
-    padding: 4rem 0 6rem;
+    padding: clamp(3rem, 5vw, 5rem) 0 clamp(4rem, 8vw, 6rem);
+    background: var(--color-paper);
     border-top: 1px solid rgb(1 0 42 / 0.08);
   }
+  .product-details__head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .product-details__head .mono-label {
+    flex-shrink: 0;
+    color: var(--color-brand-navy);
+  }
+  .product-details__head .rule {
+    flex: 1;
+    background: currentColor;
+    opacity: 0.2;
+  }
+
   .product-details__grid {
     display: grid;
     gap: 3rem;
@@ -238,9 +379,11 @@ const metaDescription = seo.metaDescription ?? shortDescription;
     .product-details__grid { grid-template-columns: 1.5fr 1fr; gap: 4rem; }
   }
 
-  .prose h2 {
-    font-size: 1.75rem;
-    margin: 0 0 1rem;
+  .prose__title {
+    font-size: clamp(1.625rem, 2vw + 1rem, 2.25rem);
+    margin: 0 0 1.5rem;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
   }
   .prose-body {
     color: var(--color-brand-gray);

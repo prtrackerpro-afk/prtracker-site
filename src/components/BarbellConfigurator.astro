@@ -152,50 +152,98 @@ const CONFIG_JSON = JSON.stringify({
 </div>
 
 <style>
+  /* ======================= CONFIGURATOR (SPECIMEN) ======================= */
   .configurator {
     display: grid;
     gap: 1.25rem;
     padding: 1.5rem;
-    border: 1px solid rgb(1 0 42 / 0.08);
+    border: 1px solid rgb(1 0 42 / 0.15);
     border-radius: var(--radius-card);
-    background: #fafafc;
+    background: var(--color-brand-white);
+    position: relative;
+  }
+  .configurator::before {
+    content: "// CONFIGURADOR / 02";
+    position: absolute;
+    top: -0.65rem;
+    left: 1rem;
+    padding: 0 0.5rem;
+    background: var(--color-brand-white);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--color-brand-navy);
   }
   @media (min-width: 640px) { .configurator { padding: 2rem; } }
 
+  /* Summary rail: weight & space side-by-side */
   .cfg__summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed rgb(1 0 42 / 0.15);
+  }
+  .cfg__summary > * {
+    padding: 0.5rem 0 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    text-align: center;
-    padding-bottom: 0.5rem;
   }
+  .cfg__summary-weight { border-right: 1px dashed rgb(1 0 42 / 0.15); padding-right: 1rem; }
+  .cfg__summary-space  { padding-left: 1rem; }
+  /* When in anilhas-only mode only one column is rendered */
+  .configurator[data-anilhas-only="true"] .cfg__summary { grid-template-columns: 1fr; }
+  .configurator[data-anilhas-only="true"] .cfg__summary-space { padding-left: 0; }
+
   .cfg__summary-label {
     display: block;
-    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     color: var(--color-brand-gray);
   }
   .cfg__summary-value {
     display: block;
     font-family: var(--font-display);
     font-weight: 900;
-    font-size: clamp(1.75rem, 2.5vw + 0.5rem, 2.25rem);
+    font-size: clamp(1.75rem, 2.5vw + 0.5rem, 2.5rem);
     line-height: 1;
     color: var(--color-brand-navy);
     letter-spacing: -0.02em;
+    text-transform: uppercase;
   }
   .cfg__summary-value--sub {
+    font-family: var(--font-mono);
     font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--color-brand-gray);
-    letter-spacing: 0;
+    font-weight: 600;
+    color: var(--color-brand-navy);
+    letter-spacing: 0.04em;
   }
   .cfg__summary-space-max { color: rgb(1 0 42 / 0.4); font-weight: 400; }
 
+  /* Barbell SVG frame */
   .cfg__barbell {
-    background: linear-gradient(180deg, #fff, #f0f2fa);
-    border-radius: 0.75rem;
-    padding: 1rem;
-    border: 1px solid rgb(1 0 42 / 0.04);
+    background:
+      linear-gradient(to right, rgb(1 0 42 / 0.04) 1px, transparent 1px) 0 0 / 40px 100%,
+      var(--color-paper);
+    border: 1px solid rgb(1 0 42 / 0.1);
+    padding: 1.25rem;
+    position: relative;
+  }
+  .cfg__barbell::before {
+    content: "BARRA · 220 MM";
+    position: absolute;
+    top: 0.35rem;
+    left: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--color-brand-gray);
   }
   .cfg__barbell svg {
     width: 100%;
@@ -208,69 +256,84 @@ const CONFIG_JSON = JSON.stringify({
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    background: #fef2f2;
-    color: #b91c1c;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    font-family: var(--font-mono);
     font-weight: 600;
-    font-size: 0.9rem;
-    border: 1px solid #fecaca;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-left: 3px solid var(--color-plate-25);
   }
 
+  /* Plate selectors — technical cells */
   .cfg__plates {
     display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
   .cfg__plate-card {
     background: var(--color-brand-white);
-    border: 1px solid rgb(1 0 42 / 0.08);
-    border-radius: 0.75rem;
-    padding: 0.875rem;
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    padding: 0.65rem 0.75rem 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+    transition: border-color 150ms ease, transform 150ms ease;
+    position: relative;
   }
   .cfg__plate-card:has(select:focus-visible),
   .cfg__plate-card:hover {
     border-color: var(--color-brand-navy);
-    box-shadow: 0 2px 8px rgb(1 0 42 / 0.06);
+    transform: translate(-1px, -1px);
+    box-shadow: 2px 2px 0 0 var(--color-brand-navy);
   }
   .cfg__plate-bar {
-    height: 8px;
-    border-radius: 2px;
+    height: 4px;
+    border-radius: 0;
+    margin: -0.65rem -0.75rem 0;
   }
   .cfg__plate-meta {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    gap: 0.5rem;
   }
   .cfg__plate-label {
     font-family: var(--font-product);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.02em;
     color: var(--color-brand-navy);
-    font-size: 0.9rem;
+    font-size: 1rem;
+    line-height: 1;
   }
   .cfg__plate-price {
-    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
     color: var(--color-brand-gray);
   }
   .cfg__plate-select {
     width: 100%;
     padding: 0.5rem 0.75rem;
-    border: 1.5px solid rgb(1 0 42 / 0.12);
-    border-radius: 0.5rem;
-    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    background: var(--color-paper);
     color: var(--color-brand-navy);
-    font-family: var(--font-body);
-    font-size: 0.925rem;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234d4d51' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301002a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
     background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    padding-right: 2rem;
+    background-position: right 0.6rem center;
+    background-color: var(--color-paper);
+    padding-right: 1.85rem;
+    text-transform: uppercase;
   }
   .cfg__plate-select:focus-visible {
     border-color: var(--color-brand-navy);
@@ -278,65 +341,87 @@ const CONFIG_JSON = JSON.stringify({
     outline-offset: 1px;
   }
 
+  /* Exercise selector */
   .cfg__exercise {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgb(1 0 42 / 0.15);
   }
   .cfg__exercise-label {
-    font-family: var(--font-display);
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-weight: 600;
     color: var(--color-brand-navy);
-    font-size: 0.875rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.12em;
   }
+  .cfg__exercise-label::before { content: "// "; color: var(--color-brand-gray); }
   .cfg__exercise-select {
     width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1.5px solid rgb(1 0 42 / 0.12);
-    border-radius: 0.75rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--color-brand-navy);
+    border-radius: var(--radius-card);
     background: var(--color-brand-white);
-    font-family: var(--font-body);
+    color: var(--color-brand-navy);
+    font-family: var(--font-display);
+    font-weight: 700;
     font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234d4d51' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2301002a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
     background-repeat: no-repeat;
     background-position: right 1rem center;
     padding-right: 2.5rem;
   }
 
+  /* Buy block */
   .cfg__buy {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgb(1 0 42 / 0.08);
+    padding-top: 1.25rem;
+    border-top: 2px solid var(--color-brand-navy);
   }
   .cfg__price { display: flex; flex-direction: column; gap: 0.2rem; }
   .cfg__price-main {
     font-family: var(--font-display);
     font-weight: 900;
-    font-size: clamp(1.875rem, 2vw + 0.5rem, 2.25rem);
+    font-size: clamp(2.25rem, 2.5vw + 1rem, 3rem);
     color: var(--color-brand-navy);
     line-height: 1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
   .cfg__price-pix {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    margin-top: 0.35rem;
+    margin-top: 0.5rem;
   }
   .cfg__price-pix-value {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.1rem;
-    color: #16a34a;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-brand-navy);
+    letter-spacing: 0.02em;
   }
-  .cfg__price-pix-label { color: var(--color-brand-gray); font-size: 0.8rem; }
-  .cfg__price-installments { color: var(--color-brand-gray); font-size: 0.875rem; }
+  .cfg__price-pix-label {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .cfg__price-installments {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
 
   .cfg__ship {
     display: inline-flex;
@@ -344,19 +429,23 @@ const CONFIG_JSON = JSON.stringify({
     gap: 0.5rem;
     margin: 0;
     color: var(--color-brand-gray);
-    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .pix-badge {
     display: inline-block;
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
-    padding: 0.2rem 0.65rem;
-    border-radius: 9999px;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 0;
+    border: 1px solid var(--color-brand-navy);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
@@ -364,7 +453,7 @@ const CONFIG_JSON = JSON.stringify({
 
   /* Over-limit state */
   .configurator[data-over-limit="true"] [data-add-btn] {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 </style>
