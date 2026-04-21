@@ -12,9 +12,10 @@ interface Props {
 const { transparent = false } = Astro.props;
 
 const nav = [
-  { href: "/#produtos", label: "Produtos" },
-  { href: "/product-category/camisetas", label: "Camisetas" },
-  { href: "/#como-funciona", label: "Como funciona" },
+  { href: "/#produtos", label: "Sets" },
+  { href: "/product/anilhas", label: "Anilhas" },
+  { href: "/product-category/camisetas", label: "Vestuário" },
+  { href: "/#como-funciona", label: "Processo" },
   { href: "/contato", label: "Contato" },
 ];
 ---
@@ -28,51 +29,61 @@ const nav = [
 >
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
 
-  <div class="container-page flex items-center justify-between gap-4 py-4">
-    <a href="/" aria-label="PR Tracker — início" class="shrink-0">
+  <!-- Ticker strip on top (monospaced status line) -->
+  <div class="site-header__ticker" aria-hidden="true">
+    <div class="container-page site-header__ticker-inner">
+      <span>PR TRACKER / 002 — MINIATURAS-TROFÉU</span>
+      <span class="sep">·</span>
+      <span>ENVIO PARA TODO O BRASIL</span>
+      <span class="sep">·</span>
+      <span>PIX 5% OFF</span>
+      <span class="sep">·</span>
+      <span>6× SEM JUROS</span>
+    </div>
+  </div>
+
+  <div class="container-page site-header__main">
+    <a href="/" aria-label="PR Tracker — início" class="site-header__logo shrink-0">
       <Logo variant={transparent ? "light" : "dark"} size="md" />
     </a>
 
-    <nav aria-label="Menu principal" class="hidden md:flex items-center gap-8">
+    <nav aria-label="Menu principal" class="site-header__nav">
       {nav.map((item) => (
-        <a
-          href={item.href}
-          class="nav-link"
-        >
-          {item.label}
-        </a>
+        <a href={item.href} class="nav-link">{item.label}</a>
       ))}
     </nav>
 
-    <div class="flex items-center gap-2">
+    <div class="site-header__actions">
       <button
         type="button"
         class="cart-btn"
         aria-label="Abrir carrinho"
         data-cart-open
       >
-        <ShoppingBag size={22} aria-hidden="true" />
+        <span class="cart-btn__label">CART</span>
+        <ShoppingBag size={20} aria-hidden="true" />
         <span class="cart-btn__badge" data-cart-count aria-live="polite" aria-atomic="true" hidden>0</span>
       </button>
 
       <button
         type="button"
-        class="md:hidden menu-btn"
+        class="menu-btn"
         aria-label="Abrir menu"
         aria-expanded="false"
         data-mobile-menu-toggle
       >
-        <Menu size={24} aria-hidden="true" class="menu-btn__open" />
-        <X size={24} aria-hidden="true" class="menu-btn__close" />
+        <Menu size={22} aria-hidden="true" class="menu-btn__open" />
+        <X size={22} aria-hidden="true" class="menu-btn__close" />
       </button>
     </div>
   </div>
 
-  <!-- Mobile nav drawer (slides from top) -->
   <div class="mobile-nav" data-mobile-nav hidden>
     <nav aria-label="Menu mobile">
       {nav.map((item) => (
-        <a href={item.href} class="mobile-nav__link" data-mobile-nav-link>{item.label}</a>
+        <a href={item.href} class="mobile-nav__link" data-mobile-nav-link>
+          <span class="mono-label mono-label--dim">—</span> {item.label}
+        </a>
       ))}
     </nav>
   </div>
@@ -83,28 +94,82 @@ const nav = [
     position: sticky;
     top: 0;
     z-index: 50;
-    transition: background-color 250ms ease, box-shadow 250ms ease;
     background: var(--color-brand-white);
+    transition: background-color 250ms ease, color 250ms ease;
   }
   .site-header--solid {
-    box-shadow: 0 1px 0 rgb(1 0 42 / 0.06);
+    border-bottom: 1px solid rgb(1 0 42 / 0.1);
   }
   .site-header--transparent {
     background: transparent;
-    box-shadow: none;
+    border-bottom: 1px solid transparent;
+    color: var(--color-brand-white);
   }
   .site-header--transparent[data-scrolled="true"] {
-    background: rgb(1 0 42 / 0.88);
+    background: rgb(1 0 42 / 0.92);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06);
+    border-bottom-color: rgb(255 255 255 / 0.08);
+  }
+
+  /* ------- Ticker ------- */
+  .site-header__ticker {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    border-bottom: 1px solid rgb(216 255 44 / 0.3);
+    overflow: hidden;
+  }
+  .site-header--transparent .site-header__ticker {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    border-bottom-color: transparent;
+  }
+  .site-header__ticker-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-block: 0.4rem;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .site-header__ticker-inner::-webkit-scrollbar { display: none; }
+  .site-header__ticker-inner .sep { opacity: 0.5; }
+
+  /* ------- Main row ------- */
+  .site-header__main {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding-block: 1rem;
+  }
+
+  .site-header__nav {
+    display: none;
+    justify-content: center;
+    gap: 2rem;
+  }
+  @media (min-width: 960px) { .site-header__nav { display: flex; } }
+
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 
   .nav-link {
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.95rem;
-    color: var(--color-brand-navy);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: inherit;
     text-decoration: none;
     position: relative;
     padding: 0.25rem 0;
@@ -120,66 +185,79 @@ const nav = [
     transform-origin: left;
     transition: transform 200ms ease;
   }
-  .nav-link:hover { color: var(--color-brand-navy); }
   .nav-link:hover::after { transform: scaleX(1); }
 
-  .site-header--transparent .nav-link { color: var(--color-brand-white); }
-
+  /* ------- Cart button ------- */
   .cart-btn {
     position: relative;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 9999px;
+    gap: 0.5rem;
+    padding: 0.55rem 0.875rem;
     background: transparent;
-    color: var(--color-brand-navy);
-    border: none;
+    color: inherit;
+    border: 1px solid currentColor;
+    border-radius: 0;
     cursor: pointer;
-    transition: background-color 150ms ease;
+    transition: background-color 150ms ease, color 150ms ease;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
-  .cart-btn:hover { background: rgb(1 0 42 / 0.06); }
-  .site-header--transparent .cart-btn { color: var(--color-brand-white); }
-  .site-header--transparent .cart-btn:hover { background: rgb(255 255 255 / 0.1); }
+  .cart-btn:hover {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+  }
+  .site-header--transparent .cart-btn:hover {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+  .cart-btn__label { display: none; }
+  @media (min-width: 480px) { .cart-btn__label { display: inline; } }
 
   .cart-btn__badge {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: -8px;
+    right: -8px;
     min-width: 20px;
     height: 20px;
-    padding: 0 6px;
+    padding: 0 5px;
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
-    border-radius: 9999px;
-    font-family: var(--font-display);
-    font-size: 0.72rem;
-    font-weight: 800;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
     line-height: 20px;
     text-align: center;
+    border: 1px solid var(--color-brand-navy);
   }
 
+  /* ------- Menu button ------- */
   .menu-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 44px;
     height: 44px;
-    border-radius: 9999px;
     background: transparent;
     color: inherit;
-    border: none;
+    border: 1px solid currentColor;
+    border-radius: 0;
     cursor: pointer;
+    margin-left: 0.5rem;
   }
-  .site-header--transparent .menu-btn { color: var(--color-brand-white); }
+  @media (min-width: 960px) { .menu-btn { display: none; } }
   .menu-btn .menu-btn__close { display: none; }
   .menu-btn[aria-expanded="true"] .menu-btn__open { display: none; }
   .menu-btn[aria-expanded="true"] .menu-btn__close { display: inline-block; }
 
+  /* ------- Mobile nav ------- */
   .mobile-nav {
-    border-top: 1px solid rgb(1 0 42 / 0.08);
+    border-top: 1px solid rgb(1 0 42 / 0.1);
     background: var(--color-brand-white);
+    color: var(--color-brand-navy);
     padding: 0.5rem 0;
   }
   .mobile-nav nav {
@@ -187,19 +265,26 @@ const nav = [
     flex-direction: column;
   }
   .mobile-nav__link {
-    padding: 1rem 1.25rem;
+    padding: 1rem 1.5rem;
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     color: var(--color-brand-navy);
     text-decoration: none;
-    border-bottom: 1px solid rgb(1 0 42 / 0.05);
+    border-bottom: 1px solid rgb(1 0 42 / 0.06);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
   .mobile-nav__link:last-child { border-bottom: none; }
-  .mobile-nav__link:hover { background: rgb(216 255 44 / 0.1); }
+  .mobile-nav__link:hover {
+    background: var(--color-brand-lime);
+  }
 </style>
 
 <script>
-  // Transparent header becomes solid after scrolling past a threshold
   const header = document.querySelector<HTMLElement>(".site-header");
   if (header?.dataset.transparent === "true") {
     const updateScrolled = () => {
@@ -210,7 +295,6 @@ const nav = [
     window.addEventListener("scroll", updateScrolled, { passive: true });
   }
 
-  // Mobile nav toggle
   const mobileToggle = document.querySelector<HTMLButtonElement>("[data-mobile-menu-toggle]");
   const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
   if (mobileToggle && mobileNav) {
@@ -219,7 +303,6 @@ const nav = [
       mobileToggle.setAttribute("aria-expanded", String(!open));
       mobileNav.hidden = open;
     });
-    // Close on nav link click
     mobileNav.querySelectorAll("[data-mobile-nav-link]").forEach((a) => {
       a.addEventListener("click", () => {
         mobileToggle.setAttribute("aria-expanded", "false");
@@ -228,12 +311,10 @@ const nav = [
     });
   }
 
-  // Cart open button — dispatches the global event handled by CartDrawer
   document.querySelector("[data-cart-open]")?.addEventListener("click", () => {
     document.dispatchEvent(new CustomEvent("cart:open"));
   });
 
-  // Cart badge — updates on cart:change
   const badge = document.querySelector<HTMLElement>("[data-cart-count]");
   if (badge) {
     document.addEventListener("cart:change", ((ev: CustomEvent) => {

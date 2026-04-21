@@ -1,15 +1,8 @@
 ---
 /**
- * PR Tracker logotype — SVG inline.
- *
- * Variants:
- *  - dark (default): dark navy text on light background
- *  - light: white text on dark background
- *  - lime: lime green on dark background (accent variant per MIV)
- *
- * The wordmark uses the Inter italic 900 fallback since the MIV-specified
- * "Area Variable" font is not freely distributable. This stays visually
- * consistent with the lime/navy brand system.
+ * PR Tracker logotype — SPECIMEN treatment.
+ * Symbol: reduced to a blunt barbell silhouette. Wordmark in Big Shoulders,
+ * uppercase, tight kerning — built for high-contrast technical layouts.
  */
 
 interface Props {
@@ -27,43 +20,44 @@ const colors = {
 };
 const c = colors[variant];
 
-const heights: Record<typeof size, string> = { sm: "1.75rem", md: "2.25rem", lg: "3rem" };
+const heights: Record<typeof size, string> = { sm: "1.5rem", md: "2rem", lg: "2.75rem" };
 const height = heights[size];
 ---
 
 <span
-  class={`inline-flex items-center gap-2 ${cls}`}
+  class={`pr-logo inline-flex items-center gap-2.5 ${cls}`}
   style={`height: ${height};`}
   role="img"
   aria-label="PR Tracker"
 >
   <svg
-    viewBox="0 0 40 40"
-    width="1em"
-    height="1em"
+    viewBox="0 0 48 32"
     style="height: 100%; width: auto;"
     aria-hidden="true"
     focusable="false"
   >
-    <!-- Stylized "PR" loop mark: dumbbell-esque silhouette -->
-    <rect x="6" y="17" width="28" height="6" rx="1.5" fill={c.primary} />
-    <rect x="3" y="12" width="6" height="16" rx="1.5" fill={c.accent} />
-    <rect x="31" y="12" width="6" height="16" rx="1.5" fill={c.accent} />
-    <rect x="11" y="14" width="3" height="12" rx="0.75" fill={c.primary} />
-    <rect x="26" y="14" width="3" height="12" rx="0.75" fill={c.primary} />
+    <!-- Sleeves (plate ends) -->
+    <rect x="0" y="6" width="5" height="20" fill={c.accent} />
+    <rect x="43" y="6" width="5" height="20" fill={c.accent} />
+    <!-- Inner plates -->
+    <rect x="7" y="9" width="3" height="14" fill={c.primary} />
+    <rect x="38" y="9" width="3" height="14" fill={c.primary} />
+    <!-- Bar -->
+    <rect x="10" y="14" width="28" height="4" fill={c.primary} />
   </svg>
-  <span
-    style={`
-      font-family: 'Inter', system-ui, sans-serif;
-      font-style: italic;
-      font-weight: 900;
-      font-size: calc(${height} * 0.48);
-      letter-spacing: -0.04em;
-      color: ${c.primary};
-      line-height: 1;
-      white-space: nowrap;
-    `}
-  >
-    PR TRACKER
+  <span class="pr-logo__wordmark" style={`color: ${c.primary};`}>
+    PR&nbsp;TRACKER
   </span>
 </span>
+
+<style>
+  .pr-logo__wordmark {
+    font-family: var(--font-logo);
+    font-weight: 900;
+    font-size: calc(1em * 0.95);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+  }
+</style>
