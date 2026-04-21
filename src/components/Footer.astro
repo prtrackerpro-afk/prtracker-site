@@ -1,94 +1,105 @@
 ---
+import Mail from "@lucide/astro/icons/mail";
+import Clock from "@lucide/astro/icons/clock";
+import Phone from "@lucide/astro/icons/phone";
 import Logo from "./Logo.astro";
 
 const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
-  <!-- Top technical specimen -->
-  <div class="site-footer__spec container-page">
-    <div class="site-footer__spec-col">
-      <span class="mono-label mono-label--lime">// MANIFESTO / 01</span>
-      <p class="site-footer__manifesto">
-        Seu PR merece mais<br />
-        do que uma foto.
+  <div class="container-page py-14 grid gap-10 md:grid-cols-4">
+    <div class="md:col-span-2">
+      <Logo variant="light" size="lg" />
+      <p class="mt-5 text-white/75 max-w-md leading-relaxed">
+        Somos a <strong class="text-brand-lime">PR Tracker</strong>, transformamos
+        PRs em troféus personalizáveis, feitos com materiais premium, para
+        celebrar evolução e inspirar novas metas dentro e fora do box.
       </p>
-      <p class="site-footer__tag">
-        Miniaturas premium que transformam cada recorde em troféu físico.
-        Projeto de marca brasileira, produção sob demanda.
+      <p class="mt-4 text-white/55 text-sm">
+        <strong>CNPJ:</strong> 59.947.215/0001-67
       </p>
-    </div>
-
-    <div class="site-footer__spec-col">
-      <span class="mono-label mono-label--lime">// NAV</span>
-      <ul class="footer-list">
-        <li><a href="/#produtos">Sets</a></li>
-        <li><a href="/product/anilhas">Anilhas avulsas</a></li>
-        <li><a href="/product-category/camisetas">Vestuário</a></li>
-        <li><a href="/#como-funciona">Processo</a></li>
-        <li><a href="/contato">Contato</a></li>
-      </ul>
-    </div>
-
-    <div class="site-footer__spec-col">
-      <span class="mono-label mono-label--lime">// ATENDIMENTO</span>
-      <ul class="footer-list">
-        <li>
-          <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer">
-            WhatsApp — (51) 98206-1914
-          </a>
-        </li>
-        <li>
-          <a href="mailto:contato@prtracker.com.br">contato@prtracker.com.br</a>
-        </li>
-        <li class="footer-list__meta">Seg a Sex · 8h às 18h</li>
-        <li class="footer-list__meta">Envio para todo o Brasil</li>
-        <li class="footer-list__meta">Pix 5% OFF · Cartão 6× s/ juros</li>
-      </ul>
-    </div>
-
-    <div class="site-footer__spec-col">
-      <span class="mono-label mono-label--lime">// POLÍTICAS</span>
-      <ul class="footer-list">
-        <li><a href="/politicas/privacidade">Privacidade</a></li>
-        <li><a href="/politicas/troca-e-devolucao">Troca e devolução</a></li>
-        <li><a href="/politicas/termos">Termos de uso</a></li>
-      </ul>
-      <span class="mono-label mono-label--lime" style="margin-top:1.5rem;">// SIGA</span>
-      <div class="site-footer__social">
-        <a href="https://instagram.com/pr.tracker" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Instagram @pr.tracker">
+      <div class="mt-5 flex items-center gap-3">
+        <a
+          href="https://instagram.com/pr.tracker"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Instagram @pr.tracker"
+          class="social-link"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
             <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
             <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
           </svg>
-          <span>INSTAGRAM</span>
         </a>
-        <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="WhatsApp (51) 98206-1914">
+        <a
+          href="https://wa.me/5551982061914"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="WhatsApp (51) 98206-1914"
+          class="social-link"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.768.966-.941 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.85 12.85 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.71.306 1.263.489 1.695.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
           </svg>
-          <span>WHATSAPP</span>
+        </a>
+        <a
+          href="mailto:contato@prtracker.com.br"
+          aria-label="E-mail contato@prtracker.com.br"
+          class="social-link"
+        >
+          <Mail size={18} aria-hidden="true" />
         </a>
       </div>
     </div>
+
+    <div>
+      <h3 class="footer-title">Produtos</h3>
+      <ul class="footer-list">
+        <li><a href="/product/power-rack-set">Power Rack Set</a></li>
+        <li><a href="/product/bench-press-set">Bench Press Set</a></li>
+        <li><a href="/product/deadlift-set">Deadlift Set</a></li>
+        <li><a href="/product/my-pr-set">My PR Set</a></li>
+        <li><a href="/product/anilhas">Anilhas avulsas</a></li>
+        <li><a href="/product-category/camisetas">Camisetas</a></li>
+      </ul>
+
+      <h3 class="footer-title mt-8">Políticas</h3>
+      <ul class="footer-list">
+        <li><a href="/politicas/privacidade">Política de Privacidade</a></li>
+        <li><a href="/politicas/troca-e-devolucao">Troca e Devolução</a></li>
+        <li><a href="/politicas/termos">Termos de Uso</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h3 class="footer-title">Atendimento</h3>
+      <ul class="footer-list">
+        <li>
+          <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer" class="footer-list__icon">
+            <Phone size={16} aria-hidden="true" />
+            <span>(51) 98206-1914</span>
+          </a>
+        </li>
+        <li>
+          <a href="mailto:contato@prtracker.com.br" class="footer-list__icon">
+            <Mail size={16} aria-hidden="true" />
+            <span>contato@prtracker.com.br</span>
+          </a>
+        </li>
+        <li class="footer-list__icon footer-list__muted">
+          <Clock size={16} aria-hidden="true" />
+          <span>Seg a Sex · 8h às 18h</span>
+        </li>
+      </ul>
+    </div>
   </div>
 
-  <!-- Gigantic brand wordmark as floor -->
-  <div class="site-footer__wordmark container-page" aria-hidden="true">
-    PR<span class="site-footer__wordmark-dot">·</span>TRACKER
-  </div>
-
-  <!-- Bottom meta strip -->
   <div class="site-footer__bottom">
-    <div class="container-page site-footer__bottom-inner">
-      <span>© {year} PR TRACKER LTDA</span>
-      <span class="sep">/</span>
-      <span>CNPJ 59.947.215/0001-67</span>
-      <span class="sep">/</span>
-      <span>PORTO ALEGRE · BR</span>
-      <span class="sep">/</span>
-      <span>BUILD {year}.Q2</span>
+    <div class="container-page py-5 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-white/55">
+      <p>© {year} PR Tracker Ltda · CNPJ 59.947.215/0001-67</p>
+      <p>Envio para todo o Brasil · Pix ou cartão em até 6× sem juros</p>
     </div>
   </div>
 </footer>
@@ -97,128 +108,54 @@ const year = new Date().getFullYear();
   .site-footer {
     background: var(--color-brand-navy);
     color: var(--color-brand-white);
-    border-top: 1px solid rgb(216 255 44 / 0.2);
   }
-
-  .site-footer__spec {
-    display: grid;
-    gap: 2.5rem;
-    padding-block: 4rem 3rem;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 720px) {
-    .site-footer__spec { grid-template-columns: 1.3fr 1fr 1.1fr 1fr; gap: 3rem; }
-  }
-
-  .site-footer__spec-col {
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-  }
-
-  .site-footer__manifesto {
+  .footer-title {
     font-family: var(--font-display);
-    font-weight: 900;
-    font-size: clamp(1.75rem, 2vw + 1rem, 2.75rem);
-    line-height: 0.95;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    letter-spacing: -0.01em;
-    color: var(--color-brand-white);
-    margin: 0.5rem 0 0;
+    color: var(--color-brand-lime);
+    margin-bottom: 1rem;
   }
-  .site-footer__tag {
-    color: rgb(255 255 255 / 0.65);
-    font-size: 0.92rem;
-    max-width: 30ch;
-    margin: 0;
-    line-height: 1.55;
-  }
-
   .footer-list {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.65rem;
   }
-  .footer-list a {
+  .footer-list a,
+  .footer-list__icon {
     color: rgb(255 255 255 / 0.8);
     text-decoration: none;
-    font-size: 0.92rem;
     transition: color 120ms ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
   }
   .footer-list a:hover { color: var(--color-brand-lime); }
-  .footer-list__meta {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgb(255 255 255 / 0.5);
-  }
+  .footer-list__muted { color: rgb(255 255 255 / 0.55); }
 
-  .site-footer__social {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    margin-top: 0.25rem;
-  }
   .social-link {
     display: inline-flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 0.5rem 0;
-    color: rgb(255 255 255 / 0.8);
-    text-decoration: none;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgb(255 255 255 / 0.08);
-    transition: color 150ms ease, border-color 150ms ease;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    transition: background-color 150ms ease, color 150ms ease;
   }
   .social-link:hover {
-    color: var(--color-brand-lime);
-    border-color: var(--color-brand-lime);
+    background: var(--color-brand-white);
   }
 
-  .site-footer__wordmark {
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: clamp(4rem, 18vw, 16rem);
-    line-height: 0.85;
-    letter-spacing: -0.04em;
-    color: transparent;
-    -webkit-text-stroke: 1px rgb(216 255 44 / 0.35);
-    text-stroke: 1px rgb(216 255 44 / 0.35);
-    padding-block: 1rem 2.5rem;
-    user-select: none;
-    overflow: hidden;
-    white-space: nowrap;
-    text-transform: uppercase;
-  }
-  .site-footer__wordmark-dot {
-    color: var(--color-brand-lime);
-    -webkit-text-stroke: 0;
-    margin: 0 0.15em;
-  }
+  .text-brand-lime { color: var(--color-brand-lime); }
 
   .site-footer__bottom {
     background: #000;
-    border-top: 1px solid rgb(255 255 255 / 0.05);
   }
-  .site-footer__bottom-inner {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
-    align-items: center;
-    padding-block: 1rem;
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgb(255 255 255 / 0.5);
-  }
-  .site-footer__bottom-inner .sep { color: rgb(216 255 44 / 0.5); }
 </style>

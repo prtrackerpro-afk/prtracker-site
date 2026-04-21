@@ -3,7 +3,10 @@ import { getCollection } from "astro:content";
 import BaseLayout from "~/layouts/BaseLayout.astro";
 import ProductCard from "~/components/ProductCard.astro";
 import ArrowRight from "@lucide/astro/icons/arrow-right";
-import ArrowDown from "@lucide/astro/icons/arrow-down";
+import Truck from "@lucide/astro/icons/truck";
+import CreditCard from "@lucide/astro/icons/credit-card";
+import MessageCircle from "@lucide/astro/icons/message-circle";
+import Star from "@lucide/astro/icons/star";
 
 const products = await getCollection("products");
 const prTrackers = products
@@ -45,94 +48,68 @@ const jsonLd = [
     },
   },
 ];
+
+/** Static social-proof testimonials (copy from real reviews at prtracker.com.br). */
+const testimonials = [
+  {
+    name: "Julia Maia Heckler",
+    when: "3 meses atrás",
+    rating: 5,
+    text: "Produtos de ótima qualidade, fiquei surpreendida! E chegou antes do que era previsto.",
+  },
+  {
+    name: "Matheus Oliveira",
+    when: "3 meses atrás",
+    rating: 5,
+    text: "Altamente confiável. Produto bem feito e suporte rápido.",
+  },
+  {
+    name: "Pietro Schaff",
+    when: "3 meses atrás",
+    rating: 5,
+    text: "Qualidade do produto é impecável, atenção aos detalhes, principalmente nos acabamentos das anilhas!",
+  },
+];
 ---
 
 <BaseLayout
   title="PR Tracker — Seu PR merece mais do que uma foto"
   description="Miniaturas-troféu premium feitas sob medida para celebrar seus PRs de CrossFit, powerlifting e halterofilismo. Configure a barra, escolha o exercício, receba seu troféu."
-  transparentHeader
   jsonLd={jsonLd}
 >
   <!-- ========================= HERO ========================= -->
   <section class="hero">
-    <div class="hero__bg" aria-hidden="true"></div>
-
-    <div class="hero__frame container-page">
-      <!-- Top meta rail -->
-      <div class="hero__rail">
-        <span class="mono-label mono-label--lime">// VOL·04 · EDIÇÃO 2026</span>
-        <span class="hero__rail-dot"></span>
-        <span class="mono-label" style="color: rgb(255 255 255 / 0.55)">BRASIL · PRODUÇÃO SOB DEMANDA</span>
+    <div class="container-page hero__inner">
+      <div class="hero__visual">
+        <img
+          src="/images/products/power-rack-set/Power-Rack-base-diagonal.jpeg"
+          alt="Power Rack Set — miniatura-troféu PR Tracker"
+          width="800"
+          height="800"
+          fetchpriority="high"
+          loading="eager"
+          decoding="async"
+        />
       </div>
 
-      <div class="hero__grid">
-        <!-- Left: copy block -->
-        <div class="hero__copy">
-          <h1 class="hero__title">
-            SEU PR<br />
-            MERECE MAIS<br />
-            <span class="hero__title-accent">DO QUE</span><br />
-            UMA FOTO<span class="hero__title-period">.</span>
-          </h1>
-
-          <p class="hero__subtitle">
-            Miniaturas-troféu sob medida. Você configura a barra, escolhe o
-            exercício e recebe a peça que conta a sua história no treino.
-          </p>
-
-          <div class="hero__cta">
-            <a href="#produtos" class="btn btn-primary btn-lg">
-              <span>MONTE SEU TROFÉU</span>
-              <ArrowRight size={18} aria-hidden="true" />
-            </a>
-            <a href="#processo" class="btn btn-ghost-on-dark">
-              <ArrowDown size={16} aria-hidden="true" />
-              <span>PROCESSO</span>
-            </a>
-          </div>
+      <div class="hero__copy">
+        <h1 class="hero__title">
+          SEU PR<br />
+          VIROU <span class="hero__title-accent">TROFÉU!</span>
+        </h1>
+        <p class="hero__subtitle">
+          Miniaturas-troféu sob medida. Configure a barra, escolha o exercício,
+          receba em casa a peça que conta sua história no treino.
+        </p>
+        <div class="hero__cta">
+          <a href="#produtos" class="btn btn-primary btn-lg">
+            <span>Comprar agora</span>
+            <ArrowRight size={18} aria-hidden="true" />
+          </a>
+          <a href="#como-funciona" class="btn btn-ghost-on-dark">
+            Como funciona
+          </a>
         </div>
-
-        <!-- Right: product visual with measurement overlay -->
-        <div class="hero__visual">
-          <!-- Corner tickmarks -->
-          <span class="tick tick--tl" aria-hidden="true"></span>
-          <span class="tick tick--tr" aria-hidden="true"></span>
-          <span class="tick tick--bl" aria-hidden="true"></span>
-          <span class="tick tick--br" aria-hidden="true"></span>
-
-          <img
-            src="/images/products/power-rack-set/Power-Rack-base-diagonal.jpeg"
-            alt="Power Rack Set — miniatura-troféu PR Tracker"
-            width="800"
-            height="800"
-            fetchpriority="high"
-            loading="eager"
-            decoding="async"
-            class="hero__visual-img"
-          />
-
-          <!-- Bottom measurement strip -->
-          <div class="hero__visual-meta" aria-hidden="true">
-            <span>H · 150 MM</span>
-            <span>AL 100%</span>
-            <span>NO.01/07</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom marquee of trust/product lineup -->
-      <div class="hero__marquee" aria-hidden="true">
-        <span>POWER·RACK</span>
-        <span class="sep">/</span>
-        <span>BENCH·PRESS</span>
-        <span class="sep">/</span>
-        <span>DEADLIFT</span>
-        <span class="sep">/</span>
-        <span>MY·PR — 20 EXERCÍCIOS</span>
-        <span class="sep">/</span>
-        <span>ANILHAS OLÍMPICAS IWF</span>
-        <span class="sep">/</span>
-        <span>PIX · 5% OFF</span>
       </div>
     </div>
   </section>
@@ -141,109 +118,64 @@ const jsonLd = [
   <section id="produtos" class="section section--light">
     <div class="container-page">
       <div class="section__head">
-        <span class="mono-label">// CATÁLOGO / 01</span>
-        <h2 class="section__title">Cada set<br />é um troféu<br />diferente.</h2>
-        <p class="section__lead">
-          Quatro linhas de miniaturas, cada uma uma réplica fiel do equipamento real.
-          Configure a sua barra, escolha o exercício, receba.
-        </p>
+        <h2>Miniaturas que guardam sua história</h2>
+        <p>Cada set é uma réplica fiel do equipamento. Você configura, nós produzimos, você expõe.</p>
       </div>
-
       <div class="product-grid">
         {prTrackers.map((p, i) => (
-          <ProductCard product={p} eager={i < 2} index={i} />
+          <ProductCard product={p} eager={i < 2} />
         ))}
       </div>
     </div>
   </section>
 
-  <!-- ========================= PROCESSO ========================= -->
-  <section id="processo" class="section section--navy processo">
+  <!-- ========================= COMO FUNCIONA ========================= -->
+  <section id="como-funciona" class="section section--navy">
     <div class="container-page">
       <div class="section__head section__head--on-dark">
-        <span class="mono-label mono-label--lime">// PROCESSO / 02</span>
-        <h2 class="section__title">Em 3 passos,<br />seu PR vira troféu.</h2>
+        <h2>Em 3 passos seu PR vira troféu</h2>
       </div>
-
       <ol class="steps">
         <li class="step">
-          <div class="step__num-wrap">
-            <span class="step__num">01</span>
-            <span class="step__label mono-label mono-label--lime">ESCOLHA</span>
-          </div>
-          <div class="step__body">
-            <h3 class="step__title">Selecione o set</h3>
-            <p class="step__desc">
-              Power Rack, Bench Press, Deadlift ou My PR Set — 20 exercícios
-              de força para escolher. Cada um é uma miniatura fiel do equipamento real.
-            </p>
-          </div>
+          <span class="step__num">1</span>
+          <h3 class="step__title">Escolha o set</h3>
+          <p class="step__desc">Power Rack, Bench Press, Deadlift ou My PR Set com 20 exercícios — cada um uma miniatura fiel do equipamento real.</p>
         </li>
         <li class="step">
-          <div class="step__num-wrap">
-            <span class="step__num">02</span>
-            <span class="step__label mono-label mono-label--lime">MONTE</span>
-          </div>
-          <div class="step__body">
-            <h3 class="step__title">Configure a barra</h3>
-            <p class="step__desc">
-              Adicione anilhas no padrão olímpico IWF. A barra atualiza em
-              tempo real — peso total, preço e ocupação.
-            </p>
-          </div>
+          <span class="step__num">2</span>
+          <h3 class="step__title">Monte sua barra</h3>
+          <p class="step__desc">Adicione anilhas no padrão olímpico IWF. A barra atualiza em tempo real no configurador.</p>
         </li>
         <li class="step">
-          <div class="step__num-wrap">
-            <span class="step__num">03</span>
-            <span class="step__label mono-label mono-label--lime">RECEBA</span>
-          </div>
-          <div class="step__body">
-            <h3 class="step__title">Troféu em casa</h3>
-            <p class="step__desc">
-              Produção sob demanda, envio para todo o Brasil com rastreio.
-              Seu PR, feito troféu.
-            </p>
-          </div>
+          <span class="step__num">3</span>
+          <h3 class="step__title">Receba em casa</h3>
+          <p class="step__desc">Produção sob demanda, envio para todo o Brasil com rastreio. Seu PR, feito troféu.</p>
         </li>
       </ol>
     </div>
   </section>
 
   <!-- ========================= ANILHAS BANNER ========================= -->
-  <section class="section section--paper">
-    <div class="container-page">
-      <div class="anilhas-banner">
-        <div class="anilhas-banner__content">
-          <span class="mono-label">// UPGRADE / 03</span>
-          <h2 class="anilhas-banner__title">Bateu PR?<br />Atualize seu troféu.</h2>
-          <p class="anilhas-banner__sub">
-            Pares de anilhas avulsas no mesmo encaixe. Padrão olímpico,
-            cores oficiais, preço único.
-          </p>
-          <a href={`/product/${anilhas.data.slug}`} class="btn btn-secondary">
-            <span>Ver anilhas avulsas</span>
-            <ArrowRight size={18} aria-hidden="true" />
-          </a>
-        </div>
-        <div class="anilhas-banner__media">
-          <img
-            src={anilhas.data.images[0]!.src}
-            alt={anilhas.data.images[0]!.alt}
-            width="600"
-            height="600"
-            loading="lazy"
-            decoding="async"
-          />
-          <div class="plate-chips" aria-hidden="true">
-            <span class="plate-chip" style="background: var(--color-plate-25)">25</span>
-            <span class="plate-chip" style="background: var(--color-plate-20)">20</span>
-            <span class="plate-chip" style="background: var(--color-plate-15); color: #01002A">15</span>
-            <span class="plate-chip" style="background: var(--color-plate-10)">10</span>
-            <span class="plate-chip" style="background: var(--color-plate-5)">5</span>
-            <span class="plate-chip" style="background: var(--color-plate-2-5)">2.5</span>
-            <span class="plate-chip" style="background: var(--color-plate-1-25); color: #01002A">1.25</span>
-          </div>
-        </div>
+  <section class="section section--light">
+    <div class="container-page banner banner--lime">
+      <div class="banner__text">
+        <p class="banner__eyebrow">Bateu PR?</p>
+        <h2 class="banner__title">Atualize seu troféu com novos pares de anilhas.</h2>
+        <p class="banner__sub">Mesmo padrão olímpico, mesmo encaixe. A partir de R$ 10,00 o par.</p>
+        <a href={`/product/${anilhas.data.slug}`} class="btn btn-secondary mt-5">
+          <span>Ver anilhas avulsas</span>
+          <ArrowRight size={18} aria-hidden="true" />
+        </a>
+      </div>
+      <div class="banner__media">
+        <img
+          src={anilhas.data.images[0]!.src}
+          alt={anilhas.data.images[0]!.alt}
+          width="600"
+          height="600"
+          loading="lazy"
+          decoding="async"
+        />
       </div>
     </div>
   </section>
@@ -251,82 +183,97 @@ const jsonLd = [
   <!-- ========================= CAMISETAS ========================= -->
   <section class="section section--light">
     <div class="container-page">
-      <div class="section__head section__head--split">
-        <div>
-          <span class="mono-label">// VESTUÁRIO / 04</span>
-          <h2 class="section__title">Veste o box.</h2>
-        </div>
+      <div class="section__head">
+        <h2>Veste o box</h2>
+        <p>Camisetas PR Tracker — para os treinos mais pesados.</p>
+      </div>
+      <div class="product-grid product-grid--2">
+        {camisetas.map((p) => <ProductCard product={p} />)}
+      </div>
+      <div class="text-center mt-10">
         <a href="/product-category/camisetas" class="btn btn-outline">
-          <span>VER TODAS</span>
+          Ver todas
           <ArrowRight size={18} aria-hidden="true" />
         </a>
       </div>
-      <div class="product-grid product-grid--2">
-        {camisetas.map((p, i) => <ProductCard product={p} index={i} />)}
+    </div>
+  </section>
+
+  <!-- ========================= DEPOIMENTOS ========================= -->
+  <section class="section section--light testimonials">
+    <div class="container-page">
+      <div class="section__head">
+        <h2>Troféu de quem vive o treino<br />dentro e fora da academia</h2>
+      </div>
+      <div class="testimonial-grid">
+        {testimonials.map((t) => (
+          <article class="testimonial">
+            <div class="testimonial__head">
+              <div class="testimonial__avatar" aria-hidden="true">
+                {t.name.charAt(0)}
+              </div>
+              <div>
+                <p class="testimonial__name">{t.name}</p>
+                <p class="testimonial__when">{t.when}</p>
+              </div>
+            </div>
+            <div class="testimonial__stars" aria-label={`${t.rating} de 5 estrelas`}>
+              {Array.from({ length: t.rating }).map(() => (
+                <Star size={16} fill="#FFC72C" color="#FFC72C" aria-hidden="true" />
+              ))}
+            </div>
+            <p class="testimonial__text">{t.text}</p>
+          </article>
+        ))}
       </div>
     </div>
   </section>
 
-  <!-- ========================= SOBRE ========================= -->
-  <section class="section section--paper about">
-    <div class="container-page about__grid">
-      <div class="about__lead">
-        <span class="mono-label">// MANIFESTO / 05</span>
-        <h2 class="about__title">
-          Não é souvenir.<br />
-          Não é brinquedo.<br />
-          <span class="about__title-accent">É troféu.</span>
-        </h2>
-      </div>
-
-      <div class="about__body">
-        <p>
-          Primeira marca brasileira de miniaturas premium no universo da força.
-          Cada peça é produzida sob demanda com barra em aço inoxidável usinado,
-          anilhas em plástico de alta densidade no padrão olímpico IWF, e base
-          específica por produto.
-        </p>
-        <p>
-          A PR Tracker nasceu pra celebrar quem treina de verdade. Cada PR
-          merece mais do que uma foto na galeria do celular.
-        </p>
-
-        <dl class="about__stats">
-          <div class="stat">
-            <dt class="mono-label mono-label--dim">EXERCÍCIOS</dt>
-            <dd class="stat__value">20</dd>
-            <dd class="stat__sub">no My PR Set</dd>
-          </div>
-          <div class="stat">
-            <dt class="mono-label mono-label--dim">PESOS</dt>
-            <dd class="stat__value">07</dd>
-            <dd class="stat__sub">anilhas olímpicas</dd>
-          </div>
-          <div class="stat">
-            <dt class="mono-label mono-label--dim">BRASIL</dt>
-            <dd class="stat__value">100%</dd>
-            <dd class="stat__sub">produzido aqui</dd>
-          </div>
-        </dl>
+  <!-- ========================= FEATURES ========================= -->
+  <section class="section section--light features-section">
+    <div class="container-page">
+      <div class="features">
+        <div class="feature">
+          <Truck size={32} strokeWidth={1.5} aria-hidden="true" />
+          <h3>Envio &amp; Rastreio</h3>
+          <p>Entrega rápida e rastreável para todo o Brasil.</p>
+        </div>
+        <div class="feature">
+          <CreditCard size={32} strokeWidth={1.5} aria-hidden="true" />
+          <h3>Pagamento Seguro</h3>
+          <p>Pague com Pix e ganhe 5% de desconto, ou cartão em até 6×.</p>
+        </div>
+        <div class="feature">
+          <MessageCircle size={32} strokeWidth={1.5} aria-hidden="true" />
+          <h3>Suporte Humanizado</h3>
+          <p>Atendimento rápido no WhatsApp e por e-mail.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ========================= FINAL CTA ========================= -->
-  <section class="section section--navy final-cta">
-    <div class="container-page final-cta__inner">
-      <span class="mono-label mono-label--lime">// CTA / 06</span>
-      <h2 class="final-cta__title">
-        Seu próximo PR<br />
-        <span class="final-cta__title-accent">já tem troféu.</span>
-      </h2>
-      <p class="final-cta__sub">
-        Monte o seu no configurador. Pix com 5% OFF. Envio para todo o Brasil.
-      </p>
-      <a href="#produtos" class="btn btn-primary btn-lg">
-        <span>COMEÇAR AGORA</span>
-        <ArrowRight size={18} aria-hidden="true" />
-      </a>
+  <!-- ========================= PARCERIAS ========================= -->
+  <section id="parcerias" class="section section--navy parcerias">
+    <div class="container-page parcerias__grid">
+      <div>
+        <p class="eyebrow eyebrow--lime">Parcerias</p>
+        <h2 class="text-brand-white">Para boxes, academias e eventos</h2>
+        <p class="parcerias__lead">
+          Se você organiza um evento esportivo, quer presentear atletas ou criar algo
+          exclusivo para sua marca, a PR Tracker pode ajudar. Fale com a gente para
+          descontos em volume, personalização e produtos exclusivos.
+        </p>
+        <a href="/contato" class="btn btn-primary mt-4">
+          Falar com a gente
+          <ArrowRight size={18} aria-hidden="true" />
+        </a>
+      </div>
+      <ul class="parcerias__bullets">
+        <li>Descontos progressivos em pedidos em volume</li>
+        <li>Personalização com a sua marca</li>
+        <li>Produtos exclusivos para eventos e premiação</li>
+        <li>Comissão para coaches e donos de box</li>
+      </ul>
     </div>
   </section>
 </BaseLayout>
@@ -335,455 +282,348 @@ const jsonLd = [
   /* ======================= HERO ======================= */
   .hero {
     position: relative;
-    color: var(--color-brand-white);
     background: var(--color-brand-navy);
+    color: var(--color-brand-white);
     overflow: hidden;
   }
-  .hero__bg {
-    position: absolute;
-    inset: 0;
-    background-image:
-      radial-gradient(rgb(216 255 44 / 0.08) 1px, transparent 1px),
-      linear-gradient(180deg, rgb(216 255 44 / 0) 0%, rgb(216 255 44 / 0.03) 100%);
-    background-size: 32px 32px, 100% 100%;
-    pointer-events: none;
-  }
-  .hero::after {
+  .hero::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at 78% 40%, rgb(216 255 44 / 0.06), transparent 55%);
+    background:
+      radial-gradient(ellipse at 25% 50%, rgb(216 255 44 / 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 30%, rgb(216 255 44 / 0.04) 0%, transparent 55%);
     pointer-events: none;
   }
-
-  .hero__frame {
+  .hero__inner {
     position: relative;
     z-index: 1;
-    padding-top: clamp(5rem, 10vh, 8rem);
-    padding-bottom: 0;
-  }
-
-  .hero__rail {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding-bottom: 2.5rem;
-    border-bottom: 1px dashed rgb(255 255 255 / 0.15);
-    margin-bottom: 3rem;
-  }
-  .hero__rail-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--color-brand-lime);
-    border-radius: 9999px;
-  }
-
-  .hero__grid {
     display: grid;
-    gap: 3rem;
-    align-items: end;
+    gap: 2rem;
+    align-items: center;
+    padding-top: clamp(2rem, 5vw, 4rem);
+    padding-bottom: clamp(2.5rem, 5vw, 4rem);
   }
-  @media (min-width: 960px) {
-    .hero__grid {
-      grid-template-columns: 1.25fr 1fr;
-      gap: 4rem;
+  @media (min-width: 900px) {
+    .hero__inner {
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
     }
   }
 
-  /* Headline — the money shot */
+  .hero__visual {
+    display: flex;
+    justify-content: center;
+    order: 1;
+  }
+  .hero__visual img {
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 50px rgb(0 0 0 / 0.5));
+  }
+  @media (min-width: 900px) {
+    .hero__visual { order: 0; }
+    .hero__visual img { max-width: 580px; }
+  }
+
+  .hero__copy {
+    text-align: left;
+    order: 2;
+  }
   .hero__title {
     font-family: var(--font-display);
     font-weight: 900;
-    font-size: clamp(3.25rem, 10vw + 0.5rem, 10rem);
-    line-height: 0.88;
-    letter-spacing: -0.035em;
-    text-transform: uppercase;
+    font-size: clamp(2.75rem, 5.5vw + 1rem, 6rem);
+    line-height: 0.92;
+    letter-spacing: -0.02em;
     color: var(--color-brand-white);
     margin: 0;
+    text-transform: uppercase;
   }
-  .hero__title-accent {
-    color: var(--color-brand-lime);
-    font-style: italic;
-  }
-  .hero__title-period { color: var(--color-brand-lime); }
+  .hero__title-accent { color: var(--color-brand-lime); }
 
   .hero__subtitle {
-    max-width: 34rem;
-    margin: 2rem 0 2.5rem;
-    color: rgb(255 255 255 / 0.72);
-    font-size: clamp(1rem, 0.8vw + 0.75rem, 1.125rem);
+    max-width: 32rem;
+    margin: 1.25rem 0 1.75rem;
+    color: rgb(255 255 255 / 0.78);
+    font-size: clamp(1rem, 0.5vw + 0.85rem, 1.125rem);
     line-height: 1.55;
   }
-
   .hero__cta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.85rem;
-    margin-bottom: 3rem;
+    gap: 0.75rem;
   }
-
-  /* Visual */
-  .hero__visual {
-    position: relative;
-    padding: clamp(1rem, 4vw, 2.5rem);
-    aspect-ratio: 1 / 1;
-    max-width: 520px;
-    margin-left: auto;
-    border: 1px solid rgb(255 255 255 / 0.08);
-    background:
-      radial-gradient(circle at center, rgb(216 255 44 / 0.04), transparent 70%),
-      linear-gradient(135deg, rgb(255 255 255 / 0.02), transparent);
-  }
-  .hero__visual-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    filter: drop-shadow(0 30px 60px rgb(0 0 0 / 0.5));
-    animation: float 6s ease-in-out infinite;
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .hero__visual-img { animation: none; }
-  }
-
-  /* Corner tickmarks */
-  .tick {
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    color: var(--color-brand-lime);
-  }
-  .tick::before, .tick::after {
-    content: "";
-    position: absolute;
-    background: currentColor;
-  }
-  .tick::before { width: 14px; height: 1px; }
-  .tick::after  { width: 1px; height: 14px; }
-  .tick--tl { top: 0; left: 0; }
-  .tick--tl::before { top: 0; left: 0; }
-  .tick--tl::after  { top: 0; left: 0; }
-  .tick--tr { top: 0; right: 0; }
-  .tick--tr::before { top: 0; right: 0; }
-  .tick--tr::after  { top: 0; right: 0; }
-  .tick--bl { bottom: 0; left: 0; }
-  .tick--bl::before { bottom: 0; left: 0; }
-  .tick--bl::after  { bottom: 0; left: 0; }
-  .tick--br { bottom: 0; right: 0; }
-  .tick--br::before { bottom: 0; right: 0; }
-  .tick--br::after  { bottom: 0; right: 0; }
-
-  .hero__visual-meta {
-    position: absolute;
-    left: 1rem;
-    right: 1rem;
-    bottom: -1.5rem;
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    background: var(--color-brand-navy);
-    color: var(--color-brand-lime);
-    border: 1px solid rgb(216 255 44 / 0.3);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  /* Marquee strip */
-  .hero__marquee {
-    margin-top: 4rem;
-    padding-block: 1.25rem;
-    border-top: 1px solid rgb(255 255 255 / 0.1);
-    border-bottom: 1px solid rgb(255 255 255 / 0.1);
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    overflow-x: auto;
-    white-space: nowrap;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 0.95rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: rgb(255 255 255 / 0.85);
-    scrollbar-width: none;
-  }
-  .hero__marquee::-webkit-scrollbar { display: none; }
-  .hero__marquee .sep { color: var(--color-brand-lime); font-weight: 400; }
 
   /* ======================= SECTIONS ======================= */
   .section {
-    padding: clamp(4rem, 8vw, 7rem) 0;
-    position: relative;
+    padding: clamp(3rem, 6vw, 5rem) 0;
   }
-  .section--light { background: var(--color-brand-white); color: var(--color-brand-navy); }
-  .section--navy  { background: var(--color-brand-navy); color: var(--color-brand-white); }
-  .section--paper { background: var(--color-paper); color: var(--color-brand-navy); }
+  .section--light { background: var(--color-brand-white); }
+  .section--navy  {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+  }
 
   .section__head {
-    margin-bottom: 3rem;
-    max-width: 58rem;
+    text-align: center;
+    max-width: 48rem;
+    margin: 0 auto 2.5rem;
   }
-  .section__head .mono-label { margin-bottom: 1rem; display: block; }
-  .section__title {
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: clamp(2rem, 4vw + 1rem, 4.25rem);
-    line-height: 0.9;
-    letter-spacing: -0.02em;
-    text-transform: uppercase;
-    margin: 0;
-  }
-  .section__lead {
-    margin-top: 1.25rem;
-    max-width: 40rem;
-    font-size: clamp(1rem, 0.5vw + 0.8rem, 1.15rem);
+  .section__head p {
+    margin-top: 0.85rem;
     color: var(--color-brand-gray);
-    line-height: 1.55;
+    font-size: 1.05rem;
   }
-  .section__head--on-dark .section__title { color: var(--color-brand-white); }
-  .section__head--split {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    align-items: flex-end;
-    justify-content: space-between;
+  .section__head--on-dark h2 { color: var(--color-brand-white); }
+  .section__head--on-dark p  { color: rgb(255 255 255 / 0.75); }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-brand-gray);
+    margin: 0 0 0.75rem;
   }
+  .eyebrow--lime { color: var(--color-brand-lime); }
+  .text-brand-white { color: var(--color-brand-white); }
 
   /* ======================= PRODUCT GRID ======================= */
   .product-grid {
     display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
   .product-grid--2 {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    max-width: 52rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    max-width: 48rem;
+    margin: 0 auto;
   }
 
-  /* ======================= PROCESSO / STEPS ======================= */
-  .processo { border-top: 1px solid rgb(216 255 44 / 0.2); }
+  /* ======================= STEPS ======================= */
   .steps {
     list-style: none;
     padding: 0;
     margin: 0;
     display: grid;
-    gap: 2.5rem;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 720px) {
-    .steps { grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
   .step {
     position: relative;
-    padding: 2rem 0 0;
-    border-top: 2px solid var(--color-brand-lime);
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-  }
-  .step__num-wrap {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
+    padding: 1.75rem 1.5rem;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    border-radius: var(--radius-card);
+    background: rgb(255 255 255 / 0.02);
+    text-align: left;
   }
   .step__num {
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: clamp(4rem, 6vw, 6rem);
-    line-height: 0.85;
-    color: var(--color-brand-white);
-    letter-spacing: -0.03em;
-  }
-  .step__body { display: flex; flex-direction: column; gap: 0.5rem; }
-  .step__title {
-    font-size: 1.5rem;
-    margin: 0;
-    color: var(--color-brand-white);
-    text-transform: uppercase;
-    letter-spacing: -0.01em;
-  }
-  .step__desc {
-    color: rgb(255 255 255 / 0.7);
-    margin: 0;
-    line-height: 1.55;
-    max-width: 36ch;
-  }
-
-  /* ======================= ANILHAS BANNER ======================= */
-  .anilhas-banner {
-    display: grid;
-    align-items: center;
-    gap: 2.5rem;
-    padding: 2.5rem;
-    background: var(--color-brand-white);
-    border: 1px solid rgb(1 0 42 / 0.12);
-    position: relative;
-  }
-  .anilhas-banner::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border: 1px solid var(--color-brand-navy);
-    transform: translate(8px, 8px);
-    z-index: -1;
-    pointer-events: none;
-  }
-  @media (min-width: 720px) {
-    .anilhas-banner {
-      grid-template-columns: 1.1fr 1fr;
-      padding: 3.5rem 3.5rem;
-    }
-  }
-  .anilhas-banner__content .mono-label { display: block; margin-bottom: 1rem; }
-  .anilhas-banner__title {
-    font-size: clamp(2rem, 3vw + 1rem, 3.25rem);
-    margin: 0 0 1rem;
-    line-height: 0.9;
-    letter-spacing: -0.02em;
-    text-transform: uppercase;
-  }
-  .anilhas-banner__sub {
-    color: var(--color-brand-gray);
-    margin: 0 0 1.75rem;
-    font-size: 1.05rem;
-    line-height: 1.55;
-    max-width: 36ch;
-  }
-  .anilhas-banner__media {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    gap: 1rem;
-  }
-  .anilhas-banner__media img {
-    max-width: 320px;
-    width: 100%;
-    height: auto;
-  }
-  .plate-chips {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(2.5rem, 1fr));
-    gap: 0.35rem;
-    max-width: 180px;
-  }
-  .plate-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: 50%;
-    color: #fff;
-    font-family: var(--font-product);
-    font-size: 0.72rem;
-    font-weight: 400;
-    letter-spacing: 0.02em;
-  }
-
-  /* ======================= ABOUT ======================= */
-  .about__grid {
-    display: grid;
-    gap: 3rem;
-    align-items: start;
-  }
-  @media (min-width: 960px) {
-    .about__grid { grid-template-columns: 1.1fr 1fr; gap: 5rem; }
-  }
-  .about__title {
-    font-size: clamp(2.25rem, 4vw + 1rem, 4.5rem);
-    margin: 1rem 0 0;
-    line-height: 0.9;
-    letter-spacing: -0.02em;
-  }
-  .about__title-accent {
-    color: var(--color-brand-navy);
+    border-radius: 9999px;
     background: var(--color-brand-lime);
-    padding: 0 0.25em;
-    display: inline-block;
-  }
-  .about__body { color: var(--color-brand-gray); }
-  .about__body p {
-    margin: 0 0 1.25rem;
-    font-size: 1.0625rem;
-    line-height: 1.65;
-    max-width: 40rem;
-  }
-  .about__stats {
-    display: grid;
-    gap: 0;
-    grid-template-columns: repeat(3, 1fr);
-    margin: 2.5rem 0 0;
-    border-top: 1px solid rgb(1 0 42 / 0.15);
-  }
-  .stat {
-    padding: 1.5rem 1rem 1.25rem 0;
-    border-right: 1px dashed rgb(1 0 42 / 0.15);
-  }
-  .stat:last-child { border-right: 0; }
-  .stat dt { margin-bottom: 0.5rem; }
-  .stat__value {
-    display: block;
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: clamp(2.5rem, 3vw + 1rem, 3.75rem);
-    line-height: 1;
     color: var(--color-brand-navy);
-    letter-spacing: -0.03em;
-    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 900;
+    margin-bottom: 1rem;
   }
-  .stat__sub {
-    margin: 0.25rem 0 0;
-    font-size: 0.85rem;
-    color: var(--color-brand-gray);
-  }
-
-  /* ======================= FINAL CTA ======================= */
-  .final-cta {
-    border-top: 1px solid rgb(216 255 44 / 0.2);
-    position: relative;
-    overflow: hidden;
-  }
-  .final-cta::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(rgb(216 255 44 / 0.07) 1px, transparent 1px);
-    background-size: 28px 28px;
-    pointer-events: none;
-  }
-  .final-cta__inner {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.5rem;
-  }
-  .final-cta__title {
-    font-size: clamp(2.5rem, 6vw + 1rem, 6.5rem);
-    line-height: 0.88;
-    letter-spacing: -0.025em;
-    margin: 0.5rem 0 0;
+  .step__title {
     color: var(--color-brand-white);
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem;
+    text-transform: uppercase;
   }
-  .final-cta__title-accent {
-    color: var(--color-brand-lime);
-    font-style: italic;
-  }
-  .final-cta__sub {
+  .step__desc {
     color: rgb(255 255 255 / 0.72);
-    font-size: 1.1rem;
-    max-width: 42ch;
     margin: 0;
     line-height: 1.55;
+  }
+
+  /* ======================= BANNER ======================= */
+  .banner {
+    display: grid;
+    align-items: center;
+    gap: 2rem;
+    padding: 2.25rem;
+    border-radius: var(--radius-card);
+    background: linear-gradient(135deg, #f6ffce 0%, var(--color-brand-lime) 100%);
+  }
+  @media (min-width: 768px) {
+    .banner { grid-template-columns: 1.2fr 1fr; padding: 3rem 3.5rem; }
+  }
+  .banner__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-brand-navy);
+    opacity: 0.65;
+    margin: 0 0 0.35rem;
+  }
+  .banner__title {
+    font-size: clamp(1.5rem, 2vw + 1rem, 2.25rem);
+    margin: 0 0 0.65rem;
+    max-width: 24ch;
+    letter-spacing: -0.01em;
+  }
+  .banner__sub {
+    color: rgb(1 0 42 / 0.72);
+    margin: 0;
+    font-size: 1.02rem;
+  }
+  .banner__media {
+    display: flex;
+    justify-content: center;
+  }
+  .banner__media img {
+    max-width: 340px;
+    width: 100%;
+    height: auto;
+  }
+
+  /* ======================= TESTIMONIALS ======================= */
+  .testimonials .section__head h2 {
+    font-size: clamp(1.75rem, 2vw + 1rem, 2.5rem);
+  }
+  .testimonial-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .testimonial {
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .testimonial__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .testimonial__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    font-family: var(--font-display);
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .testimonial__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--color-brand-navy);
+    font-size: 1rem;
+  }
+  .testimonial__when {
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-size: 0.82rem;
+  }
+  .testimonial__stars {
+    display: inline-flex;
+    gap: 0.125rem;
+  }
+  .testimonial__text {
+    margin: 0;
+    color: var(--color-brand-gray);
+    line-height: 1.55;
+  }
+
+  /* ======================= FEATURES ======================= */
+  .features-section { padding-top: 1rem; }
+  .features {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    padding: 2rem 1.5rem;
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+    border-bottom: 1px solid rgb(1 0 42 / 0.08);
+  }
+  @media (min-width: 720px) {
+    .features {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      padding: 2.25rem 2rem;
+    }
+  }
+  .feature {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.45rem;
+    padding: 0 1rem;
+    border-right: 1px solid rgb(1 0 42 / 0.08);
+  }
+  .feature:last-child { border-right: 0; }
+  @media (max-width: 719px) {
+    .feature { border-right: 0; border-bottom: 1px solid rgb(1 0 42 / 0.06); padding-bottom: 1.25rem; }
+    .feature:last-child { border-bottom: 0; padding-bottom: 0; }
+  }
+  .feature :global(svg) { color: var(--color-brand-navy); }
+  .feature h3 {
+    font-size: 1.05rem;
+    margin: 0.4rem 0 0;
+    color: var(--color-brand-navy);
+  }
+  .feature p {
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-size: 0.95rem;
+    max-width: 22ch;
+  }
+
+  /* ======================= PARCERIAS ======================= */
+  .parcerias__grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 900px) {
+    .parcerias__grid { grid-template-columns: 1.25fr 1fr; gap: 4rem; align-items: center; }
+  }
+  .parcerias__lead {
+    color: rgb(255 255 255 / 0.8);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    max-width: 40rem;
+    margin: 1rem 0 0;
+  }
+  .parcerias__bullets {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .parcerias__bullets li {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.85rem 1rem;
+    border-left: 3px solid var(--color-brand-lime);
+    background: rgb(255 255 255 / 0.03);
+    color: rgb(255 255 255 / 0.9);
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
   }
 </style>

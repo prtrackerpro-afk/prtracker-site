@@ -152,28 +152,14 @@ const CONFIG_JSON = JSON.stringify({
 </div>
 
 <style>
-  /* ======================= CONFIGURATOR (SPECIMEN) ======================= */
+  /* ======================= CONFIGURATOR ======================= */
   .configurator {
     display: grid;
     gap: 1.25rem;
     padding: 1.5rem;
-    border: 1px solid rgb(1 0 42 / 0.15);
+    border: 1px solid rgb(1 0 42 / 0.1);
     border-radius: var(--radius-card);
-    background: var(--color-brand-white);
-    position: relative;
-  }
-  .configurator::before {
-    content: "// CONFIGURADOR / 02";
-    position: absolute;
-    top: -0.65rem;
-    left: 1rem;
-    padding: 0 0.5rem;
-    background: var(--color-brand-white);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    color: var(--color-brand-navy);
+    background: var(--color-paper);
   }
   @media (min-width: 640px) { .configurator { padding: 2rem; } }
 
@@ -227,23 +213,10 @@ const CONFIG_JSON = JSON.stringify({
 
   /* Barbell SVG frame */
   .cfg__barbell {
-    background:
-      linear-gradient(to right, rgb(1 0 42 / 0.04) 1px, transparent 1px) 0 0 / 40px 100%,
-      var(--color-paper);
-    border: 1px solid rgb(1 0 42 / 0.1);
-    padding: 1.25rem;
-    position: relative;
-  }
-  .cfg__barbell::before {
-    content: "BARRA · 220 MM";
-    position: absolute;
-    top: 0.35rem;
-    left: 0.75rem;
-    font-family: var(--font-mono);
-    font-size: 0.62rem;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    color: var(--color-brand-gray);
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: 10px;
+    padding: 1rem;
   }
   .cfg__barbell svg {
     width: 100%;

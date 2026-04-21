@@ -5,85 +5,75 @@ import X from "@lucide/astro/icons/x";
 import Logo from "./Logo.astro";
 
 interface Props {
-  /** Transparent-over-hero mode for the home page. */
+  /** Kept for compatibility — header is now always solid. */
   transparent?: boolean;
 }
 
-const { transparent = false } = Astro.props;
-
 const nav = [
-  { href: "/#produtos", label: "Sets" },
-  { href: "/product/anilhas", label: "Anilhas" },
-  { href: "/product-category/camisetas", label: "Vestuário" },
-  { href: "/#processo", label: "Processo" },
-  { href: "/contato", label: "Contato" },
+  { href: "/",                              label: "Início" },
+  { href: "/product/power-rack-set",        label: "Power Rack" },
+  { href: "/product/bench-press-set",       label: "Bench Press" },
+  { href: "/product/deadlift-set",          label: "Deadlift" },
+  { href: "/product/my-pr-set",             label: "My PR Set" },
+  { href: "/product-category/camisetas",    label: "Camisetas" },
+  { href: "/product/anilhas",               label: "Anilhas" },
+  { href: "/contato",                       label: "Contato" },
 ];
 ---
 
-<header
-  class:list={[
-    "site-header",
-    transparent ? "site-header--transparent" : "site-header--solid",
-  ]}
-  data-transparent={transparent ? "true" : "false"}
->
+<header class="site-header">
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
 
-  <!-- Ticker strip on top (monospaced status line) -->
-  <div class="site-header__ticker" aria-hidden="true">
-    <div class="container-page site-header__ticker-inner">
-      <span>PR TRACKER / 002 — MINIATURAS-TROFÉU</span>
-      <span class="sep">·</span>
-      <span>ENVIO PARA TODO O BRASIL</span>
-      <span class="sep">·</span>
-      <span>PIX 5% OFF</span>
-      <span class="sep">·</span>
-      <span>6× SEM JUROS</span>
+  <!-- Top promo strip -->
+  <div class="site-header__promo" aria-hidden="false">
+    <div class="container-page site-header__promo-inner">
+      <span>PAGUE NO PIX E GANHE 5% DE DESCONTO</span>
     </div>
   </div>
 
-  <div class="container-page site-header__main">
-    <a href="/" aria-label="PR Tracker — início" class="site-header__logo shrink-0">
-      <Logo variant={transparent ? "light" : "dark"} size="md" />
-    </a>
+  <!-- Main nav bar -->
+  <div class="site-header__bar">
+    <div class="container-page site-header__bar-inner">
+      <a href="/" aria-label="PR Tracker — início" class="shrink-0">
+        <Logo variant="light" size="md" />
+      </a>
 
-    <nav aria-label="Menu principal" class="site-header__nav">
-      {nav.map((item) => (
-        <a href={item.href} class="nav-link">{item.label}</a>
-      ))}
-    </nav>
+      <nav aria-label="Menu principal" class="site-header__nav">
+        {nav.map((item) => (
+          <a href={item.href} class="nav-link">{item.label}</a>
+        ))}
+      </nav>
 
-    <div class="site-header__actions">
-      <button
-        type="button"
-        class="cart-btn"
-        aria-label="Abrir carrinho"
-        data-cart-open
-      >
-        <span class="cart-btn__label">CART</span>
-        <ShoppingBag size={20} aria-hidden="true" />
-        <span class="cart-btn__badge" data-cart-count aria-live="polite" aria-atomic="true" hidden>0</span>
-      </button>
+      <div class="site-header__actions">
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Abrir carrinho"
+          data-cart-open
+        >
+          <ShoppingBag size={20} aria-hidden="true" />
+          <span class="icon-btn__badge" data-cart-count aria-live="polite" aria-atomic="true" hidden>0</span>
+        </button>
 
-      <button
-        type="button"
-        class="menu-btn"
-        aria-label="Abrir menu"
-        aria-expanded="false"
-        data-mobile-menu-toggle
-      >
-        <Menu size={22} aria-hidden="true" class="menu-btn__open" />
-        <X size={22} aria-hidden="true" class="menu-btn__close" />
-      </button>
+        <button
+          type="button"
+          class="icon-btn md:hidden"
+          aria-label="Abrir menu"
+          aria-expanded="false"
+          data-mobile-menu-toggle
+        >
+          <Menu size={22} aria-hidden="true" class="icon-btn__open" />
+          <X size={22} aria-hidden="true" class="icon-btn__close" />
+        </button>
+      </div>
     </div>
   </div>
 
+  <!-- Mobile drawer -->
   <div class="mobile-nav" data-mobile-nav hidden>
     <nav aria-label="Menu mobile">
       {nav.map((item) => (
-        <a href={item.href} class="mobile-nav__link" data-mobile-nav-link>
-          <span class="mono-label mono-label--dim">—</span> {item.label}
-        </a>
+        <a href={item.href} class="mobile-nav__link" data-mobile-nav-link>{item.label}</a>
       ))}
     </nav>
   </div>
@@ -94,85 +84,61 @@ const nav = [
     position: sticky;
     top: 0;
     z-index: 50;
-    background: var(--color-brand-white);
-    transition: background-color 250ms ease, color 250ms ease;
-  }
-  .site-header--solid {
-    border-bottom: 1px solid rgb(1 0 42 / 0.1);
-  }
-  .site-header--transparent {
-    background: transparent;
-    border-bottom: 1px solid transparent;
+    background: var(--color-brand-navy);
     color: var(--color-brand-white);
   }
-  .site-header--transparent[data-scrolled="true"] {
-    background: rgb(1 0 42 / 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom-color: rgb(255 255 255 / 0.08);
-  }
 
-  /* ------- Ticker ------- */
-  .site-header__ticker {
-    background: var(--color-brand-navy);
-    color: var(--color-brand-lime);
-    border-bottom: 1px solid rgb(216 255 44 / 0.3);
-    overflow: hidden;
-  }
-  .site-header--transparent .site-header__ticker {
+  /* Promo strip */
+  .site-header__promo {
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
-    border-bottom-color: transparent;
   }
-  .site-header__ticker-inner {
+  .site-header__promo-inner {
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 0.75rem;
-    padding-block: 0.4rem;
-    font-family: var(--font-mono);
-    font-weight: 500;
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
+    padding-block: 0.45rem;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    white-space: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
   }
-  .site-header__ticker-inner::-webkit-scrollbar { display: none; }
-  .site-header__ticker-inner .sep { opacity: 0.5; }
 
-  /* ------- Main row ------- */
-  .site-header__main {
+  /* Main bar */
+  .site-header__bar {
+    background: var(--color-brand-navy);
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+  .site-header__bar-inner {
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 1rem;
-    padding-block: 1rem;
+    padding-block: 0.9rem;
   }
 
+  /* Nav */
   .site-header__nav {
     display: none;
     justify-content: center;
-    gap: 2rem;
+    flex-wrap: wrap;
+    gap: 1.4rem;
   }
-  @media (min-width: 960px) { .site-header__nav { display: flex; } }
-
-  .site-header__actions {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+  @media (min-width: 1080px) {
+    .site-header__nav { display: flex; }
   }
 
   .nav-link {
     font-family: var(--font-display);
-    font-weight: 700;
+    font-weight: 600;
     font-size: 0.95rem;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
-    color: inherit;
+    color: var(--color-brand-white);
     text-decoration: none;
     position: relative;
-    padding: 0.25rem 0;
+    padding: 0.35rem 0;
     transition: color 150ms ease;
   }
   .nav-link::after {
@@ -185,116 +151,90 @@ const nav = [
     transform-origin: left;
     transition: transform 200ms ease;
   }
+  .nav-link:hover { color: var(--color-brand-lime); }
   .nav-link:hover::after { transform: scaleX(1); }
 
-  /* ------- Cart button ------- */
-  .cart-btn {
+  /* Actions */
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .icon-btn {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.875rem;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
     background: transparent;
-    color: inherit;
-    border: 1px solid currentColor;
-    border-radius: 0;
+    color: var(--color-brand-white);
+    border: 1px solid rgb(255 255 255 / 0.2);
+    border-radius: 9999px;
     cursor: pointer;
-    transition: background-color 150ms ease, color 150ms ease;
-    font-family: var(--font-mono);
-    font-weight: 600;
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
   }
-  .cart-btn:hover {
-    background: var(--color-brand-navy);
-    color: var(--color-brand-lime);
-  }
-  .site-header--transparent .cart-btn:hover {
+  .icon-btn:hover {
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
+    border-color: var(--color-brand-lime);
   }
-  .cart-btn__label { display: none; }
-  @media (min-width: 480px) { .cart-btn__label { display: inline; } }
-
-  .cart-btn__badge {
+  .icon-btn__badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: -4px;
+    right: -4px;
     min-width: 20px;
     height: 20px;
     padding: 0 5px;
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    font-weight: 700;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 800;
     line-height: 20px;
     text-align: center;
-    border: 1px solid var(--color-brand-navy);
+    border-radius: 9999px;
+    border: 2px solid var(--color-brand-navy);
   }
 
-  /* ------- Menu button ------- */
-  .menu-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    background: transparent;
-    color: inherit;
-    border: 1px solid currentColor;
-    border-radius: 0;
-    cursor: pointer;
-    margin-left: 0.5rem;
-  }
-  @media (min-width: 960px) { .menu-btn { display: none; } }
-  .menu-btn .menu-btn__close { display: none; }
-  .menu-btn[aria-expanded="true"] .menu-btn__open { display: none; }
-  .menu-btn[aria-expanded="true"] .menu-btn__close { display: inline-block; }
+  .icon-btn .icon-btn__close { display: none; }
+  .icon-btn[aria-expanded="true"] .icon-btn__open { display: none; }
+  .icon-btn[aria-expanded="true"] .icon-btn__close { display: inline-block; }
 
-  /* ------- Mobile nav ------- */
+  @media (min-width: 1080px) {
+    .icon-btn.md\:hidden { display: none !important; }
+  }
+
+  /* Mobile drawer */
   .mobile-nav {
-    border-top: 1px solid rgb(1 0 42 / 0.1);
-    background: var(--color-brand-white);
-    color: var(--color-brand-navy);
-    padding: 0.5rem 0;
+    background: var(--color-brand-navy);
+    border-top: 1px solid rgb(255 255 255 / 0.06);
+    padding: 0.25rem 0;
   }
+  @media (min-width: 1080px) { .mobile-nav { display: none; } }
   .mobile-nav nav {
     display: flex;
     flex-direction: column;
   }
   .mobile-nav__link {
-    padding: 1rem 1.5rem;
+    padding: 0.95rem 1.5rem;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1.1rem;
-    letter-spacing: 0.03em;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--color-brand-navy);
+    color: var(--color-brand-white);
     text-decoration: none;
-    border-bottom: 1px solid rgb(1 0 42 / 0.06);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
   }
   .mobile-nav__link:last-child { border-bottom: none; }
   .mobile-nav__link:hover {
     background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
   }
 </style>
 
 <script>
-  const header = document.querySelector<HTMLElement>(".site-header");
-  if (header?.dataset.transparent === "true") {
-    const updateScrolled = () => {
-      const scrolled = window.scrollY > 60;
-      header.dataset.scrolled = scrolled ? "true" : "false";
-    };
-    updateScrolled();
-    window.addEventListener("scroll", updateScrolled, { passive: true });
-  }
-
   const mobileToggle = document.querySelector<HTMLButtonElement>("[data-mobile-menu-toggle]");
   const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
   if (mobileToggle && mobileNav) {

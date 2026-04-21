@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   PR Tracker — SPECIMEN design system
-   Technical, bold, engineered. MIV tokens + condensed display type + mono data.
+   PR Tracker — brand tokens
+   Premium, clean ecommerce: navy base, lime accent, IWF plate palette.
    ========================================================================== */
 
 @theme {
@@ -13,11 +13,11 @@
   --color-brand-gray: #4d4d51;
   --color-brand-black: #000000;
 
-  /* Off-white "paper" surface for editorial breathing room */
-  --color-paper: #f4f3ee;
-  --color-paper-deep: #e8e7e1;
+  /* Off-white paper surface */
+  --color-paper: #f6f6f2;
+  --color-paper-deep: #ececE5;
 
-  /* Navy tonal scale (surfaces over dark) */
+  /* Navy tonal scale */
   --color-navy-50: #f5f5fa;
   --color-navy-100: #e6e6f0;
   --color-navy-200: #b8b8d0;
@@ -45,16 +45,15 @@
   --font-product: "Archivo Black", "Big Shoulders", sans-serif;
   --font-logo: "Big Shoulders", "Arial Narrow", sans-serif;
 
-  /* === Radii (SPECIMEN: sharp, engineered) === */
-  --radius-card: 2px;
-  --radius-button: 0px;
+  /* === Radii (balanced: soft enough for ecommerce, not fully pillow) === */
+  --radius-card: 14px;
+  --radius-button: 9999px;
   --radius-pill: 9999px;
 
-  /* === Shadows (SPECIMEN: hard offsets, not blurry clouds) === */
-  --shadow-card: 0 0 0 1px rgb(1 0 42 / 0.08);
-  --shadow-card-hover: 3px 3px 0 0 var(--color-brand-navy);
-  --shadow-hard: 4px 4px 0 0 var(--color-brand-navy);
-  --shadow-lime: 4px 4px 0 0 var(--color-brand-lime);
+  /* === Shadows (clean ecommerce, not editorial) === */
+  --shadow-card: 0 1px 2px rgb(1 0 42 / 0.06), 0 8px 24px rgb(1 0 42 / 0.05);
+  --shadow-card-hover: 0 4px 10px rgb(1 0 42 / 0.1), 0 20px 40px rgb(1 0 42 / 0.08);
+  --shadow-lime: 0 6px 20px rgb(216 255 44 / 0.4);
 
   /* === Breakpoints === */
   --breakpoint-xs: 24rem;
@@ -62,7 +61,6 @@
 
 /* ==========================================================================
    Self-hosted fonts (canvas-fonts pack, OFL)
-   Served from /public/fonts/ — no CDN, no external deps.
    ========================================================================== */
 
 @font-face {
@@ -110,7 +108,6 @@
   font-display: swap;
 }
 
-/* Archivo Black kept for plate labels (MIV-mandated product lettering) */
 @import "@fontsource/archivo-black/400.css";
 
 /* ==========================================================================
@@ -138,26 +135,27 @@
     font-family: var(--font-display);
     font-weight: 800;
     letter-spacing: -0.01em;
-    line-height: 0.95;
+    line-height: 1.02;
     color: var(--color-brand-navy);
     text-transform: uppercase;
   }
 
   h1 {
-    font-size: clamp(3rem, 7vw + 1rem, 7.5rem);
+    font-size: clamp(2.5rem, 4vw + 1rem, 4.75rem);
     font-weight: 900;
     letter-spacing: -0.02em;
+    line-height: 0.95;
   }
   h2 {
-    font-size: clamp(2.25rem, 4vw + 1rem, 4.5rem);
+    font-size: clamp(1.75rem, 2.5vw + 1rem, 3rem);
     font-weight: 800;
   }
   h3 {
-    font-size: clamp(1.375rem, 1.2vw + 1rem, 2rem);
+    font-size: clamp(1.25rem, 1vw + 1rem, 1.625rem);
     font-weight: 700;
   }
   h4 {
-    font-size: clamp(1.125rem, 0.6vw + 1rem, 1.5rem);
+    font-size: clamp(1.125rem, 0.6vw + 1rem, 1.375rem);
     font-weight: 700;
   }
 
@@ -180,7 +178,7 @@
   :focus-visible {
     outline: 2px solid var(--color-brand-lime);
     outline-offset: 2px;
-    border-radius: 0;
+    border-radius: 4px;
   }
 
   .skip-link {
@@ -190,11 +188,8 @@
     background: var(--color-brand-navy);
     color: var(--color-brand-lime);
     padding: 0.75rem 1.25rem;
-    font-family: var(--font-mono);
+    border-radius: 0.5rem;
     font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
     z-index: 9999;
     transition: top 150ms ease-out;
   }
@@ -215,31 +210,11 @@
     letter-spacing: 0.05em;
   }
 
-  /* Monospace micro-caps label — THE recurring specimen motif */
-  .mono-label {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-brand-navy);
-  }
-  .mono-label--dim { color: var(--color-brand-gray); }
-  .mono-label--lime { color: var(--color-brand-lime); }
-
-  .display-xl {
-    font-family: var(--font-display);
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: -0.02em;
-    line-height: 0.9;
-  }
-
   .container-page {
     width: 100%;
     margin-inline: auto;
     padding-inline: 1.25rem;
-    max-width: 84rem;
+    max-width: 80rem;
   }
   @media (min-width: 768px) {
     .container-page { padding-inline: 2rem; }
@@ -251,46 +226,42 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.95rem 1.75rem;
+    padding: 0.85rem 1.65rem;
     border-radius: var(--radius-button);
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.95rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    transition: transform 120ms ease, box-shadow 150ms ease, background-color 150ms ease, color 150ms ease;
+    transition: transform 150ms ease, box-shadow 200ms ease,
+                background-color 150ms ease, color 150ms ease,
+                border-color 150ms ease;
     cursor: pointer;
     white-space: nowrap;
     text-decoration: none;
     border: 2px solid transparent;
   }
-  .btn:active { transform: translate(1px, 1px); }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .btn-primary {
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
-    border-color: var(--color-brand-navy);
-    box-shadow: 4px 4px 0 0 var(--color-brand-navy);
+    border-color: var(--color-brand-lime);
   }
   .btn-primary:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 0 var(--color-brand-navy);
-  }
-  .btn-primary:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 0 0 0 0 var(--color-brand-navy);
+    box-shadow: var(--shadow-lime);
+    transform: translateY(-2px);
   }
 
   .btn-secondary {
     background: var(--color-brand-navy);
     color: var(--color-brand-white);
     border-color: var(--color-brand-navy);
-    box-shadow: 4px 4px 0 0 var(--color-brand-lime);
   }
   .btn-secondary:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 0 var(--color-brand-lime);
+    background: #0a0a2e;
+    border-color: #0a0a2e;
   }
 
   .btn-outline {
@@ -300,10 +271,10 @@
   }
   .btn-outline:hover:not(:disabled) {
     background: var(--color-brand-navy);
-    color: var(--color-brand-lime);
+    color: var(--color-brand-white);
   }
 
-  .btn-lg { padding: 1.15rem 2.25rem; font-size: 1.05rem; }
+  .btn-lg { padding: 1.05rem 2.1rem; font-size: 1.02rem; }
 
   .btn-ghost-on-dark {
     background: transparent;
@@ -311,65 +282,27 @@
     border-color: rgb(255 255 255 / 0.35);
   }
   .btn-ghost-on-dark:hover:not(:disabled) {
-    background: rgb(255 255 255 / 0.08);
+    background: rgb(255 255 255 / 0.1);
     border-color: var(--color-brand-lime);
     color: var(--color-brand-lime);
   }
 
   .card {
     background: var(--color-brand-white);
-    border: 1px solid rgb(1 0 42 / 0.1);
     border-radius: var(--radius-card);
-    transition: box-shadow 180ms ease, transform 180ms ease;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 200ms ease, transform 200ms ease;
   }
-  .card:hover {
-    box-shadow: var(--shadow-hard);
-    transform: translate(-2px, -2px);
-  }
+  .card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); }
 
-  /* Rule divider — thin horizontal, mimics technical drawings */
+  /* Horizontal rule — subtle */
   .rule {
     display: block;
     height: 1px;
     width: 100%;
     background: currentColor;
-    opacity: 0.15;
+    opacity: 0.12;
     margin: 0;
     border: 0;
   }
-  .rule--dashed {
-    background: none;
-    border-top: 1px dashed currentColor;
-    opacity: 0.3;
-  }
-
-  /* Stripe index motif (tiny plate-color bar) */
-  .stripe {
-    display: inline-block;
-    width: 2.25rem;
-    height: 4px;
-    background: currentColor;
-    vertical-align: middle;
-  }
-
-  /* Crosshair marker (from MIV) — inline SVG via background */
-  .crosshair {
-    position: relative;
-  }
-  .crosshair::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--color-brand-lime) 1px, transparent 1px),
-      linear-gradient(90deg, var(--color-brand-lime) 1px, transparent 1px);
-    background-size: 100% 50%, 50% 100%;
-    background-position: center, center;
-    background-repeat: no-repeat;
-    pointer-events: none;
-    opacity: 0.15;
-  }
-
-  /* Tight no-wrap for short tokens */
-  .nowrap { white-space: nowrap; }
 }
