@@ -1,0 +1,551 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import Loader from "@lucide/astro/icons/loader";
+---
+
+<BaseLayout
+  title="Checkout — PR Tracker"
+  description="Finalize sua compra com segurança. Pagamento via Pix (5 % OFF) ou cartão em até 6× sem juros."
+  noindex
+  hideFooter
+>
+  <section class="checkout">
+    <div class="container-page checkout__layout">
+      <div class="checkout__form-col">
+        <header class="checkout__header">
+          <a href="/cart" class="checkout__back" aria-label="Voltar ao carrinho">← Carrinho</a>
+          <h1>Finalizar compra</h1>
+        </header>
+
+        <form id="checkoutForm" novalidate>
+          <fieldset class="field-group">
+            <legend>Seus dados</legend>
+            <div class="field">
+              <label for="name">Nome completo</label>
+              <input type="text" id="name" name="name" autocomplete="name" required minlength="3" />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" autocomplete="email" required />
+              </div>
+              <div class="field">
+                <label for="phone">Celular (WhatsApp)</label>
+                <input type="tel" id="phone" name="phone" autocomplete="tel" required placeholder="(51) 98206-1914" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="cpf">CPF</label>
+              <input type="text" id="cpf" name="cpf" inputmode="numeric" required placeholder="000.000.000-00" />
+            </div>
+          </fieldset>
+
+          <fieldset class="field-group">
+            <legend>Endereço de entrega</legend>
+            <div class="field-row">
+              <div class="field field--cep">
+                <label for="cep">CEP</label>
+                <input type="text" id="cep" name="cep" inputmode="numeric" required placeholder="00000-000" autocomplete="postal-code" />
+                <span class="field__hint" data-cep-status></span>
+              </div>
+              <div class="field field--flex-2">
+                <label for="street">Logradouro</label>
+                <input type="text" id="street" name="street" autocomplete="address-line1" required />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="number">Número</label>
+                <input type="text" id="number" name="number" required />
+              </div>
+              <div class="field field--flex-2">
+                <label for="complement">Complemento</label>
+                <input type="text" id="complement" name="complement" autocomplete="address-line2" />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="neighborhood">Bairro</label>
+                <input type="text" id="neighborhood" name="neighborhood" required />
+              </div>
+              <div class="field">
+                <label for="city">Cidade</label>
+                <input type="text" id="city" name="city" autocomplete="address-level2" required />
+              </div>
+              <div class="field field--uf">
+                <label for="state">UF</label>
+                <input type="text" id="state" name="state" maxlength="2" autocomplete="address-level1" required />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="field-group">
+            <legend>Forma de pagamento</legend>
+            <div class="pay-methods">
+              <label class="pay-method">
+                <input type="radio" name="paymentMethod" value="pix" checked />
+                <span class="pay-method__inner">
+                  <span class="pay-method__title">Pix</span>
+                  <span class="pay-method__desc">5 % de desconto no total</span>
+                  <span class="pay-method__badge">5 % OFF</span>
+                </span>
+              </label>
+              <label class="pay-method">
+                <input type="radio" name="paymentMethod" value="credit" />
+                <span class="pay-method__inner">
+                  <span class="pay-method__title">Cartão de crédito</span>
+                  <span class="pay-method__desc">Até 6× sem juros</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="checkout__submit-wrap">
+            <button type="submit" class="btn btn-primary btn-lg w-full" id="submitBtn">
+              <span class="submit-label">Ir para pagamento</span>
+              <Loader size={18} aria-hidden="true" class="submit-spinner" />
+            </button>
+            <p class="checkout__note">Você será redirecionado para o Mercado Pago para concluir o pagamento com segurança.</p>
+            <p id="submitError" class="checkout__error" hidden role="alert"></p>
+          </div>
+        </form>
+      </div>
+
+      <aside class="checkout__summary">
+        <h2 class="checkout__summary-title">Pedido</h2>
+        <ul class="checkout__items" data-checkout-items></ul>
+        <dl class="checkout__totals">
+          <div class="checkout__row">
+            <dt>Subtotal</dt>
+            <dd data-checkout-subtotal>R$ 0,00</dd>
+          </div>
+          <div class="checkout__row checkout__row--highlight" data-pix-row>
+            <dt>Pix <span class="text-brand-gray text-sm">5 % OFF</span></dt>
+            <dd data-checkout-pix>R$ 0,00</dd>
+          </div>
+          <div class="checkout__row checkout__row--highlight" data-credit-row hidden>
+            <dt>Cartão (6×)</dt>
+            <dd data-checkout-credit>R$ 0,00</dd>
+          </div>
+        </dl>
+      </aside>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .checkout { padding: 2.5rem 0 4rem; background: #fafafc; min-height: 100dvh; }
+  .checkout__layout {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 900px) { .checkout__layout { grid-template-columns: 1.5fr 1fr; gap: 3rem; } }
+
+  .checkout__header { margin-bottom: 2rem; }
+  .checkout__back {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-brand-gray);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .checkout__back:hover { color: var(--color-brand-navy); }
+  .checkout__header h1 { margin: 0; font-size: clamp(1.75rem, 2vw + 1rem, 2.25rem); }
+
+  .field-group {
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    background: var(--color-brand-white);
+    padding: 1.5rem;
+    margin: 0 0 1.5rem;
+  }
+  .field-group legend {
+    padding: 0 0.5rem;
+    margin-left: -0.5rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    flex: 1 1 auto;
+  }
+  .field:last-child { margin-bottom: 0; }
+  .field-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .field-row:last-child { margin-bottom: 0; }
+  .field-row .field { margin-bottom: 0; }
+  .field--flex-2 { flex: 2 1 200px; }
+  .field--uf { max-width: 80px; }
+  .field--cep { max-width: 180px; }
+
+  .field label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-brand-navy);
+  }
+  .field input {
+    padding: 0.75rem 0.875rem;
+    border: 1.5px solid rgb(1 0 42 / 0.12);
+    border-radius: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    background: var(--color-brand-white);
+    color: var(--color-brand-navy);
+    transition: border-color 150ms ease;
+  }
+  .field input:focus-visible {
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 1px;
+    border-color: var(--color-brand-navy);
+  }
+  .field input[aria-invalid="true"] { border-color: #dc2626; }
+  .field__hint { font-size: 0.8rem; color: var(--color-brand-gray); min-height: 1rem; }
+  .field__hint[data-error="true"] { color: #dc2626; }
+
+  .pay-methods {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) { .pay-methods { grid-template-columns: 1fr 1fr; } }
+  .pay-method { cursor: pointer; position: relative; }
+  .pay-method input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .pay-method__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1.15rem 1.25rem;
+    border: 2px solid rgb(1 0 42 / 0.12);
+    border-radius: 0.875rem;
+    background: var(--color-brand-white);
+    position: relative;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  }
+  .pay-method input:checked + .pay-method__inner {
+    border-color: var(--color-brand-navy);
+    box-shadow: 0 0 0 1px var(--color-brand-navy) inset;
+  }
+  .pay-method input:focus-visible + .pay-method__inner {
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 2px;
+  }
+  .pay-method__title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-brand-navy);
+  }
+  .pay-method__desc { color: var(--color-brand-gray); font-size: 0.9rem; }
+  .pay-method__badge {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+  }
+
+  .checkout__summary {
+    padding: 1.75rem;
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    position: sticky;
+    top: 6rem;
+    align-self: start;
+  }
+  .checkout__summary-title { font-size: 1.25rem; margin: 0 0 1.25rem; }
+  .checkout__items {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .checkout__items li {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .checkout__items img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    background: #f7f7fb;
+    border-radius: 0.5rem;
+  }
+  .checkout__items .ci-title { font-size: 0.9rem; font-weight: 600; color: var(--color-brand-navy); }
+  .checkout__items .ci-sub   { font-size: 0.78rem; color: var(--color-brand-gray); }
+  .checkout__items .ci-price { font-family: var(--font-display); font-weight: 700; color: var(--color-brand-navy); }
+
+  .checkout__totals { margin: 0; padding: 1.25rem 0 0; border-top: 1px solid rgb(1 0 42 / 0.08); display: flex; flex-direction: column; gap: 0.65rem; }
+  .checkout__row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  .checkout__row dt { margin: 0; color: var(--color-brand-gray); }
+  .checkout__row dd { margin: 0; font-weight: 700; color: var(--color-brand-navy); }
+  .checkout__row--highlight dd { font-family: var(--font-display); font-size: 1.25rem; color: #16a34a; }
+
+  .checkout__submit-wrap { margin-top: 1.25rem; }
+  .submit-spinner { animation: spin 0.9s linear infinite; display: none; }
+  #submitBtn[data-loading="true"] .submit-label { display: none; }
+  #submitBtn[data-loading="true"] .submit-spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .submit-spinner { animation: none; }
+  }
+
+  .checkout__note { color: var(--color-brand-gray); font-size: 0.8rem; margin-top: 0.75rem; text-align: center; }
+  .checkout__error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .w-full { width: 100%; }
+  .text-sm { font-size: 0.85rem; }
+  .text-brand-gray { color: var(--color-brand-gray); }
+</style>
+
+<script>
+  import { cart } from "~/scripts/cart";
+  import { formatBRL } from "~/lib/format";
+  import type { CartSnapshot } from "~/lib/cart-types";
+
+  // -------- Redirect if cart empty --------
+  if (cart.snapshot().items.length === 0) {
+    window.location.replace("/cart");
+  }
+
+  // -------- Summary render --------
+  const itemsList = document.querySelector<HTMLUListElement>("[data-checkout-items]")!;
+  const subtotalEl = document.querySelector<HTMLElement>("[data-checkout-subtotal]")!;
+  const pixEl = document.querySelector<HTMLElement>("[data-checkout-pix]")!;
+  const creditEl = document.querySelector<HTMLElement>("[data-checkout-credit]")!;
+  const pixRow = document.querySelector<HTMLElement>("[data-pix-row]")!;
+  const creditRow = document.querySelector<HTMLElement>("[data-credit-row]")!;
+
+  function esc(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function renderSummary(snap: CartSnapshot) {
+    itemsList.innerHTML = snap.items
+      .map((it) => {
+        const parts: string[] = [];
+        if (it.plates?.length) {
+          parts.push(
+            it.plates
+              .filter((p) => p.pairs > 0)
+              .map((p) => `${p.pairs * 2}× ${p.plateId.replace("_", ".")}kg`)
+              .join(" · "),
+          );
+        }
+        if (it.exercise) parts.push(it.exercise);
+        if (it.size) parts.push(`T. ${it.size}`);
+        const sub = parts.filter(Boolean).join(" · ");
+        return `
+          <li>
+            <img src="${esc(it.image)}" alt="" loading="lazy" />
+            <div>
+              <div class="ci-title">${esc(it.title)}${it.quantity > 1 ? ` × ${it.quantity}` : ""}</div>
+              ${sub ? `<div class="ci-sub">${esc(sub)}</div>` : ""}
+            </div>
+            <span class="ci-price">${formatBRL(it.unitPriceCents * it.quantity)}</span>
+          </li>
+        `;
+      })
+      .join("");
+    subtotalEl.textContent = formatBRL(snap.subtotalCents);
+    pixEl.textContent = formatBRL(snap.pixTotalCents);
+    creditEl.textContent = formatBRL(snap.subtotalCents);
+  }
+
+  renderSummary(cart.snapshot());
+  document.addEventListener("cart:change", (ev) => {
+    renderSummary((ev as CustomEvent<CartSnapshot>).detail ?? cart.snapshot());
+  });
+
+  // -------- Payment method toggle --------
+  document.querySelectorAll<HTMLInputElement>('input[name="paymentMethod"]').forEach((r) => {
+    r.addEventListener("change", () => {
+      const method = r.value;
+      pixRow.hidden = method !== "pix";
+      creditRow.hidden = method !== "credit";
+    });
+  });
+
+  // -------- Formatters --------
+  const cpfEl = document.querySelector<HTMLInputElement>("#cpf")!;
+  const cepEl = document.querySelector<HTMLInputElement>("#cep")!;
+  const phoneEl = document.querySelector<HTMLInputElement>("#phone")!;
+  const stateEl = document.querySelector<HTMLInputElement>("#state")!;
+
+  cpfEl.addEventListener("input", () => {
+    const d = cpfEl.value.replace(/\D/g, "").slice(0, 11);
+    cpfEl.value = d
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  });
+
+  cepEl.addEventListener("input", () => {
+    const d = cepEl.value.replace(/\D/g, "").slice(0, 8);
+    cepEl.value = d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+    if (d.length === 8) fetchCep(d);
+  });
+
+  phoneEl.addEventListener("input", () => {
+    const d = phoneEl.value.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 10) {
+      phoneEl.value = d
+        .replace(/(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    } else {
+      phoneEl.value = d
+        .replace(/(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{5})(\d)/, "$1-$2");
+    }
+  });
+
+  stateEl.addEventListener("input", () => {
+    stateEl.value = stateEl.value.toUpperCase().slice(0, 2);
+  });
+
+  // -------- ViaCEP autocomplete --------
+  const cepStatus = document.querySelector<HTMLElement>("[data-cep-status]")!;
+  async function fetchCep(cep: string) {
+    cepStatus.textContent = "Buscando endereço…";
+    cepStatus.dataset.error = "false";
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      if (!res.ok) throw new Error("Falha ao consultar CEP");
+      const data = await res.json();
+      if (data.erro) {
+        cepStatus.textContent = "CEP não encontrado.";
+        cepStatus.dataset.error = "true";
+        return;
+      }
+      (document.querySelector<HTMLInputElement>("#street")!).value = data.logradouro ?? "";
+      (document.querySelector<HTMLInputElement>("#neighborhood")!).value = data.bairro ?? "";
+      (document.querySelector<HTMLInputElement>("#city")!).value = data.localidade ?? "";
+      (document.querySelector<HTMLInputElement>("#state")!).value = data.uf ?? "";
+      cepStatus.textContent = "";
+      (document.querySelector<HTMLInputElement>("#number")!).focus();
+    } catch (err) {
+      cepStatus.textContent = "Não foi possível consultar o CEP. Preencha manualmente.";
+      cepStatus.dataset.error = "true";
+    }
+  }
+
+  // -------- Validation --------
+  function validCpf(raw: string): boolean {
+    const d = raw.replace(/\D/g, "");
+    if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+    let s = 0;
+    for (let i = 0; i < 9; i++) s += Number(d[i]) * (10 - i);
+    let r = (s * 10) % 11;
+    if (r === 10) r = 0;
+    if (r !== Number(d[9])) return false;
+    s = 0;
+    for (let i = 0; i < 10; i++) s += Number(d[i]) * (11 - i);
+    r = (s * 10) % 11;
+    if (r === 10) r = 0;
+    return r === Number(d[10]);
+  }
+
+  // -------- Submit --------
+  const form = document.querySelector<HTMLFormElement>("#checkoutForm")!;
+  const submitBtn = document.querySelector<HTMLButtonElement>("#submitBtn")!;
+  const submitError = document.querySelector<HTMLElement>("#submitError")!;
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    submitError.hidden = true;
+
+    // Basic HTML5 validity
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    if (!validCpf(cpfEl.value)) {
+      cpfEl.setAttribute("aria-invalid", "true");
+      submitError.textContent = "CPF inválido. Verifique e tente novamente.";
+      submitError.hidden = false;
+      cpfEl.focus();
+      return;
+    }
+    cpfEl.removeAttribute("aria-invalid");
+
+    const formData = new FormData(form);
+    const payload = {
+      customer: {
+        name: String(formData.get("name") ?? ""),
+        email: String(formData.get("email") ?? ""),
+        phone: String(formData.get("phone") ?? "").replace(/\D/g, ""),
+        cpf: cpfEl.value.replace(/\D/g, ""),
+      },
+      shipping: {
+        cep: cepEl.value.replace(/\D/g, ""),
+        street: String(formData.get("street") ?? ""),
+        number: String(formData.get("number") ?? ""),
+        complement: String(formData.get("complement") ?? ""),
+        neighborhood: String(formData.get("neighborhood") ?? ""),
+        city: String(formData.get("city") ?? ""),
+        state: stateEl.value,
+      },
+      paymentMethod: String(formData.get("paymentMethod") ?? "pix"),
+      items: cart.snapshot().items,
+    };
+
+    submitBtn.dataset.loading = "true";
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch("/api/create-preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.init_point) {
+        throw new Error(data?.error ?? "Falha ao criar o pagamento. Tente novamente.");
+      }
+      // Clear cart only after successful redirect URL is received
+      cart.clear();
+      window.location.href = data.init_point;
+    } catch (err) {
+      submitBtn.dataset.loading = "false";
+      submitBtn.disabled = false;
+      submitError.textContent = err instanceof Error ? err.message : "Erro desconhecido.";
+      submitError.hidden = false;
+    }
+  });
+</script>
