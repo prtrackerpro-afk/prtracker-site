@@ -1,0 +1,121 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import Check from "@lucide/astro/icons/check";
+import ArrowRight from "@lucide/astro/icons/arrow-right";
+---
+
+<BaseLayout
+  title="Obrigado! — PR Tracker"
+  description="Seu pedido foi confirmado. Em breve você receberá atualizações sobre a produção e o envio."
+  noindex
+>
+  <section class="thanks">
+    <div class="container-page thanks__inner">
+      <div class="thanks__badge" aria-hidden="true">
+        <Check size={48} />
+      </div>
+      <h1 class="thanks__title" data-thanks-title>Pedido confirmado!</h1>
+      <p class="thanks__lead" data-thanks-message>
+        Sua compra foi processada com sucesso. Em breve você receberá um e-mail com os detalhes e o link de rastreio quando o produto for enviado.
+      </p>
+
+      <div class="thanks__card">
+        <h2 class="thanks__card-title">Próximos passos</h2>
+        <ol class="thanks__steps">
+          <li><strong>Produção</strong> — 5 a 10 dias úteis. Cada peça é feita sob demanda com acabamento premium.</li>
+          <li><strong>Envio</strong> — assim que seu troféu estiver pronto, enviamos via Correios com código de rastreio.</li>
+          <li><strong>Celebre</strong> — receba em casa, desempacote com a adrenalina de um PR, exponha.</li>
+        </ol>
+      </div>
+
+      <div class="thanks__cta">
+        <a href="/" class="btn btn-primary">
+          Voltar para a loja
+          <ArrowRight size={18} aria-hidden="true" />
+        </a>
+        <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Falar no WhatsApp</a>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // If payment is pending or failed, show contextual copy
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    if (status === "pending") {
+      const t = document.querySelector("[data-thanks-title]");
+      const m = document.querySelector("[data-thanks-message]");
+      if (t) t.textContent = "Pagamento em processamento";
+      if (m) m.textContent = "Seu pagamento está sendo confirmado pelo Mercado Pago. Você receberá um e-mail assim que tudo for aprovado — geralmente leva alguns minutos.";
+    }
+  </script>
+</BaseLayout>
+
+<style>
+  .thanks { padding: 4rem 0 6rem; }
+  .thanks__inner {
+    max-width: 40rem;
+    text-align: center;
+  }
+  .thanks__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 88px;
+    height: 88px;
+    border-radius: 9999px;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    margin: 0 auto 1.5rem;
+    box-shadow: var(--shadow-lime);
+    animation: pop 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .thanks__badge { animation: none; }
+  }
+  .thanks__title {
+    margin: 0 0 1rem;
+    font-size: clamp(2rem, 2.5vw + 1rem, 3rem);
+  }
+  .thanks__lead {
+    color: var(--color-brand-gray);
+    font-size: 1.125rem;
+    line-height: 1.6;
+    margin: 0 0 2.5rem;
+  }
+
+  .thanks__card {
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    padding: 2rem;
+    text-align: left;
+    margin: 0 auto 2rem;
+    max-width: 32rem;
+  }
+  .thanks__card-title {
+    font-size: 1.25rem;
+    margin: 0 0 1rem;
+  }
+  .thanks__steps {
+    margin: 0;
+    padding: 0 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    color: var(--color-brand-gray);
+    line-height: 1.6;
+  }
+  .thanks__steps strong { color: var(--color-brand-navy); }
+
+  .thanks__cta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+</style>

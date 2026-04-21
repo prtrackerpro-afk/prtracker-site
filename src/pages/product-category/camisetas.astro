@@ -1,0 +1,73 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import ProductCard from "~/components/ProductCard.astro";
+
+const products = await getCollection("products");
+const camisetas = products
+  .filter((p) => p.data.category === "camisetas")
+  .sort((a, b) => a.data.priority - b.data.priority);
+
+const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br").replace(/\/$/, "");
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "Camisetas PR Tracker",
+  itemListOrder: "https://schema.org/ItemListOrderAscending",
+  numberOfItems: camisetas.length,
+  itemListElement: camisetas.map((p, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    url: `${SITE_URL}/product/${p.data.slug}`,
+    name: p.data.title,
+  })),
+};
+---
+
+<BaseLayout
+  title="Camisetas PR Tracker — Veste o box"
+  description="Camisetas PR Tracker masculina e feminina baby look. Tecido respirável, durabilidade e conforto para seus treinos mais pesados."
+  jsonLd={jsonLd}
+>
+  <section class="category">
+    <div class="container-page">
+      <header class="category__header">
+        <p class="category__eyebrow">Categoria</p>
+        <h1>Camisetas</h1>
+        <p>Para os seus treinos mais pesados. Tecido respirável, estampa duradoura, corte que aguenta o ritmo do box.</p>
+      </header>
+      <div class="category__grid">
+        {camisetas.map((p, i) => <ProductCard product={p} eager={i < 2} />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .category { padding: 3rem 0 5rem; }
+  .category__header {
+    text-align: center;
+    max-width: 40rem;
+    margin: 0 auto 3rem;
+  }
+  .category__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    margin: 0 0 0.5rem;
+  }
+  .category__header h1 { margin: 0 0 1rem; }
+  .category__header p { color: var(--color-brand-gray); font-size: 1.125rem; }
+  .category__grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    max-width: 56rem;
+    margin: 0 auto;
+  }
+</style>

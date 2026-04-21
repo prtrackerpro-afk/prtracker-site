@@ -1,0 +1,65 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import ArrowRight from "@lucide/astro/icons/arrow-right";
+---
+
+<BaseLayout
+  title="Página não encontrada — PR Tracker"
+  description="A página que você procura não existe ou foi movida. Volte para a loja."
+  noindex
+>
+  <section class="not-found">
+    <div class="container-page not-found__inner">
+      <p class="not-found__code">404</p>
+      <h1 class="not-found__title">Essa página saiu do grid.</h1>
+      <p class="not-found__lead">
+        A URL que você acessou não existe ou foi movida. Volta pra loja — seu próximo troféu está esperando.
+      </p>
+      <div class="not-found__cta">
+        <a href="/" class="btn btn-primary">
+          Ir para a home
+          <ArrowRight size={18} aria-hidden="true" />
+        </a>
+        <a href="/#produtos" class="btn btn-outline">Ver produtos</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .not-found {
+    padding: 5rem 0;
+    min-height: 70dvh;
+    display: flex;
+    align-items: center;
+  }
+  .not-found__inner {
+    max-width: 36rem;
+    text-align: center;
+  }
+  .not-found__code {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(5rem, 10vw, 8rem);
+    line-height: 1;
+    color: var(--color-brand-lime);
+    -webkit-text-stroke: 2px var(--color-brand-navy);
+    margin: 0 0 1rem;
+    letter-spacing: -0.05em;
+  }
+  .not-found__title {
+    margin: 0 0 1rem;
+    font-size: clamp(1.875rem, 3vw + 1rem, 2.5rem);
+  }
+  .not-found__lead {
+    color: var(--color-brand-gray);
+    font-size: 1.125rem;
+    margin: 0 0 2rem;
+  }
+  .not-found__cta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+</style>

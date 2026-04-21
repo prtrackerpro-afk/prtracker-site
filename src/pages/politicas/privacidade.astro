@@ -1,0 +1,111 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+
+const updatedAt = "21 de abril de 2026";
+---
+
+<BaseLayout
+  title="Política de Privacidade — PR Tracker"
+  description="Como a PR Tracker coleta, usa e protege seus dados pessoais. Conformidade com a LGPD."
+>
+  <article class="policy container-page">
+    <header class="policy__header">
+      <p class="policy__eyebrow">Políticas</p>
+      <h1>Política de Privacidade</h1>
+      <p class="policy__meta">Atualizado em {updatedAt}.</p>
+    </header>
+
+    <section class="policy__body">
+      <h2>1. Dados que coletamos</h2>
+      <p>
+        Ao finalizar uma compra no site prtracker.com.br, coletamos:
+      </p>
+      <ul>
+        <li>Nome completo, e-mail, telefone e CPF (para emissão de nota fiscal e identificação do pedido).</li>
+        <li>Endereço completo (para entrega do produto).</li>
+        <li>Dados de pagamento — processados integralmente pelo Mercado Pago. Não armazenamos números de cartão em nossos servidores.</li>
+      </ul>
+
+      <h2>2. Como usamos seus dados</h2>
+      <ul>
+        <li>Para processar e enviar seu pedido.</li>
+        <li>Para emissão de nota fiscal, conforme exigência da Receita Federal.</li>
+        <li>Para comunicação sobre o pedido (confirmação, envio, rastreio).</li>
+        <li>Para atendimento pós-venda e eventuais trocas/devoluções.</li>
+      </ul>
+
+      <h2>3. Compartilhamento</h2>
+      <p>
+        Compartilhamos seus dados apenas com terceiros estritamente necessários à execução do serviço:
+      </p>
+      <ul>
+        <li><strong>Mercado Pago</strong> — para processamento de pagamentos.</li>
+        <li><strong>Correios / transportadoras</strong> — para envio do pedido.</li>
+      </ul>
+      <p>Não vendemos nem compartilhamos seus dados para fins de marketing de terceiros.</p>
+
+      <h2>4. Seus direitos (LGPD)</h2>
+      <p>
+        Nos termos da Lei Geral de Proteção de Dados (Lei 13.709/2018), você tem direito a:
+      </p>
+      <ul>
+        <li>Acessar os dados que mantemos sobre você.</li>
+        <li>Solicitar correção de dados incompletos ou incorretos.</li>
+        <li>Solicitar a exclusão de dados (respeitando obrigações legais de retenção fiscal).</li>
+        <li>Revogar consentimento a qualquer momento.</li>
+      </ul>
+      <p>
+        Para exercer esses direitos, envie um e-mail para <a href="mailto:contato@prtracker.com.br">contato@prtracker.com.br</a>.
+      </p>
+
+      <h2>5. Cookies</h2>
+      <p>
+        Utilizamos cookies estritamente técnicos (carrinho em localStorage) e cookies de análise agregada de navegação, sem identificação pessoal. Você pode desabilitá-los nas configurações do navegador.
+      </p>
+
+      <h2>6. Contato</h2>
+      <p>
+        Dúvidas sobre esta política podem ser encaminhadas para <a href="mailto:contato@prtracker.com.br">contato@prtracker.com.br</a> ou pelo WhatsApp (51) 98206-1914.
+      </p>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .policy { padding: 3rem 0 5rem; max-width: 52rem; }
+  .policy__header { margin-bottom: 2.5rem; }
+  .policy__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    margin: 0 0 0.5rem;
+  }
+  .policy__header h1 { margin: 0 0 0.5rem; }
+  .policy__meta { color: var(--color-brand-gray); font-size: 0.9rem; margin: 0; }
+
+  .policy__body h2 {
+    font-size: 1.35rem;
+    margin: 2.5rem 0 1rem;
+  }
+  .policy__body h2:first-child { margin-top: 0; }
+  .policy__body p,
+  .policy__body li {
+    color: var(--color-brand-gray);
+    line-height: 1.7;
+    font-size: 1rem;
+  }
+  .policy__body p { margin: 0 0 1rem; }
+  .policy__body ul { margin: 0 0 1rem 1.25rem; padding: 0; }
+  .policy__body li { margin-bottom: 0.5rem; }
+  .policy__body strong { color: var(--color-brand-navy); }
+  .policy__body a {
+    color: var(--color-brand-navy);
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-lime);
+    text-underline-offset: 3px;
+  }
+</style>

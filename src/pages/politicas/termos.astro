@@ -1,0 +1,104 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+
+const updatedAt = "21 de abril de 2026";
+---
+
+<BaseLayout
+  title="Termos de Uso — PR Tracker"
+  description="Termos de uso do site prtracker.com.br e condições gerais de compra da PR Tracker."
+>
+  <article class="policy container-page">
+    <header class="policy__header">
+      <p class="policy__eyebrow">Políticas</p>
+      <h1>Termos de Uso</h1>
+      <p class="policy__meta">Atualizado em {updatedAt}.</p>
+    </header>
+
+    <section class="policy__body">
+      <h2>1. Aceitação dos termos</h2>
+      <p>
+        Ao acessar e utilizar o site prtracker.com.br, você concorda com os termos descritos abaixo. Se não concordar, por favor não utilize o site.
+      </p>
+
+      <h2>2. Sobre a PR Tracker</h2>
+      <p>
+        <strong>PR Tracker Ltda</strong>, CNPJ 59.947.215/0001-67, é uma marca brasileira de miniaturas-troféu de equipamentos de musculação. Nossos produtos são decorativos e representam conquistas de treino (Personal Records) — não são acessórios funcionais de academia.
+      </p>
+
+      <h2>3. Pedidos e pagamento</h2>
+      <ul>
+        <li>Os pedidos são processados após confirmação do pagamento via Mercado Pago.</li>
+        <li>Aceitamos Pix (com 5 % de desconto automático) e cartão de crédito (até 6× sem juros).</li>
+        <li>Preços são expressos em reais (BRL) e podem ser alterados sem aviso prévio. O preço válido é o exibido no momento da compra.</li>
+        <li>Os sets com configurador são produzidos sob demanda — verifique a configuração antes de finalizar.</li>
+      </ul>
+
+      <h2>4. Propriedade intelectual</h2>
+      <p>
+        A marca "PR Tracker", o logotipo, as ilustrações e os textos do site são de propriedade exclusiva da PR Tracker Ltda. Uso não autorizado é proibido.
+      </p>
+
+      <h2>5. Responsabilidade sobre o produto</h2>
+      <p>
+        As miniaturas são peças decorativas premium, não funcionais. Não são adequadas para uso por crianças menores de 3 anos devido a pequenas partes (risco de engasgamento).
+      </p>
+
+      <h2>6. Envio e prazos</h2>
+      <p>
+        Enviamos para todo o Brasil via Correios com rastreio. Prazos estimados: 5-10 dias úteis de produção + 3-10 dias úteis de envio. Atrasos logísticos fora do nosso controle (greves, condições climáticas) podem ocorrer.
+      </p>
+
+      <h2>7. Privacidade e trocas</h2>
+      <p>
+        Para informações sobre privacidade, consulte nossa <a href="/politicas/privacidade">Política de Privacidade</a>. Para trocas e devoluções, consulte a <a href="/politicas/troca-e-devolucao">Política de Troca e Devolução</a>.
+      </p>
+
+      <h2>8. Foro</h2>
+      <p>
+        Fica eleito o foro da comarca de Porto Alegre/RS para dirimir quaisquer controvérsias decorrentes destes termos, respeitadas as garantias do Código de Defesa do Consumidor.
+      </p>
+
+      <h2>9. Contato</h2>
+      <p>
+        Dúvidas sobre estes termos: <a href="mailto:contato@prtracker.com.br">contato@prtracker.com.br</a> · WhatsApp (51) 98206-1914.
+      </p>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .policy { padding: 3rem 0 5rem; max-width: 52rem; }
+  .policy__header { margin-bottom: 2.5rem; }
+  .policy__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    margin: 0 0 0.5rem;
+  }
+  .policy__header h1 { margin: 0 0 0.5rem; }
+  .policy__meta { color: var(--color-brand-gray); font-size: 0.9rem; margin: 0; }
+
+  .policy__body h2 { font-size: 1.35rem; margin: 2.5rem 0 1rem; }
+  .policy__body h2:first-child { margin-top: 0; }
+  .policy__body p,
+  .policy__body li {
+    color: var(--color-brand-gray);
+    line-height: 1.7;
+    font-size: 1rem;
+  }
+  .policy__body p { margin: 0 0 1rem; }
+  .policy__body ul { margin: 0 0 1rem 1.25rem; padding: 0; }
+  .policy__body li { margin-bottom: 0.5rem; }
+  .policy__body strong { color: var(--color-brand-navy); }
+  .policy__body a {
+    color: var(--color-brand-navy);
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-lime);
+    text-underline-offset: 3px;
+  }
+</style>

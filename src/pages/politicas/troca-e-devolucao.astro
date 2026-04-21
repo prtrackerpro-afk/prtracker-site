@@ -1,0 +1,103 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+
+const updatedAt = "21 de abril de 2026";
+---
+
+<BaseLayout
+  title="Troca e Devolução — PR Tracker"
+  description="Política de troca e devolução da PR Tracker. Seu direito de arrependimento em até 7 dias conforme o CDC."
+>
+  <article class="policy container-page">
+    <header class="policy__header">
+      <p class="policy__eyebrow">Políticas</p>
+      <h1>Troca e Devolução</h1>
+      <p class="policy__meta">Atualizado em {updatedAt}.</p>
+    </header>
+
+    <section class="policy__body">
+      <h2>1. Direito de arrependimento</h2>
+      <p>
+        Conforme o Art. 49 do Código de Defesa do Consumidor (Lei 8.078/1990), você tem <strong>7 (sete) dias corridos</strong> a partir do recebimento do produto para desistir da compra. O produto deve estar em perfeito estado, sem uso, com a embalagem original.
+      </p>
+
+      <h2>2. Troca por tamanho (camisetas)</h2>
+      <p>
+        Se a camiseta não serviu, você pode solicitar troca em até <strong>7 dias</strong> após o recebimento, desde que:
+      </p>
+      <ul>
+        <li>A peça não tenha sido usada, lavada ou danificada.</li>
+        <li>A etiqueta esteja intacta.</li>
+        <li>O cliente arque com os custos de envio de retorno.</li>
+      </ul>
+
+      <h2>3. Produto com defeito</h2>
+      <p>
+        Peças com defeito de fabricação têm garantia de <strong>90 dias</strong>. Se identificar qualquer problema, envie fotos por WhatsApp para <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer">(51) 98206-1914</a> e resolvemos o caso com prioridade — troca ou reembolso, à sua escolha.
+      </p>
+
+      <h2>4. Produtos personalizados (sets com configurador)</h2>
+      <p>
+        Os sets (Power Rack, Bench Press, Deadlift, My PR Set) e as anilhas avulsas são produzidos sob demanda conforme sua configuração. Por isso, <strong>só aceitamos devolução em caso de defeito de fabricação</strong> — o direito de arrependimento do CDC (Art. 49) não se aplica a produtos personalizados após o início da produção.
+      </p>
+      <p>
+        Trocas de configuração (mudar anilhas escolhidas, trocar exercício do My PR Set) só podem ser feitas <strong>antes do início da produção</strong>. Em caso de dúvida, fale com a gente imediatamente após a compra.
+      </p>
+
+      <h2>5. Como solicitar</h2>
+      <ol>
+        <li>Envie mensagem para <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer">(51) 98206-1914</a> ou <a href="mailto:contato@prtracker.com.br">contato@prtracker.com.br</a> com o número do pedido e o motivo.</li>
+        <li>Você receberá as instruções de envio de retorno.</li>
+        <li>Após a análise do produto recebido (até 5 dias úteis), processamos a troca ou o reembolso.</li>
+        <li>Reembolso via Pix ou estorno no cartão, conforme a forma de pagamento original.</li>
+      </ol>
+
+      <h2>6. Prazos de entrega</h2>
+      <ul>
+        <li>Produção: 5 a 10 dias úteis após confirmação do pagamento.</li>
+        <li>Envio: 3 a 10 dias úteis adicionais, conforme a região (PAC/SEDEX).</li>
+      </ul>
+
+      <h2>7. Contato</h2>
+      <p>
+        Qualquer dúvida sobre troca ou devolução: <a href="mailto:contato@prtracker.com.br">contato@prtracker.com.br</a> · WhatsApp (51) 98206-1914.
+      </p>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .policy { padding: 3rem 0 5rem; max-width: 52rem; }
+  .policy__header { margin-bottom: 2.5rem; }
+  .policy__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    margin: 0 0 0.5rem;
+  }
+  .policy__header h1 { margin: 0 0 0.5rem; }
+  .policy__meta { color: var(--color-brand-gray); font-size: 0.9rem; margin: 0; }
+
+  .policy__body h2 { font-size: 1.35rem; margin: 2.5rem 0 1rem; }
+  .policy__body h2:first-child { margin-top: 0; }
+  .policy__body p,
+  .policy__body li {
+    color: var(--color-brand-gray);
+    line-height: 1.7;
+    font-size: 1rem;
+  }
+  .policy__body p { margin: 0 0 1rem; }
+  .policy__body ul, .policy__body ol { margin: 0 0 1rem 1.25rem; padding: 0; }
+  .policy__body li { margin-bottom: 0.5rem; }
+  .policy__body strong { color: var(--color-brand-navy); }
+  .policy__body a {
+    color: var(--color-brand-navy);
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-lime);
+    text-underline-offset: 3px;
+  }
+</style>
