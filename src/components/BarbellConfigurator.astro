@@ -1,0 +1,569 @@
+---
+import {
+  PLATES,
+  EXERCISES,
+  BARBELL_WEIGHT_KG,
+  MAX_SIDE_SPACE_MM,
+  type PlateId,
+} from "~/lib/catalog";
+import { formatBRL, applyPix } from "~/lib/format";
+
+interface Props {
+  slug: string;
+  title: string;
+  image: string;
+  /** Base price in cents. Zero for `isAnilhasOnly` mode. */
+  basePriceCents: number;
+  /** Anilhas-only mode: hide the barbell, no base price. */
+  isAnilhasOnly?: boolean;
+  /** My PR Set: show exercise dropdown. */
+  hasExerciseSelector?: boolean;
+}
+
+const {
+  slug,
+  title,
+  image,
+  basePriceCents,
+  isAnilhasOnly = false,
+  hasExerciseSelector = false,
+} = Astro.props;
+
+const CONFIG_JSON = JSON.stringify({
+  slug,
+  title,
+  image,
+  basePriceCents,
+  isAnilhasOnly,
+  hasExerciseSelector,
+  barbellWeightKg: BARBELL_WEIGHT_KG,
+  maxSideSpaceMm: MAX_SIDE_SPACE_MM,
+  plates: PLATES,
+});
+---
+
+<div
+  class="configurator"
+  data-configurator
+  data-config={CONFIG_JSON}
+  data-anilhas-only={isAnilhasOnly ? "true" : "false"}
+>
+  <!-- Summary: weight, price, space used -->
+  <div class="cfg__summary">
+    {!isAnilhasOnly && (
+      <div class="cfg__summary-weight">
+        <span class="cfg__summary-label">Peso total</span>
+        <span class="cfg__summary-value" data-total-kg>{BARBELL_WEIGHT_KG} kg</span>
+      </div>
+    )}
+    <div class="cfg__summary-space">
+      <span class="cfg__summary-label">Espaço usado</span>
+      <span class="cfg__summary-value cfg__summary-value--sub">
+        <span data-used-space>0mm</span> <span class="cfg__summary-space-max">/ {MAX_SIDE_SPACE_MM}mm por lado</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- SVG barbell (hidden in anilhas-only mode) -->
+  {!isAnilhasOnly && (
+    <div class="cfg__barbell">
+      <svg
+        viewBox="0 0 600 200"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="Barra olímpica com anilhas configuradas"
+        data-svg
+      >
+        <!-- The barbell bar (central horizontal rod) -->
+        <rect x="50" y="95" width="500" height="10" rx="2" fill="#C0C5CC" />
+        <!-- Sleeves (thicker ends where plates go) -->
+        <rect x="50" y="85" width="60" height="30" rx="3" fill="#8A8F99" data-sleeve-left />
+        <rect x="490" y="85" width="60" height="30" rx="3" fill="#8A8F99" data-sleeve-right />
+        <!-- Clip stops (at inside edge of plate stacks) -->
+        <rect x="108" y="80" width="4" height="40" rx="1" fill="#5A5F68" />
+        <rect x="488" y="80" width="4" height="40" rx="1" fill="#5A5F68" />
+        <!-- Left and right plate groups -->
+        <g data-plates-left transform="translate(108, 100)"></g>
+        <g data-plates-right transform="translate(492, 100)"></g>
+      </svg>
+    </div>
+  )}
+
+  <!-- Over-limit warning -->
+  <div class="cfg__warning" data-warning hidden role="alert">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span>Espaço esgotado — remova anilhas.</span>
+  </div>
+
+  <!-- Plate selectors -->
+  <div class="cfg__plates" role="group" aria-label="Selecionar anilhas por peso">
+    {PLATES.map((plate) => (
+      <div class="cfg__plate-card">
+        <div class="cfg__plate-bar" style={`background: ${plate.color}`} aria-hidden="true"></div>
+        <div class="cfg__plate-meta">
+          <div class="cfg__plate-label">{plate.label}</div>
+          <div class="cfg__plate-price">{formatBRL(plate.pricePerPairCents)}/par</div>
+        </div>
+        <select
+          class="cfg__plate-select"
+          data-plate-select
+          data-plate-id={plate.id}
+          aria-label={`Pares de anilhas de ${plate.label}`}
+        >
+          {Array.from({ length: plate.maxPairs + 1 }, (_, i) => (
+            <option value={i}>{i} {i === 1 ? "par" : "pares"}</option>
+          ))}
+        </select>
+      </div>
+    ))}
+  </div>
+
+  <!-- Exercise selector (My PR Set only) -->
+  {hasExerciseSelector && (
+    <div class="cfg__exercise">
+      <label class="cfg__exercise-label" for={`exercise-${slug}`}>Exercício</label>
+      <select id={`exercise-${slug}`} class="cfg__exercise-select" data-exercise>
+        {EXERCISES.map((ex) => <option value={ex}>{ex}</option>)}
+      </select>
+    </div>
+  )}
+
+  <!-- Price + add to cart -->
+  <div class="cfg__buy">
+    <div class="cfg__price">
+      <div class="cfg__price-main" data-total-price>{formatBRL(basePriceCents)}</div>
+      <div class="cfg__price-pix">
+        <span class="pix-badge">Pix</span>
+        <span data-pix-price class="cfg__price-pix-value">{formatBRL(applyPix(basePriceCents))}</span>
+        <span class="cfg__price-pix-label">5 % OFF</span>
+      </div>
+      <div class="cfg__price-installments">
+        ou 6× de <span data-installment-price>{formatBRL(Math.round(basePriceCents / 6))}</span> sem juros
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn>
+      Adicionar ao carrinho
+    </button>
+    <p class="cfg__ship">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+      Envio para todo o Brasil com rastreio
+    </p>
+  </div>
+</div>
+
+<style>
+  .configurator {
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    background: #fafafc;
+  }
+  @media (min-width: 640px) { .configurator { padding: 2rem; } }
+
+  .cfg__summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    text-align: center;
+    padding-bottom: 0.5rem;
+  }
+  .cfg__summary-label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--color-brand-gray);
+  }
+  .cfg__summary-value {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(1.75rem, 2.5vw + 0.5rem, 2.25rem);
+    line-height: 1;
+    color: var(--color-brand-navy);
+    letter-spacing: -0.02em;
+  }
+  .cfg__summary-value--sub {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-brand-gray);
+    letter-spacing: 0;
+  }
+  .cfg__summary-space-max { color: rgb(1 0 42 / 0.4); font-weight: 400; }
+
+  .cfg__barbell {
+    background: linear-gradient(180deg, #fff, #f0f2fa);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    border: 1px solid rgb(1 0 42 / 0.04);
+  }
+  .cfg__barbell svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .cfg__warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 1px solid #fecaca;
+  }
+
+  .cfg__plates {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .cfg__plate-card {
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: 0.75rem;
+    padding: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .cfg__plate-card:has(select:focus-visible),
+  .cfg__plate-card:hover {
+    border-color: var(--color-brand-navy);
+    box-shadow: 0 2px 8px rgb(1 0 42 / 0.06);
+  }
+  .cfg__plate-bar {
+    height: 8px;
+    border-radius: 2px;
+  }
+  .cfg__plate-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .cfg__plate-label {
+    font-family: var(--font-product);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-brand-navy);
+    font-size: 0.9rem;
+  }
+  .cfg__plate-price {
+    font-size: 0.8rem;
+    color: var(--color-brand-gray);
+  }
+  .cfg__plate-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid rgb(1 0 42 / 0.12);
+    border-radius: 0.5rem;
+    background: var(--color-brand-white);
+    color: var(--color-brand-navy);
+    font-family: var(--font-body);
+    font-size: 0.925rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234d4d51' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2rem;
+  }
+  .cfg__plate-select:focus-visible {
+    border-color: var(--color-brand-navy);
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 1px;
+  }
+
+  .cfg__exercise {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .cfg__exercise-label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-brand-navy);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .cfg__exercise-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid rgb(1 0 42 / 0.12);
+    border-radius: 0.75rem;
+    background: var(--color-brand-white);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234d4d51' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+  }
+
+  .cfg__buy {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+  }
+  .cfg__price { display: flex; flex-direction: column; gap: 0.2rem; }
+  .cfg__price-main {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(1.875rem, 2vw + 0.5rem, 2.25rem);
+    color: var(--color-brand-navy);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .cfg__price-pix {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.35rem;
+  }
+  .cfg__price-pix-value {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #16a34a;
+  }
+  .cfg__price-pix-label { color: var(--color-brand-gray); font-size: 0.8rem; }
+  .cfg__price-installments { color: var(--color-brand-gray); font-size: 0.875rem; }
+
+  .cfg__ship {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-size: 0.875rem;
+  }
+
+  .pix-badge {
+    display: inline-block;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .w-full { width: 100%; }
+
+  /* Over-limit state */
+  .configurator[data-over-limit="true"] [data-add-btn] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+</style>
+
+<script>
+  import { cart } from "~/scripts/cart";
+  import type { PlateId, PlateSpec } from "~/lib/catalog";
+  import { formatBRL, formatKg, applyPix } from "~/lib/format";
+
+  interface ConfigData {
+    slug: string;
+    title: string;
+    image: string;
+    basePriceCents: number;
+    isAnilhasOnly: boolean;
+    hasExerciseSelector: boolean;
+    barbellWeightKg: number;
+    maxSideSpaceMm: number;
+    plates: PlateSpec[];
+  }
+
+  const roots = document.querySelectorAll<HTMLElement>("[data-configurator]");
+  roots.forEach((root) => initConfigurator(root));
+
+  function initConfigurator(root: HTMLElement): void {
+    const config = JSON.parse(root.dataset.config!) as ConfigData;
+    const platesById = new Map<string, PlateSpec>(config.plates.map((p) => [p.id, p]));
+
+    /** pairs per plate id — integer 0..maxPairs */
+    const state: Record<string, number> = {};
+    config.plates.forEach((p) => { state[p.id] = 0; });
+
+    const selects = root.querySelectorAll<HTMLSelectElement>("[data-plate-select]");
+    const exerciseSelect = root.querySelector<HTMLSelectElement>("[data-exercise]");
+    const addBtn = root.querySelector<HTMLButtonElement>("[data-add-btn]")!;
+    const warningEl = root.querySelector<HTMLElement>("[data-warning]")!;
+
+    const totalKgEl = root.querySelector<HTMLElement>("[data-total-kg]");
+    const usedSpaceEl = root.querySelector<HTMLElement>("[data-used-space]")!;
+    const totalPriceEl = root.querySelector<HTMLElement>("[data-total-price]")!;
+    const pixPriceEl = root.querySelector<HTMLElement>("[data-pix-price]")!;
+    const installmentPriceEl = root.querySelector<HTMLElement>("[data-installment-price]")!;
+
+    const leftGroup = root.querySelector<SVGGElement>("[data-plates-left]");
+    const rightGroup = root.querySelector<SVGGElement>("[data-plates-right]");
+
+    selects.forEach((sel) => {
+      sel.addEventListener("change", () => {
+        const id = sel.dataset.plateId!;
+        state[id] = Math.max(0, Math.min(Number(sel.value), platesById.get(id)!.maxPairs));
+        render();
+      });
+    });
+
+    function render(): void {
+      const platesOrdered = [...config.plates].sort((a, b) => b.kg - a.kg);
+
+      // Weight & space
+      let platesKg = 0;
+      let spaceMm = 0;
+      for (const p of platesOrdered) {
+        const pairs = state[p.id] ?? 0;
+        platesKg += pairs * 2 * p.kg;
+        spaceMm  += pairs * p.thicknessMm;
+      }
+      const totalKg = (config.isAnilhasOnly ? 0 : config.barbellWeightKg) + platesKg;
+      if (totalKgEl) totalKgEl.textContent = formatKg(totalKg);
+      usedSpaceEl.textContent = `${spaceMm}mm`;
+
+      // Price
+      let platesCents = 0;
+      for (const p of platesOrdered) {
+        platesCents += (state[p.id] ?? 0) * p.pricePerPairCents;
+      }
+      const totalCents = config.basePriceCents + platesCents;
+      totalPriceEl.textContent = formatBRL(totalCents);
+      pixPriceEl.textContent = formatBRL(applyPix(totalCents));
+      installmentPriceEl.textContent = formatBRL(Math.round(totalCents / 6));
+
+      // Space limit
+      const overLimit = spaceMm > config.maxSideSpaceMm;
+      warningEl.hidden = !overLimit;
+      root.dataset.overLimit = overLimit ? "true" : "false";
+      addBtn.disabled = overLimit || (config.isAnilhasOnly && platesCents === 0);
+      addBtn.textContent =
+        config.isAnilhasOnly && platesCents === 0
+          ? "Selecione anilhas"
+          : overLimit
+            ? "Remova anilhas"
+            : "Adicionar ao carrinho";
+
+      // Render SVG plates
+      if (leftGroup && rightGroup) {
+        renderSvgPlates(leftGroup, platesOrdered, state, "left");
+        renderSvgPlates(rightGroup, platesOrdered, state, "right");
+      }
+    }
+
+    function renderSvgPlates(
+      group: SVGGElement,
+      platesOrdered: PlateSpec[],
+      st: Record<string, number>,
+      side: "left" | "right",
+    ): void {
+      // Clear previous
+      while (group.firstChild) group.removeChild(group.firstChild);
+
+      // Stack plates from the clip outward; each plate is a <rect>.
+      // x offset: left side stacks to the right (x increases), right side stacks to the left (x decreases).
+      // SVG viewBox is 600 wide, so left group origin = 108, right = 492 (inside edges).
+      // We render plates OUTWARD from the inside edge. For left side, x offset goes negative-to-inner;
+      // For right side, x offset goes positive-to-outer. But we want the plates on each side to extend
+      // AWAY from the center (i.e., left plates go to the LEFT of their group origin, right plates go to the RIGHT).
+      // Actually easier: left group is at x=108, plates stack to the LEFT (offset -= thickness).
+      // Right group is at x=492, plates stack to the RIGHT (offset += thickness).
+      // In SVG the 1mm ≈ 2px factor — tune visually.
+
+      const pxPerMm = 3.2; // visual amplifier — 45mm of plates ≈ 144px per side
+      let offset = 0;
+      const direction = side === "left" ? -1 : 1;
+
+      for (const p of platesOrdered) {
+        const pairs = st[p.id] ?? 0;
+        if (!pairs) continue;
+        for (let i = 0; i < pairs; i++) {
+          const widthPx = p.thicknessMm * pxPerMm;
+          const heightPx = p.radiusPx * 1.6;
+          const x = side === "left" ? offset - widthPx : offset;
+          const y = -heightPx / 2;
+
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute("x", String(x));
+          rect.setAttribute("y", String(y));
+          rect.setAttribute("width", String(widthPx));
+          rect.setAttribute("height", String(heightPx));
+          rect.setAttribute("rx", "2");
+          rect.setAttribute("fill", p.color);
+          rect.setAttribute("stroke", "rgb(1 0 42 / 0.25)");
+          rect.setAttribute("stroke-width", "0.5");
+          group.appendChild(rect);
+
+          offset += direction * widthPx;
+        }
+      }
+    }
+
+    addBtn.addEventListener("click", () => {
+      if (addBtn.disabled) return;
+
+      const platesSelected = Object.entries(state)
+        .filter(([, pairs]) => pairs > 0)
+        .map(([plateId, pairs]) => ({ plateId: plateId as PlateId, pairs }));
+
+      let platesCents = 0;
+      for (const sel of platesSelected) {
+        platesCents += sel.pairs * platesById.get(sel.plateId)!.pricePerPairCents;
+      }
+      const unitPriceCents = config.basePriceCents + platesCents;
+      const exercise = exerciseSelect?.value;
+
+      const id = buildCartId(config.slug, platesSelected, exercise);
+      const fullTitle = exercise ? `${config.title} — ${exercise}` : config.title;
+
+      cart.add({
+        id,
+        productSlug: config.slug,
+        title: fullTitle,
+        image: config.image,
+        unitPriceCents,
+        quantity: 1,
+        plates: platesSelected,
+        exercise,
+      });
+    });
+
+    // Initial render
+    render();
+  }
+
+  function buildCartId(
+    slug: string,
+    plates: Array<{ plateId: string; pairs: number }>,
+    exercise?: string,
+  ): string {
+    const plateKey = plates
+      .slice()
+      .sort((a, b) => a.plateId.localeCompare(b.plateId))
+      .map((p) => `${p.plateId}x${p.pairs}`)
+      .join("|");
+    return [slug, plateKey, exercise].filter(Boolean).join("::");
+  }
+
+  // Also expose a build API for embedding outside Astro (per BRIEF.md)
+  (window as typeof window & {
+    PRConfigurator?: { build: (container: HTMLElement, opts: unknown) => void };
+  }).PRConfigurator = {
+    build: (container: HTMLElement) => {
+      const cfgRoot = container.querySelector<HTMLElement>("[data-configurator]");
+      if (cfgRoot) initConfigurator(cfgRoot);
+    },
+  };
+</script>

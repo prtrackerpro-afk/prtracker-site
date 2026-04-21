@@ -1,0 +1,257 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import ProductGallery from "~/components/ProductGallery.astro";
+import SpecsTable from "~/components/SpecsTable.astro";
+import FAQAccordion from "~/components/FAQAccordion.astro";
+import AddToCartSimple from "~/components/AddToCartSimple.astro";
+import BarbellConfigurator from "~/components/BarbellConfigurator.astro";
+import { formatBRL, centsToReaisString } from "~/lib/format";
+import { CATEGORY_LABELS } from "~/lib/catalog";
+import ChevronRight from "@lucide/astro/icons/chevron-right";
+
+export async function getStaticPaths() {
+  const products = await getCollection("products");
+  return products.map((product) => ({
+    params: { slug: product.data.slug },
+    props: { product },
+  }));
+}
+
+interface Props {
+  product: CollectionEntry<"products">;
+}
+
+const { product } = Astro.props;
+const {
+  slug,
+  title,
+  tagline,
+  category,
+  priceBase,
+  priceFrom,
+  shortDescription,
+  longDescriptionHtml,
+  images,
+  specs,
+  faq,
+  sizes,
+  configurator,
+  seo,
+} = product.data;
+
+const categoryLabel = CATEGORY_LABELS[category] ?? category;
+const primary = images[0]!;
+const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br").replace(/\/$/, "");
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: title,
+  description: shortDescription,
+  image: images.map((img) => `${SITE_URL}${img.src}`),
+  brand: { "@type": "Brand", name: "PR Tracker" },
+  offers: {
+    "@type": "Offer",
+    priceCurrency: "BRL",
+    price: centsToReaisString(priceBase),
+    availability: "https://schema.org/InStock",
+    url: `${SITE_URL}/product/${slug}`,
+    seller: { "@type": "Organization", name: "PR Tracker" },
+  },
+};
+
+const metaTitle = seo.metaTitle ?? `${title} — PR Tracker`;
+const metaDescription = seo.metaDescription ?? shortDescription;
+---
+
+<BaseLayout
+  title={metaTitle}
+  description={metaDescription}
+  ogImage={primary.src}
+  ogType="product"
+  jsonLd={jsonLd}
+>
+  <!-- Breadcrumbs -->
+  <nav aria-label="Breadcrumb" class="breadcrumb container-page">
+    <ol>
+      <li><a href="/">Início</a></li>
+      <ChevronRight size={14} aria-hidden="true" />
+      {category === "camisetas" ? (
+        <>
+          <li><a href="/product-category/camisetas">Camisetas</a></li>
+          <ChevronRight size={14} aria-hidden="true" />
+        </>
+      ) : (
+        <>
+          <li><a href="/#produtos">{categoryLabel}</a></li>
+          <ChevronRight size={14} aria-hidden="true" />
+        </>
+      )}
+      <li aria-current="page">{title}</li>
+    </ol>
+  </nav>
+
+  <!-- Product main -->
+  <section class="product">
+    <div class="container-page product__grid">
+      <div class="product__gallery">
+        <ProductGallery images={images} title={title} />
+      </div>
+
+      <div class="product__info">
+        <p class="product__category">{categoryLabel}</p>
+        <h1 class="product__title">{title}</h1>
+        {tagline && <p class="product__tagline">{tagline}</p>}
+        <p class="product__short">{shortDescription}</p>
+
+        <div class="product__buy">
+          {configurator.enabled ? (
+            <BarbellConfigurator
+              slug={slug}
+              title={title}
+              image={primary.src}
+              basePriceCents={configurator.isAnilhasOnly ? 0 : priceBase}
+              isAnilhasOnly={configurator.isAnilhasOnly}
+              hasExerciseSelector={configurator.hasExerciseSelector}
+            />
+          ) : (
+            <AddToCartSimple
+              slug={slug}
+              title={title}
+              image={primary.src}
+              priceCents={priceBase}
+              sizes={sizes}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Long description + specs + FAQ -->
+  <section class="product-details">
+    <div class="container-page product-details__grid">
+      <div class="product-details__main">
+        <section class="prose" aria-labelledby="desc-title">
+          <h2 id="desc-title">Sobre este produto</h2>
+          <div class="prose-body" set:html={longDescriptionHtml} />
+        </section>
+
+        <SpecsTable specs={specs} />
+      </div>
+
+      <aside class="product-details__aside">
+        <FAQAccordion items={faq} />
+      </aside>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .breadcrumb {
+    padding: 1.5rem 1.25rem 0.5rem;
+  }
+  @media (min-width: 768px) { .breadcrumb { padding: 1.75rem 2rem 0.75rem; } }
+  .breadcrumb ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-brand-gray);
+  }
+  .breadcrumb a {
+    color: var(--color-brand-gray);
+    text-decoration: none;
+    transition: color 120ms ease;
+  }
+  .breadcrumb a:hover { color: var(--color-brand-navy); }
+  .breadcrumb [aria-current="page"] {
+    color: var(--color-brand-navy);
+    font-weight: 600;
+  }
+
+  .product {
+    padding: 2rem 0 4rem;
+  }
+  .product__grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 900px) {
+    .product__grid { grid-template-columns: 1.15fr 1fr; gap: 3.5rem; }
+  }
+  @media (min-width: 900px) {
+    .product__gallery {
+      position: sticky;
+      top: 6rem;
+      align-self: start;
+    }
+  }
+
+  .product__category {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    margin: 0 0 0.75rem;
+  }
+  .product__title {
+    font-size: clamp(1.875rem, 3vw + 1rem, 2.75rem);
+    margin: 0 0 0.5rem;
+  }
+  .product__tagline {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--color-brand-navy);
+    opacity: 0.7;
+    margin: 0 0 1rem;
+  }
+  .product__short {
+    color: var(--color-brand-gray);
+    line-height: 1.6;
+    font-size: 1rem;
+    margin: 0 0 2rem;
+    max-width: 44ch;
+  }
+  .product__buy {
+    margin-top: 1rem;
+  }
+
+  .product-details {
+    padding: 4rem 0 6rem;
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+  }
+  .product-details__grid {
+    display: grid;
+    gap: 3rem;
+  }
+  @media (min-width: 900px) {
+    .product-details__grid { grid-template-columns: 1.5fr 1fr; gap: 4rem; }
+  }
+
+  .prose h2 {
+    font-size: 1.75rem;
+    margin: 0 0 1rem;
+  }
+  .prose-body {
+    color: var(--color-brand-gray);
+    line-height: 1.7;
+    font-size: 1.0625rem;
+  }
+  .prose-body :global(p) { margin: 0 0 1rem; }
+  .prose-body :global(strong) { color: var(--color-brand-navy); font-weight: 700; }
+  .prose-body :global(ul) {
+    margin: 0 0 1rem 1.25rem;
+    padding: 0;
+  }
+  .prose-body :global(ul li) { margin-bottom: 0.35rem; }
+</style>

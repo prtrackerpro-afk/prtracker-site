@@ -1,0 +1,58 @@
+---
+interface Spec { label: string; value: string; }
+
+interface Props {
+  specs: Spec[];
+  title?: string;
+}
+
+const { specs, title = "Especificações" } = Astro.props;
+---
+
+{specs.length > 0 && (
+  <section class="specs" aria-labelledby="specs-title">
+    <h2 id="specs-title" class="specs__title">{title}</h2>
+    <dl class="specs__grid">
+      {specs.map((s) => (
+        <div class="specs__row">
+          <dt class="specs__label">{s.label}</dt>
+          <dd class="specs__value">{s.value}</dd>
+        </div>
+      ))}
+    </dl>
+  </section>
+)}
+
+<style>
+  .specs { margin-top: 3rem; }
+  .specs__title {
+    font-size: 1.5rem;
+    margin: 0 0 1.25rem;
+  }
+  .specs__grid {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+  }
+  .specs__row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) 2fr;
+    gap: 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgb(1 0 42 / 0.08);
+    align-items: start;
+  }
+  .specs__label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-brand-navy);
+    margin: 0;
+  }
+  .specs__value {
+    color: var(--color-brand-gray);
+    margin: 0;
+    line-height: 1.55;
+  }
+</style>

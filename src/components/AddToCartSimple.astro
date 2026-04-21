@@ -1,0 +1,253 @@
+---
+import { formatBRL, applyPix } from "~/lib/format";
+
+interface Props {
+  slug: string;
+  title: string;
+  image: string;
+  priceCents: number;
+  sizes?: string[];
+}
+
+const { slug, title, image, priceCents, sizes = [] } = Astro.props;
+---
+
+<div
+  class="add-to-cart"
+  data-add-cart
+  data-slug={slug}
+  data-title={title}
+  data-image={image}
+  data-price={priceCents}
+>
+  <div class="atc__price">
+    <div class="atc__price-main">{formatBRL(priceCents)}</div>
+    <div class="atc__price-pix">
+      <span class="pix-badge">Pix</span>
+      <span class="atc__price-pix-value">{formatBRL(applyPix(priceCents))}</span>
+      <span class="atc__price-pix-label">5 % OFF</span>
+    </div>
+    <div class="atc__price-installments">ou 6× de {formatBRL(Math.round(priceCents / 6))} sem juros</div>
+  </div>
+
+  {sizes.length > 0 && (
+    <div class="atc__group">
+      <label class="atc__label">Tamanho</label>
+      <div class="atc__sizes" role="radiogroup" aria-label="Selecione o tamanho">
+        {sizes.map((size, i) => (
+          <label class="atc__size">
+            <input
+              type="radio"
+              name="size"
+              value={size}
+              required
+              checked={i === 0}
+              data-size-input
+            />
+            <span>{size}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <div class="atc__group">
+    <label class="atc__label" for={`qty-${slug}`}>Quantidade</label>
+    <div class="atc__qty">
+      <button type="button" aria-label="Diminuir" data-qty-down>−</button>
+      <input id={`qty-${slug}`} type="number" min="1" value="1" data-qty-input />
+      <button type="button" aria-label="Aumentar" data-qty-up>+</button>
+    </div>
+  </div>
+
+  <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn>
+    Adicionar ao carrinho
+  </button>
+
+  <p class="atc__ship">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+    Envio para todo o Brasil com rastreio
+  </p>
+</div>
+
+<style>
+  .add-to-cart {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .atc__price { display: flex; flex-direction: column; gap: 0.25rem; }
+  .atc__price-main {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2rem, 2.5vw + 0.5rem, 2.75rem);
+    line-height: 1;
+    color: var(--color-brand-navy);
+    letter-spacing: -0.02em;
+  }
+  .atc__price-pix {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .atc__price-pix-value {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #16a34a;
+  }
+  .atc__price-pix-label {
+    color: var(--color-brand-gray);
+    font-size: 0.85rem;
+  }
+  .atc__price-installments {
+    color: var(--color-brand-gray);
+    font-size: 0.875rem;
+  }
+  .pix-badge {
+    display: inline-block;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .atc__group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .atc__label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: var(--color-brand-navy);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .atc__sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .atc__size input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .atc__size span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    padding: 0.55rem 1rem;
+    border: 2px solid rgb(1 0 42 / 0.12);
+    border-radius: 9999px;
+    font-weight: 600;
+    color: var(--color-brand-navy);
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease;
+  }
+  .atc__size input:checked + span {
+    border-color: var(--color-brand-navy);
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+  }
+  .atc__size input:focus-visible + span {
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 2px;
+  }
+  .atc__qty {
+    display: inline-flex;
+    align-items: center;
+    border: 1.5px solid rgb(1 0 42 / 0.12);
+    border-radius: 9999px;
+    overflow: hidden;
+    width: fit-content;
+  }
+  .atc__qty button {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-brand-navy);
+    cursor: pointer;
+    transition: background-color 120ms ease;
+  }
+  .atc__qty button:hover { background: rgb(1 0 42 / 0.05); }
+  .atc__qty input {
+    width: 52px;
+    height: 40px;
+    text-align: center;
+    border: none;
+    background: transparent;
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-brand-navy);
+    font-size: 1rem;
+    outline: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .atc__qty input::-webkit-outer-spin-button,
+  .atc__qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .w-full { width: 100%; }
+
+  .atc__ship {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-size: 0.875rem;
+  }
+</style>
+
+<script>
+  import { cart } from "~/scripts/cart";
+
+  document.querySelectorAll<HTMLElement>("[data-add-cart]").forEach((root) => {
+    const slug  = root.dataset.slug!;
+    const title = root.dataset.title!;
+    const image = root.dataset.image!;
+    const price = Number(root.dataset.price!);
+    const qtyInput  = root.querySelector<HTMLInputElement>("[data-qty-input]")!;
+    const qtyDown   = root.querySelector<HTMLButtonElement>("[data-qty-down]")!;
+    const qtyUp     = root.querySelector<HTMLButtonElement>("[data-qty-up]")!;
+    const addBtn    = root.querySelector<HTMLButtonElement>("[data-add-btn]")!;
+    const sizeInputs = root.querySelectorAll<HTMLInputElement>("[data-size-input]");
+
+    qtyDown.addEventListener("click", () => {
+      const v = Math.max(1, Number(qtyInput.value) - 1);
+      qtyInput.value = String(v);
+    });
+    qtyUp.addEventListener("click", () => {
+      const v = Math.max(1, Number(qtyInput.value) + 1);
+      qtyInput.value = String(v);
+    });
+    qtyInput.addEventListener("input", () => {
+      const v = Math.max(1, Math.floor(Number(qtyInput.value) || 1));
+      qtyInput.value = String(v);
+    });
+
+    addBtn.addEventListener("click", () => {
+      const size = Array.from(sizeInputs).find((s) => s.checked)?.value;
+      const quantity = Math.max(1, Number(qtyInput.value) || 1);
+      const id = size ? `${slug}::size=${size}` : slug;
+      const variantTitle = size ? `${title} — Tam. ${size}` : title;
+      cart.add({
+        id,
+        productSlug: slug,
+        title: variantTitle,
+        image,
+        unitPriceCents: price,
+        quantity,
+        size,
+      });
+    });
+  });
+</script>
