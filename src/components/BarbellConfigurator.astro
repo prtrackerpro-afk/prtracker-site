@@ -392,8 +392,8 @@ const CONFIG_JSON = JSON.stringify({
   function initConfigurator(root: HTMLElement): void {
     const config = JSON.parse(root.dataset.config!) as ConfigData;
     const platesById = new Map<string, PlateSpec>(config.plates.map((p) => [p.id, p]));
+    const platesOrdered = [...config.plates].sort((a, b) => b.kg - a.kg);
 
-    /** pairs per plate id — integer 0..maxPairs */
     const state: Record<string, number> = {};
     config.plates.forEach((p) => { state[p.id] = 0; });
 
@@ -420,43 +420,35 @@ const CONFIG_JSON = JSON.stringify({
     });
 
     function render(): void {
-      const platesOrdered = [...config.plates].sort((a, b) => b.kg - a.kg);
-
-      // Weight & space
       let platesKg = 0;
       let spaceMm = 0;
-      for (const p of platesOrdered) {
-        const pairs = state[p.id] ?? 0;
-        platesKg += pairs * 2 * p.kg;
-        spaceMm  += pairs * p.thicknessMm;
-      }
-      const totalKg = (config.isAnilhasOnly ? 0 : config.barbellWeightKg) + platesKg;
-      if (totalKgEl) totalKgEl.textContent = formatKg(totalKg);
-      usedSpaceEl.textContent = `${spaceMm}mm`;
-
-      // Price
       let platesCents = 0;
       for (const p of platesOrdered) {
-        platesCents += (state[p.id] ?? 0) * p.pricePerPairCents;
+        const pairs = state[p.id] ?? 0;
+        platesKg    += pairs * 2 * p.kg;
+        spaceMm     += pairs * p.thicknessMm;
+        platesCents += pairs * p.pricePerPairCents;
       }
+      const totalKg = (config.isAnilhasOnly ? 0 : config.barbellWeightKg) + platesKg;
       const totalCents = config.basePriceCents + platesCents;
+
+      if (totalKgEl) totalKgEl.textContent = formatKg(totalKg);
+      usedSpaceEl.textContent = `${spaceMm}mm`;
       totalPriceEl.textContent = formatBRL(totalCents);
       pixPriceEl.textContent = formatBRL(applyPix(totalCents));
       installmentPriceEl.textContent = formatBRL(Math.round(totalCents / 6));
 
-      // Space limit
       const overLimit = spaceMm > config.maxSideSpaceMm;
+      const needsPlates = config.isAnilhasOnly && platesCents === 0;
       warningEl.hidden = !overLimit;
       root.dataset.overLimit = overLimit ? "true" : "false";
-      addBtn.disabled = overLimit || (config.isAnilhasOnly && platesCents === 0);
-      addBtn.textContent =
-        config.isAnilhasOnly && platesCents === 0
-          ? "Selecione anilhas"
-          : overLimit
-            ? "Remova anilhas"
-            : "Adicionar ao carrinho";
+      addBtn.disabled = overLimit || needsPlates;
+      addBtn.textContent = needsPlates
+        ? "Selecione anilhas"
+        : overLimit
+          ? "Remova anilhas"
+          : "Adicionar ao carrinho";
 
-      // Render SVG plates
       if (leftGroup && rightGroup) {
         renderSvgPlates(leftGroup, platesOrdered, state, "left");
         renderSvgPlates(rightGroup, platesOrdered, state, "right");
@@ -469,20 +461,10 @@ const CONFIG_JSON = JSON.stringify({
       st: Record<string, number>,
       side: "left" | "right",
     ): void {
-      // Clear previous
       while (group.firstChild) group.removeChild(group.firstChild);
 
-      // Stack plates from the clip outward; each plate is a <rect>.
-      // x offset: left side stacks to the right (x increases), right side stacks to the left (x decreases).
-      // SVG viewBox is 600 wide, so left group origin = 108, right = 492 (inside edges).
-      // We render plates OUTWARD from the inside edge. For left side, x offset goes negative-to-inner;
-      // For right side, x offset goes positive-to-outer. But we want the plates on each side to extend
-      // AWAY from the center (i.e., left plates go to the LEFT of their group origin, right plates go to the RIGHT).
-      // Actually easier: left group is at x=108, plates stack to the LEFT (offset -= thickness).
-      // Right group is at x=492, plates stack to the RIGHT (offset += thickness).
-      // In SVG the 1mm ≈ 2px factor — tune visually.
-
-      const pxPerMm = 3.2; // visual amplifier — 45mm of plates ≈ 144px per side
+      // 1mm ≈ 3.2px so 45mm of plates ≈ 144px per side inside the viewBox.
+      const pxPerMm = 3.2;
       let offset = 0;
       const direction = side === "left" ? -1 : 1;
 

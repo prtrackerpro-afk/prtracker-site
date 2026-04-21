@@ -28,59 +28,37 @@ export function recomputeLine(
   input: CartItem,
   product: CollectionEntry<"products">,
 ): Priced {
-  const { configurator, priceBase, images, sizes } = product.data;
+  const { configurator, priceBase, images, sizes, title } = product.data;
 
   if (!images[0]) throw new Error(`Product ${product.data.slug} has no images`);
   const picture_url = images[0].src;
 
-  // Validate configured items
   if (configurator.enabled) {
-    if (configurator.isAnilhasOnly) {
-      // Anilhas-only: no base price, at least one plate pair required.
-      const platesCents = sumPlatesCents(input.plates ?? []);
-      if (platesCents === 0) throw new Error("Anilhas-only: selecione ao menos um par de anilhas");
-      const spaceUsed = sumPlatesSpace(input.plates ?? []);
-      if (spaceUsed > MAX_SIDE_SPACE_MM) {
-        throw new Error(`Espaço físico excedido (${spaceUsed}mm > ${MAX_SIDE_SPACE_MM}mm)`);
-      }
-      const unit = platesCents;
-      return {
-        unitPriceCents: unit,
-        lineTotalCents: unit * input.quantity,
-        title: product.data.title,
-        picture_url,
-      };
-    }
+    const plates = input.plates ?? [];
+    const platesCents = sumPlatesCents(plates);
+    const spaceUsed = sumPlatesSpace(plates);
 
-    // PR Tracker set with configurator
-    const platesCents = sumPlatesCents(input.plates ?? []);
-    const spaceUsed = sumPlatesSpace(input.plates ?? []);
     if (spaceUsed > MAX_SIDE_SPACE_MM) {
       throw new Error(`Espaço físico excedido (${spaceUsed}mm > ${MAX_SIDE_SPACE_MM}mm)`);
     }
-    const unit = priceBase + platesCents;
-    const title = input.exercise
-      ? `${product.data.title} — ${input.exercise}`
-      : product.data.title;
-    return {
-      unitPriceCents: unit,
-      lineTotalCents: unit * input.quantity,
-      title,
-      picture_url,
-    };
+    if (configurator.isAnilhasOnly && platesCents === 0) {
+      throw new Error("Anilhas-only: selecione ao menos um par de anilhas");
+    }
+
+    const base = configurator.isAnilhasOnly ? 0 : priceBase;
+    const unit = base + platesCents;
+    const lineTitle = input.exercise ? `${title} — ${input.exercise}` : title;
+    return { unitPriceCents: unit, lineTotalCents: unit * input.quantity, title: lineTitle, picture_url };
   }
 
-  // Simple product (e.g., camiseta)
-  if (sizes.length > 0) {
-    if (!input.size || !sizes.includes(input.size)) {
-      throw new Error(`Tamanho inválido para ${product.data.title}: ${input.size ?? "(vazio)"}`);
-    }
+  if (sizes.length > 0 && (!input.size || !sizes.includes(input.size))) {
+    throw new Error(`Tamanho inválido para ${title}: ${input.size ?? "(vazio)"}`);
   }
-  const title = input.size ? `${product.data.title} — Tam. ${input.size}` : product.data.title;
+  const lineTitle = input.size ? `${title} — Tam. ${input.size}` : title;
   return {
     unitPriceCents: priceBase,
     lineTotalCents: priceBase * input.quantity,
-    title,
+    title: lineTitle,
     picture_url,
   };
 }

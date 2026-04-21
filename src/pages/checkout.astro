@@ -336,14 +336,13 @@ import Loader from "@lucide/astro/icons/loader";
 <script>
   import { cart } from "~/scripts/cart";
   import { formatBRL } from "~/lib/format";
+  import { formatCartItemConfig, escapeHtml } from "~/lib/cart-format";
   import type { CartSnapshot } from "~/lib/cart-types";
 
-  // -------- Redirect if cart empty --------
   if (cart.snapshot().items.length === 0) {
     window.location.replace("/cart");
   }
 
-  // -------- Summary render --------
   const itemsList = document.querySelector<HTMLUListElement>("[data-checkout-items]")!;
   const subtotalEl = document.querySelector<HTMLElement>("[data-checkout-subtotal]")!;
   const pixEl = document.querySelector<HTMLElement>("[data-checkout-pix]")!;
@@ -351,31 +350,16 @@ import Loader from "@lucide/astro/icons/loader";
   const pixRow = document.querySelector<HTMLElement>("[data-pix-row]")!;
   const creditRow = document.querySelector<HTMLElement>("[data-credit-row]")!;
 
-  function esc(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
   function renderSummary(snap: CartSnapshot) {
     itemsList.innerHTML = snap.items
       .map((it) => {
-        const parts: string[] = [];
-        if (it.plates?.length) {
-          parts.push(
-            it.plates
-              .filter((p) => p.pairs > 0)
-              .map((p) => `${p.pairs * 2}× ${p.plateId.replace("_", ".")}kg`)
-              .join(" · "),
-          );
-        }
-        if (it.exercise) parts.push(it.exercise);
-        if (it.size) parts.push(`T. ${it.size}`);
-        const sub = parts.filter(Boolean).join(" · ");
+        const sub = formatCartItemConfig(it);
         return `
           <li>
-            <img src="${esc(it.image)}" alt="" loading="lazy" />
+            <img src="${escapeHtml(it.image)}" alt="" loading="lazy" />
             <div>
-              <div class="ci-title">${esc(it.title)}${it.quantity > 1 ? ` × ${it.quantity}` : ""}</div>
-              ${sub ? `<div class="ci-sub">${esc(sub)}</div>` : ""}
+              <div class="ci-title">${escapeHtml(it.title)}${it.quantity > 1 ? ` × ${it.quantity}` : ""}</div>
+              ${sub ? `<div class="ci-sub">${escapeHtml(sub)}</div>` : ""}
             </div>
             <span class="ci-price">${formatBRL(it.unitPriceCents * it.quantity)}</span>
           </li>
@@ -392,7 +376,6 @@ import Loader from "@lucide/astro/icons/loader";
     renderSummary((ev as CustomEvent<CartSnapshot>).detail ?? cart.snapshot());
   });
 
-  // -------- Payment method toggle --------
   document.querySelectorAll<HTMLInputElement>('input[name="paymentMethod"]').forEach((r) => {
     r.addEventListener("change", () => {
       const method = r.value;
@@ -401,7 +384,6 @@ import Loader from "@lucide/astro/icons/loader";
     });
   });
 
-  // -------- Formatters --------
   const cpfEl = document.querySelector<HTMLInputElement>("#cpf")!;
   const cepEl = document.querySelector<HTMLInputElement>("#cep")!;
   const phoneEl = document.querySelector<HTMLInputElement>("#phone")!;
@@ -415,10 +397,17 @@ import Loader from "@lucide/astro/icons/loader";
       .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
   });
 
+  let lastFetchedCep = "";
+  let cepAbort: AbortController | null = null;
   cepEl.addEventListener("input", () => {
     const d = cepEl.value.replace(/\D/g, "").slice(0, 8);
     cepEl.value = d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
-    if (d.length === 8) fetchCep(d);
+    if (d.length === 8 && d !== lastFetchedCep) {
+      cepAbort?.abort();
+      cepAbort = new AbortController();
+      lastFetchedCep = d;
+      fetchCep(d, cepAbort.signal);
+    }
   });
 
   phoneEl.addEventListener("input", () => {
@@ -438,13 +427,12 @@ import Loader from "@lucide/astro/icons/loader";
     stateEl.value = stateEl.value.toUpperCase().slice(0, 2);
   });
 
-  // -------- ViaCEP autocomplete --------
   const cepStatus = document.querySelector<HTMLElement>("[data-cep-status]")!;
-  async function fetchCep(cep: string) {
+  async function fetchCep(cep: string, signal: AbortSignal) {
     cepStatus.textContent = "Buscando endereço…";
     cepStatus.dataset.error = "false";
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal });
       if (!res.ok) throw new Error("Falha ao consultar CEP");
       const data = await res.json();
       if (data.erro) {
@@ -459,12 +447,12 @@ import Loader from "@lucide/astro/icons/loader";
       cepStatus.textContent = "";
       (document.querySelector<HTMLInputElement>("#number")!).focus();
     } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       cepStatus.textContent = "Não foi possível consultar o CEP. Preencha manualmente.";
       cepStatus.dataset.error = "true";
     }
   }
 
-  // -------- Validation --------
   function validCpf(raw: string): boolean {
     const d = raw.replace(/\D/g, "");
     if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
@@ -480,7 +468,6 @@ import Loader from "@lucide/astro/icons/loader";
     return r === Number(d[10]);
   }
 
-  // -------- Submit --------
   const form = document.querySelector<HTMLFormElement>("#checkoutForm")!;
   const submitBtn = document.querySelector<HTMLButtonElement>("#submitBtn")!;
   const submitError = document.querySelector<HTMLElement>("#submitError")!;

@@ -7,7 +7,7 @@
  * Attached to window.PRCart for inline-script access from Astro components.
  */
 
-import { PIX_DISCOUNT } from "~/lib/catalog";
+import { applyPix } from "~/lib/format";
 import type { CartItem, CartSnapshot } from "~/lib/cart-types";
 
 const STORAGE_KEY = "prtracker_cart_v1";
@@ -53,7 +53,7 @@ function snapshot(items = load()): CartSnapshot {
   return {
     items,
     subtotalCents,
-    pixTotalCents: Math.round(subtotalCents * (1 - PIX_DISCOUNT)),
+    pixTotalCents: applyPix(subtotalCents),
     itemCount: items.reduce((acc, it) => acc + it.quantity, 0),
   };
 }

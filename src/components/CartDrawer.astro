@@ -309,6 +309,7 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
   import { cart } from "~/scripts/cart";
   import type { CartSnapshot } from "~/lib/cart-types";
   import { formatBRL } from "~/lib/format";
+  import { formatCartItemConfig, escapeHtml } from "~/lib/cart-format";
 
   const drawer = document.querySelector<HTMLElement>("[data-cart-drawer]");
   if (!drawer) throw new Error("CartDrawer: root element not found");
@@ -319,31 +320,11 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
   const subtotalEl = drawer.querySelector<HTMLElement>("[data-cart-subtotal]")!;
   const pixEl = drawer.querySelector<HTMLElement>("[data-cart-pix-total]")!;
 
-  function escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
+  // Latest snapshot kept in scope so click handlers don't re-read localStorage.
+  let snap: CartSnapshot = cart.snapshot();
 
-  function configLine(item: CartSnapshot["items"][number]): string {
-    const parts: string[] = [];
-    if (item.plates?.length) {
-      parts.push(
-        item.plates
-          .filter((p) => p.pairs > 0)
-          .map((p) => `${p.pairs * 2}× ${p.plateId.replace("_", ".")} kg`)
-          .join(" · "),
-      );
-    }
-    if (item.exercise) parts.push(item.exercise);
-    if (item.size) parts.push(`Tam. ${item.size}`);
-    return parts.filter(Boolean).join(" · ");
-  }
-
-  function render(snap: CartSnapshot) {
+  function render(next: CartSnapshot) {
+    snap = next;
     if (snap.items.length === 0) {
       empty.hidden = false;
       itemsList.hidden = true;
@@ -356,7 +337,7 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
 
     itemsList.innerHTML = snap.items
       .map((item) => {
-        const cfg = configLine(item);
+        const cfg = formatCartItemConfig(item);
         return `
           <li class="cart-item" data-id="${escapeHtml(item.id)}">
             <img src="${escapeHtml(item.image)}" alt="" class="cart-item__img" width="72" height="72" loading="lazy" />
@@ -388,27 +369,23 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
     pixEl.textContent = formatBRL(snap.pixTotalCents);
   }
 
-  // Initial render
-  render(cart.snapshot());
+  render(snap);
 
-  // Re-render on cart changes
   document.addEventListener("cart:change", (ev) => {
-    const snap = (ev as CustomEvent<CartSnapshot>).detail ?? cart.snapshot();
-    render(snap);
+    render((ev as CustomEvent<CartSnapshot>).detail ?? cart.snapshot());
   });
 
-  // Delegate item actions
   itemsList.addEventListener("click", (ev) => {
     const target = ev.target as HTMLElement;
     const li = target.closest<HTMLLIElement>(".cart-item");
     if (!li) return;
     const id = li.dataset.id!;
+    const current = snap.items.find((i) => i.id === id);
+    if (!current) return;
     if (target.closest("[data-qty-down]")) {
-      const current = cart.snapshot().items.find((i) => i.id === id);
-      if (current) cart.updateQuantity(id, current.quantity - 1);
+      cart.updateQuantity(id, current.quantity - 1);
     } else if (target.closest("[data-qty-up]")) {
-      const current = cart.snapshot().items.find((i) => i.id === id);
-      if (current) cart.updateQuantity(id, current.quantity + 1);
+      cart.updateQuantity(id, current.quantity + 1);
     } else if (target.closest("[data-remove]")) {
       cart.remove(id);
     }
