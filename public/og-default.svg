@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#01002A"/>
+      <stop offset="50%" stop-color="#0a0a4a"/>
+      <stop offset="100%" stop-color="#020025"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.7" cy="0.3" r="0.5">
+      <stop offset="0%" stop-color="#D8FF2C" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#D8FF2C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Mini barbell illustration (top-right corner) -->
+  <g transform="translate(780, 120) scale(1.8)">
+    <rect x="-100" y="90" width="200" height="14" rx="3" fill="#C0C5CC"/>
+    <rect x="-120" y="70" width="24" height="54" rx="3" fill="#DA291C"/>
+    <rect x="96" y="70" width="24" height="54" rx="3" fill="#DA291C"/>
+    <rect x="-90" y="77" width="16" height="40" rx="2" fill="#0057B8"/>
+    <rect x="74" y="77" width="16" height="40" rx="2" fill="#0057B8"/>
+    <rect x="-70" y="82" width="12" height="30" rx="2" fill="#FFC72C"/>
+    <rect x="58" y="82" width="12" height="30" rx="2" fill="#FFC72C"/>
+    <rect x="-54" y="85" width="10" height="24" rx="2" fill="#43B02A"/>
+    <rect x="44" y="85" width="10" height="24" rx="2" fill="#43B02A"/>
+  </g>
+
+  <!-- Headline -->
+  <text x="80" y="340" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-weight="900" font-size="88" letter-spacing="-3">
+    Seu PR merece mais
+  </text>
+  <text x="80" y="430" fill="#D8FF2C" font-family="Inter, system-ui, sans-serif" font-weight="900" font-size="88" letter-spacing="-3">
+    do que uma foto.
+  </text>
+
+  <!-- Tagline -->
+  <text x="80" y="500" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="28" opacity="0.75">
+    Miniaturas-troféu sob medida para celebrar seus PRs.
+  </text>
+
+  <!-- Wordmark -->
+  <g transform="translate(80, 555)">
+    <rect x="0" y="0" width="40" height="12" rx="2" fill="#D8FF2C"/>
+    <rect x="-4" y="-12" width="10" height="36" rx="1.5" fill="#DA291C"/>
+    <rect x="36" y="-12" width="10" height="36" rx="1.5" fill="#DA291C"/>
+    <text x="70" y="14" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-weight="900" font-size="24" font-style="italic" letter-spacing="-1">
+      PR TRACKER
+    </text>
+  </g>
+</svg>

@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
 Disallow: /checkout
+Disallow: /cart
+Disallow: /obrigado
 Disallow: /api/
 
 Sitemap: https://prtracker.com.br/sitemap-index.xml
