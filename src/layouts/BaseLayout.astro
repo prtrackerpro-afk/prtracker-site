@@ -1,0 +1,81 @@
+---
+import "~/styles/global.css";
+import Header from "~/components/Header.astro";
+import Footer from "~/components/Footer.astro";
+import CartDrawer from "~/components/CartDrawer.astro";
+import SEO from "~/components/SEO.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: "website" | "article" | "product";
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+  /** Transparent header mode (only for home hero). */
+  transparentHeader?: boolean;
+  /** Omit the header (e.g., checkout). */
+  hideHeader?: boolean;
+  /** Omit the footer (e.g., minimal flows). */
+  hideFooter?: boolean;
+}
+
+const {
+  title,
+  description,
+  canonical,
+  ogImage,
+  ogType,
+  noindex,
+  jsonLd,
+  transparentHeader = false,
+  hideHeader = false,
+  hideFooter = false,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#01002A" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <link rel="preconnect" href="https://prtracker.com.br" crossorigin />
+
+    <meta name="generator" content={Astro.generator} />
+
+    <SEO
+      title={title}
+      description={description}
+      canonical={canonical}
+      ogImage={ogImage}
+      ogType={ogType}
+      noindex={noindex}
+      jsonLd={jsonLd}
+    />
+  </head>
+
+  <body>
+    {!hideHeader && <Header transparent={transparentHeader} />}
+
+    <main id="main">
+      <slot />
+    </main>
+
+    {!hideFooter && <Footer />}
+
+    <CartDrawer />
+
+    <!-- Preload the cart script so badge renders from localStorage on first paint -->
+    <script>
+      import "~/scripts/cart";
+    </script>
+  </body>
+</html>

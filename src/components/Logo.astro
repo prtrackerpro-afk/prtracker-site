@@ -1,0 +1,69 @@
+---
+/**
+ * PR Tracker logotype — SVG inline.
+ *
+ * Variants:
+ *  - dark (default): dark navy text on light background
+ *  - light: white text on dark background
+ *  - lime: lime green on dark background (accent variant per MIV)
+ *
+ * The wordmark uses the Inter italic 900 fallback since the MIV-specified
+ * "Area Variable" font is not freely distributable. This stays visually
+ * consistent with the lime/navy brand system.
+ */
+
+interface Props {
+  variant?: "dark" | "light" | "lime";
+  size?: "sm" | "md" | "lg";
+  class?: string;
+}
+
+const { variant = "dark", size = "md", class: cls = "" } = Astro.props;
+
+const colors = {
+  dark:  { primary: "#01002A", accent: "#D8FF2C" },
+  light: { primary: "#FFFFFF", accent: "#D8FF2C" },
+  lime:  { primary: "#D8FF2C", accent: "#01002A" },
+};
+const c = colors[variant];
+
+const heights: Record<typeof size, string> = { sm: "1.75rem", md: "2.25rem", lg: "3rem" };
+const height = heights[size];
+---
+
+<span
+  class={`inline-flex items-center gap-2 ${cls}`}
+  style={`height: ${height};`}
+  role="img"
+  aria-label="PR Tracker"
+>
+  <svg
+    viewBox="0 0 40 40"
+    width="1em"
+    height="1em"
+    style="height: 100%; width: auto;"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <!-- Stylized "PR" loop mark: dumbbell-esque silhouette -->
+    <rect x="6" y="17" width="28" height="6" rx="1.5" fill={c.primary} />
+    <rect x="3" y="12" width="6" height="16" rx="1.5" fill={c.accent} />
+    <rect x="31" y="12" width="6" height="16" rx="1.5" fill={c.accent} />
+    <rect x="11" y="14" width="3" height="12" rx="0.75" fill={c.primary} />
+    <rect x="26" y="14" width="3" height="12" rx="0.75" fill={c.primary} />
+  </svg>
+  <span
+    style={`
+      font-family: 'Inter', system-ui, sans-serif;
+      font-style: italic;
+      font-weight: 900;
+      font-size: calc(${height} * 0.48);
+      letter-spacing: -0.04em;
+      color: ${c.primary};
+      line-height: 1;
+      white-space: nowrap;
+    `}
+  >
+    PR TRACKER
+  </span>
+</span>

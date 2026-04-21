@@ -1,0 +1,245 @@
+---
+import Menu from "@lucide/astro/icons/menu";
+import ShoppingBag from "@lucide/astro/icons/shopping-bag";
+import X from "@lucide/astro/icons/x";
+import Logo from "./Logo.astro";
+
+interface Props {
+  /** Transparent-over-hero mode for the home page. */
+  transparent?: boolean;
+}
+
+const { transparent = false } = Astro.props;
+
+const nav = [
+  { href: "/#produtos", label: "Produtos" },
+  { href: "/product-category/camisetas", label: "Camisetas" },
+  { href: "/#como-funciona", label: "Como funciona" },
+  { href: "/contato", label: "Contato" },
+];
+---
+
+<header
+  class:list={[
+    "site-header",
+    transparent ? "site-header--transparent" : "site-header--solid",
+  ]}
+  data-transparent={transparent ? "true" : "false"}
+>
+  <a href="#main" class="skip-link">Pular para o conteúdo</a>
+
+  <div class="container-page flex items-center justify-between gap-4 py-4">
+    <a href="/" aria-label="PR Tracker — início" class="shrink-0">
+      <Logo variant={transparent ? "light" : "dark"} size="md" />
+    </a>
+
+    <nav aria-label="Menu principal" class="hidden md:flex items-center gap-8">
+      {nav.map((item) => (
+        <a
+          href={item.href}
+          class="nav-link"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="cart-btn"
+        aria-label="Abrir carrinho"
+        data-cart-open
+      >
+        <ShoppingBag size={22} aria-hidden="true" />
+        <span class="cart-btn__badge" data-cart-count aria-live="polite" aria-atomic="true" hidden>0</span>
+      </button>
+
+      <button
+        type="button"
+        class="md:hidden menu-btn"
+        aria-label="Abrir menu"
+        aria-expanded="false"
+        data-mobile-menu-toggle
+      >
+        <Menu size={24} aria-hidden="true" class="menu-btn__open" />
+        <X size={24} aria-hidden="true" class="menu-btn__close" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile nav drawer (slides from top) -->
+  <div class="mobile-nav" data-mobile-nav hidden>
+    <nav aria-label="Menu mobile">
+      {nav.map((item) => (
+        <a href={item.href} class="mobile-nav__link" data-mobile-nav-link>{item.label}</a>
+      ))}
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    transition: background-color 250ms ease, box-shadow 250ms ease;
+    background: var(--color-brand-white);
+  }
+  .site-header--solid {
+    box-shadow: 0 1px 0 rgb(1 0 42 / 0.06);
+  }
+  .site-header--transparent {
+    background: transparent;
+    box-shadow: none;
+  }
+  .site-header--transparent[data-scrolled="true"] {
+    background: rgb(1 0 42 / 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+
+  .nav-link {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--color-brand-navy);
+    text-decoration: none;
+    position: relative;
+    padding: 0.25rem 0;
+    transition: color 150ms ease;
+  }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -4px 0;
+    height: 2px;
+    background: var(--color-brand-lime);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 200ms ease;
+  }
+  .nav-link:hover { color: var(--color-brand-navy); }
+  .nav-link:hover::after { transform: scaleX(1); }
+
+  .site-header--transparent .nav-link { color: var(--color-brand-white); }
+
+  .cart-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--color-brand-navy);
+    border: none;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+  .cart-btn:hover { background: rgb(1 0 42 / 0.06); }
+  .site-header--transparent .cart-btn { color: var(--color-brand-white); }
+  .site-header--transparent .cart-btn:hover { background: rgb(255 255 255 / 0.1); }
+
+  .cart-btn__badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    border-radius: 9999px;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 20px;
+    text-align: center;
+  }
+
+  .menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 9999px;
+    background: transparent;
+    color: inherit;
+    border: none;
+    cursor: pointer;
+  }
+  .site-header--transparent .menu-btn { color: var(--color-brand-white); }
+  .menu-btn .menu-btn__close { display: none; }
+  .menu-btn[aria-expanded="true"] .menu-btn__open { display: none; }
+  .menu-btn[aria-expanded="true"] .menu-btn__close { display: inline-block; }
+
+  .mobile-nav {
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+    background: var(--color-brand-white);
+    padding: 0.5rem 0;
+  }
+  .mobile-nav nav {
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-nav__link {
+    padding: 1rem 1.25rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--color-brand-navy);
+    text-decoration: none;
+    border-bottom: 1px solid rgb(1 0 42 / 0.05);
+  }
+  .mobile-nav__link:last-child { border-bottom: none; }
+  .mobile-nav__link:hover { background: rgb(216 255 44 / 0.1); }
+</style>
+
+<script>
+  // Transparent header becomes solid after scrolling past a threshold
+  const header = document.querySelector<HTMLElement>(".site-header");
+  if (header?.dataset.transparent === "true") {
+    const updateScrolled = () => {
+      const scrolled = window.scrollY > 60;
+      header.dataset.scrolled = scrolled ? "true" : "false";
+    };
+    updateScrolled();
+    window.addEventListener("scroll", updateScrolled, { passive: true });
+  }
+
+  // Mobile nav toggle
+  const mobileToggle = document.querySelector<HTMLButtonElement>("[data-mobile-menu-toggle]");
+  const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+  if (mobileToggle && mobileNav) {
+    mobileToggle.addEventListener("click", () => {
+      const open = mobileToggle.getAttribute("aria-expanded") === "true";
+      mobileToggle.setAttribute("aria-expanded", String(!open));
+      mobileNav.hidden = open;
+    });
+    // Close on nav link click
+    mobileNav.querySelectorAll("[data-mobile-nav-link]").forEach((a) => {
+      a.addEventListener("click", () => {
+        mobileToggle.setAttribute("aria-expanded", "false");
+        mobileNav.hidden = true;
+      });
+    });
+  }
+
+  // Cart open button — dispatches the global event handled by CartDrawer
+  document.querySelector("[data-cart-open]")?.addEventListener("click", () => {
+    document.dispatchEvent(new CustomEvent("cart:open"));
+  });
+
+  // Cart badge — updates on cart:change
+  const badge = document.querySelector<HTMLElement>("[data-cart-count]");
+  if (badge) {
+    document.addEventListener("cart:change", ((ev: CustomEvent) => {
+      const count = ev.detail?.itemCount ?? 0;
+      badge.textContent = String(count);
+      badge.hidden = count === 0;
+    }) as EventListener);
+  }
+</script>
