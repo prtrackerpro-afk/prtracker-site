@@ -1,11 +1,16 @@
 ---
 /**
- * Google Tag (GA4) + Meta Pixel. IDs copiados do site WordPress atual
- * para preservar continuidade de audiência e conversões no switch de DNS.
- * Sem env vars: IDs são públicos (aparecem no HTML client-side) e
- * hardcoded mantém o build simples.
+ * GA4 + Meta Pixel. IDs públicos (aparecem no HTML client-side), hardcoded
+ * pra manter o build simples.
+ *
+ * GA4 Measurement ID: stream "PR Tracker v2" da propriedade prtracker.com.br.
+ * Note que NÃO usamos o Google Tag wrapper (GT-WBTC67LF) do WordPress —
+ * aquele tag existe mas não está roteado pra essa propriedade GA4, então
+ * dados nunca chegavam. Usando G- direto os hits vão pro Realtime em minutos.
+ *
+ * Meta Pixel: mesmo ID do WP atual, preserva audiência e conversões.
  */
-const GOOGLE_TAG_ID = "GT-WBTC67LF";
+const GA4_MEASUREMENT_ID = "G-B2EPJXKSPZ";
 const META_PIXEL_ID = "1278981700843845";
 
 const isDev = import.meta.env.DEV;
@@ -14,20 +19,20 @@ const isDev = import.meta.env.DEV;
 {
   !isDev && (
     <>
-      {/* Google Tag (gtag.js) */}
+      {/* Google Analytics 4 (gtag.js) */}
       <script
         is:inline
         async
-        src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_TAG_ID}`}
+        src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`}
       />
-      <script is:inline define:vars={{ GOOGLE_TAG_ID }}>
+      <script is:inline define:vars={{ GA4_MEASUREMENT_ID }}>
         window.dataLayer = window.dataLayer || [];
         function gtag() {
           window.dataLayer.push(arguments);
         }
         window.gtag = gtag;
         gtag("js", new Date());
-        gtag("config", GOOGLE_TAG_ID);
+        gtag("config", GA4_MEASUREMENT_ID);
       </script>
 
       {/* Meta Pixel */}
