@@ -27,6 +27,19 @@ const faqSchema = z.object({
   answer: z.string(),
 });
 
+/**
+ * Per-unit shipping dimensions. Melhor Envio requires all four values on
+ * every product line of a quote. Anilhas avulsas store per-pair values;
+ * the frete endpoint multiplies by `pairs` at quote time.
+ */
+const shippingSchema = z.object({
+  weight_g: z.number().int().positive(),
+  length_cm: z.number().positive(),
+  width_cm: z.number().positive(),
+  height_cm: z.number().positive(),
+  insurance_value_cents: z.number().int().nonnegative().optional(),
+});
+
 export const categoryEnum = z.enum(["pr-trackers", "anilhas", "camisetas"]);
 
 const products = defineCollection({
@@ -44,6 +57,7 @@ const products = defineCollection({
     specs: z.array(specSchema).default([]),
     faq: z.array(faqSchema).default([]),
     sizes: z.array(z.string()).default([]),
+    shipping: shippingSchema,
     configurator: z
       .object({
         enabled: z.boolean().default(false),

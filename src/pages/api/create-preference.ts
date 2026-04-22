@@ -26,6 +26,14 @@ const cartItemSchema = z.object({
   size: z.string().max(10).optional(),
 });
 
+const shippingOptionSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1).max(80),
+  company: z.string().min(1).max(80),
+  price_cents: z.number().int().min(0).max(1_000_00),
+  delivery_days_max: z.number().int().min(0).max(90),
+});
+
 const payloadSchema = z.object({
   customer: z.object({
     name: z.string().min(3).max(120),
@@ -42,6 +50,7 @@ const payloadSchema = z.object({
     city: z.string().min(1).max(120),
     state: z.string().length(2),
   }),
+  shippingOption: shippingOptionSchema,
   paymentMethod: z.enum(["pix", "credit"]),
   items: z.array(cartItemSchema).min(1).max(20),
 });
@@ -109,7 +118,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
-  // Apply Pix discount as a negative item if applicable
+  // Apply Pix discount as a negative item if applicable.
+  // Pix discount applies only to product subtotal, not freight.
   const isPix = data.paymentMethod === "pix";
   if (isPix) {
     const discountCents = subtotalCents - applyPix(subtotalCents);
@@ -122,6 +132,18 @@ export const POST: APIRoute = async ({ request }) => {
         unit_price: -(Math.round(discountCents) / 100),
       });
     }
+  }
+
+  // Add freight as its own line so the customer sees it clearly on MP.
+  const freightCents = data.shippingOption.price_cents;
+  if (freightCents > 0) {
+    mpItems.push({
+      id: `frete-${data.shippingOption.id}`,
+      title: `Frete — ${data.shippingOption.company} · ${data.shippingOption.name}`,
+      quantity: 1,
+      currency_id: "BRL",
+      unit_price: Math.round(freightCents) / 100,
+    });
   }
 
   // --- Create MP preference ---------------------------------------------
@@ -186,6 +208,12 @@ export const POST: APIRoute = async ({ request }) => {
           customer_phone: data.customer.phone,
           payment_method_hint: data.paymentMethod,
           shipping_cep: data.shipping.cep,
+          shipping_service_id: data.shippingOption.id,
+          shipping_service_name: `${data.shippingOption.company} · ${data.shippingOption.name}`,
+          shipping_neighborhood: data.shipping.neighborhood,
+          shipping_city: data.shipping.city,
+          shipping_state: data.shipping.state,
+          shipping_complement: data.shipping.complement ?? "",
         },
       },
     });

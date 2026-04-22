@@ -5,6 +5,7 @@
   "category": "anilhas",
   "priceBase": 1000,
   "priceFrom": true,
+  "shipping": { "weight_g": 40, "length_cm": 8, "width_cm": 8, "height_cm": 2 },
   "shortDescription": "Pares de anilhas avulsas para adicionar ao seu PR Tracker existente. Escolha peso e cor. Bateu PR? Atualize seu troféu.",
   "longDescriptionHtml": "<p>Evoluiu no treino e bateu um PR maior? <strong>Encomende novos pares de anilhas e atualize o seu PR Tracker</strong> sem precisar comprar o set inteiro.</p><p>Cores no padrão Olímpico, logo <strong>PR Tracker</strong> moldado na peça e acabamento premium — as mesmas anilhas que compõem nossos sets.</p><p>Mesma qualidade, mesmo encaixe, pronta para deixar seu troféu sempre fiel ao seu PR atual.</p>",
   "images": [

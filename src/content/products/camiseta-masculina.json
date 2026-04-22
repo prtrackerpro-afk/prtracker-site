@@ -5,6 +5,7 @@
   "category": "camisetas",
   "priceBase": 8000,
   "priceFrom": false,
+  "shipping": { "weight_g": 200, "length_cm": 25, "width_cm": 20, "height_cm": 3 },
   "shortDescription": "Camiseta PR Tracker masculina. Feita com tecnologia que garante durabilidade, leveza e conforto para bater os seus PRs.",
   "longDescriptionHtml": "<p>As camisetas <strong>PR Tracker</strong> são ideais para os <strong>seus treinos mais pesados</strong>. Feita com tecnologia que garante durabilidade, leveza e conforto para bater os seus PRs.</p><p>Tecido respirável, corte regular e estampa duradoura — pensada para aguentar o ritmo do box sem perder o visual.</p>",
   "images": [

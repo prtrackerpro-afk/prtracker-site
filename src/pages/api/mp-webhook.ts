@@ -9,9 +9,15 @@ export const prerender = false;
  * MP sends POST requests with minimal payload like:
  *   { action: "payment.updated", data: { id: "123456789" } }
  *
- * We fetch the full payment via the API to avoid trusting the webhook body.
- * For now this just logs — when the business flow is ready, swap the stub
- * for an e-mail/Notion/CRM integration.
+ * Flow when payment is approved:
+ *   1. Re-fetch payment from MP (never trust the webhook body)
+ *   2. POST /me/shipment/cart to add the shipment to the Melhor Envio cart
+ *   3. POST /me/shipment/checkout to buy the label with the ME wallet balance
+ *   4. POST /me/shipment/generate to render the PDF
+ *   5. Log the tracking URL + label PDF URL for later email/follow-up
+ *
+ * MP always receives 200 so it stops retrying. Failures are logged and
+ * we recover manually from the dashboard — the order is never lost.
  */
 export const POST: APIRoute = async ({ request }) => {
   let payload: unknown;
@@ -21,7 +27,6 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response("bad request", { status: 400 });
   }
 
-  // Basic shape guard (MP may send non-payment events too; ignore those)
   const body = payload as Record<string, unknown>;
   const paymentId =
     (body?.data as Record<string, unknown> | undefined)?.id ??
@@ -33,33 +38,178 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response("ok", { status: 200 });
   }
 
-  const accessToken = import.meta.env.MP_ACCESS_TOKEN;
-  if (!accessToken) {
+  const mpAccessToken = import.meta.env.MP_ACCESS_TOKEN;
+  if (!mpAccessToken) {
     console.warn("[mp-webhook] MP_ACCESS_TOKEN missing — cannot verify payment");
-    // Return 200 so MP doesn't retry — observability is broken but the order
-    // is still visible in the Mercado Pago dashboard.
+    return new Response("ok", { status: 200 });
+  }
+
+  let payment: Awaited<ReturnType<Payment["get"]>>;
+  try {
+    const client = new MercadoPagoConfig({ accessToken: mpAccessToken });
+    payment = await new Payment(client).get({ id: String(paymentId) });
+  } catch (err) {
+    console.error("[mp-webhook] failed to fetch payment:", err);
+    return new Response("ok", { status: 200 });
+  }
+
+  console.log("[mp-webhook] payment:", {
+    id: payment.id,
+    status: payment.status,
+    status_detail: payment.status_detail,
+    amount: payment.transaction_amount,
+    external_reference: payment.external_reference,
+    payer_email: payment.payer?.email,
+  });
+
+  // Only approved payments trigger label generation. Pending Pix payments
+  // will fire another webhook when confirmed, so we'll handle them then.
+  if (payment.status !== "approved") {
     return new Response("ok", { status: 200 });
   }
 
   try {
-    const client = new MercadoPagoConfig({ accessToken });
-    const paymentApi = new Payment(client);
-    const payment = await paymentApi.get({ id: String(paymentId) });
-
-    console.log("[mp-webhook] payment verified:", {
-      id: payment.id,
-      status: payment.status,
-      status_detail: payment.status_detail,
-      amount: payment.transaction_amount,
-      external_reference: payment.external_reference,
-      payer_email: payment.payer?.email,
-    });
-
-    // TODO: enviar e-mail de confirmação, registrar pedido em planilha/DB, etc.
+    await generateShippingLabel(payment);
   } catch (err) {
-    console.error("[mp-webhook] failed to fetch payment:", err);
+    console.error("[mp-webhook] shipping label generation failed:", err);
+    // TODO: send an alert email to contato@prtracker.com.br so the
+    // label can be generated manually from the Melhor Envio dashboard.
   }
 
-  // Always 200 so MP doesn't keep retrying (we logged the error already)
   return new Response("ok", { status: 200 });
 };
+
+// ---------------------------------------------------------------------------
+
+type MpPayment = Awaited<ReturnType<Payment["get"]>>;
+
+async function generateShippingLabel(payment: MpPayment): Promise<void> {
+  const meToken = import.meta.env.ME_ACCESS_TOKEN;
+  if (!meToken) {
+    console.warn("[mp-webhook] ME_ACCESS_TOKEN missing — skipping label");
+    return;
+  }
+  const useSandbox = import.meta.env.ME_SANDBOX === "true";
+  const meHost = useSandbox
+    ? "https://sandbox.melhorenvio.com.br"
+    : "https://melhorenvio.com.br";
+  const cepOrigem = import.meta.env.ME_CEP_ORIGEM;
+
+  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+  const serviceId = Number(meta.shipping_service_id ?? 0);
+  const destCep = String(meta.shipping_cep ?? "").replace(/\D/g, "");
+  if (!serviceId || !destCep || !cepOrigem) {
+    console.warn("[mp-webhook] missing shipping metadata, cannot buy label", meta);
+    return;
+  }
+
+  const payer = payment.payer ?? {};
+  const address = payer.address ?? {};
+  const payerName =
+    [payer.first_name, payer.last_name].filter(Boolean).join(" ") ||
+    "Cliente PR Tracker";
+
+  // Best-effort: ME requires address fields the MP payer object doesn't
+  // always include. We pull what we can from metadata + payer.
+  const shipmentPayload = {
+    service: serviceId,
+    from: {
+      name: "PR Tracker",
+      phone: "5198206-1914",
+      email: "contato@prtracker.com.br",
+      document: "59947215000167", // CNPJ PR Tracker Ltda
+      company_document: "59947215000167",
+      state_register: "isento",
+      address: "Endereço PR Tracker",
+      complement: "",
+      number: "s/n",
+      district: "Centro",
+      city: "Porto Alegre",
+      state_abbr: "RS",
+      country_id: "BR",
+      postal_code: cepOrigem,
+    },
+    to: {
+      name: payerName,
+      phone: String(payer.phone?.area_code ?? "") + String(payer.phone?.number ?? ""),
+      email: payer.email ?? "",
+      document: String(payer.identification?.number ?? meta.customer_cpf ?? ""),
+      address: String(address.street_name ?? ""),
+      complement: String(meta.shipping_complement ?? ""),
+      number: String(address.street_number ?? ""),
+      district: String(meta.shipping_neighborhood ?? ""),
+      city: String(meta.shipping_city ?? ""),
+      state_abbr: String(meta.shipping_state ?? ""),
+      country_id: "BR",
+      postal_code: destCep,
+    },
+    products: [
+      {
+        name: `PR Tracker — Pedido ${payment.external_reference ?? payment.id}`,
+        quantity: 1,
+        unitary_value: Number(payment.transaction_amount ?? 0),
+      },
+    ],
+    options: {
+      insurance_value: Number(payment.transaction_amount ?? 0),
+      receipt: false,
+      own_hand: false,
+      reverse: false,
+      non_commercial: true,
+    },
+  };
+
+  // Step 1: add to ME cart
+  const cartRes = await meFetch(`${meHost}/api/v2/me/cart`, meToken, shipmentPayload);
+  if (!cartRes.ok) {
+    throw new Error(`ME /cart failed: ${cartRes.status} ${await cartRes.text()}`);
+  }
+  const cartItem = (await cartRes.json()) as { id: string };
+  console.log("[mp-webhook] ME cart item:", cartItem.id);
+
+  // Step 2: checkout (uses ME wallet balance)
+  const checkoutRes = await meFetch(
+    `${meHost}/api/v2/me/shipment/checkout`,
+    meToken,
+    { orders: [cartItem.id] },
+  );
+  if (!checkoutRes.ok) {
+    throw new Error(
+      `ME /checkout failed: ${checkoutRes.status} ${await checkoutRes.text()}`,
+    );
+  }
+
+  // Step 3: generate PDF label
+  const genRes = await meFetch(
+    `${meHost}/api/v2/me/shipment/generate`,
+    meToken,
+    { orders: [cartItem.id] },
+  );
+  if (!genRes.ok) {
+    throw new Error(
+      `ME /generate failed: ${genRes.status} ${await genRes.text()}`,
+    );
+  }
+
+  console.log("[mp-webhook] ME label generated for order", cartItem.id, {
+    payment_id: payment.id,
+    external_reference: payment.external_reference,
+  });
+}
+
+async function meFetch(
+  url: string,
+  token: string,
+  body: unknown,
+): Promise<Response> {
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "PR Tracker (contato@prtracker.com.br)",
+    },
+    body: JSON.stringify(body),
+  });
+}

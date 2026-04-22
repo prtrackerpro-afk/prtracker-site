@@ -256,29 +256,37 @@ Quando MP confirma pagamento:
 3. `POST /me/shipment/generate` → gera PDF.
 4. Salva URL do PDF no log + envia por e-mail para `contato@prtracker.com.br`.
 
-### Autenticação OAuth2 (Melhor Envio)
+### Autenticação (Melhor Envio)
 
-Melhor Envio usa OAuth2. Passos iniciais (uma vez):
+Usamos **personal access token** (não OAuth). Melhor Envio emite um JWT pessoal com validade de ~18 meses, que cobre tudo que a loja precisa sem o overhead de refresh tokens.
 
-1. Cadastrar aplicação em `https://melhorenvio.com.br/painel/gerenciar/tokens`.
-2. Obter `Client ID` e `Client Secret`.
-3. Gerar token via fluxo OAuth (script `scripts/me-oauth.mjs` one-shot) — salva `ME_ACCESS_TOKEN` e `ME_REFRESH_TOKEN`.
-4. Token tem validade de 30 dias. Implementar refresh automático no backend quando `expires_in < 24h`.
+Passos (uma vez por janela de ~18 meses):
+
+1. Login em `https://melhorenvio.com.br`.
+2. Menu do usuário → **Integrações** → **Tokens**.
+3. Clicar **Gerar novo token**.
+4. Nome: `prtracker-site-{env}`. Escopos mínimos:
+   - `cart-read`, `cart-write`
+   - `orders-read`
+   - `shipping-calculate`, `shipping-cancel`, `shipping-checkout`, `shipping-companies`, `shipping-generate`, `shipping-preview`, `shipping-print`, `shipping-tracking`
+   - `users-read`
+5. Copiar o JWT completo e salvar em `ME_ACCESS_TOKEN` no Vercel.
+6. **Antes do vencimento**: gerar novo token e substituir a env var. Zero downtime (ambos ficam válidos até o antigo expirar).
+
+> OAuth ficou fora de escopo: exigiria cadastrar aplicação, implementar callback de callback URL, armazenar `refresh_token` e refresh automático. Como só a nossa loja usa, o personal token é mais simples e suficiente.
 
 ### `.env.example`
 
 ```
 MP_ACCESS_TOKEN=APP_USR-xxx
 MP_PUBLIC_KEY=APP_USR-xxx
-ME_CLIENT_ID=xxx
-ME_CLIENT_SECRET=xxx
-ME_ACCESS_TOKEN=xxx
-ME_REFRESH_TOKEN=xxx
-ME_CEP_ORIGEM=90000000
-ME_SANDBOX=true
+ME_ACCESS_TOKEN=eyJ0eXAiOiJKV1Q...       # JWT pessoal (~800 chars)
+ME_CEP_ORIGEM=90460080                    # CEP de origem (Porto Alegre)
+ME_SANDBOX=false                          # true em dev, false em prod
+PUBLIC_SITE_URL=https://prtracker.com.br
 ```
 
-> **Sandbox vs produção**: Melhor Envio tem ambiente sandbox em `sandbox.melhorenvio.com.br`. Usar durante todo o desenvolvimento e testes. Virar `ME_SANDBOX=false` só na fase final, junto com credenciais de produção MP.
+> **Sandbox vs produção**: Melhor Envio tem ambiente sandbox em `sandbox.melhorenvio.com.br` que exige token próprio (gerado lá dentro). Em produção usar `melhorenvio.com.br` com o token de produção. Flag `ME_SANDBOX` alterna entre os dois hosts.
 
 ---
 

@@ -5,6 +5,7 @@
   "category": "pr-trackers",
   "priceBase": 14990,
   "priceFrom": true,
+  "shipping": { "weight_g": 500, "length_cm": 20, "width_cm": 15, "height_cm": 15 },
   "shortDescription": "Miniatura do rack de agachamento feita em alumínio usinado, com barra em aço inoxidável. Celebre seu PR no squat como um troféu.",
   "longDescriptionHtml": "<p>O <strong>Power Rack Set</strong> representa consistência, disciplina e foco. Inspirado no coração de qualquer box ou academia, esse modelo traduz o ambiente onde grandes marcas são conquistadas. É a lembrança perfeita para quem vive o treino com intensidade e paixão.</p><p>A barra é usinada em aço inoxidável com alto relevo, reproduzindo com fidelidade o equipamento que você usa nos treinos. O rack de agachamento é feito de alumínio, replicando em miniatura o equipamento que você utiliza no seu treino.</p><p>As anilhas coloridas com o logo <strong>PR Tracker</strong> seguem padrão Olímpico, são moldadas em plástico de alta densidade, criando um visual realista e vibrante.</p><p>O conjunto inclui mini presilhas e base de apoio, formando uma réplica perfeita do seu PR — ideal para decorar sua casa, escritório ou o box.</p>",
   "images": [
