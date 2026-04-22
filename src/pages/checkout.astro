@@ -237,9 +237,15 @@ import Loader from "@lucide/astro/icons/loader";
     margin-top: 0.75rem;
   }
   .frete-list:empty { margin-top: 0; }
-  .frete-option { position: relative; cursor: pointer; }
-  .frete-option input { position: absolute; opacity: 0; pointer-events: none; }
-  .frete-option__inner {
+  /* Options are rendered by the page script — use :global so the styles
+     survive Astro's scoped-CSS attribute rewriting. */
+  :global(.frete-option) { position: relative; cursor: pointer; display: block; }
+  :global(.frete-option input) {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  :global(.frete-option__inner) {
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
@@ -250,22 +256,25 @@ import Loader from "@lucide/astro/icons/loader";
     background: var(--color-brand-white);
     transition: border-color 150ms ease, background-color 150ms ease;
   }
-  .frete-option input:checked + .frete-option__inner {
+  :global(.frete-option input:checked + .frete-option__inner) {
     border-color: var(--color-brand-navy);
     box-shadow: 0 0 0 1px var(--color-brand-navy) inset;
   }
-  .frete-option input:focus-visible + .frete-option__inner {
+  :global(.frete-option input:focus-visible + .frete-option__inner) {
     outline: 2px solid var(--color-brand-lime);
     outline-offset: 2px;
   }
-  .frete-option__name {
+  :global(.frete-option__name) {
     font-family: var(--font-display);
     font-weight: 700;
     color: var(--color-brand-navy);
     font-size: 0.95rem;
   }
-  .frete-option__meta { color: var(--color-brand-gray); font-size: 0.8rem; }
-  .frete-option__price {
+  :global(.frete-option__meta) {
+    color: var(--color-brand-gray);
+    font-size: 0.8rem;
+  }
+  :global(.frete-option__price) {
     font-family: var(--font-display);
     font-weight: 700;
     color: var(--color-brand-navy);
