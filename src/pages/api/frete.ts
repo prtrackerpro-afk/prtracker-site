@@ -98,8 +98,11 @@ export const POST: APIRoute = async ({ request }) => {
   }
   const { cepDestino, items } = parsed.data;
 
-  const accessToken = import.meta.env.ME_ACCESS_TOKEN;
-  const cepOrigem = import.meta.env.ME_CEP_ORIGEM;
+  // Trim defensively: Vercel's Sensitive env-var UI has been known to
+  // preserve trailing whitespace or a stray newline, which breaks the
+  // Bearer header silently (ME returns 401 Unauthenticated).
+  const accessToken = (import.meta.env.ME_ACCESS_TOKEN ?? "").trim();
+  const cepOrigem = (import.meta.env.ME_CEP_ORIGEM ?? "").trim();
   if (!accessToken || !cepOrigem) {
     return jsonResponse(500, {
       error:
