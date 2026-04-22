@@ -213,17 +213,25 @@ export const POST: APIRoute = async ({ request }) => {
     "Loggi",
   ]);
 
+  // Service-name blocklist — these are pickup-point deliveries (customer
+  // collects from a branch/locker), not door-to-door. Fine for B2C
+  // marketplaces where the buyer expects a pickup locker, but confusing
+  // at a premium D2C checkout. Match case-insensitive, substring.
+  const BLOCKED_SERVICE_PATTERNS = [/ponto/i, /centralizado/i, /coleta/i];
+
   // After filtering by carrier, keep top 5 cheapest so multi-service
   // carriers (Loggi has Express/Ponto/Coleta) don't dominate the list.
   const MAX_OPTIONS = 5;
   const options: QuoteOption[] = rawCarriers
-    .filter(
-      (c) =>
-        !c.error &&
-        c.price != null &&
-        c.company?.name != null &&
-        ALLOWED_CARRIERS.has(c.company.name),
-    )
+    .filter((c) => {
+      if (c.error || c.price == null) return false;
+      if (c.company?.name == null) return false;
+      if (!ALLOWED_CARRIERS.has(c.company.name)) return false;
+      if (BLOCKED_SERVICE_PATTERNS.some((rx) => rx.test(c.name ?? ""))) {
+        return false;
+      }
+      return true;
+    })
     .map((c) => {
       const priceStr = c.custom_price ?? c.price;
       const price_cents = Math.round(Number(priceStr) * 100);
