@@ -4,6 +4,7 @@ import Header from "~/components/Header.astro";
 import Footer from "~/components/Footer.astro";
 import CartDrawer from "~/components/CartDrawer.astro";
 import SEO from "~/components/SEO.astro";
+import Analytics from "~/components/Analytics.astro";
 
 interface Props {
   title: string;
@@ -60,6 +61,8 @@ const {
       noindex={noindex}
       jsonLd={jsonLd}
     />
+
+    <Analytics />
   </head>
 
   <body>
