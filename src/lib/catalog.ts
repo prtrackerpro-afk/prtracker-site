@@ -19,24 +19,23 @@ export interface PlateSpec {
   kg: number;
   /** CSS fill color (IWF Pantone for 25/20/15/10, BRIEF for smaller). */
   color: string;
-  /** Rendered thickness in the SVG, in mm. */
+  /** Rendered thickness in the SVG, in mm. Real product: 4–8mm. */
   thicknessMm: number;
-  /** Visual radius in SVG px (matches plate size visually). */
-  radiusPx: number;
   /** Price per pair, in BRL cents. */
   pricePerPairCents: number;
   /** Max pairs the buyer can add to one barbell. */
   maxPairs: number;
 }
 
+// Real product: all plates share the same 42mm diameter. Only thickness varies.
 export const PLATES: PlateSpec[] = [
-  { id: "25",   label: "25 kg",   kg: 25,   color: "#DA291C", thicknessMm: 8, radiusPx: 56, pricePerPairCents: 1500, maxPairs: 4 },
-  { id: "20",   label: "20 kg",   kg: 20,   color: "#0057B8", thicknessMm: 8, radiusPx: 52, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "15",   label: "15 kg",   kg: 15,   color: "#FFC72C", thicknessMm: 7, radiusPx: 48, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "10",   label: "10 kg",   kg: 10,   color: "#43B02A", thicknessMm: 6, radiusPx: 44, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "5",    label: "5 kg",    kg: 5,    color: "#111111", thicknessMm: 5, radiusPx: 38, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "2_5",  label: "2.5 kg",  kg: 2.5,  color: "#2563EB", thicknessMm: 4, radiusPx: 32, pricePerPairCents: 1000, maxPairs: 1 },
-  { id: "1_25", label: "1.25 kg", kg: 1.25, color: "#C0C5CC", thicknessMm: 4, radiusPx: 28, pricePerPairCents: 1000, maxPairs: 1 },
+  { id: "25",   label: "25 kg",   kg: 25,   color: "#DA291C", thicknessMm: 8, pricePerPairCents: 1500, maxPairs: 4 },
+  { id: "20",   label: "20 kg",   kg: 20,   color: "#0057B8", thicknessMm: 8, pricePerPairCents: 1000, maxPairs: 4 },
+  { id: "15",   label: "15 kg",   kg: 15,   color: "#FFC72C", thicknessMm: 7, pricePerPairCents: 1000, maxPairs: 4 },
+  { id: "10",   label: "10 kg",   kg: 10,   color: "#43B02A", thicknessMm: 6, pricePerPairCents: 1000, maxPairs: 4 },
+  { id: "5",    label: "5 kg",    kg: 5,    color: "#111111", thicknessMm: 5, pricePerPairCents: 1000, maxPairs: 4 },
+  { id: "2_5",  label: "2.5 kg",  kg: 2.5,  color: "#2563EB", thicknessMm: 4, pricePerPairCents: 1000, maxPairs: 1 },
+  { id: "1_25", label: "1.25 kg", kg: 1.25, color: "#C0C5CC", thicknessMm: 4, pricePerPairCents: 1000, maxPairs: 1 },
 ];
 
 export function plateById(id: PlateId): PlateSpec {

@@ -188,11 +188,13 @@ Cada página de produto tem: galeria com thumbnails, título, preço "a partir",
 Checkout (`/checkout`):
 
 - Form: nome, e-mail, telefone, CPF, CEP (autocomplete ViaCEP), logradouro, número, complemento, bairro, cidade, estado.
+- Após CEP válido: chama `POST /api/frete` → mostra lista de opções de envio (PAC, Sedex, Jadlog, etc) com preço e prazo, usuário seleciona uma.
 - Radio: **Pix (5 % OFF)** vs **Cartão de crédito (até 6× sem juros)**.
-- Submit → `POST /api/create-preference` → redirect para `init_point` do Mercado Pago.
+- Total final = produtos − desconto Pix (se aplicável) + frete selecionado.
+- Submit → `POST /api/create-preference` (enviando `shipping` como item separado) → redirect para `init_point` do Mercado Pago.
 - Validação client-side com mensagens em PT-BR.
 
-**Frete**: o site não calcula frete. Copy padrão: "Envio para todo o Brasil com rastreio" (sem valores). Frete real é calculado pós-compra via WhatsApp/e-mail.
+**Frete**: calculado em tempo real via Melhor Envio (ver seção abaixo). CEP de origem configurado em env var. Dimensões e peso de cada SKU vêm da Content Collection.
 
 ---
 
@@ -211,14 +213,72 @@ Checkout (`/checkout`):
 ### `/api/mp-webhook.ts`
 
 - Recebe notificação, valida via `GET /v1/payments/:id`.
-- Stub: loga no console por ora. Comentário `// TODO: enviar e-mail`.
+- Se `status === 'approved'`: chama Melhor Envio para **inserir envio no carrinho** (`POST /shipment/cart`) com os dados do pedido salvos na preferência.
+- Loga pedido e ID do envio Melhor Envio. Comentário `// TODO: enviar e-mail de confirmação`.
+
+---
+
+## Integração Melhor Envio
+
+Cálculo de frete em tempo real no checkout + geração automática de etiqueta após pagamento aprovado.
+
+### `/api/frete.ts` (Vercel Function)
+
+- Body: `{ cepDestino: string, items: [{ sku, quantity }] }`.
+- Lê dimensões e peso de cada SKU da Content Collection (campos `weight_g`, `length_cm`, `width_cm`, `height_cm` — adicionar ao schema).
+- Chama `POST https://melhorenvio.com.br/api/v2/me/shipment/calculate` com:
+  - `from.postal_code`: `ME_CEP_ORIGEM` (env).
+  - `to.postal_code`: CEP do cliente.
+  - `products`: array com dimensões agregadas.
+  - Header `Authorization: Bearer ${ME_ACCESS_TOKEN}`.
+- Retorna lista filtrada: `[{ id, name, price, delivery_time, company }]`.
+- Cache server-side 5 min por `(cep, hash-dos-itens)` para reduzir custo.
+
+### Dimensões dos SKUs (adicionar ao schema Zod dos produtos)
+
+Valores iniciais — ajustar conforme embalagem real:
+
+| SKU | Peso (g) | C × L × A (cm) |
+|-----|---------:|:--------------:|
+| Power Rack Set | 500 | 20 × 15 × 10 |
+| Bench Press Set | 400 | 18 × 15 × 8 |
+| Deadlift Set | 350 | 28 × 12 × 4 |
+| My PR Set | 300 | 15 × 10 × 8 |
+| Anilhas Avulsas (por par) | 40 | 6 × 6 × 2 |
+| Camiseta | 200 | 25 × 20 × 3 |
+
+### Geração automática de etiqueta (`/api/mp-webhook.ts`)
+
+Quando MP confirma pagamento:
+
+1. `POST /me/shipment/cart` (Melhor Envio) → adiciona pedido ao carrinho ME.
+2. `POST /me/shipment/checkout` → compra a etiqueta usando saldo da conta ME.
+3. `POST /me/shipment/generate` → gera PDF.
+4. Salva URL do PDF no log + envia por e-mail para `contato@prtracker.com.br`.
+
+### Autenticação OAuth2 (Melhor Envio)
+
+Melhor Envio usa OAuth2. Passos iniciais (uma vez):
+
+1. Cadastrar aplicação em `https://melhorenvio.com.br/painel/gerenciar/tokens`.
+2. Obter `Client ID` e `Client Secret`.
+3. Gerar token via fluxo OAuth (script `scripts/me-oauth.mjs` one-shot) — salva `ME_ACCESS_TOKEN` e `ME_REFRESH_TOKEN`.
+4. Token tem validade de 30 dias. Implementar refresh automático no backend quando `expires_in < 24h`.
 
 ### `.env.example`
 
 ```
 MP_ACCESS_TOKEN=APP_USR-xxx
 MP_PUBLIC_KEY=APP_USR-xxx
+ME_CLIENT_ID=xxx
+ME_CLIENT_SECRET=xxx
+ME_ACCESS_TOKEN=xxx
+ME_REFRESH_TOKEN=xxx
+ME_CEP_ORIGEM=90000000
+ME_SANDBOX=true
 ```
+
+> **Sandbox vs produção**: Melhor Envio tem ambiente sandbox em `sandbox.melhorenvio.com.br`. Usar durante todo o desenvolvimento e testes. Virar `ME_SANDBOX=false` só na fase final, junto com credenciais de produção MP.
 
 ---
 

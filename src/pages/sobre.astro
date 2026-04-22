@@ -1,0 +1,726 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import ArrowRight from "@lucide/astro/icons/arrow-right";
+import Award from "@lucide/astro/icons/award";
+import Users from "@lucide/astro/icons/users";
+import Flame from "@lucide/astro/icons/flame";
+
+const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br").replace(/\/$/, "");
+
+const title = "Sobre a PR Tracker — a marca das miniaturas-troféu de PR";
+const description =
+  "A PR Tracker é a primeira marca brasileira de miniaturas-troféu para levantamento de peso. Conheça a missão, os valores e como transformamos cada PR em uma peça premium que conta sua história no treino.";
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    name: title,
+    description,
+    url: `${SITE_URL}/sobre`,
+    inLanguage: "pt-BR",
+    isPartOf: { "@type": "WebSite", name: "PR Tracker", url: SITE_URL },
+    about: {
+      "@type": "Organization",
+      name: "PR Tracker",
+      url: SITE_URL,
+      logo: `${SITE_URL}/favicon.svg`,
+      slogan: "Seu PR merece mais do que uma foto.",
+      foundingLocation: "Brasil",
+      sameAs: ["https://instagram.com/pr.tracker"],
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Início", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Sobre", item: `${SITE_URL}/sobre` },
+    ],
+  },
+];
+
+const values = [
+  {
+    Icon: Flame,
+    title: "Disciplina",
+    text: "Bater um PR é o resultado de meses — às vezes anos — de treino consistente. Cada peça carrega esse peso.",
+  },
+  {
+    Icon: Users,
+    title: "Senso de comunidade",
+    text: "Box, coach, parceiro de treino. Uma conquista nunca acontece no vácuo — ela é celebrada em grupo.",
+  },
+  {
+    Icon: Award,
+    title: "Conquista",
+    text: "Você não lembra só do número. Lembra de como foi difícil chegar lá. O troféu guarda essa memória.",
+  },
+];
+
+const audiences = [
+  { label: "CrossFit", text: "Cada PR em clean, snatch ou thruster vira uma peça que conta a história do seu box." },
+  { label: "Powerlifting", text: "Squat, bench, deadlift. Os três grandes levantamentos que definem o esporte, replicados fielmente." },
+  { label: "Halterofilismo (LPO)", text: "Snatch, clean & jerk e todas as variações técnicas que o My PR Set representa." },
+  { label: "Musculação", text: "Para quem treina pesado há anos e quer eternizar um levantamento marcante." },
+];
+
+const productLines = [
+  { slug: "deadlift-set",    name: "Deadlift Set",    tagline: "O mais bruto dos PRs." },
+  { slug: "my-pr-set",       name: "My PR Set",       tagline: "20 exercícios de LPO e CrossFit." },
+  { slug: "power-rack-set",  name: "Power Rack Set",  tagline: "Para quem ama agachamento." },
+  { slug: "bench-press-set", name: "Bench Press Set", tagline: "Supino que virou troféu." },
+  { slug: "anilhas",         name: "Anilhas avulsas", tagline: "Atualize seu troféu quando bater um PR maior." },
+];
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  canonical={`${SITE_URL}/sobre`}
+  jsonLd={jsonLd}
+>
+  <!-- ========================= HERO ========================= -->
+  <section class="sobre-hero">
+    <div class="container-page sobre-hero__grid">
+      <div class="sobre-hero__inner">
+        <p class="sobre-hero__eyebrow">PR Tracker</p>
+        <h1 class="sobre-hero__title">Quem<br />somos</h1>
+        <p class="sobre-hero__tagline">Seu PR merece mais do que uma foto.</p>
+        <p class="sobre-hero__lead">
+          A PR Tracker é a primeira marca brasileira de miniaturas-troféu para
+          levantamento de peso. Pegamos o esforço de meses dentro do box ou da
+          academia e entregamos em uma peça física: feita sob medida, fiel ao
+          equipamento real, digna de estar na prateleira ao lado das suas
+          conquistas.
+        </p>
+        <div class="sobre-hero__meta">
+          <span><strong>1ª</strong> marca brasileira do segmento</span>
+          <span aria-hidden="true" class="sobre-hero__dot"></span>
+          <span>Produção <strong>sob demanda</strong> no Brasil</span>
+        </div>
+      </div>
+      <div class="sobre-hero__media" aria-hidden="true">
+        <img
+          src="/images/sobre/hero.jpg"
+          alt=""
+          width="1800"
+          height="1200"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= MANIFESTO ========================= -->
+  <section class="section section--light">
+    <div class="container-page">
+      <div class="section__head">
+        <p class="eyebrow">Manifesto</p>
+        <h2>Não é um souvenir. Não é um brinquedo. É um troféu.</h2>
+        <p>
+          A academia deixou de ser só um lugar para melhorar o bem-estar — virou
+          palco de conquistas que merecem ser lembradas. A PR Tracker existe
+          para materializar esses marcos.
+        </p>
+      </div>
+
+      <ul class="values">
+        {values.map(({ Icon, title, text }) => (
+          <li class="value">
+            <span class="value__icon" aria-hidden="true"><Icon size={24} /></span>
+            <h3 class="value__title">{title}</h3>
+            <p class="value__text">{text}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- ========================= COMO É FEITO ========================= -->
+  <section class="section section--navy">
+    <div class="container-page about-grid">
+      <div class="about-grid__media" aria-hidden="true">
+        <img
+          src="/images/sobre/detalhe.jpg"
+          alt=""
+          width="1600"
+          height="1067"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      <div class="about-grid__content">
+        <p class="eyebrow eyebrow--lime">Como é feito</p>
+        <h2 class="text-brand-white about-grid__title">Peças premium, produzidas sob demanda no Brasil.</h2>
+        <p class="about-grid__lead">
+          Cada PR Tracker é uma réplica em escala reduzida do equipamento real —
+          pensada para parecer um objeto de coleção, não um brinquedo. Nada de
+          plástico duvidoso, nada de acabamento barato.
+        </p>
+        <ul class="specs-list">
+          <li>
+            <strong>Barra</strong>
+            <span>aço inoxidável usinado, com alto relevo</span>
+          </li>
+          <li>
+            <strong>Presilhas</strong>
+            <span>mini presilhas em metal</span>
+          </li>
+          <li>
+            <strong>Anilhas</strong>
+            <span>plástico de alta densidade, cores no padrão olímpico IWF</span>
+          </li>
+          <li>
+            <strong>Bases</strong>
+            <span>acrílico, alumínio ou MDF &amp; borracha — variam conforme o set</span>
+          </li>
+          <li>
+            <strong>Produção</strong>
+            <span>sob demanda, envio para todo o Brasil com rastreio</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= LIFESTYLE BAND ========================= -->
+  <section class="lifestyle-band" aria-hidden="true">
+    <img
+      src="/images/sobre/lifestyle.jpg"
+      alt=""
+      width="2000"
+      height="1333"
+      loading="lazy"
+      decoding="async"
+    />
+  </section>
+
+  <!-- ========================= PÚBLICO ========================= -->
+  <section class="section section--paper">
+    <div class="container-page">
+      <div class="section__head">
+        <p class="eyebrow">Para quem é</p>
+        <h2>Feito para quem leva o treino a sério.</h2>
+        <p>
+          A PR Tracker vive no universo da força. Não fazemos homenagens a
+          corrida ou esportes de equipe — nosso foco é exclusivamente
+          levantamento de peso.
+        </p>
+      </div>
+      <ul class="audiences">
+        {audiences.map(({ label, text }) => (
+          <li class="audience">
+            <h3 class="audience__label">{label}</h3>
+            <p class="audience__text">{text}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- ========================= LINHAS DE PRODUTO ========================= -->
+  <section class="section section--light">
+    <div class="container-page">
+      <div class="section__head">
+        <p class="eyebrow">O que fazemos</p>
+        <h2>Linhas de produto</h2>
+        <p>Quatro sets principais, anilhas avulsas para atualizar seus troféus e camisetas para o dia a dia do treino.</p>
+      </div>
+      <ul class="product-lines">
+        {productLines.map((p) => (
+          <li class="product-line">
+            <a href={`/product/${p.slug}`} class="product-line__link">
+              <div>
+                <h3 class="product-line__name">{p.name}</h3>
+                <p class="product-line__tagline">{p.tagline}</p>
+              </div>
+              <ArrowRight size={20} aria-hidden="true" />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- ========================= DIFERENCIAL ========================= -->
+  <section class="section section--navy">
+    <div class="container-page">
+      <div class="section__head section__head--on-dark">
+        <p class="eyebrow eyebrow--lime">Por que PR Tracker</p>
+        <h2 class="text-brand-white">Quem chega antes, lidera.</h2>
+        <p>
+          Somos a primeira marca do Brasil no segmento. Existem referências
+          internacionais — nos Estados Unidos, França, Austrália — mas nenhuma
+          marca local tinha tratado o PR como um objeto de coleção premium até
+          a PR Tracker.
+        </p>
+      </div>
+      <ul class="differentials">
+        <li>Estética própria, não genérica — longe de parecer souvenir de academia.</li>
+        <li>Cores fiéis ao padrão IWF Pantone: vermelho 25, azul 20, amarelo 15, verde 10.</li>
+        <li>Produzido sob demanda — cada peça é montada depois que você fecha o pedido.</li>
+        <li>Feito por quem vive o treino e entende o que significa bater um PR.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ========================= CTA FINAL ========================= -->
+  <section class="sobre-cta-section" aria-label="Pronto para materializar seu PR?">
+    <img
+      class="sobre-cta-section__bg"
+      src="/images/sobre/cta-banner.jpg"
+      alt=""
+      width="2000"
+      height="1009"
+      loading="lazy"
+      decoding="async"
+      aria-hidden="true"
+    />
+    <div class="sobre-cta-section__scrim" aria-hidden="true"></div>
+    <div class="container-page sobre-cta">
+      <h2>Pronto para materializar seu próximo PR?</h2>
+      <p>
+        Monte sua barra no configurador, escolha o set que representa sua
+        conquista e receba em casa a peça que conta a sua história no treino.
+      </p>
+      <div class="sobre-cta__buttons">
+        <a href="/#produtos" class="btn btn-primary btn-lg">
+          Ver os sets
+          <ArrowRight size={18} aria-hidden="true" />
+        </a>
+        <a href="/contato" class="btn btn-ghost-on-dark btn-lg">
+          Falar com a gente
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ======================= HERO ======================= */
+  .sobre-hero {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+    padding: clamp(2rem, 4vw, 3.5rem) 0 clamp(2.5rem, 4vw, 4rem);
+    position: relative;
+    overflow: hidden;
+  }
+  .sobre-hero::before {
+    content: "";
+    position: absolute;
+    inset: auto -20% -40% -20%;
+    height: 80%;
+    background: radial-gradient(ellipse at center, rgb(216 255 44 / 0.08), transparent 60%);
+    pointer-events: none;
+  }
+  .sobre-hero__grid {
+    position: relative;
+    display: grid;
+    gap: 2rem;
+    align-items: stretch;
+  }
+  @media (min-width: 960px) {
+    .sobre-hero__grid {
+      grid-template-columns: 1.05fr 1fr;
+      gap: clamp(2.5rem, 4vw, 4rem);
+      align-items: center;
+    }
+  }
+  .sobre-hero__inner {
+    max-width: 36rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .sobre-hero__media {
+    position: relative;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    box-shadow: 0 20px 50px rgb(0 0 0 / 0.4);
+    border: 1px solid rgb(255 255 255 / 0.08);
+  }
+  @media (min-width: 960px) {
+    .sobre-hero__media { aspect-ratio: 5 / 4; }
+  }
+  .sobre-hero__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .sobre-hero__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    margin: 0 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .sobre-hero__eyebrow::before {
+    content: "";
+    width: 1.75rem;
+    height: 2px;
+    background: var(--color-brand-lime);
+    display: inline-block;
+  }
+  .sobre-hero__title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(3.5rem, 9vw + 0.5rem, 7rem);
+    line-height: 0.88;
+    letter-spacing: -0.035em;
+    margin: 0;
+    text-transform: uppercase;
+    color: var(--color-brand-white);
+  }
+  .sobre-hero__tagline {
+    margin: 1.25rem 0 0;
+    color: var(--color-brand-lime);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.05rem, 0.6vw + 0.9rem, 1.35rem);
+    letter-spacing: 0.01em;
+    line-height: 1.3;
+  }
+  .sobre-hero__lead {
+    margin: 1.25rem 0 0;
+    color: rgb(255 255 255 / 0.78);
+    font-size: clamp(1rem, 0.3vw + 0.95rem, 1.1rem);
+    line-height: 1.65;
+    max-width: 34rem;
+  }
+  .sobre-hero__meta {
+    margin-top: 1.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem 1.1rem;
+    color: rgb(255 255 255 / 0.7);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgb(255 255 255 / 0.12);
+  }
+  .sobre-hero__meta strong {
+    color: var(--color-brand-white);
+    font-weight: 700;
+  }
+  .sobre-hero__dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--color-brand-lime);
+    opacity: 0.7;
+  }
+  @media (max-width: 959px) {
+    .sobre-hero__dot { display: none; }
+    .sobre-hero__inner { order: 1; }
+    .sobre-hero__media { order: 2; }
+  }
+
+  /* ======================= SECTIONS BASE (from index.astro) ======================= */
+  .section { padding: clamp(3rem, 6vw, 5rem) 0; }
+  .section--light { background: var(--color-brand-white); }
+  .section--paper { background: var(--color-paper); }
+  .section--navy  { background: var(--color-brand-navy); color: var(--color-brand-white); }
+
+  .section__head {
+    text-align: center;
+    max-width: 48rem;
+    margin: 0 auto 2.5rem;
+  }
+  .section__head p {
+    margin-top: 0.85rem;
+    color: var(--color-brand-gray);
+    font-size: 1.05rem;
+    line-height: 1.6;
+  }
+  .section__head--on-dark h2 { color: var(--color-brand-white); }
+  .section__head--on-dark p  { color: rgb(255 255 255 / 0.75); }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-brand-gray);
+    margin: 0 0 0.75rem;
+  }
+  .eyebrow--lime { color: var(--color-brand-lime); }
+  .text-brand-white { color: var(--color-brand-white); }
+
+  /* ======================= VALUES ======================= */
+  .values {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  .value {
+    padding: 1.75rem 1.5rem;
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: var(--radius-card);
+    background: var(--color-paper);
+  }
+  .value__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    margin-bottom: 1rem;
+  }
+  .value__title {
+    font-size: 1.25rem;
+    margin: 0 0 0.4rem;
+    color: var(--color-brand-navy);
+    text-transform: uppercase;
+  }
+  .value__text {
+    margin: 0;
+    color: var(--color-brand-gray);
+    line-height: 1.55;
+  }
+
+  /* ======================= ABOUT GRID (materials) ======================= */
+  .about-grid {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+  @media (min-width: 900px) {
+    .about-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2.5rem, 4vw, 4.5rem);
+    }
+  }
+  .about-grid__media {
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgb(0 0 0 / 0.4);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    position: relative;
+  }
+  .about-grid__media img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    display: block;
+  }
+  .about-grid__content {
+    display: flex;
+    flex-direction: column;
+    max-width: 38rem;
+  }
+  .about-grid__title {
+    margin: 0;
+    font-size: clamp(1.75rem, 2.5vw + 1rem, 2.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .about-grid__lead {
+    color: rgb(255 255 255 / 0.8);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin: 1rem 0 1.75rem;
+  }
+  .specs-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .specs-list li {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border-left: 3px solid var(--color-brand-lime);
+    background: rgb(255 255 255 / 0.03);
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  }
+  .specs-list strong {
+    color: var(--color-brand-lime);
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.85rem;
+  }
+  .specs-list span {
+    color: rgb(255 255 255 / 0.85);
+    line-height: 1.5;
+  }
+  @media (max-width: 600px) {
+    .specs-list li { grid-template-columns: 1fr; gap: 0.25rem; }
+  }
+
+  /* ======================= AUDIENCES ======================= */
+  .audiences {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .audience {
+    padding: 1.5rem 1.5rem;
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: var(--radius-card);
+  }
+  .audience__label {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--color-brand-navy);
+    margin: 0 0 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .audience__text {
+    margin: 0;
+    color: var(--color-brand-gray);
+    line-height: 1.55;
+  }
+
+  /* ======================= PRODUCT LINES ======================= */
+  .product-lines {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+    max-width: 42rem;
+    margin-inline: auto;
+  }
+  .product-line__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.4rem;
+    border: 1.5px solid var(--color-brand-navy);
+    border-radius: var(--radius-card);
+    background: var(--color-brand-white);
+    color: var(--color-brand-navy);
+    text-decoration: none;
+    transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+  }
+  .product-line__link:hover {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    transform: translateX(2px);
+  }
+  .product-line__name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.05rem;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .product-line__tagline {
+    margin: 0.15rem 0 0;
+    font-size: 0.9rem;
+    opacity: 0.75;
+  }
+
+  /* ======================= DIFFERENTIALS ======================= */
+  .differentials {
+    list-style: none;
+    padding: 0;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    max-width: 42rem;
+  }
+  .differentials li {
+    padding: 0.95rem 1.2rem;
+    border-left: 3px solid var(--color-brand-lime);
+    background: rgb(255 255 255 / 0.03);
+    color: rgb(255 255 255 / 0.9);
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+    line-height: 1.5;
+  }
+
+  /* ======================= LIFESTYLE BAND ======================= */
+  .lifestyle-band {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    height: clamp(200px, 28vw, 360px);
+  }
+  .lifestyle-band img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+
+  /* ======================= CTA WITH BG ======================= */
+  .sobre-cta-section {
+    position: relative;
+    color: var(--color-brand-white);
+    padding: clamp(4rem, 8vw, 6rem) 0;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .sobre-cta-section__bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+  }
+  .sobre-cta-section__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, rgb(1 0 42 / 0.7) 0%, rgb(1 0 42 / 0.92) 100%);
+  }
+  .sobre-cta {
+    text-align: center;
+    max-width: 44rem;
+    margin-inline: auto;
+    position: relative;
+  }
+  .sobre-cta h2 {
+    margin: 0 0 1rem;
+    color: var(--color-brand-white);
+    font-size: clamp(1.75rem, 2.5vw + 1rem, 2.75rem);
+    letter-spacing: -0.01em;
+  }
+  .sobre-cta p {
+    color: rgb(255 255 255 / 0.85);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin: 0 0 2rem;
+  }
+  .sobre-cta__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+  }
+</style>

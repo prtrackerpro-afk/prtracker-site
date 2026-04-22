@@ -36,3 +36,7 @@ pnpm-lock.yaml
 
 # temporary scraping artifacts
 scraped/
+
+# raw source images (high-res originals processed by scripts/build-*.mjs
+# into optimized versions under public/images/). Keep local only — bloats repo.
+Imagens/

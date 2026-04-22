@@ -64,7 +64,10 @@ const CONFIG_JSON = JSON.stringify({
     </div>
   </div>
 
-  <!-- SVG barbell (hidden in anilhas-only mode) -->
+  <!-- SVG barbell (hidden in anilhas-only mode)
+       Stylized Olympic bar shape: thin shaft, thicker sleeves at the ends,
+       collar flange separating them, end caps. Not a literal replica of the
+       miniature (which has a uniform-diameter bar), but reads as a barbell. -->
   {!isAnilhasOnly && (
     <div class="cfg__barbell">
       <svg
@@ -74,17 +77,32 @@ const CONFIG_JSON = JSON.stringify({
         aria-label="Barra olímpica com anilhas configuradas"
         data-svg
       >
-        <!-- The barbell bar (central horizontal rod) -->
-        <rect x="50" y="95" width="500" height="10" rx="2" fill="#C0C5CC" />
-        <!-- Sleeves (thicker ends where plates go) -->
-        <rect x="50" y="85" width="60" height="30" rx="3" fill="#8A8F99" data-sleeve-left />
-        <rect x="490" y="85" width="60" height="30" rx="3" fill="#8A8F99" data-sleeve-right />
-        <!-- Clip stops (at inside edge of plate stacks) -->
-        <rect x="108" y="80" width="4" height="40" rx="1" fill="#5A5F68" />
-        <rect x="488" y="80" width="4" height="40" rx="1" fill="#5A5F68" />
-        <!-- Left and right plate groups -->
-        <g data-plates-left transform="translate(108, 100)"></g>
-        <g data-plates-right transform="translate(492, 100)"></g>
+        <defs>
+          <linearGradient id="cfg-shaft" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#E4E8ED" />
+            <stop offset="50%" stop-color="#B0B6BF" />
+            <stop offset="100%" stop-color="#7A7F88" />
+          </linearGradient>
+          <linearGradient id="cfg-sleeve" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#D5D9E0" />
+            <stop offset="50%" stop-color="#9AA0AA" />
+            <stop offset="100%" stop-color="#5A5F68" />
+          </linearGradient>
+        </defs>
+        <!-- Shaft (thin central rod) -->
+        <rect x="156" y="94" width="288" height="12" rx="3" fill="url(#cfg-shaft)" />
+        <!-- Sleeves (slightly thicker ends where plates mount) -->
+        <rect x="36"  y="89" width="120" height="22" rx="3" fill="url(#cfg-sleeve)" data-sleeve-left />
+        <rect x="444" y="89" width="120" height="22" rx="3" fill="url(#cfg-sleeve)" data-sleeve-right />
+        <!-- Collar flanges (ring where sleeve meets shaft) -->
+        <rect x="152" y="85" width="8" height="30" rx="1.5" fill="#3E434B" />
+        <rect x="440" y="85" width="8" height="30" rx="1.5" fill="#3E434B" />
+        <!-- End caps (tip of sleeve) -->
+        <rect x="30"  y="90" width="8" height="20" rx="1.5" fill="#2C3036" />
+        <rect x="562" y="90" width="8" height="20" rx="1.5" fill="#2C3036" />
+        <!-- Plate groups anchored at inner sleeve edge, growing outward -->
+        <g data-plates-left transform="translate(156, 100)"></g>
+        <g data-plates-right transform="translate(444, 100)"></g>
       </svg>
     </div>
   )}
@@ -92,18 +110,21 @@ const CONFIG_JSON = JSON.stringify({
   <!-- Over-limit warning -->
   <div class="cfg__warning" data-warning hidden role="alert">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    <span>Espaço esgotado — remova anilhas.</span>
+    <span>Limite de espaço esgotado</span>
   </div>
 
   <!-- Plate selectors -->
   <div class="cfg__plates" role="group" aria-label="Selecionar anilhas por peso">
     {PLATES.map((plate) => (
-      <div class="cfg__plate-card">
-        <div class="cfg__plate-bar" style={`background: ${plate.color}`} aria-hidden="true"></div>
-        <div class="cfg__plate-meta">
-          <div class="cfg__plate-label">{plate.label}</div>
-          <div class="cfg__plate-price">{formatBRL(plate.pricePerPairCents)}/par</div>
-        </div>
+      <div class="cfg__plate-row">
+        <span class="cfg__plate-swatch" aria-hidden="true">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="11" fill={plate.color} stroke="#01002a" stroke-width="1" />
+            <circle cx="12" cy="12" r="3" fill="#ffffff" stroke="#01002a" stroke-width="0.75" />
+          </svg>
+        </span>
+        <span class="cfg__plate-label">{plate.label}</span>
+        <span class="cfg__plate-price">{formatBRL(plate.pricePerPairCents)}/par</span>
         <select
           class="cfg__plate-select"
           data-plate-select
@@ -227,51 +248,67 @@ const CONFIG_JSON = JSON.stringify({
   .cfg__warning {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.8rem 1rem;
     background: var(--color-brand-navy);
     color: var(--color-brand-lime);
     font-family: var(--font-mono);
     font-weight: 600;
     font-size: 0.82rem;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    text-align: center;
+    border-radius: var(--radius-card);
     border-left: 3px solid var(--color-plate-25);
   }
 
-  /* Plate selectors — technical cells */
+  /* Plate selectors — horizontal strips (minibarbell-inspired) */
   .cfg__plates {
-    display: grid;
-    gap: 0.5rem;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
   }
-  .cfg__plate-card {
+  .cfg__plate-row {
+    display: grid;
+    grid-template-columns: 28px auto 1fr 130px;
+    align-items: center;
+    gap: 0.85rem;
     background: var(--color-brand-white);
     border: 1px solid rgb(1 0 42 / 0.15);
     border-radius: var(--radius-card);
-    padding: 0.65rem 0.75rem 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    transition: border-color 150ms ease, transform 150ms ease;
-    position: relative;
+    padding: 0.6rem 0.9rem;
+    transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
   }
-  .cfg__plate-card:has(select:focus-visible),
-  .cfg__plate-card:hover {
+  .cfg__plate-row:has(select:focus-visible),
+  .cfg__plate-row:hover {
     border-color: var(--color-brand-navy);
     transform: translate(-1px, -1px);
     box-shadow: 2px 2px 0 0 var(--color-brand-navy);
   }
-  .cfg__plate-bar {
-    height: 4px;
-    border-radius: 0;
-    margin: -0.65rem -0.75rem 0;
+  @media (max-width: 520px) {
+    .cfg__plate-row {
+      grid-template-columns: 26px auto 1fr;
+      gap: 0.6rem 0.75rem;
+    }
+    .cfg__plate-row .cfg__plate-select {
+      grid-column: 1 / -1;
+    }
+    .cfg__plate-row .cfg__plate-price {
+      text-align: right;
+    }
   }
-  .cfg__plate-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.5rem;
+  .cfg__plate-swatch {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cfg__plate-swatch svg {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
   .cfg__plate-label {
     font-family: var(--font-product);
@@ -280,23 +317,25 @@ const CONFIG_JSON = JSON.stringify({
     color: var(--color-brand-navy);
     font-size: 1rem;
     line-height: 1;
+    white-space: nowrap;
   }
   .cfg__plate-price {
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     font-weight: 500;
     letter-spacing: 0.06em;
     color: var(--color-brand-gray);
+    white-space: nowrap;
   }
   .cfg__plate-select {
     width: 100%;
-    padding: 0.5rem 0.75rem;
+    padding: 0.45rem 1.85rem 0.45rem 0.75rem;
     border: 1px solid rgb(1 0 42 / 0.15);
     border-radius: var(--radius-card);
     background: var(--color-paper);
     color: var(--color-brand-navy);
     font-family: var(--font-mono);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 0.82rem;
     letter-spacing: 0.04em;
     cursor: pointer;
@@ -304,8 +343,6 @@ const CONFIG_JSON = JSON.stringify({
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301002a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
-    background-color: var(--color-paper);
-    padding-right: 1.85rem;
     text-transform: uppercase;
   }
   .cfg__plate-select:focus-visible {
@@ -423,12 +460,6 @@ const CONFIG_JSON = JSON.stringify({
   }
 
   .w-full { width: 100%; }
-
-  /* Over-limit state */
-  .configurator[data-over-limit="true"] [data-add-btn] {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
 </style>
 
 <script>
@@ -504,16 +535,13 @@ const CONFIG_JSON = JSON.stringify({
       const needsPlates = config.isAnilhasOnly && platesCents === 0;
       warningEl.hidden = !overLimit;
       root.dataset.overLimit = overLimit ? "true" : "false";
-      addBtn.disabled = overLimit || needsPlates;
-      addBtn.textContent = needsPlates
-        ? "Selecione anilhas"
-        : overLimit
-          ? "Remova anilhas"
-          : "Adicionar ao carrinho";
+      // Over-limit does NOT block the purchase; the warning is enough.
+      addBtn.disabled = needsPlates;
+      addBtn.textContent = needsPlates ? "Selecione anilhas" : "Adicionar ao carrinho";
 
       if (leftGroup && rightGroup) {
-        renderSvgPlates(leftGroup, platesOrdered, state, "left");
-        renderSvgPlates(rightGroup, platesOrdered, state, "right");
+        renderSvgPlates(leftGroup, platesOrdered, state, "left", config.maxSideSpaceMm);
+        renderSvgPlates(rightGroup, platesOrdered, state, "right", config.maxSideSpaceMm);
       }
     }
 
@@ -522,34 +550,54 @@ const CONFIG_JSON = JSON.stringify({
       platesOrdered: PlateSpec[],
       st: Record<string, number>,
       side: "left" | "right",
+      maxSideMm: number,
     ): void {
       while (group.firstChild) group.removeChild(group.firstChild);
 
-      // 1mm ≈ 3.2px so 45mm of plates ≈ 144px per side inside the viewBox.
-      const pxPerMm = 3.2;
+      // Real product: plates all have same diameter (42mm). Only thickness varies.
+      // Scale: 1mm = 2.4px → plate diameter 100px, 45mm side limit → 108px max stack.
+      const pxPerMm = 2.4;
+      const PLATE_DIAMETER_PX = 100;
+      const HUB_HEIGHT_PX = 14; // slightly thicker than bar (12px) so it reads as the hub
+      const NS = "http://www.w3.org/2000/svg";
       let offset = 0;
+      let cumulativeMm = 0;
       const direction = side === "left" ? -1 : 1;
 
       for (const p of platesOrdered) {
         const pairs = st[p.id] ?? 0;
         if (!pairs) continue;
         for (let i = 0; i < pairs; i++) {
-          const widthPx = p.thicknessMm * pxPerMm;
-          const heightPx = p.radiusPx * 1.6;
-          const x = side === "left" ? offset - widthPx : offset;
-          const y = -heightPx / 2;
+          // Stop rendering once the next plate would exceed the 45mm side limit.
+          // The over-limit warning still fires separately from render().
+          if (cumulativeMm + p.thicknessMm > maxSideMm) break;
 
-          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          const widthPx = p.thicknessMm * pxPerMm;
+          const x = side === "left" ? offset - widthPx : offset;
+          const y = -PLATE_DIAMETER_PX / 2;
+
+          // Plate body — solid opaque color, all same diameter
+          const rect = document.createElementNS(NS, "rect");
           rect.setAttribute("x", String(x));
           rect.setAttribute("y", String(y));
           rect.setAttribute("width", String(widthPx));
-          rect.setAttribute("height", String(heightPx));
+          rect.setAttribute("height", String(PLATE_DIAMETER_PX));
           rect.setAttribute("rx", "2");
           rect.setAttribute("fill", p.color);
-          rect.setAttribute("stroke", "rgb(1 0 42 / 0.25)");
-          rect.setAttribute("stroke-width", "0.5");
+          rect.setAttribute("stroke", "#01002a");
+          rect.setAttribute("stroke-width", "0.8");
           group.appendChild(rect);
 
+          // Hub — solid dark strip where the bar mounts the plate
+          const hub = document.createElementNS(NS, "rect");
+          hub.setAttribute("x", String(x));
+          hub.setAttribute("y", String(-HUB_HEIGHT_PX / 2));
+          hub.setAttribute("width", String(widthPx));
+          hub.setAttribute("height", String(HUB_HEIGHT_PX));
+          hub.setAttribute("fill", "#1a1c22");
+          group.appendChild(hub);
+
+          cumulativeMm += p.thicknessMm;
           offset += direction * widthPx;
         }
       }

@@ -49,12 +49,13 @@ const primary = images[0]!;
     display: flex;
     flex-direction: column;
     background: var(--color-brand-white);
+    border: 1.5px solid var(--color-brand-navy);
     border-radius: var(--radius-card);
     overflow: hidden;
     text-decoration: none;
     color: inherit;
     box-shadow: var(--shadow-card);
-    transition: box-shadow 220ms ease, transform 220ms ease;
+    transition: box-shadow 220ms ease, transform 220ms ease, border-color 220ms ease;
     height: 100%;
   }
   .product-card:hover {
@@ -70,12 +71,13 @@ const primary = images[0]!;
 
   .product-card__media {
     aspect-ratio: 1 / 1;
-    background: var(--color-paper);
+    background: var(--color-brand-white);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
     overflow: hidden;
+    border-bottom: 1px solid rgb(1 0 42 / 0.08);
   }
   .product-card__img {
     width: 100%;
