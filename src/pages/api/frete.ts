@@ -200,6 +200,10 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  // Top 5 cheapest — beyond that, the list becomes decision paralysis for
+  // the customer. Disable unwanted carriers in the Melhor Envio dashboard
+  // itself so we don't also have to maintain a deny-list here.
+  const MAX_OPTIONS = 5;
   const options: QuoteOption[] = rawCarriers
     .filter((c) => !c.error && c.price != null)
     .map((c) => {
@@ -221,7 +225,8 @@ export const POST: APIRoute = async ({ request }) => {
       };
     })
     .filter((o) => Number.isFinite(o.price_cents) && o.price_cents > 0)
-    .sort((a, b) => a.price_cents - b.price_cents);
+    .sort((a, b) => a.price_cents - b.price_cents)
+    .slice(0, MAX_OPTIONS);
 
   if (options.length === 0) {
     return jsonResponse(200, {
