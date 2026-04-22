@@ -200,12 +200,30 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  // Top 5 cheapest — beyond that, the list becomes decision paralysis for
-  // the customer. Disable unwanted carriers in the Melhor Envio dashboard
-  // itself so we don't also have to maintain a deny-list here.
+  // Curated whitelist of carriers that match the premium, D2C positioning
+  // of the brand. JeT/Buslog/J&T/Azul Cargo/LATAM Cargo return quotes but
+  // are either B2B-oriented, airport-pickup, or less recognized by retail
+  // buyers — showing them erodes trust at the decision moment. Correios is
+  // the default-trust brand in BR; Jadlog/Total Express are strong private
+  // alternatives; Loggi covers metro SP/RJ/BH with faster SLAs.
+  const ALLOWED_CARRIERS = new Set([
+    "Correios",
+    "Jadlog",
+    "Total Express",
+    "Loggi",
+  ]);
+
+  // After filtering by carrier, keep top 5 cheapest so multi-service
+  // carriers (Loggi has Express/Ponto/Coleta) don't dominate the list.
   const MAX_OPTIONS = 5;
   const options: QuoteOption[] = rawCarriers
-    .filter((c) => !c.error && c.price != null)
+    .filter(
+      (c) =>
+        !c.error &&
+        c.price != null &&
+        c.company?.name != null &&
+        ALLOWED_CARRIERS.has(c.company.name),
+    )
     .map((c) => {
       const priceStr = c.custom_price ?? c.price;
       const price_cents = Math.round(Number(priceStr) * 100);
