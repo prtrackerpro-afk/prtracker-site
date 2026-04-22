@@ -187,6 +187,12 @@ export const POST: APIRoute = async ({ request }) => {
       console.error("[frete] ME HTTP", res.status, errText.slice(0, 500));
       return jsonResponse(502, {
         error: "Serviço de frete indisponível. Tente novamente em instantes.",
+        // Debug info — only truly helpful until we stabilize the ME integration.
+        // Remove or gate behind an env flag once we stop seeing issues.
+        debug: {
+          me_status: res.status,
+          me_body: errText.slice(0, 800),
+        },
       });
     }
     rawCarriers = (await res.json()) as MeCarrier[];
