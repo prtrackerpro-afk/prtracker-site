@@ -195,6 +195,9 @@ export const POST: APIRoute = async ({ request }) => {
         debug: {
           me_status: res.status,
           me_body: errText.slice(0, 800),
+          token_len: accessToken.length,
+          token_fingerprint: `${accessToken.slice(0, 12)}...${accessToken.slice(-8)}`,
+          host: meHost,
         },
       });
     }
