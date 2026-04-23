@@ -120,10 +120,33 @@ import Loader from "@lucide/astro/icons/loader";
       <aside class="checkout__summary">
         <h2 class="checkout__summary-title">Pedido</h2>
         <ul class="checkout__items" data-checkout-items></ul>
+        <div class="checkout__coupon" data-coupon-box>
+          <label for="coupon-code" class="checkout__coupon-label">Cupom de desconto</label>
+          <div class="checkout__coupon-row">
+            <input
+              type="text"
+              id="coupon-code"
+              name="couponCode"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="Digite o código"
+            />
+            <button type="button" class="btn btn-ghost" data-coupon-apply>
+              Aplicar
+            </button>
+          </div>
+          <p class="checkout__coupon-status" data-coupon-status></p>
+        </div>
+
         <dl class="checkout__totals">
           <div class="checkout__row">
             <dt>Subtotal</dt>
             <dd data-checkout-subtotal>R$ 0,00</dd>
+          </div>
+          <div class="checkout__row" data-coupon-row hidden>
+            <dt>Cupom <span class="text-brand-gray text-sm" data-coupon-applied></span></dt>
+            <dd data-checkout-coupon>- R$ 0,00</dd>
           </div>
           <div class="checkout__row" data-frete-row hidden>
             <dt>Frete <span class="text-brand-gray text-sm" data-frete-name></span></dt>
@@ -382,6 +405,55 @@ import Loader from "@lucide/astro/icons/loader";
   .checkout__items .ci-sub   { font-size: 0.78rem; color: var(--color-brand-gray); }
   .checkout__items .ci-price { font-family: var(--font-display); font-weight: 700; color: var(--color-brand-navy); }
 
+  .checkout__coupon {
+    padding: 1.25rem 0;
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .checkout__coupon-label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-brand-gray);
+  }
+  .checkout__coupon-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .checkout__coupon-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.65rem 0.85rem;
+    border: 1.5px solid rgb(1 0 42 / 0.12);
+    border-radius: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    text-transform: lowercase;
+    background: var(--color-brand-white);
+  }
+  .checkout__coupon-row input:focus-visible {
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 1px;
+    border-color: var(--color-brand-navy);
+  }
+  .checkout__coupon-row .btn {
+    flex: 0 0 auto;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+  }
+  .checkout__coupon-status {
+    margin: 0;
+    font-size: 0.85rem;
+    min-height: 1.1rem;
+    color: var(--color-brand-gray);
+  }
+  .checkout__coupon-status[data-state="ok"] { color: #16a34a; font-weight: 600; }
+  .checkout__coupon-status[data-state="error"] { color: #b91c1c; font-weight: 500; }
+
   .checkout__totals { margin: 0; padding: 1.25rem 0 0; border-top: 1px solid rgb(1 0 42 / 0.08); display: flex; flex-direction: column; gap: 0.65rem; }
   .checkout__row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
   .checkout__row dt { margin: 0; color: var(--color-brand-gray); }
@@ -445,8 +517,19 @@ import Loader from "@lucide/astro/icons/loader";
   const freteGroup = document.querySelector<HTMLFieldSetElement>("#freteGroup")!;
   const freteStatus = document.querySelector<HTMLElement>("[data-frete-status]")!;
   const freteList = document.querySelector<HTMLElement>("[data-frete-list]")!;
+  const couponInput = document.querySelector<HTMLInputElement>("#coupon-code")!;
+  const couponBtn = document.querySelector<HTMLButtonElement>("[data-coupon-apply]")!;
+  const couponStatus = document.querySelector<HTMLElement>("[data-coupon-status]")!;
+  const couponRow = document.querySelector<HTMLElement>("[data-coupon-row]")!;
+  const couponAppliedEl = document.querySelector<HTMLElement>("[data-coupon-applied]")!;
+  const couponAmountEl = document.querySelector<HTMLElement>("[data-checkout-coupon]")!;
 
   let selectedFrete: FreteOption | null = null;
+  let appliedCoupon: {
+    code: string;
+    discountCents: number;
+    creditedTo: string;
+  } | null = null;
 
   function renderSummary(snap: CartSnapshot) {
     itemsList.innerHTML = snap.items
@@ -471,6 +554,13 @@ import Loader from "@lucide/astro/icons/loader";
       .join("");
     subtotalEl.textContent = formatBRL(snap.subtotalCents);
 
+    const couponCents = appliedCoupon?.discountCents ?? 0;
+    couponRow.hidden = couponCents === 0;
+    if (couponCents > 0 && appliedCoupon) {
+      couponAppliedEl.textContent = `· ${appliedCoupon.code.toUpperCase()}`;
+      couponAmountEl.textContent = `- ${formatBRL(couponCents)}`;
+    }
+
     const freteCents = selectedFrete?.price_cents ?? 0;
     freteRow.hidden = freteCents === 0;
     if (freteCents > 0) {
@@ -478,8 +568,14 @@ import Loader from "@lucide/astro/icons/loader";
       freteTotalEl.textContent = formatBRL(freteCents);
     }
 
-    pixEl.textContent = formatBRL(snap.pixTotalCents + freteCents);
-    creditEl.textContent = formatBRL(snap.subtotalCents + freteCents);
+    // Pix discount applies to post-coupon subtotal, matching server logic.
+    const subtotalAfterCoupon = Math.max(0, snap.subtotalCents - couponCents);
+    const pixDiscount = Math.round(subtotalAfterCoupon * 0.05);
+    const pixTotal = subtotalAfterCoupon - pixDiscount + freteCents;
+    const creditTotal = subtotalAfterCoupon + freteCents;
+
+    pixEl.textContent = formatBRL(pixTotal);
+    creditEl.textContent = formatBRL(creditTotal);
   }
 
   renderSummary(cart.snapshot());
@@ -494,6 +590,68 @@ import Loader from "@lucide/astro/icons/loader";
       creditRow.hidden = method !== "credit";
     });
   });
+
+  // --- Coupon apply ------------------------------------------------------
+  couponInput.addEventListener("input", () => {
+    couponInput.value = couponInput.value.toLowerCase();
+  });
+  // Submitting the coupon form with Enter shouldn't submit the checkout.
+  couponInput.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      couponBtn.click();
+    }
+  });
+
+  async function applyCoupon() {
+    const code = couponInput.value.trim();
+    if (!code) {
+      clearCoupon();
+      return;
+    }
+    couponBtn.disabled = true;
+    couponStatus.dataset.state = "";
+    couponStatus.textContent = "Validando…";
+    try {
+      const res = await fetch("/api/validate-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, items: cart.snapshot().items }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.ok) {
+        couponStatus.dataset.state = "error";
+        couponStatus.textContent = data?.error ?? "Cupom inválido.";
+        appliedCoupon = null;
+        renderSummary(cart.snapshot());
+        return;
+      }
+      appliedCoupon = {
+        code: data.code,
+        discountCents: data.discountCents,
+        creditedTo: data.creditedTo,
+      };
+      const discountLabel =
+        data.discountType === "percent"
+          ? `${data.amount}% OFF`
+          : `R$ ${data.amount} OFF`;
+      couponStatus.dataset.state = "ok";
+      couponStatus.textContent = `✓ Cupom aplicado · ${discountLabel}`;
+      renderSummary(cart.snapshot());
+    } catch (err) {
+      couponStatus.dataset.state = "error";
+      couponStatus.textContent = "Falha ao validar. Tente novamente.";
+    } finally {
+      couponBtn.disabled = false;
+    }
+  }
+  function clearCoupon() {
+    appliedCoupon = null;
+    couponStatus.dataset.state = "";
+    couponStatus.textContent = "";
+    renderSummary(cart.snapshot());
+  }
+  couponBtn.addEventListener("click", applyCoupon);
 
   const cpfEl = document.querySelector<HTMLInputElement>("#cpf")!;
   const cepEl = document.querySelector<HTMLInputElement>("#cep")!;
@@ -731,6 +889,7 @@ import Loader from "@lucide/astro/icons/loader";
       },
       paymentMethod: String(formData.get("paymentMethod") ?? "pix"),
       items: cart.snapshot().items,
+      couponCode: appliedCoupon?.code,
     };
 
     submitBtn.dataset.loading = "true";

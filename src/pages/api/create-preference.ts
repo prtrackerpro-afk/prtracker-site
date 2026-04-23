@@ -5,6 +5,7 @@ import { MercadoPagoConfig, Preference } from "mercadopago";
 import { applyPix } from "~/lib/format";
 import { PIX_DISCOUNT, MAX_INSTALLMENTS } from "~/lib/catalog";
 import { recomputeLine } from "~/lib/pricing";
+import { validateCoupon } from "~/lib/coupons";
 
 export const prerender = false;
 
@@ -53,6 +54,7 @@ const payloadSchema = z.object({
   shippingOption: shippingOptionSchema,
   paymentMethod: z.enum(["pix", "credit"]),
   items: z.array(cartItemSchema).min(1).max(20),
+  couponCode: z.string().trim().max(60).optional(),
 });
 
 function jsonResponse(status: number, data: unknown): Response {
@@ -118,11 +120,41 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
+  // Apply coupon first (discounts the merch subtotal). Pix discount then
+  // stacks on top of the already-discounted subtotal — matching how WC
+  // handles coupon + Pix on the legacy site.
+  let couponDiscountCents = 0;
+  let couponCreditedTo: string | null = null;
+  if (data.couponCode && data.couponCode.length > 0) {
+    const result = validateCoupon(data.couponCode, subtotalCents);
+    if (!result.ok) {
+      return jsonResponse(400, {
+        error: result.message,
+        field: "couponCode",
+      });
+    }
+    couponDiscountCents = result.discountCents;
+    couponCreditedTo = result.creditedTo;
+    if (couponDiscountCents > 0) {
+      mpItems.push({
+        id: `coupon-${result.coupon.code}`,
+        title: `Cupom ${result.coupon.code.toUpperCase()}${
+          couponCreditedTo !== result.coupon.code ? ` — ${couponCreditedTo}` : ""
+        }`,
+        quantity: 1,
+        currency_id: "BRL",
+        unit_price: -(Math.round(couponDiscountCents) / 100),
+      });
+    }
+  }
+  const subtotalAfterCouponCents = subtotalCents - couponDiscountCents;
+
   // Apply Pix discount as a negative item if applicable.
-  // Pix discount applies only to product subtotal, not freight.
+  // Pix discount applies only to (post-coupon) product subtotal, not freight.
   const isPix = data.paymentMethod === "pix";
   if (isPix) {
-    const discountCents = subtotalCents - applyPix(subtotalCents);
+    const discountCents =
+      subtotalAfterCouponCents - applyPix(subtotalAfterCouponCents);
     if (discountCents > 0) {
       mpItems.push({
         id: "pix-discount",
@@ -214,6 +246,9 @@ export const POST: APIRoute = async ({ request }) => {
           shipping_city: data.shipping.city,
           shipping_state: data.shipping.state,
           shipping_complement: data.shipping.complement ?? "",
+          coupon_code: data.couponCode?.toLowerCase() ?? "",
+          coupon_discount_cents: couponDiscountCents,
+          coupon_credited_to: couponCreditedTo ?? "",
         },
       },
     });
