@@ -2,51 +2,72 @@
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#01002A"/>
-      <stop offset="50%" stop-color="#0a0a4a"/>
-      <stop offset="100%" stop-color="#020025"/>
+      <stop offset="55%" stop-color="#06064a"/>
+      <stop offset="100%" stop-color="#01002A"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.7" cy="0.3" r="0.5">
-      <stop offset="0%" stop-color="#D8FF2C" stop-opacity="0.15"/>
+    <radialGradient id="glow" cx="0.82" cy="0.22" r="0.55">
+      <stop offset="0%" stop-color="#D8FF2C" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#D8FF2C" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="60%" stop-color="#01002A" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#01002A" stop-opacity="0.7"/>
+    </linearGradient>
   </defs>
 
   <rect width="1200" height="630" fill="url(#bg)"/>
   <rect width="1200" height="630" fill="url(#glow)"/>
 
-  <!-- Mini barbell illustration (top-right corner) -->
-  <g transform="translate(780, 120) scale(1.8)">
-    <rect x="-100" y="90" width="200" height="14" rx="3" fill="#C0C5CC"/>
-    <rect x="-120" y="70" width="24" height="54" rx="3" fill="#DA291C"/>
-    <rect x="96" y="70" width="24" height="54" rx="3" fill="#DA291C"/>
-    <rect x="-90" y="77" width="16" height="40" rx="2" fill="#0057B8"/>
-    <rect x="74" y="77" width="16" height="40" rx="2" fill="#0057B8"/>
-    <rect x="-70" y="82" width="12" height="30" rx="2" fill="#FFC72C"/>
-    <rect x="58" y="82" width="12" height="30" rx="2" fill="#FFC72C"/>
-    <rect x="-54" y="85" width="10" height="24" rx="2" fill="#43B02A"/>
-    <rect x="44" y="85" width="10" height="24" rx="2" fill="#43B02A"/>
+  <!-- Brand mark — top-left. Lime accent bar + wordmark. -->
+  <rect x="80" y="82" width="56" height="6" rx="3" fill="#D8FF2C"/>
+  <text x="148" y="92" fill="#D8FF2C"
+    font-family="'Big Shoulders', 'Arial Narrow', Impact, sans-serif"
+    font-weight="800" font-size="22" letter-spacing="4">
+    PR TRACKER
+  </text>
+
+  <!-- Stylized plate stack — bottom-right, clear of all text.
+       Shows weight-ordering 25 red → 20 blue → 15 yellow → 10 green
+       stacked outward from a silver bar end cap. Positioned where the
+       vignette darkens so it recedes if typography dominates. -->
+  <g transform="translate(1050, 300)">
+    <!-- Bar end (inox) -->
+    <rect x="-34" y="-8" width="140" height="16" rx="3" fill="#D8DDE4"/>
+    <!-- Collar -->
+    <rect x="-48" y="-18" width="18" height="36" rx="3" fill="#A0A8B2"/>
+    <!-- 25 kg red (outermost) -->
+    <rect x="-74" y="-90" width="22" height="180" rx="4" fill="#DA291C"/>
+    <!-- 20 kg blue -->
+    <rect x="-100" y="-72" width="20" height="144" rx="4" fill="#0057B8"/>
+    <!-- 15 kg yellow -->
+    <rect x="-124" y="-54" width="18" height="108" rx="3" fill="#FFC72C"/>
+    <!-- 10 kg green -->
+    <rect x="-146" y="-38" width="16" height="76" rx="3" fill="#43B02A"/>
   </g>
 
-  <!-- Headline -->
-  <text x="80" y="340" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-weight="900" font-size="88" letter-spacing="-3">
-    Seu PR merece mais
+  <rect width="1200" height="630" fill="url(#vignette)"/>
+
+  <!-- Headline, left-anchored, clear of the plate stack. -->
+  <text x="80" y="320" fill="#FFFFFF"
+    font-family="'Big Shoulders', 'Arial Narrow', Impact, sans-serif"
+    font-weight="900" font-size="100" letter-spacing="-2">
+    SEU PR MERECE
   </text>
-  <text x="80" y="430" fill="#D8FF2C" font-family="Inter, system-ui, sans-serif" font-weight="900" font-size="88" letter-spacing="-3">
-    do que uma foto.
+  <text x="80" y="420" fill="#FFFFFF"
+    font-family="'Big Shoulders', 'Arial Narrow', Impact, sans-serif"
+    font-weight="900" font-size="100" letter-spacing="-2">
+    MAIS DO QUE
+  </text>
+  <text x="80" y="520" fill="#D8FF2C"
+    font-family="'Big Shoulders', 'Arial Narrow', Impact, sans-serif"
+    font-weight="900" font-size="100" letter-spacing="-2">
+    UMA FOTO.
   </text>
 
-  <!-- Tagline -->
-  <text x="80" y="500" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="28" opacity="0.75">
-    Miniaturas-troféu sob medida para celebrar seus PRs.
+  <!-- Domain, bottom-left corner. -->
+  <text x="80" y="585" fill="#FFFFFF"
+    font-family="'Outfit', system-ui, sans-serif" font-weight="500"
+    font-size="24" opacity="0.7" letter-spacing="1">
+    prtracker.com.br
   </text>
-
-  <!-- Wordmark -->
-  <g transform="translate(80, 555)">
-    <rect x="0" y="0" width="40" height="12" rx="2" fill="#D8FF2C"/>
-    <rect x="-4" y="-12" width="10" height="36" rx="1.5" fill="#DA291C"/>
-    <rect x="36" y="-12" width="10" height="36" rx="1.5" fill="#DA291C"/>
-    <text x="70" y="14" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-weight="900" font-size="24" font-style="italic" letter-spacing="-1">
-      PR TRACKER
-    </text>
-  </g>
 </svg>
