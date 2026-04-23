@@ -5,6 +5,10 @@
  * Variants:
  *  - dark  → navy wordmark on light background (`logo-navy.png`)
  *  - light → lime wordmark on dark background (`logo-lime.png`)
+ *
+ * Sizes use CSS classes (not inline styles) so external @media queries
+ * can override them without fighting inline-style specificity. Mobile
+ * auto-shrinks to ~60 % of the `md` size.
  */
 
 interface Props {
@@ -19,15 +23,12 @@ const base = variant === "light"
   ? "/images/brand/logo-lime"
   : "/images/brand/logo-navy";
 
-const heights: Record<typeof size, string> = { sm: "1.75rem", md: "2.25rem", lg: "3.25rem" };
-const height = heights[size];
-
 // logo-lime has AVIF/WebP siblings (see scripts/build-image-variants.mjs).
 // logo-navy only has PNG, so we fall through to the <img> for it.
 const hasModernVariants = variant === "light";
 ---
 
-<span class={`pr-logo ${cls}`} style={`height: ${height};`}>
+<span class:list={["pr-logo", `pr-logo--${size}`, cls]}>
   <picture>
     {hasModernVariants && <source type="image/avif" srcset={`${base}.avif`} />}
     {hasModernVariants && <source type="image/webp" srcset={`${base}.webp`} />}
@@ -53,5 +54,21 @@ const hasModernVariants = variant === "light";
     width: auto;
     display: block;
     object-fit: contain;
+  }
+
+  /* Desktop heights — inline style would have specificity 1,0,0,0 which
+     beats every scoped rule, so we use classes that can be overridden by
+     the mobile media query below. */
+  .pr-logo--sm { height: 1.75rem; }
+  .pr-logo--md { height: 2.25rem; }
+  .pr-logo--lg { height: 3.25rem; }
+
+  @media (max-width: 640px) {
+    /* Header uses `md` → we shrink to roughly the size the user drew with
+       a red rectangle in their mockup (~1.1rem). `lg` in the footer keeps
+       more presence but still drops ~40 %. */
+    .pr-logo--sm { height: 1.35rem; }
+    .pr-logo--md { height: 1.1rem; }
+    .pr-logo--lg { height: 2rem; }
   }
 </style>

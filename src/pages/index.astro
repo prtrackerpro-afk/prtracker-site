@@ -601,11 +601,14 @@ const jsonLd = [
     align-items: center;
   }
   @media (max-width: 899px) {
-    /* Give the hero more height so there's room for the photo's barbell
-       to breathe below the CTAs without cramping title + subtitle. The
-       content stays vertically centered; padding below shifts it just
-       above true center so the barbell is visible near the fold. */
-    .hero { min-height: clamp(640px, 100vh, 820px); }
+    /* On phones the content anchors to the top (not vertical-center) so
+       the title sits near the header and the barbell photo fills the
+       bottom portion. align-items:center was previously eating the
+       effect of our top padding — the flexbox was centering regardless. */
+    .hero {
+      min-height: clamp(640px, 100vh, 820px);
+      align-items: flex-start;
+    }
   }
   .hero__bg {
     position: absolute;
