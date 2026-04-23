@@ -87,6 +87,14 @@ export const POST: APIRoute = async ({ request }) => {
     (body?.resource as string | undefined) ??
     null;
 
+  console.log("[mp-webhook] incoming", {
+    paymentId,
+    action: body?.action,
+    type: body?.type,
+    live_mode: body?.live_mode,
+    user_id: body?.user_id,
+  });
+
   if (!paymentId) {
     console.log("[mp-webhook] non-payment event ignored", body);
     return new Response("ok", { status: 200 });
