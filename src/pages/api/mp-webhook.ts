@@ -282,8 +282,31 @@ async function generateShippingLabel(payment: MpPayment): Promise<void> {
     return;
   }
 
+  // ME /cart requires volumes[] (packages). We pre-computed them at
+  // preference-creation time and stored as JSON on metadata — cart info
+  // isn't available anymore at webhook time.
+  let volumes: Array<{
+    height: number;
+    width: number;
+    length: number;
+    weight: number;
+  }> = [];
+  try {
+    const raw = String(meta.shipping_volumes ?? "");
+    if (raw) volumes = JSON.parse(raw);
+  } catch {
+    console.warn("[mp-webhook] failed to parse shipping_volumes", meta.shipping_volumes);
+  }
+  if (volumes.length === 0) {
+    // Defensive fallback: conservative box dims so the label still goes
+    // through. Real weight is unknown — use 1kg to stay above ME minimum.
+    volumes = [{ height: 10, width: 20, length: 20, weight: 1 }];
+    console.warn("[mp-webhook] no shipping_volumes in metadata, using fallback box");
+  }
+
   const shipmentPayload = {
     service: serviceId,
+    volumes,
     from: {
       name: "PR Tracker Ltda",
       phone: "51982061914",

@@ -96,6 +96,15 @@ export const POST: APIRoute = async ({ request }) => {
     unit_price: number; // reais, 2 decimals
   }> = [];
 
+  // Per-package shipping dims — we pass these to Melhor Envio /cart via
+  // metadata so the webhook can buy the label without re-reading the cart.
+  const shippingVolumes: Array<{
+    height: number;
+    width: number;
+    length: number;
+    weight: number;
+  }> = [];
+
   let subtotalCents = 0;
   for (const input of data.items) {
     const product = bySlug.get(input.productSlug);
@@ -113,6 +122,24 @@ export const POST: APIRoute = async ({ request }) => {
         currency_id: "BRL",
         unit_price: Math.round(priced.unitPriceCents) / 100,
       });
+
+      const dims = product.data.shipping;
+      const isStandaloneAnilhas = product.data.slug === "anilhas";
+      const totalPairs = isStandaloneAnilhas
+        ? (input.plates ?? []).reduce((n, p) => n + p.pairs, 0) || 1
+        : 1;
+      const weightKg = (dims.weight_g * totalPairs) / 1000;
+      // ME accepts one volume row per *package*, not per line. We push one
+      // per unit in the cart (quantity × volume) so a buyer ordering 3
+      // sets ships 3 boxes.
+      for (let q = 0; q < input.quantity; q++) {
+        shippingVolumes.push({
+          height: dims.height_cm,
+          width: dims.width_cm,
+          length: dims.length_cm,
+          weight: Number(weightKg.toFixed(3)),
+        });
+      }
     } catch (err) {
       return jsonResponse(400, {
         error: err instanceof Error ? err.message : "Item inválido.",
@@ -255,6 +282,7 @@ export const POST: APIRoute = async ({ request }) => {
           coupon_code: data.couponCode?.toLowerCase() ?? "",
           coupon_discount_cents: couponDiscountCents,
           coupon_credited_to: couponCreditedTo ?? "",
+          shipping_volumes: JSON.stringify(shippingVolumes),
         },
       },
     });
