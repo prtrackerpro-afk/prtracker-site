@@ -114,16 +114,16 @@ async function generateShippingLabel(payment: MpPayment): Promise<void> {
   const shipmentPayload = {
     service: serviceId,
     from: {
-      name: "PR Tracker",
-      phone: "5198206-1914",
+      name: "PR Tracker Ltda",
+      phone: "51982061914",
       email: "contato@prtracker.com.br",
       document: "59947215000167", // CNPJ PR Tracker Ltda
       company_document: "59947215000167",
       state_register: "isento",
-      address: "Endereço PR Tracker",
-      complement: "",
-      number: "s/n",
-      district: "Centro",
+      address: "Av. Bagé",
+      complement: "Apto 501",
+      number: "232",
+      district: "Petrópolis",
       city: "Porto Alegre",
       state_abbr: "RS",
       country_id: "BR",
