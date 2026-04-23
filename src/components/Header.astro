@@ -118,6 +118,13 @@ const nav = [
     gap: 1rem;
     padding-block: 0.9rem;
   }
+  /* Tighter header on phones — was eating ~90px of vertical space above
+     the fold, pushing hero copy + CTAs too low on iPhone 15-class devices. */
+  @media (max-width: 640px) {
+    .site-header__bar-inner { padding-block: 0.55rem; }
+    .site-header__promo-inner { padding-block: 0.35rem; font-size: 0.72rem; }
+    .pr-logo { height: 1.55rem !important; }
+  }
 
   /* Nav */
   .site-header__nav {

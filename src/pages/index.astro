@@ -632,7 +632,10 @@ const jsonLd = [
         rgb(1 0 42 / 0.95) 100%);
   }
   @media (max-width: 899px) {
-    .hero__bg img { object-position: center; }
+    /* Anchor the focal point slightly above center so the bottom ~10%
+       of the photo is cropped — barbell is the hero, we don't need the
+       floor tiles. */
+    .hero__bg img { object-position: center 40%; }
     .hero__scrim {
       background:
         linear-gradient(180deg,
@@ -649,11 +652,11 @@ const jsonLd = [
     padding-block: clamp(3rem, 6vw, 5rem);
   }
   @media (max-width: 899px) {
-    /* Push content slightly above the true vertical center so the barbell
-       in the background has room to breathe below the CTAs without
-       cramming title + subtitle near the header. */
+    /* Tighter top padding to pull the hero copy up — the trimmed header
+       on phones + cropped background mean the title is sitting too low
+       otherwise. */
     .hero__inner {
-      padding-block: 3rem 8rem;
+      padding-block: 1.5rem 8rem;
     }
   }
   .hero__content {
