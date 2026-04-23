@@ -54,9 +54,12 @@ const {
     <link rel="preconnect" href="https://prtracker.com.br" crossorigin />
 
     {/*
-      Preload the two most critical fonts for first-paint. Big Shoulders Bold
-      carries the hero title; Outfit Regular carries the subtitle + body copy.
-      Other weights load on-demand via @font-face without blocking LCP.
+      Preload the three fonts that show up in the hero/above-the-fold:
+      - Big Shoulders Bold → "SEU PR VIROU TROFÉU" hero title
+      - Outfit Regular     → subtitle + body copy
+      - Outfit Bold        → buttons + H2/H3 weights. PageSpeed flagged
+        CLS=0.28 because this weight arrived after first paint and
+        caused a text reflow in the hero.
     */}
     <link
       rel="preload"
@@ -70,6 +73,13 @@ const {
       as="font"
       type="font/woff2"
       href="/fonts/Outfit-Regular.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/Outfit-Bold.woff2"
       crossorigin
     />
 
