@@ -54,6 +54,19 @@ const sources = [
     src: "public/images/products/my-pr-set/hero.jpg",
     outBase: "public/images/products/my-pr-set/hero",
   },
+  // Camisetas (PNG sources — emit JPG fallback + modern variants)
+  {
+    src: "public/images/products/camiseta-masculina/FT-C.png",
+    outBase: "public/images/products/camiseta-masculina/FT-C",
+    emitJpg: true,
+    jpgQuality: 84,
+  },
+  {
+    src: "public/images/products/camiseta-feminina-baby-look/FT-C.png",
+    outBase: "public/images/products/camiseta-feminina-baby-look/FT-C",
+    emitJpg: true,
+    jpgQuality: 84,
+  },
 ];
 
 async function sizeOf(p) {
