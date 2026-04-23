@@ -541,13 +541,11 @@ const testimonials = [
     align-items: center;
   }
   @media (max-width: 899px) {
-    /* Shift content up on mobile so the barbell in the background photo
-       remains visible below the CTAs. Also give the hero a bit more
-       minimum height so the buttons never overlap the photo's subject. */
-    .hero {
-      align-items: flex-start;
-      min-height: clamp(520px, 90vh, 760px);
-    }
+    /* Give the hero more height so there's room for the photo's barbell
+       to breathe below the CTAs without cramping title + subtitle. The
+       content stays vertically centered; padding below shifts it just
+       above true center so the barbell is visible near the fold. */
+    .hero { min-height: clamp(640px, 100vh, 820px); }
   }
   .hero__bg {
     position: absolute;
@@ -591,10 +589,11 @@ const testimonials = [
     padding-block: clamp(3rem, 6vw, 5rem);
   }
   @media (max-width: 899px) {
-    /* Less top padding, generous bottom padding → content sits higher,
-       barbell shows more at the bottom. */
+    /* Push content slightly above the true vertical center so the barbell
+       in the background has room to breathe below the CTAs without
+       cramming title + subtitle near the header. */
     .hero__inner {
-      padding-block: 2rem 4.5rem;
+      padding-block: 3rem 8rem;
     }
   }
   .hero__content {
