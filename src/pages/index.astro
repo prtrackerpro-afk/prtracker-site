@@ -636,10 +636,10 @@ const jsonLd = [
         rgb(1 0 42 / 0.95) 100%);
   }
   @media (max-width: 899px) {
-    /* Anchor the focal point slightly above center so the bottom ~10%
-       of the photo is cropped — barbell is the hero, we don't need the
-       floor tiles. */
-    .hero__bg img { object-position: center 40%; }
+    /* Shift the focal point further up so more of the floor is cropped.
+       User quer remover a parte amarela que aponta no bottom da foto —
+       25% já corta bem mais que 40% antes. */
+    .hero__bg img { object-position: center 25%; }
     .hero__scrim {
       background:
         linear-gradient(180deg,
@@ -656,11 +656,9 @@ const jsonLd = [
     padding-block: clamp(3rem, 6vw, 5rem);
   }
   @media (max-width: 899px) {
-    /* Title anchored ~3rem below the header (meio-termo entre dead-center
-       e flush-top). Bottom padding exists only so the photo breathes
-       below the CTAs — the short min-height does most of the work. */
+    /* User pediu o dobro de espaço navy no topo: 6rem em vez de 3rem. */
     .hero__inner {
-      padding-block: 3rem 2rem;
+      padding-block: 6rem 2rem;
     }
   }
   .hero__content {
