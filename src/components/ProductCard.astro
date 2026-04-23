@@ -17,8 +17,15 @@ const primary = images[0]!;
  * When the primary image ships alongside WebP/AVIF siblings (via
  * scripts/build-image-variants.mjs), serve them first — modern browsers
  * save ~50-70% vs JPG. Legacy browsers fall through to the <img>.
+ *
+ * For product hero shots (path ending in /hero.jpg) we use the "card"
+ * variant resized to 800×592 — the full 1800×1333 is ~3× overkill for a
+ * 394×292 card. Non-hero sources (camisetas, anilhas) use the normal
+ * base since they're already close to display size.
  */
-const variantBase = primary.src.replace(/\.(jpe?g|png)$/i, "");
+const rawBase = primary.src.replace(/\.(jpe?g|png)$/i, "");
+const isHeroShot = /\/hero$/.test(rawBase);
+const variantBase = isHeroShot ? `${rawBase}.card` : rawBase;
 const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
 ---
 

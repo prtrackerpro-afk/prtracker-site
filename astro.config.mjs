@@ -28,4 +28,11 @@ export default defineConfig({
     defaultStrategy: "hover",
   },
   compressHTML: true,
+  build: {
+    // Inline CSS under 10KB into <style> tags; anything bigger stays as
+    // an external stylesheet. Saves the render-blocking round-trip for
+    // the small per-page CSS (index.css was 4KB, cart.css 7.5KB — both
+    // were showing up as LCP blockers in PageSpeed).
+    inlineStylesheets: "auto",
+  },
 });

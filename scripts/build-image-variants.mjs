@@ -37,7 +37,7 @@ const sources = [
     src: "public/images/brand/hero-mobile.jpg",
     outBase: "public/images/brand/hero-mobile",
   },
-  // 4 product hero shots
+  // 4 product hero shots — full size for product detail pages
   {
     src: "public/images/products/power-rack-set/hero.jpg",
     outBase: "public/images/products/power-rack-set/hero",
@@ -53,6 +53,28 @@ const sources = [
   {
     src: "public/images/products/my-pr-set/hero.jpg",
     outBase: "public/images/products/my-pr-set/hero",
+  },
+  // Card-sized variants (~800×592) for the home grid, which displays at
+  // 394×292. 2× retina is enough; the full 1800×1333 is wasted bandwidth.
+  {
+    src: "public/images/products/power-rack-set/hero.jpg",
+    outBase: "public/images/products/power-rack-set/hero.card",
+    resize: { width: 800, height: 592, fit: "cover" },
+  },
+  {
+    src: "public/images/products/bench-press-set/hero.jpg",
+    outBase: "public/images/products/bench-press-set/hero.card",
+    resize: { width: 800, height: 592, fit: "cover" },
+  },
+  {
+    src: "public/images/products/deadlift-set/hero.jpg",
+    outBase: "public/images/products/deadlift-set/hero.card",
+    resize: { width: 800, height: 592, fit: "cover" },
+  },
+  {
+    src: "public/images/products/my-pr-set/hero.jpg",
+    outBase: "public/images/products/my-pr-set/hero.card",
+    resize: { width: 800, height: 592, fit: "cover" },
   },
   // Camisetas (PNG sources — emit JPG fallback + modern variants)
   {
