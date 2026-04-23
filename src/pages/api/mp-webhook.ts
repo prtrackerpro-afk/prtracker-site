@@ -255,14 +255,24 @@ async function generateShippingLabel(payment: MpPayment): Promise<void> {
 
   // Best-effort: ME requires address fields the MP payer object doesn't
   // always include. We pull what we can from metadata + payer.
+  // ME requires a CPF in `from.document` (the responsible person's CPF)
+  // even when shipping as PJ — the CNPJ goes in `company_document`.
+  const fromCpf = (import.meta.env.ME_FROM_CPF ?? "").replace(/\D/g, "");
+  if (!fromCpf) {
+    console.warn(
+      "[mp-webhook] ME_FROM_CPF missing — cannot buy label (ME requires CPF in from.document)",
+    );
+    return;
+  }
+
   const shipmentPayload = {
     service: serviceId,
     from: {
       name: "PR Tracker Ltda",
       phone: "51982061914",
       email: "contato@prtracker.com.br",
-      document: "59947215000167", // CNPJ PR Tracker Ltda
-      company_document: "59947215000167",
+      document: fromCpf,
+      company_document: "59947215000167", // CNPJ PR Tracker Ltda
       state_register: "isento",
       address: "Av. Bagé",
       complement: "Apto 501",
