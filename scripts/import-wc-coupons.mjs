@@ -26,6 +26,14 @@ const BASE = process.env.WC_API_BASE ?? "https://www.prtracker.com.br";
 const CK = process.env.WC_API_CK;
 const CS = process.env.WC_API_CS;
 
+/**
+ * Coupon codes that must NEVER ship to the Astro site, regardless of
+ * their status on the legacy WC. These are internal/retired/blocked and
+ * are kept excluded across every re-import so future runs don't resurface
+ * them. Case-insensitive match against the coupon's code.
+ */
+const BLOCKED_CODES = new Set(["mateus50off", "atletalpo", "ceci"]);
+
 if (!CK || !CS) {
   console.error(
     "[coupons] WC_API_CK + WC_API_CS required. Aborting without touching the snapshot.",
@@ -85,6 +93,7 @@ const snapshot = {
   source: BASE,
   coupons: coupons
     .filter((c) => c.status === "publish")
+    .filter((c) => !BLOCKED_CODES.has(c.code.toLowerCase()))
     .map((c) => {
       const affiliateMeta = (c.meta_data ?? []).find(
         (m) => m.key === "wcu_select_coupon_user",

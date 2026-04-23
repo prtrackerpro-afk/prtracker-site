@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-04-23T12:19:35.014Z",
+  "fetchedAt": "2026-04-23T13:39:17.673Z",
   "source": "https://www.prtracker.com.br",
   "coupons": [
     {
@@ -10,26 +10,6 @@
       "usage_count": 0,
       "usage_limit": null,
       "usage_limit_per_user": null,
-      "individual_use": true,
-      "free_shipping": false,
-      "minimum_amount_cents": 0,
-      "maximum_amount_cents": 0,
-      "product_ids": [],
-      "excluded_product_ids": [],
-      "product_categories": [],
-      "excluded_product_categories": [],
-      "exclude_sale_items": false,
-      "first_order_only": false,
-      "affiliate": null
-    },
-    {
-      "code": "mateus50off",
-      "discount_type": "percent",
-      "amount": 50,
-      "date_expires": "2026-04-13T03:00:00",
-      "usage_count": 1,
-      "usage_limit": 1,
-      "usage_limit_per_user": 1,
       "individual_use": true,
       "free_shipping": false,
       "minimum_amount_cents": 0,
@@ -199,30 +179,6 @@
       "affiliate": null
     },
     {
-      "code": "atletalpo",
-      "discount_type": "percent",
-      "amount": 20,
-      "date_expires": null,
-      "usage_count": 0,
-      "usage_limit": null,
-      "usage_limit_per_user": null,
-      "individual_use": true,
-      "free_shipping": false,
-      "minimum_amount_cents": 0,
-      "maximum_amount_cents": 0,
-      "product_ids": [],
-      "excluded_product_ids": [],
-      "product_categories": [],
-      "excluded_product_categories": [],
-      "exclude_sale_items": false,
-      "first_order_only": false,
-      "affiliate": {
-        "id": 11,
-        "name": "User 11",
-        "slug": null
-      }
-    },
-    {
       "code": "affiliatetemplatecoupon",
       "discount_type": "percent",
       "amount": 10,
@@ -289,30 +245,6 @@
       "exclude_sale_items": false,
       "first_order_only": false,
       "affiliate": null
-    },
-    {
-      "code": "ceci",
-      "discount_type": "percent",
-      "amount": 20,
-      "date_expires": "2026-03-16T03:00:00",
-      "usage_count": 0,
-      "usage_limit": 1,
-      "usage_limit_per_user": 1,
-      "individual_use": false,
-      "free_shipping": false,
-      "minimum_amount_cents": 0,
-      "maximum_amount_cents": 0,
-      "product_ids": [],
-      "excluded_product_ids": [],
-      "product_categories": [],
-      "excluded_product_categories": [],
-      "exclude_sale_items": false,
-      "first_order_only": false,
-      "affiliate": {
-        "id": 8,
-        "name": "User 8",
-        "slug": null
-      }
     },
     {
       "code": "prdasgurias",
