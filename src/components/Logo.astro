@@ -56,24 +56,17 @@ const hasModernVariants = variant === "light";
     object-fit: contain;
   }
 
-  /* Desktop heights — inline style would have specificity 1,0,0,0 which
-     beats every scoped rule, so we use classes that can be overridden by
-     the mobile media query below. */
-  .pr-logo--sm { height: 1.75rem; }
-  .pr-logo--md { height: 2.25rem; }
-  .pr-logo--lg { height: 3.25rem; }
+  /* Heights in PIXELS (not rem) so iOS Dynamic Type / Safari text zoom
+     doesn't blow up the logo when users bump their system font size. */
+  .pr-logo--sm { height: 28px; }
+  .pr-logo--md { height: 36px; }
+  .pr-logo--lg { height: 52px; }
 
-  /* Breakpoint aligned with the hero's 899px — iPhone 15-class phones
-     sometimes report CSS widths between 640-900 depending on zoom/DynamicType,
-     which made the old 640px breakpoint miss. 899 guarantees every
-     phone-sized viewport catches the rule, same as every other mobile
-     override in this codebase. */
   @media (max-width: 899px) {
-    .pr-logo--sm { height: 1.35rem !important; max-height: 1.35rem !important; }
-    .pr-logo--md { height: 1.1rem !important; max-height: 1.1rem !important; }
-    .pr-logo--lg { height: 2rem !important; max-height: 2rem !important; }
-    /* Belt-and-suspenders: cap the <img> too, in case something jams the
-       span open (flex alignment bug, parent height constraint, etc). */
+    /* Phones — aligned with every other mobile override at 899px. */
+    .pr-logo--sm { height: 22px !important; max-height: 22px !important; }
+    .pr-logo--md { height: 18px !important; max-height: 18px !important; }
+    .pr-logo--lg { height: 32px !important; max-height: 32px !important; }
     .pr-logo img { max-height: 100% !important; }
   }
 </style>

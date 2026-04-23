@@ -35,7 +35,7 @@ const nav = [
   <!-- Main nav bar -->
   <div class="site-header__bar">
     <div class="container-page site-header__bar-inner">
-      <a href="/" aria-label="PR Tracker — início" class="shrink-0">
+      <a href="/" aria-label="PR Tracker — início" class="site-header__logo-link">
         <Logo variant="light" size="md" />
       </a>
 
@@ -118,12 +118,34 @@ const nav = [
     gap: 1rem;
     padding-block: 0.9rem;
   }
-  /* Tighter header on phones. Logo sizing lives in Logo.astro now (it owns
-     its own responsive heights via .pr-logo--md). */
-  @media (max-width: 640px) {
+  /* Nuclear logo sizing — cap the link wrapper itself. Everything inside
+     (span.pr-logo, <picture>, <img>) inherits/constrains to this box, so
+     even if Logo.astro's scoped rules lose a specificity fight or ship
+     stale via CDN cache, the logo can never exceed these pixels. */
+  .site-header__logo-link {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 36px;
+    max-height: 36px;
+    overflow: hidden;
+  }
+  .site-header__logo-link :global(.pr-logo),
+  .site-header__logo-link :global(.pr-logo picture),
+  .site-header__logo-link :global(.pr-logo img) {
+    height: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+  }
+
+  @media (max-width: 899px) {
     .site-header__bar-inner { padding-block: 0.5rem; }
     .site-header__promo-inner { padding-block: 0.35rem; font-size: 0.72rem; }
     .icon-btn { width: 36px; height: 36px; }
+    .site-header__logo-link {
+      height: 20px;
+      max-height: 20px;
+    }
   }
 
   /* Nav */
