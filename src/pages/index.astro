@@ -9,6 +9,7 @@ import MessageCircle from "@lucide/astro/icons/message-circle";
 import Star from "@lucide/astro/icons/star";
 import Mail from "@lucide/astro/icons/mail";
 import Clock from "@lucide/astro/icons/clock";
+import googleReviews from "~/data/google-reviews.json";
 
 const products = await getCollection("products");
 const prTrackersAll = products
@@ -33,22 +34,62 @@ const camisetas = products
 
 const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br").replace(/\/$/, "");
 
-const jsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "PR Tracker",
-    url: SITE_URL,
-    logo: `${SITE_URL}/favicon.svg`,
-    contactPoint: {
-      "@type": "ContactPoint",
-      telephone: "+55-51-98206-1914",
-      contactType: "customer service",
-      areaServed: "BR",
-      availableLanguage: ["Portuguese"],
-    },
-    sameAs: ["https://instagram.com/pr.tracker"],
+/** Live Google Business reviews snapshot — refreshed on each build via
+ * scripts/fetch-google-reviews.mjs. Falls back to whatever was committed
+ * if the build env is missing GOOGLE_PLACES_API_KEY. */
+const testimonials = googleReviews.reviews.map((r) => ({
+  name: r.author,
+  when: r.relativeTime,
+  rating: r.rating,
+  text: r.text,
+  photoUri: r.photoUri,
+  googleUri: r.googleUri,
+}));
+
+const orgLd: Record<string, unknown> = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "PR Tracker",
+  url: SITE_URL,
+  logo: `${SITE_URL}/favicon.svg`,
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+55-51-98206-1914",
+    contactType: "customer service",
+    areaServed: "BR",
+    availableLanguage: ["Portuguese"],
   },
+  sameAs: ["https://instagram.com/pr.tracker"],
+};
+
+// Attach AggregateRating + top reviews so Google may surface star rich
+// results. Only emitted when we actually have data from the snapshot.
+if (googleReviews.rating && googleReviews.userRatingCount) {
+  orgLd.aggregateRating = {
+    "@type": "AggregateRating",
+    ratingValue: googleReviews.rating,
+    reviewCount: googleReviews.userRatingCount,
+    bestRating: 5,
+    worstRating: 1,
+  };
+  if (googleReviews.reviews.length > 0) {
+    orgLd.review = googleReviews.reviews.slice(0, 5).map((r) => ({
+      "@type": "Review",
+      author: { "@type": "Person", name: r.author },
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: r.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+      reviewBody: r.text,
+      datePublished: r.publishTime ?? undefined,
+    }));
+  }
+}
+
+const jsonLd = [
+  orgLd,
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -60,28 +101,6 @@ const jsonLd = [
       target: `${SITE_URL}/?q={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
-  },
-];
-
-/** Static social-proof testimonials (copy from real reviews at prtracker.com.br). */
-const testimonials = [
-  {
-    name: "Julia Maia Heckler",
-    when: "3 meses atrás",
-    rating: 5,
-    text: "Produtos de ótima qualidade, fiquei surpreendida! E chegou antes do que era previsto.",
-  },
-  {
-    name: "Matheus Oliveira",
-    when: "3 meses atrás",
-    rating: 5,
-    text: "Altamente confiável. Produto bem feito e suporte rápido.",
-  },
-  {
-    name: "Pietro Schaff",
-    when: "3 meses atrás",
-    rating: 5,
-    text: "Qualidade do produto é impecável, atenção aos detalhes, principalmente nos acabamentos das anilhas!",
   },
 ];
 ---
@@ -166,8 +185,26 @@ const testimonials = [
     <div class="container-page">
       <div class="section__head testimonials__head">
         <h2>Troféu de quem vive o treino<br />dentro e fora da academia</h2>
+        {googleReviews.rating && googleReviews.userRatingCount > 0 && (
+          <div class="testimonials__rating">
+            <strong class="testimonials__rating-value">{googleReviews.rating.toFixed(1)}</strong>
+            <span class="testimonials__rating-stars" aria-label={`${googleReviews.rating} de 5 estrelas`}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  size={18}
+                  fill={i < Math.round(googleReviews.rating as number) ? "#FFC72C" : "transparent"}
+                  color="#FFC72C"
+                  aria-hidden="true"
+                />
+              ))}
+            </span>
+            <span class="testimonials__rating-count">
+              {googleReviews.userRatingCount} avaliações no Google
+            </span>
+          </div>
+        )}
         <a
-          href="https://www.google.com/search?q=PR+Tracker+avalia%C3%A7%C3%B5es"
+          href={googleReviews.googleMapsUri ?? "https://www.google.com/search?q=PR+Tracker+avalia%C3%A7%C3%B5es"}
           target="_blank"
           rel="noopener noreferrer"
           class="testimonials__google"
@@ -210,7 +247,19 @@ const testimonials = [
             {testimonials.map((t) => (
               <article class="testimonial">
                 <div class="testimonial__head">
-                  <div class="testimonial__avatar" aria-hidden="true">{t.name.charAt(0)}</div>
+                  {t.photoUri ? (
+                    <img
+                      class="testimonial__avatar testimonial__avatar--photo"
+                      src={t.photoUri}
+                      alt=""
+                      loading="lazy"
+                      referrerpolicy="no-referrer"
+                      width="44"
+                      height="44"
+                    />
+                  ) : (
+                    <div class="testimonial__avatar" aria-hidden="true">{t.name.charAt(0)}</div>
+                  )}
                   <div>
                     <p class="testimonial__name">{t.name}</p>
                     <p class="testimonial__when">{t.when}</p>
@@ -848,6 +897,31 @@ const testimonials = [
     background: var(--color-brand-navy);
     color: var(--color-brand-lime);
   }
+  .testimonials__rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.4rem 0.9rem;
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: 9999px;
+  }
+  .testimonials__rating-value {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: var(--color-brand-navy);
+    letter-spacing: -0.01em;
+  }
+  .testimonials__rating-stars {
+    display: inline-flex;
+    gap: 0.08rem;
+  }
+  .testimonials__rating-count {
+    color: var(--color-brand-gray);
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
 
   /* Carousel ---------------------------------------------------- */
   .carousel {
@@ -951,6 +1025,11 @@ const testimonials = [
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    object-fit: cover;
+  }
+  .testimonial__avatar--photo {
+    background: transparent;
+    border: 1.5px solid rgb(1 0 42 / 0.08);
   }
   .testimonial__g { margin-left: auto; }
   .testimonial__name {

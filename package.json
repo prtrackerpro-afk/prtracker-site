@@ -7,13 +7,15 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
+    "prebuild": "node scripts/fetch-google-reviews.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro check",
     "fetch:images": "node scripts/fetch-product-images.mjs",
     "sync:images": "node scripts/sync-images-from-folder.mjs",
-    "gen:assets": "node scripts/gen-assets.mjs"
+    "gen:assets": "node scripts/gen-assets.mjs",
+    "reviews:fetch": "node scripts/fetch-google-reviews.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",

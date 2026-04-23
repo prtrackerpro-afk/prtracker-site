@@ -1,0 +1,60 @@
+{
+  "fetchedAt": "2026-04-23T11:49:11.655Z",
+  "placeId": "ChIJVxMvO555GZURKtFEl81Znd0",
+  "name": "PR Tracker",
+  "rating": 5,
+  "userRatingCount": 31,
+  "googleMapsUri": "https://maps.google.com/?cid=15969018593266684202&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+  "reviews": [
+    {
+      "author": "Natacha Gosmann",
+      "authorUri": "https://www.google.com/maps/contrib/104361974068966531188/reviews",
+      "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVAgTiRusC1kQtmwQKTokVeKDRZKSsH4K7-LrQyFXuVjdsXBIHe2A=s128-c0x00000000-cc-rp-mo",
+      "rating": 5,
+      "relativeTime": "3 meses atrás",
+      "publishTime": "2026-01-20T19:31:19.151170908Z",
+      "text": "Produtos de alta qualidade e atendimento impecável. Super recomendo! Boa ideia de presente também :)",
+      "googleUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT21KRlVYSlhZa3gxUkdoMlFqTkNVblpzWVdSd1RYYxAB!2m1!1s0x9519799e3b2f1357:0xdd9d59cd9744d12a"
+    },
+    {
+      "author": "Julia Maia Heckler",
+      "authorUri": "https://www.google.com/maps/contrib/111001085866272700450/reviews",
+      "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUODnTL52oASL6O7n5AO1YRKTqY7lH43ecVED_GYUaX5B7nTPB5=s128-c0x00000000-cc-rp-mo",
+      "rating": 5,
+      "relativeTime": "3 meses atrás",
+      "publishTime": "2026-01-09T00:17:50.649653449Z",
+      "text": "Produtos de ótima qualidade, fiquei surpreendida! E chegou antes do que era previsto 😍",
+      "googleUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT25VdGRtRnpNWFpmU1VaVFgwdEZaSEJZVEhsRGVXYxAB!2m1!1s0x9519799e3b2f1357:0xdd9d59cd9744d12a"
+    },
+    {
+      "author": "Clara Laier",
+      "authorUri": "https://www.google.com/maps/contrib/110571245186349349994/reviews",
+      "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVajOzbx3Psa_8ZVqaBuuUhMbTsHp3YYJj5e_F6s-xnA_xGbOli6g=s128-c0x00000000-cc-rp-mo",
+      "rating": 5,
+      "relativeTime": "2 meses atrás",
+      "publishTime": "2026-01-24T12:29:36.920352586Z",
+      "text": "Adorei poder personalizar com as cargas o recorde pessoal! Material de alta qualidade e ótimo acabamento!",
+      "googleUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT25JMU1uaHRTMHhyZEZsRk5XNTNiMEZYTFZoWVRtYxAB!2m1!1s0x9519799e3b2f1357:0xdd9d59cd9744d12a"
+    },
+    {
+      "author": "Alexis Santos",
+      "authorUri": "https://www.google.com/maps/contrib/118290844596418037211/reviews",
+      "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX3ibMuQm-L1RxSWkeNc1U7DZv9hoJEKg8m9KHLKPV8l2J5TqRwFg=s128-c0x00000000-cc-rp-mo",
+      "rating": 5,
+      "relativeTime": "3 meses atrás",
+      "publishTime": "2026-01-06T01:15:07.505459021Z",
+      "text": "Amei poder registrar meus recordes. Produto com muita qualidade.",
+      "googleUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT20xTWVEbDVjVjlqTlhCdFdGbFJiV055Tm1JMmQzYxAB!2m1!1s0x9519799e3b2f1357:0xdd9d59cd9744d12a"
+    },
+    {
+      "author": "Pietro Schaff",
+      "authorUri": "https://www.google.com/maps/contrib/111572468156759191683/reviews",
+      "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUIb9eaUFgMkPXOUSw1TI6-Ls3Gj4IHUnU41MfbDFLn6fEnjiLp=s128-c0x00000000-cc-rp-mo-ba3",
+      "rating": 5,
+      "relativeTime": "3 meses atrás",
+      "publishTime": "2026-01-06T03:03:21.762340811Z",
+      "text": "Qualidade do produto é impecável, atenção aos detalhes, principalmente nos acabamentos das anilhas!",
+      "googleUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT2tnd2RYaHFhMEZNU0dOc2RrSk9Xbk55UlRKdk0yYxAB!2m1!1s0x9519799e3b2f1357:0xdd9d59cd9744d12a"
+    }
+  ]
+}
