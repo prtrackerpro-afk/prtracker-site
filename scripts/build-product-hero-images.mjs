@@ -19,19 +19,19 @@ const ROOT = path.join(here, "..");
 const jobs = [
   {
     slug: "power-rack-set",
-    src: "Imagens/produto_chinalink_horizontal_dsc00369.jpg",
+    src: "Imagens/2. produto_chinalink_horizontal_dsc00369.jpg",
   },
   {
     slug: "bench-press-set",
-    src: "Imagens/produto_chinalink_horizontal_dsc00374.jpg",
+    src: "Imagens/2. produto_chinalink_horizontal_dsc00374.jpg",
   },
   {
     slug: "deadlift-set",
-    src: "Imagens/produto_chinalink_horizontal_dsc00378.jpg",
+    src: "Imagens/2. produto_chinalink_horizontal_dsc00378.jpg",
   },
   {
     slug: "my-pr-set",
-    src: "Imagens/produto_chinalink_horizontal_dsc00383.jpg",
+    src: "Imagens/2. produto_chinalink_horizontal_dsc00383.jpg",
   },
 ];
 
