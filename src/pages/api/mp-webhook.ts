@@ -166,12 +166,18 @@ function buildOrderEmailData(
   const meta = (payment.metadata ?? {}) as Record<string, unknown>;
   const payer = payment.payer ?? {};
   const address = payer.address ?? {};
+  // MP masks payer.email and payer.first_name/last_name for Pix. We
+  // stored the raw values in metadata at preference creation time —
+  // prefer those, fall back to payer fields for older orders.
   const payerName =
+    String(meta.customer_name ?? "") ||
     [payer.first_name, payer.last_name].filter(Boolean).join(" ") ||
     "Cliente PR Tracker";
   const phone =
     String(meta.customer_phone ?? "") ||
     String(payer.phone?.area_code ?? "") + String(payer.phone?.number ?? "");
+  const email =
+    String(meta.customer_email ?? "") || String(payer.email ?? "");
 
   const additionalItems = (payment.additional_info?.items ?? []) as Array<{
     title?: string;
@@ -201,14 +207,14 @@ function buildOrderEmailData(
     paymentMethod,
     customer: {
       name: payerName,
-      email: payer.email ?? "",
+      email,
       phone,
       cpf: String(payer.identification?.number ?? meta.customer_cpf ?? ""),
     },
     shipping: {
       cep: String(meta.shipping_cep ?? ""),
-      street: String(address.street_name ?? ""),
-      number: String(address.street_number ?? ""),
+      street: String(meta.shipping_street ?? address.street_name ?? ""),
+      number: String(meta.shipping_number ?? address.street_number ?? ""),
       complement: String(meta.shipping_complement ?? ""),
       neighborhood: String(meta.shipping_neighborhood ?? ""),
       city: String(meta.shipping_city ?? ""),
@@ -249,12 +255,23 @@ async function generateShippingLabel(payment: MpPayment): Promise<void> {
 
   const payer = payment.payer ?? {};
   const address = payer.address ?? {};
-  const payerName =
+  // MP anonymizes payer fields for Pix — always prefer the raw metadata
+  // we captured at preference time.
+  const recipientName =
+    String(meta.customer_name ?? "") ||
     [payer.first_name, payer.last_name].filter(Boolean).join(" ") ||
     "Cliente PR Tracker";
+  const recipientEmail =
+    String(meta.customer_email ?? "") || String(payer.email ?? "");
+  const recipientPhone =
+    String(meta.customer_phone ?? "") ||
+    String(payer.phone?.area_code ?? "") + String(payer.phone?.number ?? "");
+  const recipientCpf = String(
+    meta.customer_cpf ?? payer.identification?.number ?? "",
+  );
+  const recipientStreet = String(meta.shipping_street ?? address.street_name ?? "");
+  const recipientNumber = String(meta.shipping_number ?? address.street_number ?? "");
 
-  // Best-effort: ME requires address fields the MP payer object doesn't
-  // always include. We pull what we can from metadata + payer.
   // ME requires a CPF in `from.document` (the responsible person's CPF)
   // even when shipping as PJ — the CNPJ goes in `company_document`.
   const fromCpf = (import.meta.env.ME_FROM_CPF ?? "").replace(/\D/g, "");
@@ -284,13 +301,13 @@ async function generateShippingLabel(payment: MpPayment): Promise<void> {
       postal_code: cepOrigem,
     },
     to: {
-      name: payerName,
-      phone: String(payer.phone?.area_code ?? "") + String(payer.phone?.number ?? ""),
-      email: payer.email ?? "",
-      document: String(payer.identification?.number ?? meta.customer_cpf ?? ""),
-      address: String(address.street_name ?? ""),
+      name: recipientName,
+      phone: recipientPhone,
+      email: recipientEmail,
+      document: recipientCpf,
+      address: recipientStreet,
       complement: String(meta.shipping_complement ?? ""),
-      number: String(address.street_number ?? ""),
+      number: recipientNumber,
       district: String(meta.shipping_neighborhood ?? ""),
       city: String(meta.shipping_city ?? ""),
       state_abbr: String(meta.shipping_state ?? ""),

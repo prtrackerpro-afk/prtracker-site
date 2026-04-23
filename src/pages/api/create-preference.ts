@@ -236,10 +236,16 @@ export const POST: APIRoute = async ({ request }) => {
         statement_descriptor: "PRTRACKER",
         external_reference: `order_${Date.now()}`,
         metadata: {
+          // MP anonymizes payer.email / payer.name for Pix payments, so we
+          // mirror the checkout data here to recover it in the webhook.
+          customer_name: data.customer.name,
+          customer_email: data.customer.email,
           customer_cpf: data.customer.cpf,
           customer_phone: data.customer.phone,
           payment_method_hint: data.paymentMethod,
           shipping_cep: data.shipping.cep,
+          shipping_street: data.shipping.street,
+          shipping_number: data.shipping.number,
           shipping_service_id: data.shippingOption.id,
           shipping_service_name: `${data.shippingOption.company} · ${data.shippingOption.name}`,
           shipping_neighborhood: data.shipping.neighborhood,
