@@ -167,29 +167,33 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
     flex-direction: column;
   }
 
-  .cart-item {
+  /* :global() because the LIs are inserted via innerHTML by the script
+     below — Astro's scoped attribute [data-astro-cid-*] is only applied
+     to elements rendered at build time, not to JS-injected nodes, so the
+     normal scoped selectors wouldn't match. */
+  :global(.cart-item) {
     display: grid;
     grid-template-columns: 72px 1fr auto;
     gap: 1rem;
     padding: 1.25rem 0;
     border-bottom: 1px solid rgb(1 0 42 / 0.14);
   }
-  .cart-item:first-child { padding-top: 0.25rem; }
-  .cart-item:last-child { border-bottom: none; padding-bottom: 0.5rem; }
-  .cart-item__img {
+  :global(.cart-item:first-child) { padding-top: 0.25rem; }
+  :global(.cart-item:last-child) { border-bottom: none; padding-bottom: 0.5rem; }
+  :global(.cart-item__img) {
     width: 72px;
     height: 72px;
     object-fit: contain;
     background: #f7f7fb;
     border-radius: 0.75rem;
   }
-  .cart-item__meta {
+  :global(.cart-item__meta) {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
     min-width: 0;
   }
-  .cart-item__title {
+  :global(.cart-item__title) {
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 0.95rem;
@@ -197,19 +201,19 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
     color: var(--color-brand-navy);
     margin: 0;
   }
-  .cart-item__config {
+  :global(.cart-item__config) {
     font-size: 0.8rem;
     color: var(--color-brand-gray);
     line-height: 1.4;
   }
-  .cart-item__row {
+  :global(.cart-item__row) {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
     margin-top: 0.35rem;
   }
-  .cart-item__qty {
+  :global(.cart-item__qty) {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
@@ -217,7 +221,7 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
     border-radius: 9999px;
     overflow: hidden;
   }
-  .cart-item__qty button {
+  :global(.cart-item__qty button) {
     width: 28px;
     height: 28px;
     display: inline-flex;
@@ -229,20 +233,20 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
     cursor: pointer;
     transition: background-color 120ms ease;
   }
-  .cart-item__qty button:hover { background: rgb(1 0 42 / 0.05); }
-  .cart-item__qty-value {
+  :global(.cart-item__qty button:hover) { background: rgb(1 0 42 / 0.05); }
+  :global(.cart-item__qty-value) {
     min-width: 1.5rem;
     text-align: center;
     font-weight: 600;
     font-size: 0.9rem;
   }
-  .cart-item__price {
+  :global(.cart-item__price) {
     font-family: var(--font-display);
     font-weight: 700;
     color: var(--color-brand-navy);
     font-size: 0.95rem;
   }
-  .cart-item__remove {
+  :global(.cart-item__remove) {
     align-self: center;
     justify-self: end;
     width: 44px;
@@ -257,13 +261,13 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
     cursor: pointer;
     transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
   }
-  .cart-item__remove:hover {
+  :global(.cart-item__remove:hover) {
     color: #fff;
     background: #b91c1c;
     border-color: #b91c1c;
     transform: scale(1.05);
   }
-  .cart-item__remove:active {
+  :global(.cart-item__remove:active) {
     transform: scale(0.96);
   }
 
