@@ -9,6 +9,7 @@
   "shortDescription": "O mais personalizável: escolha o exercício (back squat, snatch, clean & jerk...) e as anilhas para criar o troféu do seu PR exato.",
   "longDescriptionHtml": "<p>O <strong>My PR Set</strong> é o mais personalizável da coleção. Você escolhe o exercício, as anilhas e monta um troféu único — feito sob medida para a sua conquista.</p><p>Uma peça que traduz sua trajetória no treino e o significado de cada PR.</p><p>A barra é usinada em aço inoxidável com alto relevo, reproduzindo com fidelidade o equipamento que você usa. A base de acrílico transparente projeta a peça no ambiente em que for exposta, elevando a presença do troféu.</p><p>As anilhas coloridas com o logo <strong>PR Tracker</strong> seguem padrão Olímpico, moldadas em plástico de alta densidade, criando um visual realista e vibrante.</p>",
   "images": [
+    { "src": "/images/products/my-pr-set/hero.jpg", "alt": "My PR Set — base acrílica com Hang Power Clean", "width": 1800, "height": 1200 },
     { "src": "/images/products/my-pr-set/MY-PR-SET.png", "alt": "My PR Set — vista principal" },
     { "src": "/images/products/my-pr-set/MY-PR-SET2.png", "alt": "My PR Set — vista 2" },
     { "src": "/images/products/my-pr-set/MY-PR-SET3.png", "alt": "My PR Set — vista 3" },
