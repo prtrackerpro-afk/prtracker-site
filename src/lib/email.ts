@@ -28,6 +28,11 @@ interface SendArgs {
   replyTo?: string;
 }
 
+function isValidEmail(value: string | undefined | null): value is string {
+  if (!value) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 async function send(args: SendArgs): Promise<void> {
   const apiKey = import.meta.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -35,25 +40,46 @@ async function send(args: SendArgs): Promise<void> {
     return;
   }
   const from = import.meta.env.RESEND_FROM ?? DEFAULT_FROM;
+
+  // Normalize "to": array of valid emails only. Resend rejects the whole
+  // payload with 422 if any entry is empty or malformed.
+  const toList = (Array.isArray(args.to) ? args.to : [args.to]).filter(
+    isValidEmail,
+  );
+  if (toList.length === 0) {
+    console.warn("[email] no valid recipient — skipping", args.subject);
+    return;
+  }
+
+  const payload: Record<string, unknown> = {
+    from,
+    to: toList,
+    subject: args.subject,
+    html: args.html,
+  };
+  if (isValidEmail(args.replyTo)) payload.reply_to = args.replyTo;
+
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from,
-      to: Array.isArray(args.to) ? args.to : [args.to],
-      subject: args.subject,
-      html: args.html,
-      reply_to: args.replyTo,
-    }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    console.error(`[email] Resend ${res.status}: ${text.slice(0, 500)}`);
+    console.error(
+      `[email] Resend ${res.status} for "${args.subject}" to ${toList.join(
+        ",",
+      )} from "${from}": ${text.slice(0, 800)}`,
+    );
     return;
   }
+  const data = (await res.json().catch(() => ({}))) as { id?: string };
+  console.log(
+    `[email] Resend sent "${args.subject}" to ${toList.join(",")} (id=${data.id ?? "?"})`,
+  );
 }
 
 export interface OrderEmailData {
