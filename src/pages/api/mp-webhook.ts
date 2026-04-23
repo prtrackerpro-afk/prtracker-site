@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { MercadoPagoConfig, Payment } from "mercadopago";
+import crypto from "node:crypto";
 import {
   sendOwnerOrderAlert,
   sendCustomerConfirmation,
@@ -7,6 +8,54 @@ import {
 } from "~/lib/email";
 
 export const prerender = false;
+
+/**
+ * Verify the x-signature header Mercado Pago sends with every webhook.
+ *
+ * MP docs: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
+ *   x-signature: "ts=1704000000,v1=<hex hmac sha256>"
+ *   The signed payload template is:
+ *     id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+ *
+ * When MP_WEBHOOK_SECRET is not set we skip verification — useful for
+ * the first deploy before the secret is copied over; real requests still
+ * get re-validated server-side when we fetch the payment by id.
+ */
+function verifySignature(
+  request: Request,
+  paymentId: string,
+): { ok: boolean; reason?: string } {
+  const secret = import.meta.env.MP_WEBHOOK_SECRET;
+  if (!secret) return { ok: true };
+
+  const header = request.headers.get("x-signature");
+  const requestId = request.headers.get("x-request-id") ?? "";
+  if (!header) return { ok: false, reason: "missing x-signature header" };
+
+  const parts = Object.fromEntries(
+    header.split(",").map((p) => {
+      const [k, v] = p.trim().split("=");
+      return [k, v];
+    }),
+  );
+  const ts = parts.ts;
+  const v1 = parts.v1;
+  if (!ts || !v1) return { ok: false, reason: "malformed x-signature" };
+
+  const template = `id:${paymentId};request-id:${requestId};ts:${ts};`;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(template)
+    .digest("hex");
+
+  // Constant-time comparison avoids leaking info via timing.
+  const a = Buffer.from(expected, "hex");
+  const b = Buffer.from(v1, "hex");
+  if (a.length !== b.length) return { ok: false, reason: "signature length mismatch" };
+  return crypto.timingSafeEqual(a, b)
+    ? { ok: true }
+    : { ok: false, reason: "signature mismatch" };
+}
 
 /**
  * Mercado Pago webhook handler.
@@ -40,6 +89,12 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (!paymentId) {
     console.log("[mp-webhook] non-payment event ignored", body);
+    return new Response("ok", { status: 200 });
+  }
+
+  const sig = verifySignature(request, String(paymentId));
+  if (!sig.ok) {
+    console.warn(`[mp-webhook] signature rejected: ${sig.reason}`);
     return new Response("ok", { status: 200 });
   }
 
