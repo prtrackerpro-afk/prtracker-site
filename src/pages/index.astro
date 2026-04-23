@@ -540,6 +540,15 @@ const testimonials = [
     display: flex;
     align-items: center;
   }
+  @media (max-width: 899px) {
+    /* Shift content up on mobile so the barbell in the background photo
+       remains visible below the CTAs. Also give the hero a bit more
+       minimum height so the buttons never overlap the photo's subject. */
+    .hero {
+      align-items: flex-start;
+      min-height: clamp(520px, 90vh, 760px);
+    }
+  }
   .hero__bg {
     position: absolute;
     inset: 0;
@@ -581,6 +590,13 @@ const testimonials = [
     width: 100%;
     padding-block: clamp(3rem, 6vw, 5rem);
   }
+  @media (max-width: 899px) {
+    /* Less top padding, generous bottom padding → content sits higher,
+       barbell shows more at the bottom. */
+    .hero__inner {
+      padding-block: 2rem 4.5rem;
+    }
+  }
   .hero__content {
     max-width: 38rem;
     margin-left: auto;
@@ -613,8 +629,22 @@ const testimonials = [
   }
   .hero__cta {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+  .hero__cta > * { white-space: nowrap; justify-content: center; }
+  @media (max-width: 520px) {
+    /* Squeeze both buttons into one row on phones by sharing the width
+       equally and trimming padding/font. The big "Comprar agora →" always
+       stays visually dominant via the lime background. */
+    .hero__cta { gap: 0.5rem; margin-top: 2rem; }
+    .hero__cta > * {
+      flex: 1 1 0;
+      min-width: 0;
+      padding-inline: 0.75rem;
+      font-size: 0.9rem;
+    }
   }
 
   /* ======================= SECTIONS ======================= */
