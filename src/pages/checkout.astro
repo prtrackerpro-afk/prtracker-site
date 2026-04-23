@@ -280,6 +280,20 @@ import Loader from "@lucide/astro/icons/loader";
     color: var(--color-brand-navy);
     font-size: 1.05rem;
   }
+  :global(.frete-option__badge) {
+    display: inline-block;
+    margin-left: 0.5rem;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.12rem 0.45rem;
+    border-radius: 9999px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
 
   .pay-methods {
     display: grid;
@@ -608,12 +622,16 @@ import Loader from "@lucide/astro/icons/loader";
               ? `${o.delivery_days_min} dia${o.delivery_days_min === 1 ? "" : "s"} útil${o.delivery_days_min === 1 ? "" : "eis"}`
               : `${o.delivery_days_min}–${o.delivery_days_max} dias úteis`
             : "Prazo a confirmar";
+        const isCheapest = idx === 0;
+        const badge = isCheapest
+          ? `<span class="frete-option__badge">Melhor opção</span>`
+          : "";
         return `
           <label class="frete-option">
-            <input type="radio" name="frete" value="${o.id}" ${idx === 0 ? "checked" : ""} />
+            <input type="radio" name="frete" value="${o.id}" ${isCheapest ? "checked" : ""} />
             <span class="frete-option__inner">
               <span>
-                <span class="frete-option__name">${escapeHtml(o.company)} · ${escapeHtml(o.name)}</span>
+                <span class="frete-option__name">${escapeHtml(o.company)} · ${escapeHtml(o.name)}</span>${badge}
                 <br/>
                 <span class="frete-option__meta">${escapeHtml(daysTxt)}</span>
               </span>
