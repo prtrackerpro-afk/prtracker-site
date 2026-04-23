@@ -66,9 +66,11 @@ const hasModernVariants = variant === "light";
   @media (max-width: 640px) {
     /* Header uses `md` → we shrink to roughly the size the user drew with
        a red rectangle in their mockup (~1.1rem). `lg` in the footer keeps
-       more presence but still drops ~40 %. */
-    .pr-logo--sm { height: 1.35rem; }
-    .pr-logo--md { height: 1.1rem; }
-    .pr-logo--lg { height: 2rem; }
+       more presence but still drops ~40 %. !important here because we've
+       seen stubborn specificity conflicts in the past (inline styles,
+       scoped overrides) that kept the desktop rule winning on mobile. */
+    .pr-logo--sm { height: 1.35rem !important; }
+    .pr-logo--md { height: 1.1rem !important; }
+    .pr-logo--lg { height: 2rem !important; }
   }
 </style>

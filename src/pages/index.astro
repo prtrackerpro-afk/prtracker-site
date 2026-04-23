@@ -601,12 +601,13 @@ const jsonLd = [
     align-items: center;
   }
   @media (max-width: 899px) {
-    /* On phones the content anchors to the top (not vertical-center) so
-       the title sits near the header and the barbell photo fills the
-       bottom portion. align-items:center was previously eating the
-       effect of our top padding — the flexbox was centering regardless. */
+    /* Shorter hero on phones (~68 % of viewport instead of 100 %) so the
+       product grid peeks below the fold — user can see there's more
+       content without scrolling. align-items:flex-start + a moderate
+       top padding puts the title at ~1/4 from the top of the hero,
+       middle ground between dead center and flush-top. */
     .hero {
-      min-height: clamp(640px, 100vh, 820px);
+      min-height: clamp(520px, 68vh, 640px);
       align-items: flex-start;
     }
   }
@@ -655,11 +656,11 @@ const jsonLd = [
     padding-block: clamp(3rem, 6vw, 5rem);
   }
   @media (max-width: 899px) {
-    /* Tighter top padding to pull the hero copy up — the trimmed header
-       on phones + cropped background mean the title is sitting too low
-       otherwise. */
+    /* Title anchored ~3rem below the header (meio-termo entre dead-center
+       e flush-top). Bottom padding exists only so the photo breathes
+       below the CTAs — the short min-height does most of the work. */
     .hero__inner {
-      padding-block: 1.5rem 8rem;
+      padding-block: 3rem 2rem;
     }
   }
   .hero__content {
