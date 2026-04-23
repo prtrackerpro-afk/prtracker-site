@@ -15,6 +15,7 @@
     "fetch:images": "node scripts/fetch-product-images.mjs",
     "sync:images": "node scripts/sync-images-from-folder.mjs",
     "gen:assets": "node scripts/gen-assets.mjs",
+    "gen:og": "node scripts/gen-og.mjs",
     "reviews:fetch": "node scripts/fetch-google-reviews.mjs"
   },
   "dependencies": {
