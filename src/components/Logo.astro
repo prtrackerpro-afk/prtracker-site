@@ -15,23 +15,31 @@ interface Props {
 
 const { variant = "dark", size = "md", class: cls = "" } = Astro.props;
 
-const src = variant === "light"
-  ? "/images/brand/logo-lime.png"
-  : "/images/brand/logo-navy.png";
+const base = variant === "light"
+  ? "/images/brand/logo-lime"
+  : "/images/brand/logo-navy";
 
 const heights: Record<typeof size, string> = { sm: "1.75rem", md: "2.25rem", lg: "3.25rem" };
 const height = heights[size];
+
+// logo-lime has AVIF/WebP siblings (see scripts/build-image-variants.mjs).
+// logo-navy only has PNG, so we fall through to the <img> for it.
+const hasModernVariants = variant === "light";
 ---
 
 <span class={`pr-logo ${cls}`} style={`height: ${height};`}>
-  <img
-    src={src}
-    alt="PR Tracker"
-    width="820"
-    height="280"
-    loading="eager"
-    decoding="async"
-  />
+  <picture>
+    {hasModernVariants && <source type="image/avif" srcset={`${base}.avif`} />}
+    {hasModernVariants && <source type="image/webp" srcset={`${base}.webp`} />}
+    <img
+      src={`${base}.png`}
+      alt="PR Tracker"
+      width="820"
+      height="280"
+      loading="eager"
+      decoding="async"
+    />
+  </picture>
 </span>
 
 <style>

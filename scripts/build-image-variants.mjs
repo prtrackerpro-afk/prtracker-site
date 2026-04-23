@@ -67,6 +67,23 @@ const sources = [
     emitJpg: true,
     jpgQuality: 84,
   },
+  // Anilhas banner on the home — the PNG source is 1000×1000 / 602KB but the
+  // banner only renders at 600×600, so we resize + emit AVIF/WebP.
+  {
+    src: "public/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.png",
+    outBase: "public/images/products/anilhas/Anilhas_0007_todas-anilhas-clean",
+    resize: { width: 600, height: 600 },
+    emitJpg: true,
+    jpgQuality: 84,
+  },
+  // Brand logo used in the header — source is 2048×575 but renders at 324×91.
+  // Logo has transparency so we keep PNG fallback (don't emit JPG). WebP/AVIF
+  // support alpha and are ~10× smaller.
+  {
+    src: "public/images/brand/logo-lime.png",
+    outBase: "public/images/brand/logo-lime",
+    resize: { width: 820, height: 280, fit: "inside" },
+  },
 ];
 
 async function sizeOf(p) {
@@ -74,17 +91,29 @@ async function sizeOf(p) {
   return s ? (s.size / 1024).toFixed(0) + "KB" : "n/a";
 }
 
+function loader(job) {
+  const srcPath = path.join(ROOT, job.src);
+  let pipeline = sharp(srcPath);
+  if (job.resize) {
+    pipeline = pipeline.resize({
+      width: job.resize.width,
+      height: job.resize.height,
+      fit: job.resize.fit ?? "cover",
+    });
+  }
+  return pipeline;
+}
+
 for (const job of sources) {
   const srcPath = path.join(ROOT, job.src);
   const outBase = path.join(ROOT, job.outBase);
 
-  const pipeline = sharp(srcPath);
-  const meta = await pipeline.metadata();
+  const meta = await sharp(srcPath).metadata();
   const label = path.relative(ROOT, srcPath).replace(/\\/g, "/");
 
   // JPG baseline (only when asked — otherwise assume original is already JPG)
   if (job.emitJpg) {
-    await sharp(srcPath)
+    await loader(job)
       .jpeg({
         quality: job.jpgQuality ?? 82,
         progressive: true,
@@ -94,14 +123,14 @@ for (const job of sources) {
   }
 
   // WebP — lossy at quality 82. "effort: 6" = slowest encode, smallest file.
-  await sharp(srcPath)
+  await loader(job)
     .webp({ quality: 82, effort: 6 })
     .toFile(outBase + ".webp");
 
   // AVIF — quality 60 is visually lossless for photos and ~30% smaller
   // than WebP at the same perceived quality. "effort: 6" for speed/size
   // balance (9 is slowest, 6 is a good tradeoff).
-  await sharp(srcPath)
+  await loader(job)
     .avif({ quality: 60, effort: 6 })
     .toFile(outBase + ".avif");
 

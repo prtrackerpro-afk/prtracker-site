@@ -333,14 +333,18 @@ const jsonLd = [
         </a>
       </div>
       <div class="banner__media">
-        <img
-          src="/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.png"
-          alt={anilhas.data.images[0]!.alt}
-          width="600"
-          height="600"
-          loading="lazy"
-          decoding="async"
-        />
+        <picture>
+          <source type="image/avif" srcset="/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.avif" />
+          <source type="image/webp" srcset="/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.webp" />
+          <img
+            src="/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg"
+            alt={anilhas.data.images[0]!.alt}
+            width="600"
+            height="600"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
       </div>
     </div>
   </section>
