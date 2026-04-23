@@ -1,5 +1,10 @@
 import type { APIRoute } from "astro";
 import { MercadoPagoConfig, Payment } from "mercadopago";
+import {
+  sendOwnerOrderAlert,
+  sendCustomerConfirmation,
+  type OrderEmailData,
+} from "~/lib/email";
 
 export const prerender = false;
 
@@ -68,16 +73,92 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response("ok", { status: 200 });
   }
 
+  let labelError: string | null = null;
   try {
     await generateShippingLabel(payment);
   } catch (err) {
+    labelError = err instanceof Error ? err.message : String(err);
     console.error("[mp-webhook] shipping label generation failed:", err);
-    // TODO: send an alert email to contato@prtracker.com.br so the
-    // label can be generated manually from the Melhor Envio dashboard.
+  }
+
+  // Order notifications — fire-and-forget so a broken SMTP never blocks
+  // MP's 200 or keeps the customer waiting on the thank-you page.
+  try {
+    const emailData = buildOrderEmailData(payment, labelError);
+    await Promise.allSettled([
+      sendOwnerOrderAlert(emailData),
+      sendCustomerConfirmation(emailData),
+    ]);
+  } catch (err) {
+    console.error("[mp-webhook] email notification failed:", err);
   }
 
   return new Response("ok", { status: 200 });
 };
+
+function buildOrderEmailData(
+  payment: MpPayment,
+  labelError: string | null,
+): OrderEmailData {
+  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+  const payer = payment.payer ?? {};
+  const address = payer.address ?? {};
+  const payerName =
+    [payer.first_name, payer.last_name].filter(Boolean).join(" ") ||
+    "Cliente PR Tracker";
+  const phone =
+    String(meta.customer_phone ?? "") ||
+    String(payer.phone?.area_code ?? "") + String(payer.phone?.number ?? "");
+
+  const additionalItems = (payment.additional_info?.items ?? []) as Array<{
+    title?: string;
+    quantity?: number;
+    unit_price?: number;
+  }>;
+  const items = additionalItems
+    .filter((i) => Number(i.unit_price) >= 0) // hide the Pix/coupon negative lines in customer email
+    .map((i) => ({
+      title: String(i.title ?? "Item"),
+      quantity: Number(i.quantity ?? 1),
+      totalBrl: Number(i.unit_price ?? 0) * Number(i.quantity ?? 1),
+    }));
+
+  const paymentMethod = (() => {
+    const hint = String(meta.payment_method_hint ?? "");
+    if (hint === "pix") return "Pix";
+    if (hint === "credit") return "Cartão de crédito";
+    return payment.payment_method_id ?? "—";
+  })();
+
+  return {
+    paymentId: payment.id ?? 0,
+    externalRef: payment.external_reference ?? `mp-${payment.id ?? "?"}`,
+    totalBrl: Number(payment.transaction_amount ?? 0),
+    status: labelError ? "Aprovado (etiqueta pendente)" : "Aprovado",
+    paymentMethod,
+    customer: {
+      name: payerName,
+      email: payer.email ?? "",
+      phone,
+      cpf: String(payer.identification?.number ?? meta.customer_cpf ?? ""),
+    },
+    shipping: {
+      cep: String(meta.shipping_cep ?? ""),
+      street: String(address.street_name ?? ""),
+      number: String(address.street_number ?? ""),
+      complement: String(meta.shipping_complement ?? ""),
+      neighborhood: String(meta.shipping_neighborhood ?? ""),
+      city: String(meta.shipping_city ?? ""),
+      state: String(meta.shipping_state ?? ""),
+      service: String(meta.shipping_service_name ?? ""),
+    },
+    items,
+    couponCode: meta.coupon_code ? String(meta.coupon_code) : undefined,
+    couponCreditedTo: meta.coupon_credited_to
+      ? String(meta.coupon_credited_to)
+      : undefined,
+  };
+}
 
 // ---------------------------------------------------------------------------
 
