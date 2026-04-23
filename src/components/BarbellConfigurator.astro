@@ -196,10 +196,12 @@ const CONFIG_JSON = JSON.stringify({
     padding: 0.5rem 0 1rem;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 0.35rem;
+    text-align: center;
   }
-  .cfg__summary-weight { border-right: 1px dashed rgb(1 0 42 / 0.15); padding-right: 1rem; }
-  .cfg__summary-space  { padding-left: 1rem; }
+  .cfg__summary-weight { border-right: 1px dashed rgb(1 0 42 / 0.15); }
+  .cfg__summary-space  { }
   /* When in anilhas-only mode only one column is rendered */
   .configurator[data-anilhas-only="true"] .cfg__summary { grid-template-columns: 1fr; }
   .configurator[data-anilhas-only="true"] .cfg__summary-space { padding-left: 0; }
