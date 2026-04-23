@@ -119,11 +119,14 @@ const nav = [
     padding-block: 0.9rem;
   }
   /* Tighter header on phones — was eating ~90px of vertical space above
-     the fold, pushing hero copy + CTAs too low on iPhone 15-class devices. */
+     the fold, pushing hero copy + CTAs too low on iPhone 15-class devices.
+     :global(.pr-logo) because that span is rendered by Logo.astro with a
+     different data-astro-cid scope — Astro would otherwise never match
+     the selector. */
   @media (max-width: 640px) {
     .site-header__bar-inner { padding-block: 0.5rem; }
     .site-header__promo-inner { padding-block: 0.35rem; font-size: 0.72rem; }
-    .pr-logo { height: 1.1rem !important; }
+    :global(.pr-logo) { height: 1.1rem !important; }
     .icon-btn { width: 36px; height: 36px; }
   }
 
