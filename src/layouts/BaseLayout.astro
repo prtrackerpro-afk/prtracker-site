@@ -20,6 +20,8 @@ interface Props {
   hideHeader?: boolean;
   /** Omit the footer (e.g., minimal flows). */
   hideFooter?: boolean;
+  /** Emit <link rel="preload"> for the home-hero AVIFs (desktop+mobile). */
+  preloadHeroHome?: boolean;
 }
 
 const {
@@ -33,6 +35,7 @@ const {
   transparentHeader = false,
   hideHeader = false,
   hideFooter = false,
+  preloadHeroHome = false,
 } = Astro.props;
 ---
 
@@ -69,6 +72,33 @@ const {
       href="/fonts/Outfit-Regular.woff2"
       crossorigin
     />
+
+    {/*
+      Home-hero preload. The hero <picture> otherwise only gets discovered
+      after the HTML body is parsed, which on mobile 4G pushes LCP above 4s.
+      Browsers honor `media` on preload links, so mobile phones only
+      download the 29KB mobile AVIF and desktops only the 34KB desktop AVIF.
+    */}
+    {preloadHeroHome && (
+      <>
+        <link
+          rel="preload"
+          as="image"
+          href="/images/brand/hero-mobile.avif"
+          type="image/avif"
+          media="(max-width: 899px)"
+          fetchpriority="high"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href="/images/brand/hero-desktop.avif"
+          type="image/avif"
+          media="(min-width: 900px)"
+          fetchpriority="high"
+        />
+      </>
+    )}
 
     <meta name="generator" content={Astro.generator} />
 
