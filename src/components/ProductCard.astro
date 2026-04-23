@@ -12,20 +12,32 @@ interface Props {
 const { product, eager = false } = Astro.props;
 const { title, tagline, priceBase, priceFrom, images, slug } = product.data;
 const primary = images[0]!;
+
+/**
+ * When the primary image ships alongside WebP/AVIF siblings (via
+ * scripts/build-image-variants.mjs), serve them first — modern browsers
+ * save ~50-70% vs JPG. Legacy browsers fall through to the <img>.
+ */
+const variantBase = primary.src.replace(/\.(jpe?g|png)$/i, "");
+const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
 ---
 
 <a href={`/product/${slug}`} class="product-card" aria-label={`${title} — ver produto`}>
   <div class="product-card__media">
-    <img
-      src={primary.src}
-      alt={primary.alt}
-      width={primary.width ?? 800}
-      height={primary.height ?? 800}
-      loading={eager ? "eager" : "lazy"}
-      decoding="async"
-      fetchpriority={eager ? "high" : "auto"}
-      class="product-card__img"
-    />
+    <picture>
+      {hasVariants && <source type="image/avif" srcset={`${variantBase}.avif`} />}
+      {hasVariants && <source type="image/webp" srcset={`${variantBase}.webp`} />}
+      <img
+        src={primary.src}
+        alt={primary.alt}
+        width={primary.width ?? 800}
+        height={primary.height ?? 800}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        fetchpriority={eager ? "high" : "auto"}
+        class="product-card__img"
+      />
+    </picture>
   </div>
 
   <div class="product-card__body">

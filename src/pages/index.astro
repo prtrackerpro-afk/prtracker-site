@@ -113,12 +113,18 @@ const jsonLd = [
   <!-- ========================= HERO ========================= -->
   <section class="hero">
     <picture class="hero__bg" aria-hidden="true">
-      <source media="(min-width: 900px)" srcset="/images/brand/hero-desktop.png" />
+      {/* Desktop sources — browser picks the first supported format */}
+      <source media="(min-width: 900px)" type="image/avif" srcset="/images/brand/hero-desktop.avif" />
+      <source media="(min-width: 900px)" type="image/webp" srcset="/images/brand/hero-desktop.webp" />
+      <source media="(min-width: 900px)" srcset="/images/brand/hero-desktop.jpg" />
+      {/* Mobile sources */}
+      <source type="image/avif" srcset="/images/brand/hero-mobile.avif" />
+      <source type="image/webp" srcset="/images/brand/hero-mobile.webp" />
       <img
         src="/images/brand/hero-mobile.jpg"
         alt=""
-        width="1920"
-        height="1080"
+        width="1080"
+        height="1349"
         fetchpriority="high"
         loading="eager"
         decoding="async"
