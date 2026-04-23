@@ -235,7 +235,7 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
   import { cart } from "~/scripts/cart";
   import type { CartSnapshot } from "~/lib/cart-types";
   import { formatBRL } from "~/lib/format";
-  import { formatCartItemConfig, escapeHtml } from "~/lib/cart-format";
+  import { formatCartItemDisplay, escapeHtml } from "~/lib/cart-format";
   import { MAX_INSTALLMENTS } from "~/lib/catalog";
 
   const wrapper = document.querySelector<HTMLElement>("[data-cart-items-wrapper]")!;
@@ -262,13 +262,17 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
 
     list.innerHTML = snap.items
       .map((item) => {
-        const cfg = formatCartItemConfig(item);
+        const display = formatCartItemDisplay(item);
+        const subHtml =
+          display.subLines.length > 0
+            ? `<p class="cart-line__config">${display.subLines.map((l) => escapeHtml(l)).join("<br/>")}</p>`
+            : "";
         return `
           <li class="cart-line" data-id="${escapeHtml(item.id)}">
             <img src="${escapeHtml(item.image)}" alt="" class="cart-line__img" width="96" height="96" loading="lazy" />
             <div class="cart-line__meta">
-              <p class="cart-line__title">${escapeHtml(item.title)}</p>
-              ${cfg ? `<p class="cart-line__config">${escapeHtml(cfg)}</p>` : ""}
+              <p class="cart-line__title">${escapeHtml(item.title)}${escapeHtml(display.titleSuffix)}</p>
+              ${subHtml}
               <div class="cart-line__row">
                 <div class="cart-line__qty" role="group" aria-label="Quantidade">
                   <button type="button" aria-label="Diminuir" data-qty-down>

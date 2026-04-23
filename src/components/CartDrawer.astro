@@ -309,7 +309,7 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
   import { cart } from "~/scripts/cart";
   import type { CartSnapshot } from "~/lib/cart-types";
   import { formatBRL } from "~/lib/format";
-  import { formatCartItemConfig, escapeHtml } from "~/lib/cart-format";
+  import { formatCartItemDisplay, escapeHtml } from "~/lib/cart-format";
 
   const drawer = document.querySelector<HTMLElement>("[data-cart-drawer]");
   if (!drawer) throw new Error("CartDrawer: root element not found");
@@ -337,13 +337,17 @@ import ShoppingBag from "@lucide/astro/icons/shopping-bag";
 
     itemsList.innerHTML = snap.items
       .map((item) => {
-        const cfg = formatCartItemConfig(item);
+        const display = formatCartItemDisplay(item);
+        const subHtml =
+          display.subLines.length > 0
+            ? `<p class="cart-item__config">${display.subLines.map((l) => escapeHtml(l)).join("<br/>")}</p>`
+            : "";
         return `
           <li class="cart-item" data-id="${escapeHtml(item.id)}">
             <img src="${escapeHtml(item.image)}" alt="" class="cart-item__img" width="72" height="72" loading="lazy" />
             <div class="cart-item__meta">
-              <p class="cart-item__title">${escapeHtml(item.title)}</p>
-              ${cfg ? `<p class="cart-item__config">${escapeHtml(cfg)}</p>` : ""}
+              <p class="cart-item__title">${escapeHtml(item.title)}${escapeHtml(display.titleSuffix)}</p>
+              ${subHtml}
               <div class="cart-item__row">
                 <div class="cart-item__qty" role="group" aria-label="Quantidade">
                   <button type="button" aria-label="Diminuir" data-qty-down>

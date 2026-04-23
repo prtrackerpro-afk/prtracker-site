@@ -416,7 +416,7 @@ import Loader from "@lucide/astro/icons/loader";
 <script>
   import { cart } from "~/scripts/cart";
   import { formatBRL } from "~/lib/format";
-  import { formatCartItemConfig, escapeHtml } from "~/lib/cart-format";
+  import { formatCartItemDisplay, escapeHtml } from "~/lib/cart-format";
   import type { CartSnapshot } from "~/lib/cart-types";
 
   if (cart.snapshot().items.length === 0) {
@@ -451,13 +451,18 @@ import Loader from "@lucide/astro/icons/loader";
   function renderSummary(snap: CartSnapshot) {
     itemsList.innerHTML = snap.items
       .map((it) => {
-        const sub = formatCartItemConfig(it);
+        const display = formatCartItemDisplay(it);
+        const qtySuffix = it.quantity > 1 ? ` × ${it.quantity}` : "";
+        const subHtml =
+          display.subLines.length > 0
+            ? `<div class="ci-sub">${display.subLines.map((l) => escapeHtml(l)).join("<br/>")}</div>`
+            : "";
         return `
           <li>
             <img src="${escapeHtml(it.image)}" alt="" loading="lazy" />
             <div>
-              <div class="ci-title">${escapeHtml(it.title)}${it.quantity > 1 ? ` × ${it.quantity}` : ""}</div>
-              ${sub ? `<div class="ci-sub">${escapeHtml(sub)}</div>` : ""}
+              <div class="ci-title">${escapeHtml(it.title)}${escapeHtml(display.titleSuffix)}${qtySuffix}</div>
+              ${subHtml}
             </div>
             <span class="ci-price">${formatBRL(it.unitPriceCents * it.quantity)}</span>
           </li>

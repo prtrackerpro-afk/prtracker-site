@@ -31,21 +31,41 @@ function formatKg(kg: number): string {
     : `${kg.toFixed(2).replace(/\.?0+$/, "")} kg`;
 }
 
-/** Human-readable one-liner for a cart item's configuration. */
-export function formatCartItemConfig(item: CartItem): string {
-  const parts: string[] = [];
+/** Structured display fields for a cart line — title suffix + sub lines. */
+export interface CartItemDisplay {
+  /** Append to title (e.g. " — 120 kg"). Empty when item has no barbell/plates. */
+  titleSuffix: string;
+  /** Lines to render below the title, each on its own line. */
+  subLines: string[];
+}
+
+/**
+ * Build the display fields for a cart item:
+ *
+ *   Power Rack Set — 120 kg
+ *   Anilhas:
+ *   25 kg — 2 pares
+ *   Back Squat
+ *   Tam. M
+ */
+export function formatCartItemDisplay(item: CartItem): CartItemDisplay {
+  const subLines: string[] = [];
   const totalKg = totalRepresentedKg(item);
-  if (totalKg > 0) parts.push(`Total ${formatKg(totalKg)}`);
-  if (item.plates?.length) {
-    const plateStr = item.plates
-      .filter((p) => p.pairs > 0)
-      .map((p) => `${p.pairs * 2}× ${p.plateId.replace("_", ".")} kg`)
-      .join(" · ");
-    if (plateStr) parts.push(plateStr);
+  const titleSuffix = totalKg > 0 ? ` — ${formatKg(totalKg)}` : "";
+
+  const activePlates = (item.plates ?? []).filter((p) => p.pairs > 0);
+  if (activePlates.length > 0) {
+    subLines.push("Anilhas:");
+    for (const p of activePlates) {
+      const kg = p.plateId.replace("_", ".");
+      const pares = p.pairs === 1 ? "par" : "pares";
+      subLines.push(`${kg} kg — ${p.pairs} ${pares}`);
+    }
   }
-  if (item.exercise) parts.push(item.exercise);
-  if (item.size) parts.push(`Tam. ${item.size}`);
-  return parts.join(" · ");
+  if (item.exercise) subLines.push(item.exercise);
+  if (item.size) subLines.push(`Tam. ${item.size}`);
+
+  return { titleSuffix, subLines };
 }
 
 /** HTML-escape user-controlled strings before interpolating into innerHTML. */
