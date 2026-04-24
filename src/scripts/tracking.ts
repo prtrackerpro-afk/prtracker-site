@@ -106,7 +106,11 @@ export function trackViewContent(p: ProductRef): void {
 export function trackAddToCart(item: CartItemRef): void {
   const value = centsToReais(item.unitPriceCents * item.quantity);
   const eventId = newEventId();
+  // eslint-disable-next-line no-console
+  console.log("[tracking] trackAddToCart invoked", { slug: item.slug, eventId });
   deferMeta(() => {
+    // eslint-disable-next-line no-console
+    console.log("[tracking] fbq AddToCart firing", { eventId });
     window.fbq!("track", "AddToCart", {
       content_ids: [item.slug],
       content_type: "product",
