@@ -143,7 +143,8 @@ const CONFIG_JSON = JSON.stringify({
   {hasExerciseSelector && (
     <div class="cfg__exercise">
       <label class="cfg__exercise-label" for={`exercise-${slug}`}>Exercício</label>
-      <select id={`exercise-${slug}`} class="cfg__exercise-select" data-exercise>
+      <select id={`exercise-${slug}`} class="cfg__exercise-select" data-exercise required>
+        <option value="" disabled selected>Selecione um exercício…</option>
         {EXERCISES.map((ex) => <option value={ex}>{ex}</option>)}
       </select>
     </div>
@@ -514,6 +515,10 @@ const CONFIG_JSON = JSON.stringify({
       });
     });
 
+    // Re-render when the exercise changes so the button flips out of the
+    // "Selecione um exercício" disabled state.
+    exerciseSelect?.addEventListener("change", () => render());
+
     function render(): void {
       let platesKg = 0;
       let spaceMm = 0;
@@ -535,11 +540,17 @@ const CONFIG_JSON = JSON.stringify({
 
       const overLimit = spaceMm > config.maxSideSpaceMm;
       const needsPlates = config.isAnilhasOnly && platesCents === 0;
+      const needsExercise =
+        exerciseSelect != null && (exerciseSelect.value ?? "") === "";
       warningEl.hidden = !overLimit;
       root.dataset.overLimit = overLimit ? "true" : "false";
       // Over-limit does NOT block the purchase; the warning is enough.
-      addBtn.disabled = needsPlates;
-      addBtn.textContent = needsPlates ? "Selecione anilhas" : "Adicionar ao carrinho";
+      addBtn.disabled = needsPlates || needsExercise;
+      addBtn.textContent = needsPlates
+        ? "Selecione anilhas"
+        : needsExercise
+          ? "Selecione um exercício"
+          : "Adicionar ao carrinho";
 
       if (leftGroup && rightGroup) {
         renderSvgPlates(leftGroup, platesOrdered, state, "left", config.maxSideSpaceMm);

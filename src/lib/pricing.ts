@@ -8,7 +8,12 @@
  */
 
 import type { CollectionEntry } from "astro:content";
-import { PLATES, MAX_SIDE_SPACE_MM, type PlateId } from "./catalog";
+import {
+  PLATES,
+  MAX_SIDE_SPACE_MM,
+  BARBELL_WEIGHT_KG,
+  type PlateId,
+} from "./catalog";
 import type { CartItem } from "./cart-types";
 
 const platesById = new Map(PLATES.map((p) => [p.id, p]));
@@ -18,10 +23,55 @@ export interface Priced {
   unitPriceCents: number;
   /** Authoritative line total in cents (unit * quantity). */
   lineTotalCents: number;
-  /** Display title to show at MP checkout. */
+  /** Display title to show at MP checkout AND in the order confirmation
+   *  email. Includes exercise + plate summary + total weight so it's clear
+   *  to the shop owner exactly what to assemble.
+   *  Example:
+   *    "My PR Set — Back Squat · 120 kg (2× 25 kg + 1× 10 kg)"
+   *    "Camiseta Masculina — Tam. M"
+   */
   title: string;
   /** Product image for the preference item. */
   picture_url: string;
+}
+
+/** Build "2× 25 kg + 1× 10 kg"-style summary of the plate selection. */
+function describePlates(
+  plates: Array<{ plateId: string; pairs: number }>,
+): string {
+  return plates
+    .slice()
+    .sort((a, b) => {
+      const ka = platesById.get(a.plateId as PlateId)?.kg ?? 0;
+      const kb = platesById.get(b.plateId as PlateId)?.kg ?? 0;
+      return kb - ka;
+    })
+    .filter((p) => p.pairs > 0)
+    .map((p) => {
+      const plate = platesById.get(p.plateId as PlateId);
+      return plate ? `${p.pairs}× ${plate.label}` : `${p.pairs}× ?`;
+    })
+    .join(" + ");
+}
+
+/** Total weight = barbell + all plates (2 sides). Anilhas-only skips bar. */
+function totalWeightKg(
+  plates: Array<{ plateId: string; pairs: number }>,
+  includeBarbell: boolean,
+): number {
+  let kg = includeBarbell ? BARBELL_WEIGHT_KG : 0;
+  for (const p of plates) {
+    const plate = platesById.get(p.plateId as PlateId);
+    if (!plate) continue;
+    kg += plate.kg * 2 * p.pairs;
+  }
+  return kg;
+}
+
+function formatKg(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  const str = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
+  return `${str} kg`;
 }
 
 export function recomputeLine(
@@ -44,10 +94,34 @@ export function recomputeLine(
     if (configurator.isAnilhasOnly && platesCents === 0) {
       throw new Error("Anilhas-only: selecione ao menos um par de anilhas");
     }
+    if (configurator.hasExerciseSelector && !input.exercise) {
+      throw new Error(`${title}: selecione um exercício antes de finalizar.`);
+    }
 
     const base = configurator.isAnilhasOnly ? 0 : priceBase;
     const unit = base + platesCents;
-    const lineTitle = input.exercise ? `${title} — ${input.exercise}` : title;
+
+    // Build an informative title that a human reader (owner email) can
+    // parse at a glance: exercise + total weight + plate breakdown.
+    const parts: string[] = [title];
+    if (input.exercise) parts[0] += ` — ${input.exercise}`;
+
+    const platesDesc = describePlates(plates);
+    const weight = totalWeightKg(plates, !configurator.isAnilhasOnly);
+    const detailBits: string[] = [];
+    if (!configurator.isAnilhasOnly && weight > 0) {
+      detailBits.push(formatKg(weight));
+    }
+    if (platesDesc) {
+      // For anilhas-only, the plate list IS the product; for sets it's the
+      // configuration detail in parens.
+      detailBits.push(configurator.isAnilhasOnly ? platesDesc : `(${platesDesc})`);
+    }
+    if (detailBits.length > 0) {
+      parts.push(detailBits.join(" "));
+    }
+
+    const lineTitle = parts.join(" · ");
     return { unitPriceCents: unit, lineTotalCents: unit * input.quantity, title: lineTitle, picture_url };
   }
 
