@@ -2,8 +2,7 @@ import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 import { z } from "astro:content";
 import { MercadoPagoConfig, Preference } from "mercadopago";
-import { applyPix } from "~/lib/format";
-import { PIX_DISCOUNT, MAX_INSTALLMENTS } from "~/lib/catalog";
+import { MAX_INSTALLMENTS } from "~/lib/catalog";
 import { recomputeLine } from "~/lib/pricing";
 import { validateCoupon } from "~/lib/coupons";
 
@@ -52,7 +51,6 @@ const payloadSchema = z.object({
     state: z.string().length(2),
   }),
   shippingOption: shippingOptionSchema,
-  paymentMethod: z.enum(["pix", "credit"]),
   items: z.array(cartItemSchema).min(1).max(20),
   couponCode: z.string().trim().max(60).optional(),
 });
@@ -176,22 +174,10 @@ export const POST: APIRoute = async ({ request }) => {
   }
   const subtotalAfterCouponCents = subtotalCents - couponDiscountCents;
 
-  // Apply Pix discount as a negative item if applicable.
-  // Pix discount applies only to (post-coupon) product subtotal, not freight.
-  const isPix = data.paymentMethod === "pix";
-  if (isPix) {
-    const discountCents =
-      subtotalAfterCouponCents - applyPix(subtotalAfterCouponCents);
-    if (discountCents > 0) {
-      mpItems.push({
-        id: "pix-discount",
-        title: `Desconto Pix (${Math.round(PIX_DISCOUNT * 100)}% OFF)`,
-        quantity: 1,
-        currency_id: "BRL",
-        unit_price: -(Math.round(discountCents) / 100),
-      });
-    }
-  }
+  // O desconto Pix (5 % OFF) agora é aplicado pelo próprio MP via
+  // "Campanha Pix" configurada no painel do merchant — não mais como
+  // linha negativa na preferência. Assim quem paga com cartão paga o
+  // preço cheio sem a gente ter que saber o método de pagamento antes.
 
   // Add freight as its own line so the customer sees it clearly on MP.
   const freightCents = data.shippingOption.price_cents;
@@ -259,15 +245,9 @@ export const POST: APIRoute = async ({ request }) => {
           },
         },
         payment_methods: {
-          // Excluir cartão quando o user escolheu Pix na nossa tela, e
-          // excluir boleto sempre (não suportamos). NÃO tentamos eliminar
-          // "pré-pago" / "débito virtual CAIXA" — fazer isso (commit
-          // anterior 0ffd4fa) acabou desabilitando o botão Pagar/Criar Pix
-          // no MP pra várias combinações. A UX do MP com opções extras é
-          // aceitável vs. bloquear pagamento de vez.
-          excluded_payment_types: isPix
-            ? [{ id: "credit_card" }, { id: "debit_card" }, { id: "ticket" }]
-            : [{ id: "ticket" }],
+          // Cliente escolhe Pix ou cartão direto na tela do MP — nossa
+          // tela não pede mais. Só excluímos boleto (não aceitamos).
+          excluded_payment_types: [{ id: "ticket" }],
           installments: MAX_INSTALLMENTS,
         },
         back_urls: {
@@ -286,7 +266,7 @@ export const POST: APIRoute = async ({ request }) => {
           customer_email: data.customer.email,
           customer_cpf: data.customer.cpf,
           customer_phone: data.customer.phone,
-          payment_method_hint: data.paymentMethod,
+          payment_method_hint: "",
           shipping_cep: data.shipping.cep,
           shipping_street: data.shipping.street,
           shipping_number: data.shipping.number,

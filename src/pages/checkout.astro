@@ -85,33 +85,15 @@ import Loader from "@lucide/astro/icons/loader";
             <div class="frete-list" data-frete-list role="radiogroup" aria-label="Opções de envio"></div>
           </fieldset>
 
-          <fieldset class="field-group">
-            <legend>Forma de pagamento</legend>
-            <div class="pay-methods">
-              <label class="pay-method">
-                <input type="radio" name="paymentMethod" value="pix" checked />
-                <span class="pay-method__inner">
-                  <span class="pay-method__title">Pix</span>
-                  <span class="pay-method__desc">5 % de desconto no total</span>
-                  <span class="pay-method__badge">5 % OFF</span>
-                </span>
-              </label>
-              <label class="pay-method">
-                <input type="radio" name="paymentMethod" value="credit" />
-                <span class="pay-method__inner">
-                  <span class="pay-method__title">Cartão de crédito</span>
-                  <span class="pay-method__desc">Até 6× sem juros</span>
-                </span>
-              </label>
-            </div>
-          </fieldset>
-
           <div class="checkout__submit-wrap">
             <button type="submit" class="btn btn-primary btn-lg w-full" id="submitBtn">
               <span class="submit-label">Ir para pagamento</span>
               <Loader size={18} aria-hidden="true" class="submit-spinner" />
             </button>
-            <p class="checkout__note">Você será redirecionado para o Mercado Pago para concluir o pagamento com segurança.</p>
+            <p class="checkout__note">
+              Você escolhe entre Pix (5 % OFF) e cartão (até 6× sem juros)
+              na tela seguinte do Mercado Pago.
+            </p>
             <p id="submitError" class="checkout__error" hidden role="alert"></p>
           </div>
         </form>
@@ -152,14 +134,14 @@ import Loader from "@lucide/astro/icons/loader";
             <dt>Frete <span class="text-brand-gray text-sm" data-frete-name></span></dt>
             <dd data-checkout-frete>R$ 0,00</dd>
           </div>
-          <div class="checkout__row checkout__row--highlight" data-pix-row>
-            <dt>Total Pix <span class="text-brand-gray text-sm">5 % OFF no subtotal</span></dt>
-            <dd data-checkout-pix>R$ 0,00</dd>
+          <div class="checkout__row checkout__row--highlight">
+            <dt>Total</dt>
+            <dd data-checkout-total>R$ 0,00</dd>
           </div>
-          <div class="checkout__row checkout__row--highlight" data-credit-row hidden>
-            <dt>Total cartão (6×)</dt>
-            <dd data-checkout-credit>R$ 0,00</dd>
-          </div>
+          <p class="checkout__pix-hint">
+            <span class="pix-badge">Pix</span>
+            Pague com Pix no próximo passo e ganhe <strong>5 % OFF</strong>.
+          </p>
         </dl>
       </aside>
     </div>
@@ -507,10 +489,7 @@ import Loader from "@lucide/astro/icons/loader";
 
   const itemsList = document.querySelector<HTMLUListElement>("[data-checkout-items]")!;
   const subtotalEl = document.querySelector<HTMLElement>("[data-checkout-subtotal]")!;
-  const pixEl = document.querySelector<HTMLElement>("[data-checkout-pix]")!;
-  const creditEl = document.querySelector<HTMLElement>("[data-checkout-credit]")!;
-  const pixRow = document.querySelector<HTMLElement>("[data-pix-row]")!;
-  const creditRow = document.querySelector<HTMLElement>("[data-credit-row]")!;
+  const totalEl = document.querySelector<HTMLElement>("[data-checkout-total]")!;
   const freteRow = document.querySelector<HTMLElement>("[data-frete-row]")!;
   const freteNameEl = document.querySelector<HTMLElement>("[data-frete-name]")!;
   const freteTotalEl = document.querySelector<HTMLElement>("[data-checkout-frete]")!;
@@ -568,27 +547,16 @@ import Loader from "@lucide/astro/icons/loader";
       freteTotalEl.textContent = formatBRL(freteCents);
     }
 
-    // Pix discount applies to post-coupon subtotal, matching server logic.
+    // Single total — cliente escolhe Pix/cartão na tela do MP. O desconto
+    // de 5 % pra Pix é aplicado pelo MP via campanha configurada no painel
+    // do merchant.
     const subtotalAfterCoupon = Math.max(0, snap.subtotalCents - couponCents);
-    const pixDiscount = Math.round(subtotalAfterCoupon * 0.05);
-    const pixTotal = subtotalAfterCoupon - pixDiscount + freteCents;
-    const creditTotal = subtotalAfterCoupon + freteCents;
-
-    pixEl.textContent = formatBRL(pixTotal);
-    creditEl.textContent = formatBRL(creditTotal);
+    totalEl.textContent = formatBRL(subtotalAfterCoupon + freteCents);
   }
 
   renderSummary(cart.snapshot());
   document.addEventListener("cart:change", (ev) => {
     renderSummary((ev as CustomEvent<CartSnapshot>).detail ?? cart.snapshot());
-  });
-
-  document.querySelectorAll<HTMLInputElement>('input[name="paymentMethod"]').forEach((r) => {
-    r.addEventListener("change", () => {
-      const method = r.value;
-      pixRow.hidden = method !== "pix";
-      creditRow.hidden = method !== "credit";
-    });
   });
 
   // --- Coupon apply ------------------------------------------------------
@@ -887,7 +855,6 @@ import Loader from "@lucide/astro/icons/loader";
         price_cents: selectedFrete.price_cents,
         delivery_days_max: selectedFrete.delivery_days_max,
       },
-      paymentMethod: String(formData.get("paymentMethod") ?? "pix"),
       items: cart.snapshot().items,
       couponCode: appliedCoupon?.code,
     };
