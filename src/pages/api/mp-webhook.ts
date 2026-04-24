@@ -10,6 +10,32 @@ import {
 export const prerender = false;
 
 /**
+ * In-memory idempotency guard. MP dispara múltiplos eventos `payment.updated`
+ * pra mesma compra (Pix: pending→approved; cartão: authorized→approved;
+ * retries). Cada evento com status=approved entraria no fluxo de email +
+ * etiqueta, gerando duplicatas.
+ *
+ * Mantém um Map<paymentId, processedAt> no escopo do módulo — sobrevive a
+ * múltiplas invocações do mesmo serverless instance (warm), que é onde a
+ * duplicata acontece 99 % das vezes (MP retrta em segundos/minutos).
+ *
+ * Edge case: cold start após 10 min re-envia; múltiplas instâncias Vercel
+ * que recebem o mesmo webhook também. Pra volume atual, aceitável.
+ */
+const processedPayments = new Map<string, number>();
+const DEDUP_TTL_MS = 10 * 60 * 1000;
+
+function markProcessed(id: string): boolean {
+  const now = Date.now();
+  for (const [k, ts] of processedPayments) {
+    if (now - ts > DEDUP_TTL_MS) processedPayments.delete(k);
+  }
+  if (processedPayments.has(id)) return false;
+  processedPayments.set(id, now);
+  return true;
+}
+
+/**
  * Verify the x-signature header Mercado Pago sends with every webhook.
  *
  * MP docs: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
@@ -133,6 +159,15 @@ export const POST: APIRoute = async ({ request }) => {
   // Only approved payments trigger label generation. Pending Pix payments
   // will fire another webhook when confirmed, so we'll handle them then.
   if (payment.status !== "approved") {
+    return new Response("ok", { status: 200 });
+  }
+
+  // Idempotência: MP dispara múltiplos eventos pra mesma payment approved.
+  // Se já processamos essa payment recentemente, ignora pra não duplicar
+  // email + tentativa de etiqueta.
+  const dedupKey = String(payment.id);
+  if (!markProcessed(dedupKey)) {
+    console.log("[mp-webhook] duplicate approved event — skipping", dedupKey);
     return new Response("ok", { status: 200 });
   }
 

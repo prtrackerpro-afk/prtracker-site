@@ -85,14 +85,34 @@ import Loader from "@lucide/astro/icons/loader";
             <div class="frete-list" data-frete-list role="radiogroup" aria-label="Opções de envio"></div>
           </fieldset>
 
+          <fieldset class="field-group">
+            <legend>Forma de pagamento</legend>
+            <div class="pay-methods">
+              <label class="pay-method">
+                <input type="radio" name="paymentMethod" value="pix" checked />
+                <span class="pay-method__inner">
+                  <span class="pay-method__title">Pix</span>
+                  <span class="pay-method__desc">5 % de desconto no total</span>
+                  <span class="pay-method__badge">5 % OFF</span>
+                </span>
+              </label>
+              <label class="pay-method">
+                <input type="radio" name="paymentMethod" value="credit" />
+                <span class="pay-method__inner">
+                  <span class="pay-method__title">Cartão de crédito</span>
+                  <span class="pay-method__desc">Até 6× sem juros</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
           <div class="checkout__submit-wrap">
             <button type="submit" class="btn btn-primary btn-lg w-full" id="submitBtn">
-              <span class="submit-label">Ir para pagamento</span>
+              <span class="submit-label" data-submit-label>Gerar Pix</span>
               <Loader size={18} aria-hidden="true" class="submit-spinner" />
             </button>
-            <p class="checkout__note">
-              Você escolhe entre Pix (5 % OFF) e cartão (até 6× sem juros)
-              na tela seguinte do Mercado Pago.
+            <p class="checkout__note" data-submit-note>
+              O QR Code do Pix vai aparecer na próxima página — pagamento confirmado em tempo real.
             </p>
             <p id="submitError" class="checkout__error" hidden role="alert"></p>
           </div>
@@ -134,14 +154,14 @@ import Loader from "@lucide/astro/icons/loader";
             <dt>Frete <span class="text-brand-gray text-sm" data-frete-name></span></dt>
             <dd data-checkout-frete>R$ 0,00</dd>
           </div>
-          <div class="checkout__row checkout__row--highlight">
-            <dt>Total</dt>
-            <dd data-checkout-total>R$ 0,00</dd>
+          <div class="checkout__row checkout__row--highlight" data-pix-row>
+            <dt>Total Pix <span class="text-brand-gray text-sm">5 % OFF no subtotal</span></dt>
+            <dd data-checkout-pix>R$ 0,00</dd>
           </div>
-          <p class="checkout__pix-hint">
-            <span class="pix-badge">Pix</span>
-            Pague com Pix no próximo passo e ganhe <strong>5 % OFF</strong>.
-          </p>
+          <div class="checkout__row checkout__row--highlight" data-credit-row hidden>
+            <dt>Total cartão (6×)</dt>
+            <dd data-checkout-credit>R$ 0,00</dd>
+          </div>
         </dl>
       </aside>
     </div>
@@ -489,7 +509,10 @@ import Loader from "@lucide/astro/icons/loader";
 
   const itemsList = document.querySelector<HTMLUListElement>("[data-checkout-items]")!;
   const subtotalEl = document.querySelector<HTMLElement>("[data-checkout-subtotal]")!;
-  const totalEl = document.querySelector<HTMLElement>("[data-checkout-total]")!;
+  const pixEl = document.querySelector<HTMLElement>("[data-checkout-pix]")!;
+  const creditEl = document.querySelector<HTMLElement>("[data-checkout-credit]")!;
+  const pixRow = document.querySelector<HTMLElement>("[data-pix-row]")!;
+  const creditRow = document.querySelector<HTMLElement>("[data-credit-row]")!;
   const freteRow = document.querySelector<HTMLElement>("[data-frete-row]")!;
   const freteNameEl = document.querySelector<HTMLElement>("[data-frete-name]")!;
   const freteTotalEl = document.querySelector<HTMLElement>("[data-checkout-frete]")!;
@@ -547,17 +570,46 @@ import Loader from "@lucide/astro/icons/loader";
       freteTotalEl.textContent = formatBRL(freteCents);
     }
 
-    // Single total — cliente escolhe Pix/cartão na tela do MP. O desconto
-    // de 5 % pra Pix é aplicado pelo MP via campanha configurada no painel
-    // do merchant.
+    // Pix discount applies to post-coupon subtotal, matching server logic.
     const subtotalAfterCoupon = Math.max(0, snap.subtotalCents - couponCents);
-    totalEl.textContent = formatBRL(subtotalAfterCoupon + freteCents);
+    const pixDiscount = Math.round(subtotalAfterCoupon * 0.05);
+    const pixTotal = subtotalAfterCoupon - pixDiscount + freteCents;
+    const creditTotal = subtotalAfterCoupon + freteCents;
+
+    pixEl.textContent = formatBRL(pixTotal);
+    creditEl.textContent = formatBRL(creditTotal);
   }
 
   renderSummary(cart.snapshot());
   document.addEventListener("cart:change", (ev) => {
     renderSummary((ev as CustomEvent<CartSnapshot>).detail ?? cart.snapshot());
   });
+
+  const submitLabel = document.querySelector<HTMLElement>("[data-submit-label]");
+  const submitNote = document.querySelector<HTMLElement>("[data-submit-note]");
+
+  function syncPaymentUI(method: string): void {
+    pixRow.hidden = method !== "pix";
+    creditRow.hidden = method !== "credit";
+    if (submitLabel) {
+      submitLabel.textContent = method === "pix" ? "Gerar Pix" : "Ir para pagamento";
+    }
+    if (submitNote) {
+      submitNote.textContent =
+        method === "pix"
+          ? "O QR Code do Pix vai aparecer na próxima página — pagamento confirmado em tempo real."
+          : "Você será redirecionado para o Mercado Pago para concluir o pagamento com segurança.";
+    }
+  }
+
+  document.querySelectorAll<HTMLInputElement>('input[name="paymentMethod"]').forEach((r) => {
+    r.addEventListener("change", () => {
+      if (r.checked) syncPaymentUI(r.value);
+    });
+  });
+  // Initialize from the currently-checked radio (defaults to Pix).
+  const checked = document.querySelector<HTMLInputElement>('input[name="paymentMethod"]:checked');
+  if (checked) syncPaymentUI(checked.value);
 
   // --- Coupon apply ------------------------------------------------------
   couponInput.addEventListener("input", () => {
@@ -855,6 +907,7 @@ import Loader from "@lucide/astro/icons/loader";
         price_cents: selectedFrete.price_cents,
         delivery_days_max: selectedFrete.delivery_days_max,
       },
+      paymentMethod: String(formData.get("paymentMethod") ?? "pix"),
       items: cart.snapshot().items,
       couponCode: appliedCoupon?.code,
     };
@@ -863,18 +916,36 @@ import Loader from "@lucide/astro/icons/loader";
     submitBtn.disabled = true;
 
     try {
-      const res = await fetch("/api/create-preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.init_point) {
-        throw new Error(data?.error ?? "Falha ao criar o pagamento. Tente novamente.");
+      if (payload.paymentMethod === "pix") {
+        // Pix nativo: cria Payment direto na MP Payment API e leva o cliente
+        // pra /pagamento/pix onde ele vê o QR + polling de confirmação.
+        const res = await fetch("/api/create-pix-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.payment_id) {
+          throw new Error(data?.error ?? "Falha ao gerar o Pix. Tente novamente.");
+        }
+        // Não limpa carrinho ainda — a limpeza acontece quando o pagamento
+        // é aprovado (na página /pagamento/pix). Se o cliente fechar a aba
+        // antes de pagar, o carrinho permanece intacto.
+        window.location.href = `/pagamento/pix?p=${encodeURIComponent(data.payment_id)}`;
+      } else {
+        // Cartão: Checkout Pro do MP (UI do MP com parcelamento).
+        const res = await fetch("/api/create-preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.init_point) {
+          throw new Error(data?.error ?? "Falha ao criar o pagamento. Tente novamente.");
+        }
+        cart.clear();
+        window.location.href = data.init_point;
       }
-      // Clear cart only after successful redirect URL is received
-      cart.clear();
-      window.location.href = data.init_point;
     } catch (err) {
       submitBtn.dataset.loading = "false";
       submitBtn.disabled = false;
