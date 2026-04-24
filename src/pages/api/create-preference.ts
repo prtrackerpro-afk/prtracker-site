@@ -214,7 +214,18 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const origin = new URL(request.url).origin;
+  // Origin pro back_urls. `new URL(request.url).origin` às vezes volta
+  // com host interno do runtime serverless em alguns edges da Vercel, o
+  // que fez MP levar o botão "Voltar à loja" pra localhost. Preferimos
+  // o host do header com fallback pro env var.
+  const fwdHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const fwdProto = request.headers.get("x-forwarded-proto") ?? "https";
+  const derivedOrigin =
+    fwdHost && !fwdHost.startsWith("localhost") ? `${fwdProto}://${fwdHost}` : null;
+  const origin =
+    derivedOrigin ??
+    import.meta.env.PUBLIC_SITE_URL ??
+    "https://prtracker.com.br";
 
   try {
     const client = new MercadoPagoConfig({ accessToken });
@@ -248,29 +259,15 @@ export const POST: APIRoute = async ({ request }) => {
           },
         },
         payment_methods: {
-          // Força o MP a mostrar só a modalidade escolhida na nossa tela.
-          // Antes, com o PIX selecionado, o MP ainda exibia "cartão pré-pago";
-          // com cartão, exibia Pix + débito virtual CAIXA. Agora excluímos
-          // TUDO exceto a categoria escolhida.
-          //  - Pix vive em "bank_transfer".
-          //  - Cartão de crédito é "credit_card".
+          // Excluir cartão quando o user escolheu Pix na nossa tela, e
+          // excluir boleto sempre (não suportamos). NÃO tentamos eliminar
+          // "pré-pago" / "débito virtual CAIXA" — fazer isso (commit
+          // anterior 0ffd4fa) acabou desabilitando o botão Pagar/Criar Pix
+          // no MP pra várias combinações. A UX do MP com opções extras é
+          // aceitável vs. bloquear pagamento de vez.
           excluded_payment_types: isPix
-            ? [
-                { id: "credit_card" },
-                { id: "debit_card" },
-                { id: "prepaid_card" },
-                { id: "ticket" },
-                { id: "atm" },
-                { id: "digital_currency" },
-              ]
-            : [
-                { id: "bank_transfer" },
-                { id: "debit_card" },
-                { id: "prepaid_card" },
-                { id: "ticket" },
-                { id: "atm" },
-                { id: "digital_currency" },
-              ],
+            ? [{ id: "credit_card" }, { id: "debit_card" }, { id: "ticket" }]
+            : [{ id: "ticket" }],
           installments: MAX_INSTALLMENTS,
         },
         back_urls: {
