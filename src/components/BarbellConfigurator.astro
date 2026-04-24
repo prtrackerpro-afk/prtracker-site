@@ -491,6 +491,12 @@ const CONFIG_JSON = JSON.stringify({
   roots.forEach((root) => initConfigurator(root));
 
   function initConfigurator(root: HTMLElement): void {
+    // Idempotency guard: bfcache restores, prefetch hydration, or
+    // PRConfigurator.build re-entry could fire init twice for the same
+    // root, doubling the click handler (and the AddToCart event).
+    if (root.dataset.cfgInit === "1") return;
+    root.dataset.cfgInit = "1";
+
     const config = JSON.parse(root.dataset.config!) as ConfigData;
     const platesById = new Map<string, PlateSpec>(config.plates.map((p) => [p.id, p]));
     const platesOrdered = [...config.plates].sort((a, b) => b.kg - a.kg);

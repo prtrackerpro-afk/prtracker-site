@@ -214,6 +214,10 @@ const { slug, title, image, priceCents, sizes = [], category } = Astro.props;
   import { trackAddToCart } from "~/scripts/tracking";
 
   document.querySelectorAll<HTMLElement>("[data-add-cart]").forEach((root) => {
+    // Idempotency guard against double-init (bfcache, prefetch hydration).
+    if (root.dataset.atcInit === "1") return;
+    root.dataset.atcInit = "1";
+
     const slug  = root.dataset.slug!;
     const title = root.dataset.title!;
     const image = root.dataset.image!;
