@@ -248,9 +248,29 @@ export const POST: APIRoute = async ({ request }) => {
           },
         },
         payment_methods: {
+          // Força o MP a mostrar só a modalidade escolhida na nossa tela.
+          // Antes, com o PIX selecionado, o MP ainda exibia "cartão pré-pago";
+          // com cartão, exibia Pix + débito virtual CAIXA. Agora excluímos
+          // TUDO exceto a categoria escolhida.
+          //  - Pix vive em "bank_transfer".
+          //  - Cartão de crédito é "credit_card".
           excluded_payment_types: isPix
-            ? [{ id: "credit_card" }, { id: "debit_card" }, { id: "ticket" }]
-            : [{ id: "ticket" }],
+            ? [
+                { id: "credit_card" },
+                { id: "debit_card" },
+                { id: "prepaid_card" },
+                { id: "ticket" },
+                { id: "atm" },
+                { id: "digital_currency" },
+              ]
+            : [
+                { id: "bank_transfer" },
+                { id: "debit_card" },
+                { id: "prepaid_card" },
+                { id: "ticket" },
+                { id: "atm" },
+                { id: "digital_currency" },
+              ],
           installments: MAX_INSTALLMENTS,
         },
         back_urls: {
