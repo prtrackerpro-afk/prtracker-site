@@ -489,6 +489,7 @@ import Loader from "@lucide/astro/icons/loader";
 
 <script>
   import { cart } from "~/scripts/cart";
+  import { trackInitiateCheckout } from "~/scripts/tracking";
   import { formatBRL } from "~/lib/format";
   import { formatCartItemDisplay, escapeHtml } from "~/lib/cart-format";
   import type { CartSnapshot } from "~/lib/cart-types";
@@ -911,6 +912,29 @@ import Loader from "@lucide/astro/icons/loader";
       items: cart.snapshot().items,
       couponCode: appliedCoupon?.code,
     };
+
+    // Mirror the server-side total calc so the tracked value matches the
+    // actual amount the user is about to pay (Pix vs. card, coupon, frete).
+    const subtotalCents = payload.items.reduce(
+      (sum, i) => sum + i.unitPriceCents * i.quantity,
+      0,
+    );
+    const couponCents = appliedCoupon?.discountCents ?? 0;
+    const freteCents = selectedFrete?.price_cents ?? 0;
+    const afterCoupon = Math.max(0, subtotalCents - couponCents);
+    const totalCents =
+      payload.paymentMethod === "pix"
+        ? afterCoupon - Math.round(afterCoupon * 0.05) + freteCents
+        : afterCoupon + freteCents;
+    trackInitiateCheckout({
+      items: payload.items.map((i) => ({
+        productSlug: i.productSlug,
+        title: i.title,
+        unitPriceCents: i.unitPriceCents,
+        quantity: i.quantity,
+      })),
+      totalCents,
+    });
 
     submitBtn.dataset.loading = "true";
     submitBtn.disabled = true;

@@ -6,6 +6,7 @@ import SpecsTable from "~/components/SpecsTable.astro";
 import FAQAccordion from "~/components/FAQAccordion.astro";
 import AddToCartSimple from "~/components/AddToCartSimple.astro";
 import BarbellConfigurator from "~/components/BarbellConfigurator.astro";
+import TrackViewContent from "~/components/TrackViewContent.astro";
 import { formatBRL, centsToReaisString } from "~/lib/format";
 import { CATEGORY_LABELS } from "~/lib/catalog";
 import ChevronRight from "@lucide/astro/icons/chevron-right";
@@ -72,6 +73,13 @@ const metaDescription = seo.metaDescription ?? shortDescription;
   ogType="product"
   jsonLd={jsonLd}
 >
+  <TrackViewContent
+    slug={slug}
+    title={title}
+    priceCents={priceBase}
+    category={category}
+  />
+
   <!-- Breadcrumbs -->
   <nav aria-label="Breadcrumb" class="breadcrumb container-page">
     <ol>
@@ -114,6 +122,7 @@ const metaDescription = seo.metaDescription ?? shortDescription;
               basePriceCents={configurator.isAnilhasOnly ? 0 : priceBase}
               isAnilhasOnly={configurator.isAnilhasOnly}
               hasExerciseSelector={configurator.hasExerciseSelector}
+              category={category}
             />
           ) : (
             <AddToCartSimple
@@ -122,6 +131,7 @@ const metaDescription = seo.metaDescription ?? shortDescription;
               image={primary.src}
               priceCents={priceBase}
               sizes={sizes}
+              category={category}
             />
           )}
         </div>

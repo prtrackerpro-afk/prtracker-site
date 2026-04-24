@@ -18,6 +18,7 @@ interface Props {
   isAnilhasOnly?: boolean;
   /** My PR Set: show exercise dropdown. */
   hasExerciseSelector?: boolean;
+  category?: string;
 }
 
 const {
@@ -27,6 +28,7 @@ const {
   basePriceCents,
   isAnilhasOnly = false,
   hasExerciseSelector = false,
+  category,
 } = Astro.props;
 
 const CONFIG_JSON = JSON.stringify({
@@ -36,6 +38,7 @@ const CONFIG_JSON = JSON.stringify({
   basePriceCents,
   isAnilhasOnly,
   hasExerciseSelector,
+  category,
   barbellWeightKg: BARBELL_WEIGHT_KG,
   maxSideSpaceMm: MAX_SIDE_SPACE_MM,
   plates: PLATES,
@@ -467,6 +470,7 @@ const CONFIG_JSON = JSON.stringify({
 
 <script>
   import { cart } from "~/scripts/cart";
+  import { trackAddToCart } from "~/scripts/tracking";
   import type { PlateId, PlateSpec } from "~/lib/catalog";
   import { formatBRL, formatKg, applyPix } from "~/lib/format";
 
@@ -477,6 +481,7 @@ const CONFIG_JSON = JSON.stringify({
     basePriceCents: number;
     isAnilhasOnly: boolean;
     hasExerciseSelector: boolean;
+    category?: string;
     barbellWeightKg: number;
     maxSideSpaceMm: number;
     plates: PlateSpec[];
@@ -642,6 +647,13 @@ const CONFIG_JSON = JSON.stringify({
         quantity: 1,
         plates: platesSelected,
         exercise,
+      });
+      trackAddToCart({
+        slug: config.slug,
+        title: fullTitle,
+        unitPriceCents,
+        quantity: 1,
+        category: config.category,
       });
     });
 

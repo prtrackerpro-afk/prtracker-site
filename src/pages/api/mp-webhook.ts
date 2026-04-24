@@ -6,6 +6,7 @@ import {
   sendCustomerConfirmation,
   type OrderEmailData,
 } from "~/lib/email";
+import { sendCapiPurchase, sendGa4Purchase } from "~/lib/tracking-server";
 
 export const prerender = false;
 
@@ -179,16 +180,22 @@ export const POST: APIRoute = async ({ request }) => {
     console.error("[mp-webhook] shipping label generation failed:", err);
   }
 
-  // Order notifications — fire-and-forget so a broken SMTP never blocks
-  // MP's 200 or keeps the customer waiting on the thank-you page.
+  // Order notifications + server-side conversion tracking — all fire-and-forget.
+  // A broken SMTP or ad platform API never blocks MP's 200 ack, and the
+  // helpers swallow their own errors so one failing side doesn't abort the
+  // others. Runs in parallel to shave ~1s off webhook latency.
   try {
     const emailData = buildOrderEmailData(payment, labelError);
     await Promise.allSettled([
       sendOwnerOrderAlert(emailData),
       sendCustomerConfirmation(emailData),
+      sendCapiPurchase(payment, {
+        clientUserAgent: request.headers.get("user-agent") ?? undefined,
+      }),
+      sendGa4Purchase(payment),
     ]);
   } catch (err) {
-    console.error("[mp-webhook] email notification failed:", err);
+    console.error("[mp-webhook] post-payment tasks failed:", err);
   }
 
   return new Response("ok", { status: 200 });

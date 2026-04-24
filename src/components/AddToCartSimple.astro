@@ -7,9 +7,10 @@ interface Props {
   image: string;
   priceCents: number;
   sizes?: string[];
+  category?: string;
 }
 
-const { slug, title, image, priceCents, sizes = [] } = Astro.props;
+const { slug, title, image, priceCents, sizes = [], category } = Astro.props;
 ---
 
 <div
@@ -19,6 +20,7 @@ const { slug, title, image, priceCents, sizes = [] } = Astro.props;
   data-title={title}
   data-image={image}
   data-price={priceCents}
+  data-category={category ?? ""}
 >
   <div class="atc__price">
     <div class="atc__price-main">{formatBRL(priceCents)}</div>
@@ -209,12 +211,14 @@ const { slug, title, image, priceCents, sizes = [] } = Astro.props;
 
 <script>
   import { cart } from "~/scripts/cart";
+  import { trackAddToCart } from "~/scripts/tracking";
 
   document.querySelectorAll<HTMLElement>("[data-add-cart]").forEach((root) => {
     const slug  = root.dataset.slug!;
     const title = root.dataset.title!;
     const image = root.dataset.image!;
     const price = Number(root.dataset.price!);
+    const category = root.dataset.category || undefined;
     const qtyInput  = root.querySelector<HTMLInputElement>("[data-qty-input]")!;
     const qtyDown   = root.querySelector<HTMLButtonElement>("[data-qty-down]")!;
     const qtyUp     = root.querySelector<HTMLButtonElement>("[data-qty-up]")!;
@@ -247,6 +251,13 @@ const { slug, title, image, priceCents, sizes = [] } = Astro.props;
         unitPriceCents: price,
         quantity,
         size,
+      });
+      trackAddToCart({
+        slug,
+        title: variantTitle,
+        unitPriceCents: price,
+        quantity,
+        category,
       });
     });
   });
