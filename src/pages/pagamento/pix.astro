@@ -1,0 +1,459 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import { MercadoPagoConfig, Payment } from "mercadopago";
+import Check from "@lucide/astro/icons/check";
+import Copy from "@lucide/astro/icons/copy";
+import Clock from "@lucide/astro/icons/clock";
+import Loader from "@lucide/astro/icons/loader";
+
+export const prerender = false;
+
+const paymentId = Astro.url.searchParams.get("p") ?? Astro.url.searchParams.get("payment_id");
+
+// Sem payment_id → checkout. Caso típico é alguém compartilhar a URL sem o param.
+if (!paymentId || !/^\d{6,20}$/.test(paymentId)) {
+  return Astro.redirect("/checkout");
+}
+
+const accessToken = import.meta.env.MP_ACCESS_TOKEN;
+if (!accessToken) {
+  return new Response("MP_ACCESS_TOKEN ausente", { status: 500 });
+}
+
+let payment: Awaited<ReturnType<Payment["get"]>> | null = null;
+try {
+  const client = new MercadoPagoConfig({ accessToken });
+  payment = await new Payment(client).get({ id: paymentId });
+} catch (err) {
+  console.error("[/pagamento/pix] payment fetch failed:", err);
+  return Astro.redirect("/checkout?status=pix_not_found");
+}
+
+// Já pago → obrigado. Cobre refresh depois da aprovação e retry de URL antiga.
+if (payment.status === "approved") {
+  return Astro.redirect(`/obrigado?payment_id=${paymentId}&status=approved`);
+}
+
+// Rejeitado / cancelado → checkout com erro.
+if (payment.status === "rejected" || payment.status === "cancelled") {
+  return Astro.redirect("/checkout?status=pix_failed");
+}
+
+const qrCodeBase64 = payment.point_of_interaction?.transaction_data?.qr_code_base64;
+const qrCodeText = payment.point_of_interaction?.transaction_data?.qr_code;
+const amount = payment.transaction_amount ?? 0;
+const expiresAt = payment.date_of_expiration ?? null;
+
+if (!qrCodeBase64 || !qrCodeText) {
+  return Astro.redirect("/checkout?status=pix_no_qr");
+}
+
+const amountBRL = amount.toLocaleString("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  minimumFractionDigits: 2,
+});
+---
+
+<BaseLayout
+  title="Pagar com Pix — PR Tracker"
+  description="Escaneie o QR Code ou cole o código Pix para concluir seu pedido."
+  noindex
+>
+  <section class="pixpay">
+    <div class="container-page pixpay__inner">
+      <header class="pixpay__head">
+        <span class="pixpay__eyebrow">Pagamento Pix</span>
+        <h1 class="pixpay__title" data-status-title>Escaneie o QR Code para pagar</h1>
+        <p class="pixpay__lead" data-status-lead>
+          Aguardando a confirmação do seu banco. Assim que o Pix cair, essa página atualiza sozinha.
+        </p>
+      </header>
+
+      <div class="pixpay__grid">
+        <div class="pixpay__card" data-pix-card>
+          <div class="pixpay__status" data-pix-status>
+            <Loader size={18} class="pixpay__status-spinner" aria-hidden="true" />
+            <span data-pix-status-text>Aguardando pagamento…</span>
+          </div>
+
+          <div class="pixpay__qr">
+            <img
+              src={`data:image/png;base64,${qrCodeBase64}`}
+              alt="QR Code Pix"
+              width="288"
+              height="288"
+              data-qr-img
+            />
+          </div>
+
+          <div class="pixpay__amount">
+            <span class="pixpay__amount-label">Valor do Pix</span>
+            <strong class="pixpay__amount-value">{amountBRL}</strong>
+          </div>
+
+          {expiresAt && (
+            <p class="pixpay__timer" data-pix-timer data-expires-at={expiresAt}>
+              <Clock size={14} aria-hidden="true" />
+              <span data-pix-timer-text>Expira em —</span>
+            </p>
+          )}
+
+          <div class="pixpay__copy">
+            <label for="pix-code">Ou copie e cole o código:</label>
+            <div class="pixpay__copy-row">
+              <input
+                id="pix-code"
+                type="text"
+                readonly
+                value={qrCodeText}
+                data-pix-code
+              />
+              <button type="button" class="btn btn-primary" data-pix-copy>
+                <Copy size={16} aria-hidden="true" />
+                <span data-pix-copy-label>Copiar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="pixpay__help">
+          <h2>Como pagar?</h2>
+          <ol>
+            <li>Abra o app do seu banco ou carteira digital</li>
+            <li>Entre em <strong>Pix → Pagar com QR Code</strong></li>
+            <li>Aponte pro QR ou cole o código copia-e-cola</li>
+            <li>Confirme o valor e finalize</li>
+          </ol>
+          <p class="pixpay__note">
+            Tudo automático — não precisa enviar comprovante. Assim que o Pix for confirmado, essa tela vai mudar pra <strong>pedido confirmado</strong> e a gente processa seu pedido.
+          </p>
+          <p class="pixpay__note pixpay__note--small">
+            Dúvidas? <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer">WhatsApp (51) 98206-1914</a>
+          </p>
+        </aside>
+      </div>
+
+      <div class="pixpay__approved" data-pix-approved hidden>
+        <div class="pixpay__approved-badge" aria-hidden="true">
+          <Check size={64} />
+        </div>
+        <h2>Pagamento confirmado!</h2>
+        <p>Redirecionando pra sua página de pedido…</p>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline define:vars={{ paymentId }}>
+    (() => {
+      const copyBtn = document.querySelector("[data-pix-copy]");
+      const codeInput = document.querySelector("[data-pix-code]");
+      const copyLabel = document.querySelector("[data-pix-copy-label]");
+
+      copyBtn?.addEventListener("click", async () => {
+        if (!codeInput) return;
+        try {
+          await navigator.clipboard.writeText(codeInput.value);
+        } catch {
+          codeInput.select();
+          document.execCommand("copy");
+        }
+        const prev = copyLabel?.textContent ?? "Copiar";
+        if (copyLabel) copyLabel.textContent = "Copiado!";
+        setTimeout(() => {
+          if (copyLabel) copyLabel.textContent = prev;
+        }, 1800);
+      });
+
+      // --- Countdown ------------------------------------------------------
+      const timerEl = document.querySelector("[data-pix-timer]");
+      const timerText = document.querySelector("[data-pix-timer-text]");
+      const expiresAt = timerEl?.getAttribute("data-expires-at");
+      if (expiresAt && timerText) {
+        const deadline = new Date(expiresAt).getTime();
+        const updateTimer = () => {
+          const left = deadline - Date.now();
+          if (left <= 0) {
+            timerText.textContent = "QR expirado — gere um novo";
+            return;
+          }
+          const mins = Math.floor(left / 60000);
+          const secs = Math.floor((left % 60000) / 1000);
+          timerText.textContent = `Expira em ${mins}min ${String(secs).padStart(2, "0")}s`;
+        };
+        updateTimer();
+        setInterval(updateTimer, 1000);
+      }
+
+      // --- Polling --------------------------------------------------------
+      const statusEl = document.querySelector("[data-pix-status]");
+      const statusText = document.querySelector("[data-pix-status-text]");
+      const approvedEl = document.querySelector("[data-pix-approved]");
+      const cardEl = document.querySelector("[data-pix-card]");
+      const titleEl = document.querySelector("[data-status-title]");
+      const leadEl = document.querySelector("[data-status-lead]");
+
+      let stopped = false;
+      let pollTimer = null;
+
+      async function pollOnce() {
+        try {
+          const res = await fetch(`/api/payment-status?p=${encodeURIComponent(paymentId)}`, {
+            cache: "no-store",
+          });
+          const data = await res.json().catch(() => null);
+          if (!data) return;
+
+          if (data.status === "approved") {
+            stopped = true;
+            if (statusText) statusText.textContent = "Pagamento confirmado!";
+            if (statusEl) statusEl.setAttribute("data-state", "approved");
+            if (titleEl) titleEl.textContent = "Pagamento confirmado!";
+            if (leadEl) leadEl.textContent = "Tudo certo. Vamos te levar pra página do pedido.";
+            if (cardEl) cardEl.style.display = "none";
+            if (approvedEl) approvedEl.hidden = false;
+
+            // Limpa o carrinho — o pedido foi concretizado.
+            try {
+              window.PRCart?.clear();
+            } catch {}
+
+            setTimeout(() => {
+              window.location.href = `/obrigado?payment_id=${paymentId}&status=approved`;
+            }, 1600);
+          } else if (data.status === "rejected" || data.status === "cancelled") {
+            stopped = true;
+            if (statusText) statusText.textContent = "Pagamento recusado. Tente novamente.";
+            if (statusEl) statusEl.setAttribute("data-state", "rejected");
+            setTimeout(() => {
+              window.location.href = "/checkout?status=pix_failed";
+            }, 2400);
+          }
+        } catch {
+          // Rede instável — próximo poll tenta de novo.
+        }
+      }
+
+      function startPolling() {
+        pollOnce();
+        pollTimer = setInterval(() => {
+          if (stopped) {
+            clearInterval(pollTimer);
+            return;
+          }
+          pollOnce();
+        }, 4000);
+      }
+
+      // Pausa quando aba fica em background pra não queimar quota à toa.
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          if (pollTimer) clearInterval(pollTimer);
+        } else if (!stopped) {
+          startPolling();
+        }
+      });
+
+      startPolling();
+    })();
+  </script>
+</BaseLayout>
+
+<style>
+  .pixpay { padding: 3rem 0 5rem; background: #fafafc; min-height: 100dvh; }
+  .pixpay__inner { max-width: 62rem; }
+
+  .pixpay__head {
+    text-align: center;
+    margin: 0 auto 2.5rem;
+    max-width: 36rem;
+  }
+  .pixpay__eyebrow {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    margin-bottom: 0.5rem;
+  }
+  .pixpay__title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.5rem, 1.6vw + 1rem, 2.1rem);
+  }
+  .pixpay__lead {
+    color: var(--color-brand-gray);
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  .pixpay__grid {
+    display: grid;
+    gap: 2rem;
+  }
+  @media (min-width: 880px) {
+    .pixpay__grid { grid-template-columns: 1.2fr 1fr; align-items: start; }
+  }
+
+  .pixpay__card {
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .pixpay__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fff7e0;
+    color: #8a6400;
+    padding: 0.5rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+  }
+  .pixpay__status[data-state="approved"] {
+    background: #dffee2;
+    color: #005c1a;
+  }
+  .pixpay__status[data-state="rejected"] {
+    background: #ffe0e0;
+    color: #7a0000;
+  }
+  .pixpay__status-spinner {
+    animation: spin 1.2s linear infinite;
+  }
+  .pixpay__status[data-state="approved"] .pixpay__status-spinner,
+  .pixpay__status[data-state="rejected"] .pixpay__status-spinner {
+    animation: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .pixpay__qr {
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 0.75rem;
+  }
+  .pixpay__qr img {
+    width: 240px;
+    height: 240px;
+    image-rendering: pixelated;
+  }
+  @media (min-width: 640px) {
+    .pixpay__qr img { width: 288px; height: 288px; }
+  }
+
+  .pixpay__amount {
+    margin: 1.25rem 0 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .pixpay__amount-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-brand-gray);
+  }
+  .pixpay__amount-value {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    color: var(--color-brand-navy);
+  }
+
+  .pixpay__timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--color-brand-gray);
+    margin: 0 0 1.5rem;
+  }
+
+  .pixpay__copy { margin-top: 1rem; text-align: left; }
+  .pixpay__copy label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-brand-navy);
+    margin-bottom: 0.4rem;
+  }
+  .pixpay__copy-row { display: flex; gap: 0.5rem; }
+  .pixpay__copy-row input {
+    flex: 1 1 auto;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 0.82rem;
+    padding: 0.6rem 0.75rem;
+    border: 1.5px solid rgb(1 0 42 / 0.12);
+    border-radius: 0.5rem;
+    background: #fafafc;
+    color: var(--color-brand-navy);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pixpay__copy-row .btn { flex: 0 0 auto; gap: 0.4rem; }
+
+  .pixpay__help {
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: var(--radius-card);
+    padding: 1.75rem;
+  }
+  .pixpay__help h2 {
+    font-size: 1.1rem;
+    margin: 0 0 0.9rem;
+  }
+  .pixpay__help ol {
+    margin: 0 0 1.25rem;
+    padding: 0 0 0 1.15rem;
+    color: var(--color-brand-gray);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .pixpay__help ol strong { color: var(--color-brand-navy); }
+  .pixpay__note {
+    font-size: 0.9rem;
+    color: var(--color-brand-gray);
+    line-height: 1.55;
+    margin: 0 0 0.75rem;
+  }
+  .pixpay__note--small { font-size: 0.85rem; }
+  .pixpay__note a { color: var(--color-brand-navy); font-weight: 600; }
+
+  .pixpay__approved {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  .pixpay__approved-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 104px;
+    height: 104px;
+    border-radius: 9999px;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    box-shadow: var(--shadow-lime);
+    margin: 0 auto 1.5rem;
+    animation: pop 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .pixpay__approved h2 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.75rem, 2.2vw + 1rem, 2.5rem);
+  }
+  .pixpay__approved p { color: var(--color-brand-gray); }
+</style>

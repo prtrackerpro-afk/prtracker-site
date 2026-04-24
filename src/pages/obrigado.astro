@@ -39,14 +39,71 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
   </section>
 
   <script>
-    // If payment is pending or failed, show contextual copy
     const params = new URLSearchParams(window.location.search);
     const status = params.get("status");
-    if (status === "pending") {
-      const t = document.querySelector("[data-thanks-title]");
-      const m = document.querySelector("[data-thanks-message]");
-      if (t) t.textContent = "Pagamento em processamento";
-      if (m) m.textContent = "Seu pagamento está sendo confirmado pelo Mercado Pago. Você receberá um e-mail assim que tudo for aprovado — geralmente leva alguns minutos.";
+    const paymentId =
+      params.get("payment_id") ?? params.get("collection_id") ?? params.get("p");
+    const titleEl = document.querySelector("[data-thanks-title]");
+    const msgEl = document.querySelector("[data-thanks-message]");
+
+    function markPending() {
+      if (titleEl) titleEl.textContent = "Pagamento em processamento";
+      if (msgEl)
+        msgEl.textContent =
+          "Confirmando seu pagamento com o Mercado Pago. Essa página atualiza sozinha quando tudo for aprovado.";
+    }
+
+    function markApproved() {
+      if (titleEl) titleEl.textContent = "Pedido confirmado!";
+      if (msgEl)
+        msgEl.textContent =
+          "Sua compra foi processada com sucesso. Em breve você receberá um e-mail com os detalhes e o link de rastreio quando o produto for enviado.";
+    }
+
+    // Se chegamos aqui com status != approved e com um payment_id, fazemos
+    // polling. Útil pro caso: cliente pagou Pix, veio pra cá via "Voltar à
+    // loja" antes da webhook chegar. A gente confirma na cara.
+    if (paymentId && /^\d{6,20}$/.test(paymentId) && status !== "approved") {
+      markPending();
+      let stopped = false;
+      let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+      const poll = async () => {
+        try {
+          const res = await fetch(
+            `/api/payment-status?p=${encodeURIComponent(paymentId)}`,
+            { cache: "no-store" },
+          );
+          const data = await res.json().catch(() => null);
+          if (!data) return;
+          if (data.status === "approved") {
+            stopped = true;
+            if (pollTimer) clearInterval(pollTimer);
+            markApproved();
+            try {
+              (window as typeof window & { PRCart?: { clear: () => void } }).PRCart?.clear();
+            } catch {}
+          } else if (data.status === "rejected" || data.status === "cancelled") {
+            stopped = true;
+            if (pollTimer) clearInterval(pollTimer);
+            if (titleEl) titleEl.textContent = "Pagamento não concluído";
+            if (msgEl)
+              msgEl.textContent =
+                "Seu pagamento não foi aprovado. Tente novamente ou fale com a gente pelo WhatsApp.";
+          }
+        } catch {
+          // Rede instável — tenta de novo no próximo tick.
+        }
+      };
+
+      poll();
+      pollTimer = setInterval(() => {
+        if (stopped && pollTimer) {
+          clearInterval(pollTimer);
+          return;
+        }
+        poll();
+      }, 4000);
     }
   </script>
 </BaseLayout>

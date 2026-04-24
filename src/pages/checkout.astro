@@ -108,10 +108,12 @@ import Loader from "@lucide/astro/icons/loader";
 
           <div class="checkout__submit-wrap">
             <button type="submit" class="btn btn-primary btn-lg w-full" id="submitBtn">
-              <span class="submit-label">Ir para pagamento</span>
+              <span class="submit-label" data-submit-label>Gerar Pix</span>
               <Loader size={18} aria-hidden="true" class="submit-spinner" />
             </button>
-            <p class="checkout__note">Você será redirecionado para o Mercado Pago para concluir o pagamento com segurança.</p>
+            <p class="checkout__note" data-submit-note>
+              O QR Code do Pix vai aparecer na próxima página — pagamento confirmado em tempo real.
+            </p>
             <p id="submitError" class="checkout__error" hidden role="alert"></p>
           </div>
         </form>
@@ -583,13 +585,31 @@ import Loader from "@lucide/astro/icons/loader";
     renderSummary((ev as CustomEvent<CartSnapshot>).detail ?? cart.snapshot());
   });
 
+  const submitLabel = document.querySelector<HTMLElement>("[data-submit-label]");
+  const submitNote = document.querySelector<HTMLElement>("[data-submit-note]");
+
+  function syncPaymentUI(method: string): void {
+    pixRow.hidden = method !== "pix";
+    creditRow.hidden = method !== "credit";
+    if (submitLabel) {
+      submitLabel.textContent = method === "pix" ? "Gerar Pix" : "Ir para pagamento";
+    }
+    if (submitNote) {
+      submitNote.textContent =
+        method === "pix"
+          ? "O QR Code do Pix vai aparecer na próxima página — pagamento confirmado em tempo real."
+          : "Você será redirecionado para o Mercado Pago para concluir o pagamento com segurança.";
+    }
+  }
+
   document.querySelectorAll<HTMLInputElement>('input[name="paymentMethod"]').forEach((r) => {
     r.addEventListener("change", () => {
-      const method = r.value;
-      pixRow.hidden = method !== "pix";
-      creditRow.hidden = method !== "credit";
+      if (r.checked) syncPaymentUI(r.value);
     });
   });
+  // Initialize from the currently-checked radio (defaults to Pix).
+  const checked = document.querySelector<HTMLInputElement>('input[name="paymentMethod"]:checked');
+  if (checked) syncPaymentUI(checked.value);
 
   // --- Coupon apply ------------------------------------------------------
   couponInput.addEventListener("input", () => {
@@ -896,18 +916,36 @@ import Loader from "@lucide/astro/icons/loader";
     submitBtn.disabled = true;
 
     try {
-      const res = await fetch("/api/create-preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.init_point) {
-        throw new Error(data?.error ?? "Falha ao criar o pagamento. Tente novamente.");
+      if (payload.paymentMethod === "pix") {
+        // Pix nativo: cria Payment direto na MP Payment API e leva o cliente
+        // pra /pagamento/pix onde ele vê o QR + polling de confirmação.
+        const res = await fetch("/api/create-pix-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.payment_id) {
+          throw new Error(data?.error ?? "Falha ao gerar o Pix. Tente novamente.");
+        }
+        // Não limpa carrinho ainda — a limpeza acontece quando o pagamento
+        // é aprovado (na página /pagamento/pix). Se o cliente fechar a aba
+        // antes de pagar, o carrinho permanece intacto.
+        window.location.href = `/pagamento/pix?p=${encodeURIComponent(data.payment_id)}`;
+      } else {
+        // Cartão: Checkout Pro do MP (UI do MP com parcelamento).
+        const res = await fetch("/api/create-preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.init_point) {
+          throw new Error(data?.error ?? "Falha ao criar o pagamento. Tente novamente.");
+        }
+        cart.clear();
+        window.location.href = data.init_point;
       }
-      // Clear cart only after successful redirect URL is received
-      cart.clear();
-      window.location.href = data.init_point;
     } catch (err) {
       submitBtn.dataset.loading = "false";
       submitBtn.disabled = false;
