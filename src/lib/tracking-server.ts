@@ -183,6 +183,76 @@ export async function sendCapiPurchase(
   }
 }
 
+/**
+ * Send a ViewContent event to Meta's Conversions API. Fire-and-forget.
+ * Called from `/api/track/view-content` (a beacon hit on product page load),
+ * so we share the same `event_id` as the client Pixel for dedup.
+ *
+ * No PII (the visitor hasn't entered anything yet); we lean on fbp/fbc +
+ * IP + UA for matching.
+ */
+export async function sendCapiViewContent(args: {
+  slug: string;
+  title: string;
+  priceCents: number;
+  category?: string;
+  eventId: string;
+  ctx?: TrackingContext;
+}): Promise<void> {
+  const { slug, title, priceCents, category, eventId, ctx = {} } = args;
+  const token = import.meta.env.META_CAPI_ACCESS_TOKEN as string | undefined;
+  const pixelId = import.meta.env.META_PIXEL_ID as string | undefined;
+  if (!token || !pixelId) {
+    console.warn("[tracking] META_CAPI_ACCESS_TOKEN or META_PIXEL_ID missing — skipping CAPI ViewContent");
+    return;
+  }
+
+  const userData: Record<string, unknown> = { country: [sha256("br")] };
+  if (ctx.fbp) userData.fbp = ctx.fbp;
+  if (ctx.fbc) userData.fbc = ctx.fbc;
+  if (ctx.clientIpAddress) userData.client_ip_address = ctx.clientIpAddress;
+  if (ctx.clientUserAgent) userData.client_user_agent = ctx.clientUserAgent;
+
+  const body = {
+    data: [
+      {
+        event_name: "ViewContent",
+        event_time: Math.floor(Date.now() / 1000),
+        event_id: eventId,
+        event_source_url: ctx.eventSourceUrl ?? `${siteUrl()}/product/${slug}`,
+        action_source: "website",
+        user_data: userData,
+        custom_data: {
+          currency: "BRL",
+          value: priceCents / 100,
+          content_ids: [slug],
+          content_name: title,
+          content_category: category,
+          content_type: "product",
+        },
+      },
+    ],
+  };
+
+  const url = `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${encodeURIComponent(token)}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      console.error(`[tracking] CAPI ViewContent ${res.status}: ${text}`);
+      return;
+    }
+    console.log("[tracking] CAPI ViewContent sent", { event_id: eventId, slug });
+  } catch (err) {
+    console.error("[tracking] CAPI ViewContent call failed:", err);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // GA4 Measurement Protocol
 // ---------------------------------------------------------------------------

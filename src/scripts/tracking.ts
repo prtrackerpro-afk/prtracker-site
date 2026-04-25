@@ -97,6 +97,23 @@ export function trackViewContent(p: ProductRef): void {
       currency: "BRL",
     }, { eventID: eventId });
   });
+  // Mirror to CAPI server-side beacon — same eventId so Meta dedupes against
+  // the Pixel call. keepalive lets the request survive page nav. Failures
+  // are swallowed; this is best-effort.
+  try {
+    fetch("/api/track/view-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug: p.slug,
+        title: p.title,
+        priceCents: p.priceCents,
+        category: p.category,
+        eventId,
+      }),
+      keepalive: true,
+    }).catch(() => { /* swallow */ });
+  } catch { /* swallow */ }
   safeGtag("view_item", {
     currency: "BRL",
     value,
