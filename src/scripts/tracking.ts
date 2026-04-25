@@ -59,6 +59,13 @@ function newEventId(): string {
 }
 
 function deferMeta(run: () => void): void {
+  // If fbq is already loaded, fire synchronously — critical for events that
+  // precede a navigation (e.g. InitiateCheckout before redirect to /pagamento).
+  // Otherwise wait for idle so we don't block the initial page load.
+  if (typeof window.fbq === "function") {
+    try { run(); } catch { /* swallow */ }
+    return;
+  }
   const tryRun = () => {
     if (typeof window.fbq !== "function") return;
     try { run(); } catch { /* swallow */ }
@@ -106,11 +113,7 @@ export function trackViewContent(p: ProductRef): void {
 export function trackAddToCart(item: CartItemRef): void {
   const value = centsToReais(item.unitPriceCents * item.quantity);
   const eventId = newEventId();
-  // eslint-disable-next-line no-console
-  console.log("[tracking] trackAddToCart invoked", { slug: item.slug, eventId });
   deferMeta(() => {
-    // eslint-disable-next-line no-console
-    console.log("[tracking] fbq AddToCart firing", { eventId });
     window.fbq!("track", "AddToCart", {
       content_ids: [item.slug],
       content_type: "product",
