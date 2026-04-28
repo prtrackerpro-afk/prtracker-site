@@ -496,6 +496,20 @@ import Loader from "@lucide/astro/icons/loader";
 
   if (cart.snapshot().items.length === 0) {
     window.location.replace("/cart");
+  } else {
+    // InitiateCheckout fires when the user enters the checkout flow (Meta
+    // spec: "the start of a checkout process"). Frete + coupon aren't known
+    // yet, so value = subtotal in cents (close enough for funnel reporting).
+    const snap = cart.snapshot();
+    trackInitiateCheckout({
+      items: snap.items.map((i) => ({
+        productSlug: i.productSlug,
+        title: i.title,
+        unitPriceCents: i.unitPriceCents,
+        quantity: i.quantity,
+      })),
+      totalCents: snap.subtotalCents,
+    });
   }
 
   type FreteOption = {
@@ -912,29 +926,6 @@ import Loader from "@lucide/astro/icons/loader";
       items: cart.snapshot().items,
       couponCode: appliedCoupon?.code,
     };
-
-    // Mirror the server-side total calc so the tracked value matches the
-    // actual amount the user is about to pay (Pix vs. card, coupon, frete).
-    const subtotalCents = payload.items.reduce(
-      (sum, i) => sum + i.unitPriceCents * i.quantity,
-      0,
-    );
-    const couponCents = appliedCoupon?.discountCents ?? 0;
-    const freteCents = selectedFrete?.price_cents ?? 0;
-    const afterCoupon = Math.max(0, subtotalCents - couponCents);
-    const totalCents =
-      payload.paymentMethod === "pix"
-        ? afterCoupon - Math.round(afterCoupon * 0.05) + freteCents
-        : afterCoupon + freteCents;
-    trackInitiateCheckout({
-      items: payload.items.map((i) => ({
-        productSlug: i.productSlug,
-        title: i.title,
-        unitPriceCents: i.unitPriceCents,
-        quantity: i.quantity,
-      })),
-      totalCents,
-    });
 
     submitBtn.dataset.loading = "true";
     submitBtn.disabled = true;
