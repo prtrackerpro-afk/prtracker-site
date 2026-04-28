@@ -68,6 +68,12 @@ const isDev = import.meta.env.DEV;
             "script",
             "https://connect.facebook.net/en_US/fbevents.js"
           );
+          // Disable autoConfig BEFORE init: kills Meta's microdata-based
+          // automatic AddToCart/SubscribedButtonClick (`es=automatic`,
+          // `est_source=...`) that fires from button-text heuristics with
+          // no Event ID and no params, polluting CTR/CPA. We send our own
+          // events with full custom_data + eventID for CAPI dedup.
+          fbq("set", "autoConfig", "false", META_PIXEL_ID);
           fbq("init", META_PIXEL_ID);
           fbq("track", "PageView");
         }
