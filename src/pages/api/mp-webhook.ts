@@ -184,15 +184,26 @@ export const POST: APIRoute = async ({ request }) => {
   // A broken SMTP or ad platform API never blocks MP's 200 ack, and the
   // helpers swallow their own errors so one failing side doesn't abort the
   // others. Runs in parallel to shave ~1s off webhook latency.
+  //
+  // fbp/fbc/_ga foram capturados em /api/create-pix-payment ou
+  // /api/create-preference e armazenados no metadata da MP — recuperamos
+  // aqui pra enriquecer o Purchase no CAPI e GA4 MP. Sem eles o match rate
+  // cai ~10-15pp e o GA4 atribui a "(direct)" em vez da sessão original.
+  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+  const trackingCtx = {
+    fbp: meta.fbp ? String(meta.fbp) : undefined,
+    fbc: meta.fbc ? String(meta.fbc) : undefined,
+    gaClientId: meta.ga_client_id ? String(meta.ga_client_id) : undefined,
+    clientUserAgent: request.headers.get("user-agent") ?? undefined,
+  };
+
   try {
     const emailData = buildOrderEmailData(payment, labelError);
     await Promise.allSettled([
       sendOwnerOrderAlert(emailData),
       sendCustomerConfirmation(emailData),
-      sendCapiPurchase(payment, {
-        clientUserAgent: request.headers.get("user-agent") ?? undefined,
-      }),
-      sendGa4Purchase(payment),
+      sendCapiPurchase(payment, trackingCtx),
+      sendGa4Purchase(payment, trackingCtx),
     ]);
   } catch (err) {
     console.error("[mp-webhook] post-payment tasks failed:", err);
