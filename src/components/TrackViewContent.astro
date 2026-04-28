@@ -1,0 +1,33 @@
+---
+interface Props {
+  slug: string;
+  title: string;
+  priceCents: number;
+  category?: string;
+}
+
+const { slug, title, priceCents, category } = Astro.props;
+---
+
+<div
+  data-view-content
+  data-slug={slug}
+  data-title={title}
+  data-price={priceCents}
+  data-category={category ?? ""}
+  hidden
+></div>
+
+<script>
+  import { trackViewContent } from "~/scripts/tracking";
+
+  const el = document.querySelector<HTMLElement>("[data-view-content]");
+  if (el) {
+    trackViewContent({
+      slug: el.dataset.slug!,
+      title: el.dataset.title!,
+      priceCents: Number(el.dataset.price),
+      category: el.dataset.category || undefined,
+    });
+  }
+</script>
