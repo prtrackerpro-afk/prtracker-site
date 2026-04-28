@@ -3,6 +3,7 @@ import { getCollection } from "astro:content";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { MAX_INSTALLMENTS } from "~/lib/catalog";
 import { buildOrder, orderPayloadSchema } from "~/lib/order-build";
+import { extractTrackingCookies } from "~/lib/tracking-cookies";
 
 export const prerender = false;
 
@@ -56,6 +57,17 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
   const order = built.order;
+
+  // Tracking cookies — capturados aqui (último ponto onde temos contexto
+  // do navegador antes de chamar a MP). Vão pra metadata pro webhook
+  // recuperar e enriquecer o Purchase no CAPI/GA4 (sobe match rate ~10-15pp).
+  const tracking = extractTrackingCookies(request.headers.get("cookie"));
+  const metadata: Record<string, string | number> = {
+    ...order.metadata,
+    ...(tracking.fbp ? { fbp: tracking.fbp } : {}),
+    ...(tracking.fbc ? { fbc: tracking.fbc } : {}),
+    ...(tracking.gaClientId ? { ga_client_id: tracking.gaClientId } : {}),
+  };
 
   // Shape items for MP's Preference API (adds currency_id, drops empty
   // picture_url which MP rejects with "invalid URL").
@@ -139,7 +151,7 @@ export const POST: APIRoute = async ({ request }) => {
         notification_url: `${origin}/api/mp-webhook`,
         statement_descriptor: "PRTRACKER",
         external_reference: `order_${Date.now()}`,
-        metadata: order.metadata,
+        metadata,
       },
     });
 

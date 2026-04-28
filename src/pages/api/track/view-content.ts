@@ -9,6 +9,7 @@
 import type { APIRoute } from "astro";
 import { z } from "astro:content";
 import { sendCapiViewContent } from "~/lib/tracking-server";
+import { extractTrackingCookies } from "~/lib/tracking-cookies";
 
 export const prerender = false;
 
@@ -20,15 +21,6 @@ const payloadSchema = z.object({
   eventId: z.string().min(1).max(100),
 });
 
-function parseCookie(header: string | null, name: string): string | undefined {
-  if (!header) return undefined;
-  for (const part of header.split(";")) {
-    const [k, ...v] = part.trim().split("=");
-    if (k === name) return decodeURIComponent(v.join("="));
-  }
-  return undefined;
-}
-
 export const POST: APIRoute = async ({ request }) => {
   let parsed;
   try {
@@ -38,9 +30,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(null, { status: 204 });
   }
 
-  const cookieHeader = request.headers.get("cookie");
-  const fbp = parseCookie(cookieHeader, "_fbp");
-  const fbc = parseCookie(cookieHeader, "_fbc");
+  const { fbp, fbc } = extractTrackingCookies(request.headers.get("cookie"));
   const xff = request.headers.get("x-forwarded-for") ?? "";
   const clientIpAddress = xff.split(",")[0]?.trim() || undefined;
   const clientUserAgent = request.headers.get("user-agent") ?? undefined;
