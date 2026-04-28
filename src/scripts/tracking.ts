@@ -180,3 +180,30 @@ export function trackInitiateCheckout(cart: CheckoutRef): void {
     })),
   });
 }
+
+export function trackAddPaymentInfo(cart: CheckoutRef): void {
+  const value = centsToReais(cart.totalCents);
+  const ids = cart.items.map((i) => i.productSlug);
+  const numItems = cart.items.reduce((n, i) => n + i.quantity, 0);
+  const eventId = newEventId();
+  deferMeta(() => {
+    window.fbq!("track", "AddPaymentInfo", {
+      content_ids: ids,
+      content_type: "product",
+      num_items: numItems,
+      value,
+      currency: "BRL",
+    }, { eventID: eventId });
+  });
+  safeGtag("add_payment_info", {
+    currency: "BRL",
+    value,
+    items: cart.items.map((i) => ({
+      item_id: i.productSlug,
+      item_name: i.title,
+      item_category: i.category,
+      price: centsToReais(i.unitPriceCents),
+      quantity: i.quantity,
+    })),
+  });
+}
