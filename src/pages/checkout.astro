@@ -489,7 +489,7 @@ import Loader from "@lucide/astro/icons/loader";
 
 <script>
   import { cart } from "~/scripts/cart";
-  import { trackInitiateCheckout } from "~/scripts/tracking";
+  import { trackInitiateCheckout, trackAddPaymentInfo } from "~/scripts/tracking";
   import { formatBRL } from "~/lib/format";
   import { formatCartItemDisplay, escapeHtml } from "~/lib/cart-format";
   import type { CartSnapshot } from "~/lib/cart-types";
@@ -926,6 +926,35 @@ import Loader from "@lucide/astro/icons/loader";
       items: cart.snapshot().items,
       couponCode: appliedCoupon?.code,
     };
+
+    // AddPaymentInfo dispara aqui: form validado, frete escolhido, cupom
+    // validado, método de pagamento selecionado — o cliente realmente
+    // se comprometeu com a compra. Sinal forte pra Andromeda otimizar.
+    // value = total real (com Pix discount, frete, cupom) já calculado
+    // server-side pela MP no Purchase, mas aqui usamos a melhor aproximação
+    // client-side (subtotal pós-descontos pré-frete).
+    {
+      const subtotalCents = payload.items.reduce(
+        (sum, i) => sum + i.unitPriceCents * i.quantity,
+        0,
+      );
+      const couponCents = appliedCoupon?.discountCents ?? 0;
+      const freteCents = selectedFrete?.price_cents ?? 0;
+      const afterCoupon = Math.max(0, subtotalCents - couponCents);
+      const totalCents =
+        payload.paymentMethod === "pix"
+          ? afterCoupon - Math.round(afterCoupon * 0.05) + freteCents
+          : afterCoupon + freteCents;
+      trackAddPaymentInfo({
+        items: payload.items.map((i) => ({
+          productSlug: i.productSlug,
+          title: i.title,
+          unitPriceCents: i.unitPriceCents,
+          quantity: i.quantity,
+        })),
+        totalCents,
+      });
+    }
 
     submitBtn.dataset.loading = "true";
     submitBtn.disabled = true;
