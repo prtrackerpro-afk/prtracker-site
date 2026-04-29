@@ -180,7 +180,7 @@ const admin = (Astro.locals as any).admin;
     <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-8">
       <h2 class="text-base font-semibold mb-4">Spend × Revenue diário</h2>
       <TrendChart
-        client:load
+        client:only="react"
         data={chartData}
         xKey="date"
         series={[
