@@ -45,7 +45,6 @@ export async function fetchWindsor(opts: {
   url.searchParams.set("fields", opts.fields.join(","));
   url.searchParams.set("date_from", opts.dateFrom);
   url.searchParams.set("date_to", opts.dateTo);
-  url.searchParams.set("date_preset", "custom");
   if (opts.accountId) url.searchParams.set("_account", opts.accountId);
 
   const res = await fetch(url, {
