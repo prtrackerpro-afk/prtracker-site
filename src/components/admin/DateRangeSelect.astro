@@ -14,7 +14,7 @@ const options = [
 const currentUrl = new URL(Astro.request.url);
 ---
 
-<div class="inline-flex rounded-lg border border-navy-700 bg-navy-800/40 p-0.5">
+<div class="flex flex-wrap gap-0.5 rounded-lg border border-navy-700 bg-navy-800/40 p-0.5">
   {
     options.map((o) => {
       const url = new URL(currentUrl);

@@ -27,7 +27,7 @@ const navItems = [
     <title>{title} · PR Tracker Admin</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
-  <body class="min-h-screen bg-navy-900 text-white font-body antialiased">
+  <body class="admin-shell min-h-screen bg-navy-900 text-white font-body antialiased">
     <div class="flex min-h-screen">
       <!-- Sidebar -->
       <aside class="hidden md:flex w-64 flex-col border-r border-navy-700 bg-navy-800/50 p-6">
@@ -111,5 +111,17 @@ const navItems = [
         });
       }
     </script>
+
+    <style is:global>
+      /* Admin scope: brand global rule sets navy color + uppercase on h1-h6,
+         which collides with the dark navy admin background. Reset to inherit
+         from parent (white) and let Tailwind classes drive size/weight. */
+      .admin-shell :is(h1, h2, h3, h4, h5, h6) {
+        color: inherit;
+        text-transform: none;
+        letter-spacing: -0.01em;
+        line-height: 1.25;
+      }
+    </style>
   </body>
 </html>
