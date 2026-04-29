@@ -46,9 +46,14 @@ const channelMeta: Record<Channel, { label: string; color: string; icon: string;
 };
 
 const admin = (Astro.locals as any).admin;
+
+const { count: alertCount } = await sb
+  .from("alerts")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "open");
 ---
 
-<AdminLayout title="Vendas" active="sales" user={admin}>
+<AdminLayout title="Vendas" active="sales" user={admin} alertCount={alertCount ?? 0}>
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold">Vendas multi-canal</h1>
@@ -58,10 +63,10 @@ const admin = (Astro.locals as any).admin;
   </div>
 
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-    <KpiCard label="Revenue total" value={fmtBRL(totalRevenue)} accent="lime" />
-    <KpiCard label="Pedidos" value={fmtInt(totalCount)} />
-    <KpiCard label="Ticket médio" value={totalCount > 0 ? fmtBRL(totalRevenue / totalCount) : "—"} />
-    <KpiCard label="Canais ativos" value={String([...byChannel.values()].filter((c) => c.count > 0).length)} hint={`de ${channels.length}`} />
+    <KpiCard label="Revenue total" value={fmtBRL(totalRevenue)} icon="revenue" accent="lime" />
+    <KpiCard label="Pedidos" value={fmtInt(totalCount)} icon="conversions" />
+    <KpiCard label="Ticket médio" value={totalCount > 0 ? fmtBRL(totalRevenue / totalCount) : "—"} icon="cpa" />
+    <KpiCard label="Canais ativos" value={String([...byChannel.values()].filter((c) => c.count > 0).length)} icon="default" hint={`de ${channels.length}`} />
   </div>
 
   <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">

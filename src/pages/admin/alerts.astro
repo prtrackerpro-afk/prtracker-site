@@ -23,8 +23,8 @@ const sevColor: Record<string, string> = {
 const admin = (Astro.locals as any).admin;
 ---
 
-<AdminLayout title="Alertas" active="alerts" user={admin}>
-  <div class="flex items-center justify-between mb-6">
+<AdminLayout title="Alertas" active="alerts" user={admin} alertCount={open.length}>
+  <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold">Alertas</h1>
       <p class="text-sm text-navy-300 mt-0.5">

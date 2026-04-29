@@ -1,0 +1,62 @@
+---
+import {
+  iconBell,
+  iconChartBar,
+  iconGlobe,
+  iconLayout,
+  iconShoppingBag,
+} from "./icons";
+
+interface Props {
+  active: "overview" | "meta" | "ga4" | "sales" | "alerts" | "settings";
+  alertCount?: number;
+}
+const { active, alertCount = 0 } = Astro.props;
+
+const items: Array<{ id: Props["active"]; href: string; label: string; icon: string }> = [
+  { id: "overview", href: "/admin", label: "Overview", icon: iconLayout },
+  { id: "meta", href: "/admin/meta", label: "Meta", icon: iconChartBar },
+  { id: "ga4", href: "/admin/ga4", label: "GA4", icon: iconGlobe },
+  { id: "sales", href: "/admin/sales", label: "Vendas", icon: iconShoppingBag },
+  { id: "alerts", href: "/admin/alerts", label: "Alertas", icon: iconBell },
+];
+---
+
+<nav
+  class="fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-navy-700 bg-navy-900/95 backdrop-blur supports-[backdrop-filter]:bg-navy-900/80"
+  style="padding-bottom: max(0.25rem, env(safe-area-inset-bottom));"
+  aria-label="Navegação principal"
+>
+  <ul class="flex items-stretch">
+    {
+      items.map((it) => {
+        const isActive = it.id === active;
+        const showBadge = it.id === "alerts" && alertCount > 0;
+        return (
+          <li class="flex-1">
+            <a
+              href={it.href}
+              aria-current={isActive ? "page" : undefined}
+              class:list={[
+                "relative flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium tracking-wide transition",
+                isActive ? "text-brand-lime" : "text-navy-300 hover:text-white",
+              ]}
+            >
+              <span class="relative inline-flex [&>svg]:h-5 [&>svg]:w-5" set:html={it.icon}>
+                {showBadge && (
+                  <span class="absolute -right-1 -top-0.5 inline-flex min-w-[1rem] justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-4 text-white">
+                    {alertCount > 9 ? "9+" : alertCount}
+                  </span>
+                )}
+              </span>
+              <span>{it.label}</span>
+              {isActive && (
+                <span class="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-b-full bg-brand-lime" aria-hidden="true" />
+              )}
+            </a>
+          </li>
+        );
+      })
+    }
+  </ul>
+</nav>

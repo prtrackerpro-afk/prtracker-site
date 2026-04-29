@@ -149,9 +149,14 @@ function statusBadge(eff?: string | null) {
 }
 
 const admin = (Astro.locals as any).admin;
+
+const { count: alertCount } = await sb
+  .from("alerts")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "open");
 ---
 
-<AdminLayout title="Meta Ads" active="meta" user={admin}>
+<AdminLayout title="Meta Ads" active="meta" user={admin} alertCount={alertCount ?? 0}>
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold">Meta Ads</h1>
@@ -162,32 +167,39 @@ const admin = (Astro.locals as any).admin;
     <DateRangeSelect current={days} />
   </div>
 
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-    <KpiCard label="Spend" value={fmtBRL(totals.spend)} />
-    <KpiCard label="Revenue" value={fmtBRL(totals.revenue)} accent="lime" />
-    <KpiCard label="ROAS" value={fmtNumber(totals.roas)} />
-    <KpiCard label="Purchases" value={fmtInt(totals.purchases)} hint={`CPA ${totals.purchases > 0 ? fmtBRL(totals.cpa) : "—"}`} />
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+    <KpiCard label="Spend" value={fmtBRL(totals.spend)} icon="spend" spark={chartData.map((d) => d.Spend)} />
+    <KpiCard label="Revenue" value={fmtBRL(totals.revenue)} icon="revenue" accent="lime" spark={chartData.map((d) => d.Revenue)} />
+    <KpiCard label="ROAS" value={fmtNumber(totals.roas)} icon="roas" />
+    <KpiCard label="Purchases" value={fmtInt(totals.purchases)} icon="conversions" hint={`CPA ${totals.purchases > 0 ? fmtBRL(totals.cpa) : "—"}`} />
   </div>
 
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-    <KpiCard label="Impressões" value={fmtInt(totals.impressions)} />
-    <KpiCard label="CTR" value={fmtPct(totals.ctr)} />
-    <KpiCard label="CPM" value={fmtBRL(totals.cpm)} />
-    <KpiCard label="CPC" value={fmtBRL(totals.cpc)} />
+    <KpiCard label="Impressões" value={fmtInt(totals.impressions)} icon="impressions" />
+    <KpiCard label="CTR" value={fmtPct(totals.ctr)} icon="ctr" />
+    <KpiCard label="CPM" value={fmtBRL(totals.cpm)} icon="cpm" />
+    <KpiCard label="CPC" value={fmtBRL(totals.cpc)} icon="cpc" />
   </div>
 
   {chartData.length > 0 && (
-    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-8">
-      <h2 class="text-base font-semibold mb-4">Spend × Revenue diário</h2>
-      <TrendChart
-        client:only="react"
-        data={chartData}
-        xKey="date"
-        series={[
-          { key: "Spend", label: "Spend", color: "#da291c" },
-          { key: "Revenue", label: "Revenue", color: "#d8ff2c" },
-        ]}
-      />
+    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 md:p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold">Spend × Revenue</h2>
+          <p class="text-xs text-navy-300 mt-0.5">Diário, conta inteira</p>
+        </div>
+      </div>
+      <div class="h-64 md:h-72">
+        <TrendChart
+          client:only="react"
+          data={chartData}
+          xKey="date"
+          series={[
+            { key: "Spend", label: "Spend", color: "#f87171" },
+            { key: "Revenue", label: "Revenue", color: "#d8ff2c" },
+          ]}
+        />
+      </div>
     </section>
   )}
 
