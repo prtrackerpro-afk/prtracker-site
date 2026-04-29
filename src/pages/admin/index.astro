@@ -117,7 +117,7 @@ const admin = (Astro.locals as any).admin;
     </div>
     {chartData.length > 0 ? (
       <TrendChart
-        client:load
+        client:only="react"
         data={chartData}
         xKey="date"
         series={[
