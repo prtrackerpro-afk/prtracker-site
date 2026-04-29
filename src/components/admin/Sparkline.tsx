@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 
 interface Props {
