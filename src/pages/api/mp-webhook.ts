@@ -7,6 +7,8 @@ import {
   type OrderEmailData,
 } from "~/lib/email";
 import { sendCapiPurchase, sendGa4Purchase } from "~/lib/tracking-server";
+import { getAdminSupabase } from "~/lib/supabase/server";
+import { paymentToSaleRow } from "~/lib/admin/mp-ingest";
 
 export const prerender = false;
 
@@ -204,6 +206,7 @@ export const POST: APIRoute = async ({ request }) => {
       sendCustomerConfirmation(emailData),
       sendCapiPurchase(payment, trackingCtx),
       sendGa4Purchase(payment, trackingCtx),
+      upsertSaleRow(payment),
     ]);
   } catch (err) {
     console.error("[mp-webhook] post-payment tasks failed:", err);
@@ -283,6 +286,24 @@ function buildOrderEmailData(
 }
 
 // ---------------------------------------------------------------------------
+
+async function upsertSaleRow(payment: MpPayment): Promise<void> {
+  if (!import.meta.env.SUPABASE_URL || !import.meta.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return;
+  }
+  try {
+    const sb = getAdminSupabase();
+    const row = paymentToSaleRow(payment as any);
+    const { error } = await sb
+      .from("sales")
+      .upsert(row, { onConflict: "channel,external_order_id" });
+    if (error) {
+      console.warn("[mp-webhook] sales upsert failed:", error.message);
+    }
+  } catch (err) {
+    console.warn("[mp-webhook] sales upsert threw:", err);
+  }
+}
 
 type MpPayment = Awaited<ReturnType<Payment["get"]>>;
 

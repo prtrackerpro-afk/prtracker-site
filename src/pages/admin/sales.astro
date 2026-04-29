@@ -37,7 +37,7 @@ const totalRevenue = [...byChannel.values()].reduce((s, c) => s + c.revenue, 0);
 const totalCount = [...byChannel.values()].reduce((s, c) => s + c.count, 0);
 
 const channelMeta: Record<Channel, { label: string; color: string; icon: string; status: "live" | "config" | "comingsoon" }> = {
-  site: { label: "Site", color: "#d8ff2c", icon: "🌐", status: "live" },
+  site: { label: "Site (MP)", color: "#d8ff2c", icon: "🌐", status: "live" },
   mercadolivre: { label: "Mercado Livre", color: "#fff159", icon: "🟡", status: "config" },
   amazon: { label: "Amazon", color: "#ff9900", icon: "📦", status: "config" },
   shopee: { label: "Shopee", color: "#ee4d2d", icon: "🛒", status: "comingsoon" },
