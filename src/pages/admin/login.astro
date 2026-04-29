@@ -1,0 +1,102 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+
+const url = new URL(Astro.request.url);
+const next = url.searchParams.get("next") || "/admin";
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Login · PR Tracker Admin</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body flex items-center justify-center p-4">
+    <div class="w-full max-w-sm">
+      <div class="text-center mb-8">
+        <div class="font-display text-3xl tracking-tight text-brand-lime">PR Tracker</div>
+        <div class="text-xs uppercase tracking-widest text-navy-300 mt-1">Admin Console</div>
+      </div>
+
+      <form id="login-form" class="space-y-4 rounded-2xl border border-navy-700 bg-navy-800/50 p-6">
+        <div>
+          <label for="email" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autocomplete="email"
+            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+          />
+        </div>
+        <div>
+          <label for="password" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Senha</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autocomplete="current-password"
+            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+          />
+        </div>
+        <button
+          type="submit"
+          id="submit-btn"
+          class="w-full rounded-lg bg-brand-lime px-4 py-2.5 text-sm font-semibold text-navy-900 hover:opacity-90 transition disabled:opacity-50"
+        >
+          Entrar
+        </button>
+        <div id="error-msg" class="text-sm text-red-400 hidden"></div>
+      </form>
+
+      <p class="text-center text-xs text-navy-300 mt-6">Acesso restrito aos administradores.</p>
+    </div>
+
+    <script define:vars={{ next }}>
+      const form = document.getElementById("login-form");
+      const errorMsg = document.getElementById("error-msg");
+      const submitBtn = document.getElementById("submit-btn");
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.classList.add("hidden");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Entrando...";
+        const data = new FormData(form);
+        try {
+          const res = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: data.get("email"),
+              password: data.get("password"),
+            }),
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            errorMsg.textContent = body.error === "not_admin"
+              ? "Email não autorizado."
+              : body.error === "invalid_credentials"
+                ? "Email ou senha incorretos."
+                : "Erro ao entrar. Tente novamente.";
+            errorMsg.classList.remove("hidden");
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Entrar";
+            return;
+          }
+          window.location.href = next;
+        } catch (err) {
+          errorMsg.textContent = "Erro de conexão. Tente novamente.";
+          errorMsg.classList.remove("hidden");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Entrar";
+        }
+      });
+    </script>
+  </body>
+</html>

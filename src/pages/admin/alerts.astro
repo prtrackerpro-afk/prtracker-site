@@ -1,0 +1,132 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { getAdminSupabase } from "../../lib/supabase/server";
+
+const sb = getAdminSupabase();
+const { data: alerts = [] } = await sb
+  .from("alerts")
+  .select("*")
+  .order("created_at", { ascending: false })
+  .limit(200);
+
+const open = (alerts ?? []).filter((a: any) => a.status === "open");
+const ack = (alerts ?? []).filter((a: any) => a.status === "acknowledged");
+const resolved = (alerts ?? []).filter((a: any) => a.status === "resolved");
+
+const sevColor: Record<string, string> = {
+  critical: "text-red-400 bg-red-500/15",
+  warning: "text-amber-400 bg-amber-500/15",
+  info: "text-blue-400 bg-blue-500/15",
+};
+
+const admin = (Astro.locals as any).admin;
+---
+
+<AdminLayout title="Alertas" active="alerts" user={admin}>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">Alertas</h1>
+      <p class="text-sm text-navy-300 mt-0.5">
+        {open.length} abertos · {ack.length} reconhecidos · {resolved.length} resolvidos
+      </p>
+    </div>
+  </div>
+
+  {open.length > 0 ? (
+    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 overflow-hidden mb-6">
+      <div class="px-5 py-4 border-b border-navy-700">
+        <h2 class="text-base font-semibold">Abertos</h2>
+      </div>
+      <ul class="divide-y divide-navy-700/50">
+        {open.map((a: any) => (
+          <li class="px-5 py-4">
+            <div class="flex items-start gap-4">
+              <span class:list={["px-2 py-0.5 rounded text-xs uppercase tracking-wider flex-shrink-0", sevColor[a.severity] ?? "bg-navy-700 text-navy-300"]}>
+                {a.severity}
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-baseline justify-between gap-2 mb-1">
+                  <div class="font-medium">{a.title}</div>
+                  <div class="text-xs text-navy-300 flex-shrink-0">
+                    {new Date(a.created_at).toLocaleString("pt-BR")}
+                  </div>
+                </div>
+                <div class="text-sm text-navy-200">{a.body}</div>
+                {a.entity_id && (
+                  <div class="text-xs text-navy-400 mt-1">
+                    {a.entity_type}: <code>{a.entity_id}</code>
+                  </div>
+                )}
+                <div class="mt-2 flex gap-2">
+                  <button
+                    data-action="acknowledge"
+                    data-id={a.id}
+                    class="text-xs px-2.5 py-1 rounded border border-navy-600 hover:border-brand-lime hover:text-brand-lime transition"
+                  >
+                    Reconhecer
+                  </button>
+                  <button
+                    data-action="resolve"
+                    data-id={a.id}
+                    class="text-xs px-2.5 py-1 rounded border border-navy-600 hover:border-emerald-400 hover:text-emerald-400 transition"
+                  >
+                    Resolver
+                  </button>
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : (
+    <div class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-8 text-center mb-6">
+      <div class="text-4xl mb-2">✓</div>
+      <div class="text-emerald-400 font-medium">Sem alertas abertos</div>
+      <div class="text-sm text-navy-300 mt-1">Tudo em ordem.</div>
+    </div>
+  )}
+
+  {(ack.length > 0 || resolved.length > 0) && (
+    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 overflow-hidden">
+      <div class="px-5 py-4 border-b border-navy-700">
+        <h2 class="text-base font-semibold text-navy-300">Histórico</h2>
+      </div>
+      <ul class="divide-y divide-navy-700/30">
+        {[...ack, ...resolved].slice(0, 50).map((a: any) => (
+          <li class="px-5 py-3 text-sm text-navy-300">
+            <div class="flex items-baseline gap-3">
+              <span class:list={["px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider flex-shrink-0 opacity-70", sevColor[a.severity] ?? "bg-navy-700"]}>
+                {a.severity}
+              </span>
+              <span class="text-navy-400 text-xs">[{a.status}]</span>
+              <span class="truncate">{a.title}</span>
+              <span class="ml-auto text-xs text-navy-400 flex-shrink-0">
+                {new Date(a.created_at).toLocaleDateString("pt-BR")}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <script>
+    document.querySelectorAll("button[data-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const action = btn.getAttribute("data-action");
+        if (!id || !action) return;
+        try {
+          const res = await fetch(`/api/admin/alerts/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+          });
+          if (res.ok) window.location.reload();
+        } catch {}
+      });
+    });
+  </script>
+</AdminLayout>

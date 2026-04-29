@@ -1,0 +1,138 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import KpiCard from "../../components/admin/KpiCard.astro";
+import DateRangeSelect from "../../components/admin/DateRangeSelect.astro";
+import { getAdminSupabase } from "../../lib/supabase/server";
+import { daysAgoIso, fmtBRL, fmtInt, todayIso } from "../../lib/admin/format";
+
+const url = new URL(Astro.request.url);
+const days = Math.max(1, Math.min(90, Number(url.searchParams.get("days") || 7)));
+
+const sb = getAdminSupabase();
+const since = daysAgoIso(days);
+const today = todayIso();
+
+const { data: sales = [] } = await sb
+  .from("sales")
+  .select("*")
+  .gte("created_at", since)
+  .lte("created_at", today + "T23:59:59")
+  .order("created_at", { ascending: false });
+
+const channels = ["site", "mercadolivre", "amazon", "shopee", "tiktok", "outros"] as const;
+type Channel = (typeof channels)[number];
+
+const byChannel = new Map<Channel, { count: number; revenue: number }>();
+for (const c of channels) byChannel.set(c, { count: 0, revenue: 0 });
+for (const s of sales ?? []) {
+  const ch = (s.channel as Channel) || "outros";
+  const cur = byChannel.get(ch) ?? { count: 0, revenue: 0 };
+  cur.count += s.quantity ?? 1;
+  cur.revenue += Number(s.total ?? 0);
+  byChannel.set(ch, cur);
+}
+
+const totalRevenue = [...byChannel.values()].reduce((s, c) => s + c.revenue, 0);
+const totalCount = [...byChannel.values()].reduce((s, c) => s + c.count, 0);
+
+const channelMeta: Record<Channel, { label: string; color: string; icon: string; status: "live" | "config" | "comingsoon" }> = {
+  site: { label: "Site", color: "#d8ff2c", icon: "🌐", status: "live" },
+  mercadolivre: { label: "Mercado Livre", color: "#fff159", icon: "🟡", status: "config" },
+  amazon: { label: "Amazon", color: "#ff9900", icon: "📦", status: "config" },
+  shopee: { label: "Shopee", color: "#ee4d2d", icon: "🛒", status: "comingsoon" },
+  tiktok: { label: "TikTok Shop", color: "#fe2c55", icon: "🎵", status: "config" },
+  outros: { label: "Outros", color: "#8585a8", icon: "•", status: "comingsoon" },
+};
+
+const admin = (Astro.locals as any).admin;
+---
+
+<AdminLayout title="Vendas" active="sales" user={admin}>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">Vendas multi-canal</h1>
+      <p class="text-sm text-navy-300 mt-0.5">Site, marketplaces e plataformas</p>
+    </div>
+    <DateRangeSelect current={days} />
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <KpiCard label="Revenue total" value={fmtBRL(totalRevenue)} accent="lime" />
+    <KpiCard label="Pedidos" value={fmtInt(totalCount)} />
+    <KpiCard label="Ticket médio" value={totalCount > 0 ? fmtBRL(totalRevenue / totalCount) : "—"} />
+    <KpiCard label="Canais ativos" value={String([...byChannel.values()].filter((c) => c.count > 0).length)} hint={`de ${channels.length}`} />
+  </div>
+
+  <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+    {channels.map((ch) => {
+      const meta = channelMeta[ch];
+      const data = byChannel.get(ch) ?? { count: 0, revenue: 0 };
+      const isActive = data.count > 0;
+      return (
+        <div
+          class:list={[
+            "rounded-xl border p-4 transition",
+            isActive ? "border-navy-600 bg-navy-800/40" : "border-navy-700/50 bg-navy-800/20",
+          ]}
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-lg">{meta.icon}</span>
+            <span class="text-sm font-medium">{meta.label}</span>
+          </div>
+          <div class="text-xl font-semibold">{fmtBRL(data.revenue)}</div>
+          <div class="text-xs text-navy-300">{fmtInt(data.count)} pedidos</div>
+          {!isActive && (
+            <div class:list={[
+              "mt-2 text-[10px] uppercase tracking-wider",
+              meta.status === "config" ? "text-amber-400" : "text-navy-400",
+            ]}>
+              {meta.status === "config" ? "configurado, sem vendas" : "em breve"}
+            </div>
+          )}
+        </div>
+      );
+    })}
+  </section>
+
+  <section class="rounded-2xl border border-navy-700 bg-navy-800/30 overflow-hidden">
+    <div class="px-5 py-4 border-b border-navy-700 flex items-center justify-between">
+      <h2 class="text-base font-semibold">Pedidos recentes</h2>
+      <span class="text-xs text-navy-300">{fmtInt(sales?.length ?? 0)} no período</span>
+    </div>
+    {(sales?.length ?? 0) === 0 ? (
+      <div class="px-5 py-12 text-center text-sm text-navy-300">
+        Sem pedidos ingeridos ainda. Conecte os canais via Windsor.ai ou implemente webhooks específicos.
+      </div>
+    ) : (
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-navy-800/60 text-xs uppercase tracking-wider text-navy-300">
+            <tr>
+              <th class="text-left px-5 py-3">Data</th>
+              <th class="text-left px-3 py-3">Canal</th>
+              <th class="text-left px-3 py-3">Produto</th>
+              <th class="text-right px-3 py-3">Qty</th>
+              <th class="text-right px-5 py-3">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sales!.slice(0, 100).map((s: any) => (
+              <tr class="border-t border-navy-700/50">
+                <td class="px-5 py-2 text-xs text-navy-300">
+                  {new Date(s.created_at).toLocaleString("pt-BR")}
+                </td>
+                <td class="px-3 py-2">
+                  <span class="text-xs">{channelMeta[s.channel as Channel]?.icon} {channelMeta[s.channel as Channel]?.label ?? s.channel}</span>
+                </td>
+                <td class="px-3 py-2 truncate max-w-xs">{s.product_name ?? s.product_slug ?? "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{s.quantity ?? 1}</td>
+                <td class="px-5 py-2 text-right tabular-nums font-medium">{fmtBRL(Number(s.total ?? 0))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+</AdminLayout>

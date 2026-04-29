@@ -1,0 +1,196 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import KpiCard from "../../components/admin/KpiCard.astro";
+import DateRangeSelect from "../../components/admin/DateRangeSelect.astro";
+import TrendChart from "../../components/admin/TrendChart";
+import { getAdminSupabase } from "../../lib/supabase/server";
+import { aggregateInsights, daysAgoIso, fmtBRL, fmtInt, fmtNumber, todayIso } from "../../lib/admin/format";
+
+const url = new URL(Astro.request.url);
+const days = Math.max(1, Math.min(90, Number(url.searchParams.get("days") || 7)));
+
+const sb = getAdminSupabase();
+
+// Aggregate at account level for the period
+const since = daysAgoIso(days);
+const today = todayIso();
+
+const { data: insightsRows = [] } = await sb
+  .from("meta_insights_daily")
+  .select("date,spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach")
+  .eq("level", "account")
+  .gte("date", since)
+  .lte("date", today)
+  .order("date", { ascending: true });
+
+const totals = aggregateInsights(insightsRows ?? []);
+
+// Compare to previous period (same length)
+const prevSince = daysAgoIso(days * 2);
+const prevUntil = daysAgoIso(days);
+const { data: prevRows = [] } = await sb
+  .from("meta_insights_daily")
+  .select("spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach")
+  .eq("level", "account")
+  .gte("date", prevSince)
+  .lt("date", prevUntil);
+const prevTotals = aggregateInsights(prevRows ?? []);
+
+function delta(curr: number, prev: number) {
+  if (prev === 0) return null;
+  const pct = ((curr - prev) / prev) * 100;
+  return { value: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`, positive: pct >= 0 };
+}
+
+const chartData = (insightsRows ?? []).map((r: any) => ({
+  date: r.date.slice(5), // MM-DD
+  Spend: Number(r.spend ?? 0),
+  Revenue: Number(r.revenue ?? 0),
+}));
+
+// Open alerts
+const { data: alerts = [] } = await sb
+  .from("alerts")
+  .select("id, severity, type, title, body, entity_id, created_at")
+  .eq("status", "open")
+  .order("created_at", { ascending: false })
+  .limit(10);
+
+// Last ingestion run
+const { data: lastRuns = [] } = await sb
+  .from("ingestion_runs")
+  .select("source, status, rows_upserted, started_at, finished_at, error")
+  .order("started_at", { ascending: false })
+  .limit(2);
+
+const admin = (Astro.locals as any).admin;
+---
+
+<AdminLayout title="Overview" active="overview" user={admin}>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">Overview</h1>
+      <p class="text-sm text-navy-300 mt-0.5">Visão consolidada de todas as fontes</p>
+    </div>
+    <DateRangeSelect current={days} />
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <KpiCard
+      label="Spend Meta"
+      value={fmtBRL(totals.spend)}
+      delta={delta(totals.spend, prevTotals.spend) ?? undefined}
+    />
+    <KpiCard
+      label="Revenue Meta"
+      value={fmtBRL(totals.revenue)}
+      delta={delta(totals.revenue, prevTotals.revenue) ?? undefined}
+      accent="lime"
+    />
+    <KpiCard
+      label="ROAS"
+      value={fmtNumber(totals.roas)}
+      delta={delta(totals.roas, prevTotals.roas) ?? undefined}
+      hint={totals.spend === 0 ? "sem spend no período" : undefined}
+    />
+    <KpiCard
+      label="Conversões (Purchase)"
+      value={fmtInt(totals.purchases)}
+      delta={delta(totals.purchases, prevTotals.purchases) ?? undefined}
+    />
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+    <KpiCard label="Impressões" value={fmtInt(totals.impressions)} />
+    <KpiCard label="Clicks" value={fmtInt(totals.clicks)} hint={`CTR ${totals.ctr.toFixed(2)}%`} />
+    <KpiCard label="CPM" value={fmtBRL(totals.cpm)} hint={`CPC ${fmtBRL(totals.cpc)}`} />
+    <KpiCard label="CPA" value={totals.purchases > 0 ? fmtBRL(totals.cpa) : "—"} hint={`Reach ${fmtInt(totals.reach)}`} />
+  </div>
+
+  <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-base font-semibold">Spend × Revenue diário</h2>
+        <p class="text-xs text-navy-300">Conta Meta — últimos {days} dias</p>
+      </div>
+    </div>
+    {chartData.length > 0 ? (
+      <TrendChart
+        client:load
+        data={chartData}
+        xKey="date"
+        series={[
+          { key: "Spend", label: "Spend", color: "#da291c" },
+          { key: "Revenue", label: "Revenue", color: "#d8ff2c" },
+        ]}
+      />
+    ) : (
+      <div class="text-sm text-navy-300 py-12 text-center">
+        Sem dados ingeridos ainda. Rode <code class="text-brand-lime">/api/cron/ingest?days=90</code> manualmente para popular.
+      </div>
+    )}
+  </section>
+
+  <section class="grid lg:grid-cols-2 gap-6">
+    <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-semibold">Alertas abertos</h2>
+        <a href="/admin/alerts" class="text-xs text-brand-lime hover:underline">ver todos →</a>
+      </div>
+      {alerts && alerts.length > 0 ? (
+        <ul class="space-y-3">
+          {alerts.slice(0, 5).map((a: any) => (
+            <li class="flex items-start gap-3 text-sm">
+              <span
+                class:list={[
+                  "mt-0.5 inline-block h-2 w-2 rounded-full flex-shrink-0",
+                  a.severity === "critical" ? "bg-red-500" : a.severity === "warning" ? "bg-amber-400" : "bg-blue-400",
+                ]}
+              ></span>
+              <div class="min-w-0 flex-1">
+                <div class="font-medium truncate">{a.title}</div>
+                <div class="text-xs text-navy-300 truncate">{a.body}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div class="text-sm text-navy-300 py-6 text-center">Sem alertas abertos. ✓</div>
+      )}
+    </div>
+
+    <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5">
+      <h2 class="text-base font-semibold mb-4">Ingestão recente</h2>
+      {lastRuns && lastRuns.length > 0 ? (
+        <ul class="space-y-3">
+          {lastRuns.map((r: any) => (
+            <li class="flex items-center justify-between text-sm">
+              <div>
+                <div class="font-medium capitalize">{r.source}</div>
+                <div class="text-xs text-navy-300">
+                  {new Date(r.started_at).toLocaleString("pt-BR")}
+                </div>
+              </div>
+              <div class="text-right">
+                <div
+                  class:list={[
+                    "text-xs uppercase tracking-wider",
+                    r.status === "success" ? "text-emerald-400" : r.status === "failed" ? "text-red-400" : "text-amber-400",
+                  ]}
+                >
+                  {r.status}
+                </div>
+                {r.rows_upserted ? <div class="text-xs text-navy-300">{fmtInt(r.rows_upserted)} rows</div> : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div class="text-sm text-navy-300 py-6 text-center">
+          Cron ainda não rodou. Será disparado às 03:23 BRT diariamente.
+        </div>
+      )}
+    </div>
+  </section>
+</AdminLayout>

@@ -1,0 +1,294 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import KpiCard from "../../components/admin/KpiCard.astro";
+import DateRangeSelect from "../../components/admin/DateRangeSelect.astro";
+import TrendChart from "../../components/admin/TrendChart";
+import { getAdminSupabase } from "../../lib/supabase/server";
+import {
+  aggregateInsights,
+  daysAgoIso,
+  fmtBRL,
+  fmtInt,
+  fmtNumber,
+  fmtPct,
+  todayIso,
+} from "../../lib/admin/format";
+
+const url = new URL(Astro.request.url);
+const days = Math.max(1, Math.min(90, Number(url.searchParams.get("days") || 7)));
+
+const sb = getAdminSupabase();
+const since = daysAgoIso(days);
+const today = todayIso();
+
+const [campaignsRes, adsetsRes, adsRes, insightsRes] = await Promise.all([
+  sb.from("meta_campaigns").select("id,name,status,effective_status,objective,daily_budget"),
+  sb.from("meta_adsets").select("id,campaign_id,name,status,effective_status,daily_budget,optimization_goal"),
+  sb.from("meta_ads").select("id,adset_id,campaign_id,name,status,effective_status,creative_thumbnail"),
+  sb
+    .from("meta_insights_daily")
+    .select("date,level,entity_id,spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach")
+    .gte("date", since)
+    .lte("date", today),
+]);
+
+const campaigns = campaignsRes.data ?? [];
+const adsets = adsetsRes.data ?? [];
+const ads = adsRes.data ?? [];
+const insights = insightsRes.data ?? [];
+
+// Aggregate by entity_id within level
+function aggBy(level: string) {
+  const map = new Map<string, ReturnType<typeof aggregateInsights>>();
+  const grouped = new Map<string, typeof insights>();
+  for (const i of insights) {
+    if (i.level !== level) continue;
+    const arr = grouped.get(i.entity_id) ?? [];
+    arr.push(i);
+    grouped.set(i.entity_id, arr);
+  }
+  for (const [k, rows] of grouped) {
+    map.set(k, aggregateInsights(rows));
+  }
+  return map;
+}
+const byCampaign = aggBy("campaign");
+const byAdset = aggBy("adset");
+const byAd = aggBy("ad");
+
+// Account totals
+const accountRows = insights.filter((i) => i.level === "account");
+const totals = aggregateInsights(accountRows);
+
+// Daily series for chart
+const dailyMap = new Map<string, { spend: number; revenue: number; impressions: number }>();
+for (const i of accountRows) {
+  const cur = dailyMap.get(i.date) ?? { spend: 0, revenue: 0, impressions: 0 };
+  cur.spend += Number(i.spend ?? 0);
+  cur.revenue += Number(i.revenue ?? 0);
+  cur.impressions += Number(i.impressions ?? 0);
+  dailyMap.set(i.date, cur);
+}
+const chartData = [...dailyMap.entries()]
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([d, v]) => ({ date: d.slice(5), Spend: v.spend, Revenue: v.revenue }));
+
+// Build hierarchical rows for table — campaign rows with adsets[] and ads[] grouped
+type Row = {
+  id: string;
+  name: string;
+  level: "campaign" | "adset" | "ad";
+  status?: string | null;
+  effective_status?: string | null;
+  daily_budget?: number | null;
+  agg: ReturnType<typeof aggregateInsights>;
+  parentId?: string;
+};
+
+const campaignRows: Row[] = campaigns
+  .map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    level: "campaign" as const,
+    status: c.status,
+    effective_status: c.effective_status,
+    daily_budget: c.daily_budget,
+    agg: byCampaign.get(c.id) ?? aggregateInsights([]),
+  }))
+  .sort((a, b) => b.agg.spend - a.agg.spend);
+
+const adsetsByCampaign = new Map<string, Row[]>();
+for (const a of adsets) {
+  const row: Row = {
+    id: a.id,
+    name: a.name,
+    level: "adset",
+    status: a.status,
+    effective_status: a.effective_status,
+    daily_budget: a.daily_budget,
+    agg: byAdset.get(a.id) ?? aggregateInsights([]),
+    parentId: a.campaign_id,
+  };
+  const arr = adsetsByCampaign.get(a.campaign_id) ?? [];
+  arr.push(row);
+  adsetsByCampaign.set(a.campaign_id, arr);
+}
+for (const [k, arr] of adsetsByCampaign) arr.sort((a, b) => b.agg.spend - a.agg.spend);
+
+const adsByAdset = new Map<string, Row[]>();
+for (const a of ads) {
+  const row: Row = {
+    id: a.id,
+    name: a.name,
+    level: "ad",
+    status: a.status,
+    effective_status: a.effective_status,
+    agg: byAd.get(a.id) ?? aggregateInsights([]),
+    parentId: a.adset_id,
+  };
+  const arr = adsByAdset.get(a.adset_id) ?? [];
+  arr.push(row);
+  adsByAdset.set(a.adset_id, arr);
+}
+for (const [k, arr] of adsByAdset) arr.sort((a, b) => b.agg.spend - a.agg.spend);
+
+function statusBadge(eff?: string | null) {
+  const s = eff ?? "";
+  const cls =
+    s === "ACTIVE"
+      ? "bg-emerald-500/15 text-emerald-400"
+      : s.includes("PAUSED")
+        ? "bg-navy-700 text-navy-200"
+        : s === "IN_PROCESS"
+          ? "bg-amber-500/15 text-amber-400"
+          : s === "DELETED" || s === "ARCHIVED"
+            ? "bg-red-500/15 text-red-400"
+            : "bg-navy-700 text-navy-300";
+  return { cls, label: s || "—" };
+}
+
+const admin = (Astro.locals as any).admin;
+---
+
+<AdminLayout title="Meta Ads" active="meta" user={admin}>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">Meta Ads</h1>
+      <p class="text-sm text-navy-300 mt-0.5">
+        {fmtInt(campaigns.length)} campanhas · {fmtInt(adsets.length)} adsets · {fmtInt(ads.length)} ads
+      </p>
+    </div>
+    <DateRangeSelect current={days} />
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <KpiCard label="Spend" value={fmtBRL(totals.spend)} />
+    <KpiCard label="Revenue" value={fmtBRL(totals.revenue)} accent="lime" />
+    <KpiCard label="ROAS" value={fmtNumber(totals.roas)} />
+    <KpiCard label="Purchases" value={fmtInt(totals.purchases)} hint={`CPA ${totals.purchases > 0 ? fmtBRL(totals.cpa) : "—"}`} />
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+    <KpiCard label="Impressões" value={fmtInt(totals.impressions)} />
+    <KpiCard label="CTR" value={fmtPct(totals.ctr)} />
+    <KpiCard label="CPM" value={fmtBRL(totals.cpm)} />
+    <KpiCard label="CPC" value={fmtBRL(totals.cpc)} />
+  </div>
+
+  {chartData.length > 0 && (
+    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-8">
+      <h2 class="text-base font-semibold mb-4">Spend × Revenue diário</h2>
+      <TrendChart
+        client:load
+        data={chartData}
+        xKey="date"
+        series={[
+          { key: "Spend", label: "Spend", color: "#da291c" },
+          { key: "Revenue", label: "Revenue", color: "#d8ff2c" },
+        ]}
+      />
+    </section>
+  )}
+
+  <section class="rounded-2xl border border-navy-700 bg-navy-800/30 overflow-hidden">
+    <div class="px-5 py-4 border-b border-navy-700">
+      <h2 class="text-base font-semibold">Campanhas → Adsets → Ads</h2>
+      <p class="text-xs text-navy-300">Clique pra expandir.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-navy-800/60 text-xs uppercase tracking-wider text-navy-300">
+          <tr>
+            <th class="text-left px-5 py-3">Nome</th>
+            <th class="text-left px-3 py-3">Status</th>
+            <th class="text-right px-3 py-3">Spend</th>
+            <th class="text-right px-3 py-3">Revenue</th>
+            <th class="text-right px-3 py-3">ROAS</th>
+            <th class="text-right px-3 py-3">Purchases</th>
+            <th class="text-right px-3 py-3">CTR</th>
+            <th class="text-right px-3 py-3">CPM</th>
+            <th class="text-right px-3 py-3">Impr.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {campaignRows.length === 0 && (
+            <tr>
+              <td colspan="9" class="px-5 py-8 text-center text-navy-300">
+                Sem campanhas ingeridas ainda.
+              </td>
+            </tr>
+          )}
+          {campaignRows.map((c) => {
+            const sb = statusBadge(c.effective_status);
+            const adsetsForThis = adsetsByCampaign.get(c.id) ?? [];
+            return (
+              <>
+                <tr class="border-t border-navy-700 hover:bg-navy-800/40">
+                  <td class="px-5 py-3">
+                    <details class="group">
+                      <summary class="cursor-pointer list-none flex items-center gap-2">
+                        <span class="text-xs text-navy-300 group-open:rotate-90 transition">▶</span>
+                        <span class="font-medium truncate">{c.name}</span>
+                      </summary>
+                    </details>
+                  </td>
+                  <td class="px-3 py-3"><span class:list={["px-2 py-0.5 rounded text-xs", sb.cls]}>{sb.label}</span></td>
+                  <td class="px-3 py-3 text-right tabular-nums">{fmtBRL(c.agg.spend)}</td>
+                  <td class="px-3 py-3 text-right tabular-nums">{fmtBRL(c.agg.revenue)}</td>
+                  <td class="px-3 py-3 text-right tabular-nums">{c.agg.spend > 0 ? fmtNumber(c.agg.roas) : "—"}</td>
+                  <td class="px-3 py-3 text-right tabular-nums">{fmtInt(c.agg.purchases)}</td>
+                  <td class="px-3 py-3 text-right tabular-nums">{fmtPct(c.agg.ctr)}</td>
+                  <td class="px-3 py-3 text-right tabular-nums">{fmtBRL(c.agg.cpm)}</td>
+                  <td class="px-3 py-3 text-right tabular-nums">{fmtInt(c.agg.impressions)}</td>
+                </tr>
+                {adsetsForThis.map((s) => {
+                  const ssb = statusBadge(s.effective_status);
+                  const adsForThis = adsByAdset.get(s.id) ?? [];
+                  return (
+                    <>
+                      <tr class="border-t border-navy-700/50 bg-navy-800/20 text-navy-200">
+                        <td class="pl-12 pr-5 py-2">
+                          <details>
+                            <summary class="cursor-pointer list-none flex items-center gap-2">
+                              <span class="text-xs text-navy-400">└</span>
+                              <span class="text-sm truncate">{s.name}</span>
+                            </summary>
+                          </details>
+                        </td>
+                        <td class="px-3 py-2"><span class:list={["px-2 py-0.5 rounded text-xs", ssb.cls]}>{ssb.label}</span></td>
+                        <td class="px-3 py-2 text-right tabular-nums">{fmtBRL(s.agg.spend)}</td>
+                        <td class="px-3 py-2 text-right tabular-nums">{fmtBRL(s.agg.revenue)}</td>
+                        <td class="px-3 py-2 text-right tabular-nums">{s.agg.spend > 0 ? fmtNumber(s.agg.roas) : "—"}</td>
+                        <td class="px-3 py-2 text-right tabular-nums">{fmtInt(s.agg.purchases)}</td>
+                        <td class="px-3 py-2 text-right tabular-nums">{fmtPct(s.agg.ctr)}</td>
+                        <td class="px-3 py-2 text-right tabular-nums">{fmtBRL(s.agg.cpm)}</td>
+                        <td class="px-3 py-2 text-right tabular-nums">{fmtInt(s.agg.impressions)}</td>
+                      </tr>
+                      {adsForThis.map((ad) => {
+                        const asb = statusBadge(ad.effective_status);
+                        return (
+                          <tr class="border-t border-navy-700/30 bg-navy-900/40 text-navy-300 text-xs">
+                            <td class="pl-20 pr-5 py-1.5 truncate">↳ {ad.name}</td>
+                            <td class="px-3 py-1.5"><span class:list={["px-1.5 py-0.5 rounded text-[10px]", asb.cls]}>{asb.label}</span></td>
+                            <td class="px-3 py-1.5 text-right tabular-nums">{fmtBRL(ad.agg.spend)}</td>
+                            <td class="px-3 py-1.5 text-right tabular-nums">{fmtBRL(ad.agg.revenue)}</td>
+                            <td class="px-3 py-1.5 text-right tabular-nums">{ad.agg.spend > 0 ? fmtNumber(ad.agg.roas) : "—"}</td>
+                            <td class="px-3 py-1.5 text-right tabular-nums">{fmtInt(ad.agg.purchases)}</td>
+                            <td class="px-3 py-1.5 text-right tabular-nums">{fmtPct(ad.agg.ctr)}</td>
+                            <td class="px-3 py-1.5 text-right tabular-nums">{fmtBRL(ad.agg.cpm)}</td>
+                            <td class="px-3 py-1.5 text-right tabular-nums">{fmtInt(ad.agg.impressions)}</td>
+                          </tr>
+                        );
+                      })}
+                    </>
+                  );
+                })}
+              </>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
