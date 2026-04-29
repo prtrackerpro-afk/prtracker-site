@@ -25,7 +25,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
         });
       }
       const next = encodeURIComponent(pathname + url.search);
-      return Response.redirect(new URL(`/admin/login?next=${next}`, url.origin), 302);
+      return context.redirect(`/admin/login?next=${next}`, 302);
     }
     context.locals.admin = admin;
   }
