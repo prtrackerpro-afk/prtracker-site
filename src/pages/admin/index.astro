@@ -68,7 +68,7 @@ const admin = (Astro.locals as any).admin;
 ---
 
 <AdminLayout title="Overview" active="overview" user={admin}>
-  <div class="flex items-center justify-between mb-6">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold">Overview</h1>
       <p class="text-sm text-navy-300 mt-0.5">Visão consolidada de todas as fontes</p>
