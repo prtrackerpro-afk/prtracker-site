@@ -1,0 +1,154 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import KpiCard from "../../components/admin/KpiCard.astro";
+import DateRangeSelect from "../../components/admin/DateRangeSelect.astro";
+import TrendChart from "../../components/admin/TrendChart";
+import { getAdminSupabase } from "../../lib/supabase/server";
+import { daysAgoIso, fmtBRL, fmtInt, todayIso } from "../../lib/admin/format";
+
+const url = new URL(Astro.request.url);
+const days = Math.max(1, Math.min(90, Number(url.searchParams.get("days") || 7)));
+
+const sb = getAdminSupabase();
+const since = daysAgoIso(days);
+const today = todayIso();
+
+const { data: rows = [] } = await sb
+  .from("ga4_daily")
+  .select("date,source,medium,campaign,sessions,users,new_users,page_views,engaged_sessions,conversions,revenue,transactions")
+  .gte("date", since)
+  .lte("date", today);
+
+const totals = (rows ?? []).reduce(
+  (acc, r) => ({
+    sessions: acc.sessions + Number(r.sessions ?? 0),
+    users: acc.users + Number(r.users ?? 0),
+    new_users: acc.new_users + Number(r.new_users ?? 0),
+    page_views: acc.page_views + Number(r.page_views ?? 0),
+    engaged_sessions: acc.engaged_sessions + Number(r.engaged_sessions ?? 0),
+    conversions: acc.conversions + Number(r.conversions ?? 0),
+    revenue: acc.revenue + Number(r.revenue ?? 0),
+    transactions: acc.transactions + Number(r.transactions ?? 0),
+  }),
+  { sessions: 0, users: 0, new_users: 0, page_views: 0, engaged_sessions: 0, conversions: 0, revenue: 0, transactions: 0 }
+);
+
+// Daily series
+const dailyMap = new Map<string, { sessions: number; users: number; conversions: number }>();
+for (const r of rows ?? []) {
+  const cur = dailyMap.get(r.date) ?? { sessions: 0, users: 0, conversions: 0 };
+  cur.sessions += Number(r.sessions ?? 0);
+  cur.users += Number(r.users ?? 0);
+  cur.conversions += Number(r.conversions ?? 0);
+  dailyMap.set(r.date, cur);
+}
+const chartData = [...dailyMap.entries()]
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([d, v]) => ({ date: d.slice(5), Sessions: v.sessions, Users: v.users, Conversions: v.conversions }));
+
+// Top sources/mediums/campaigns
+function aggBy(field: "source" | "medium" | "campaign") {
+  const map = new Map<string, { sessions: number; conversions: number; revenue: number }>();
+  for (const r of rows ?? []) {
+    const key = String((r as any)[field] ?? "—");
+    const cur = map.get(key) ?? { sessions: 0, conversions: 0, revenue: 0 };
+    cur.sessions += Number(r.sessions ?? 0);
+    cur.conversions += Number(r.conversions ?? 0);
+    cur.revenue += Number(r.revenue ?? 0);
+    map.set(key, cur);
+  }
+  return [...map.entries()]
+    .map(([key, v]) => ({ key, ...v }))
+    .sort((a, b) => b.sessions - a.sessions)
+    .slice(0, 10);
+}
+const topSources = aggBy("source");
+const topMediums = aggBy("medium");
+const topCampaigns = aggBy("campaign");
+
+const hasData = (rows ?? []).length > 0;
+const admin = (Astro.locals as any).admin;
+---
+
+<AdminLayout title="GA4 / Site" active="ga4" user={admin}>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">GA4 / Site</h1>
+      <p class="text-sm text-navy-300 mt-0.5">Tráfego e conversões via Windsor.ai</p>
+    </div>
+    <DateRangeSelect current={days} />
+  </div>
+
+  {!hasData && (
+    <div class="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 mb-6">
+      <div class="font-medium text-amber-400 mb-1">⚠ GA4 ainda não ingerido</div>
+      <div class="text-sm text-navy-200">
+        Configure <code class="text-brand-lime">WINDSOR_API_KEY</code> nas variáveis de ambiente Vercel
+        e dispare <code class="text-brand-lime">/api/cron/ingest?days=90</code> manualmente para popular.
+        Property GA4 detectada via Windsor: <code>525987283</code> (prtracker.com.br).
+      </div>
+    </div>
+  )}
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <KpiCard label="Sessões" value={fmtInt(totals.sessions)} />
+    <KpiCard label="Usuários" value={fmtInt(totals.users)} hint={`${fmtInt(totals.new_users)} novos`} />
+    <KpiCard label="Conversões GA4" value={fmtInt(totals.conversions)} accent="lime" />
+    <KpiCard label="Revenue (GA4)" value={fmtBRL(totals.revenue)} hint={`${fmtInt(totals.transactions)} transactions`} />
+  </div>
+
+  {chartData.length > 0 && (
+    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-8">
+      <h2 class="text-base font-semibold mb-4">Tráfego diário</h2>
+      <TrendChart
+        client:load
+        data={chartData}
+        xKey="date"
+        series={[
+          { key: "Sessions", label: "Sessions", color: "#0057b8" },
+          { key: "Users", label: "Users", color: "#43b02a" },
+          { key: "Conversions", label: "Conversions", color: "#d8ff2c" },
+        ]}
+      />
+    </section>
+  )}
+
+  <div class="grid lg:grid-cols-3 gap-4">
+    {[
+      { title: "Top Sources", data: topSources },
+      { title: "Top Mediums", data: topMediums },
+      { title: "Top Campaigns", data: topCampaigns },
+    ].map(({ title, data }) => (
+      <section class="rounded-2xl border border-navy-700 bg-navy-800/30 overflow-hidden">
+        <div class="px-5 py-3 border-b border-navy-700">
+          <h3 class="text-sm font-semibold">{title}</h3>
+        </div>
+        <div class="overflow-y-auto max-h-96">
+          <table class="w-full text-sm">
+            <thead class="bg-navy-800/60 text-xs uppercase tracking-wider text-navy-300 sticky top-0">
+              <tr>
+                <th class="text-left px-4 py-2">Nome</th>
+                <th class="text-right px-3 py-2">Sessões</th>
+                <th class="text-right px-3 py-2">Conv.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr><td colspan="3" class="px-4 py-6 text-center text-navy-400">—</td></tr>
+              ) : (
+                data.map((r) => (
+                  <tr class="border-t border-navy-700/50">
+                    <td class="px-4 py-2 truncate max-w-[200px]" title={r.key}>{r.key}</td>
+                    <td class="px-3 py-2 text-right tabular-nums">{fmtInt(r.sessions)}</td>
+                    <td class="px-3 py-2 text-right tabular-nums">{fmtInt(r.conversions)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    ))}
+  </div>
+</AdminLayout>
