@@ -40,9 +40,8 @@ export async function fetchWindsor(opts: {
   const key = getApiKey();
   if (!key) throw new Error("WINDSOR_API_KEY not configured");
 
-  const url = new URL(`${WINDSOR_BASE}/all`);
+  const url = new URL(`${WINDSOR_BASE}/${opts.connector}`);
   url.searchParams.set("api_key", key);
-  url.searchParams.set("connector", opts.connector);
   url.searchParams.set("fields", opts.fields.join(","));
   url.searchParams.set("date_from", opts.dateFrom);
   url.searchParams.set("date_to", opts.dateTo);
@@ -76,8 +75,6 @@ export async function fetchGA4Daily(opts: {
     "campaign",
     "sessions",
     "users",
-    "new_users",
-    "page_views",
     "engaged_sessions",
     "conversions",
     "transactions",
