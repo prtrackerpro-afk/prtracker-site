@@ -5,20 +5,28 @@ import KpiCard from "../../components/admin/KpiCard.astro";
 import DateRangeSelect from "../../components/admin/DateRangeSelect.astro";
 import TrendChart from "../../components/admin/TrendChart";
 import { getAdminSupabase } from "../../lib/supabase/server";
-import { aggregateInsights, daysAgoIso, fmtBRL, fmtInt, fmtNumber, todayIso } from "../../lib/admin/format";
+import {
+  aggregateInsights,
+  daysAgoIso,
+  fmtBRL,
+  fmtInt,
+  fmtNumber,
+  todayIso,
+} from "../../lib/admin/format";
+import { iconAlert, iconCheckCircle, iconRefresh } from "../../components/admin/icons";
 
 const url = new URL(Astro.request.url);
 const days = Math.max(1, Math.min(90, Number(url.searchParams.get("days") || 7)));
 
 const sb = getAdminSupabase();
-
-// Aggregate at account level for the period
 const since = daysAgoIso(days);
 const today = todayIso();
 
 const { data: insightsRows = [] } = await sb
   .from("meta_insights_daily")
-  .select("date,spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach")
+  .select(
+    "date,spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach"
+  )
   .eq("level", "account")
   .gte("date", since)
   .lte("date", today)
@@ -26,12 +34,14 @@ const { data: insightsRows = [] } = await sb
 
 const totals = aggregateInsights(insightsRows ?? []);
 
-// Compare to previous period (same length)
+// Period comparison
 const prevSince = daysAgoIso(days * 2);
 const prevUntil = daysAgoIso(days);
 const { data: prevRows = [] } = await sb
   .from("meta_insights_daily")
-  .select("spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach")
+  .select(
+    "spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach"
+  )
   .eq("level", "account")
   .gte("date", prevSince)
   .lt("date", prevUntil);
@@ -43,111 +53,171 @@ function delta(curr: number, prev: number) {
   return { value: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`, positive: pct >= 0 };
 }
 
+// Daily series for chart + sparklines
 const chartData = (insightsRows ?? []).map((r: any) => ({
-  date: r.date.slice(5), // MM-DD
+  date: r.date.slice(5),
   Spend: Number(r.spend ?? 0),
   Revenue: Number(r.revenue ?? 0),
+  Impressões: Number(r.impressions ?? 0),
+  Cliques: Number(r.clicks ?? 0),
 }));
 
+const sparkSpend = chartData.map((d) => d.Spend);
+const sparkRevenue = chartData.map((d) => d.Revenue);
+const sparkImpr = chartData.map((d) => d.Impressões);
+const sparkClicks = chartData.map((d) => d.Cliques);
+
 // Open alerts
-const { data: alerts = [] } = await sb
+const { data: openAlerts = [] } = await sb
   .from("alerts")
   .select("id, severity, type, title, body, entity_id, created_at")
   .eq("status", "open")
   .order("created_at", { ascending: false })
   .limit(10);
 
+const alertCount = openAlerts?.length ?? 0;
+
 // Last ingestion run
 const { data: lastRuns = [] } = await sb
   .from("ingestion_runs")
   .select("source, status, rows_upserted, started_at, finished_at, error")
   .order("started_at", { ascending: false })
-  .limit(2);
+  .limit(4);
 
 const admin = (Astro.locals as any).admin;
 ---
 
-<AdminLayout title="Overview" active="overview" user={admin}>
-  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+<AdminLayout title="Overview" active="overview" user={admin} alertCount={alertCount}>
+  <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
     <div>
-      <h1 class="text-2xl font-semibold">Overview</h1>
-      <p class="text-sm text-navy-300 mt-0.5">Visão consolidada de todas as fontes</p>
+      <h1 class="text-xl md:text-2xl font-semibold tracking-tight">Overview</h1>
+      <p class="text-sm text-navy-300 mt-1">
+        Visão consolidada de Meta Ads, GA4 e vendas — últimos {days} {days === 1 ? "dia" : "dias"}.
+      </p>
     </div>
     <DateRangeSelect current={days} />
   </div>
 
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  {/* Primary KPIs */}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
     <KpiCard
       label="Spend Meta"
       value={fmtBRL(totals.spend)}
+      icon="spend"
       delta={delta(totals.spend, prevTotals.spend) ?? undefined}
+      hint={`Anterior: ${fmtBRL(prevTotals.spend)}`}
+      spark={sparkSpend}
     />
     <KpiCard
       label="Revenue Meta"
       value={fmtBRL(totals.revenue)}
-      delta={delta(totals.revenue, prevTotals.revenue) ?? undefined}
+      icon="revenue"
       accent="lime"
+      delta={delta(totals.revenue, prevTotals.revenue) ?? undefined}
+      hint={`Anterior: ${fmtBRL(prevTotals.revenue)}`}
+      spark={sparkRevenue}
     />
     <KpiCard
       label="ROAS"
       value={fmtNumber(totals.roas)}
+      icon="roas"
       delta={delta(totals.roas, prevTotals.roas) ?? undefined}
-      hint={totals.spend === 0 ? "sem spend no período" : undefined}
+      hint={totals.spend === 0 ? "sem spend" : `Anterior: ${fmtNumber(prevTotals.roas)}`}
     />
     <KpiCard
-      label="Conversões (Purchase)"
+      label="Conversões"
       value={fmtInt(totals.purchases)}
+      icon="conversions"
       delta={delta(totals.purchases, prevTotals.purchases) ?? undefined}
+      hint={`Purchase events`}
     />
   </div>
 
+  {/* Secondary KPIs */}
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-    <KpiCard label="Impressões" value={fmtInt(totals.impressions)} />
-    <KpiCard label="Clicks" value={fmtInt(totals.clicks)} hint={`CTR ${totals.ctr.toFixed(2)}%`} />
-    <KpiCard label="CPM" value={fmtBRL(totals.cpm)} hint={`CPC ${fmtBRL(totals.cpc)}`} />
-    <KpiCard label="CPA" value={totals.purchases > 0 ? fmtBRL(totals.cpa) : "—"} hint={`Reach ${fmtInt(totals.reach)}`} />
+    <KpiCard
+      label="Impressões"
+      value={fmtInt(totals.impressions)}
+      icon="impressions"
+      delta={delta(totals.impressions, prevTotals.impressions) ?? undefined}
+      spark={sparkImpr}
+    />
+    <KpiCard
+      label="Clicks"
+      value={fmtInt(totals.clicks)}
+      icon="clicks"
+      hint={`CTR ${totals.ctr.toFixed(2)}%`}
+      spark={sparkClicks}
+    />
+    <KpiCard
+      label="CPM"
+      value={fmtBRL(totals.cpm)}
+      icon="cpm"
+      hint={`CPC ${fmtBRL(totals.cpc)}`}
+    />
+    <KpiCard
+      label="CPA"
+      value={totals.purchases > 0 ? fmtBRL(totals.cpa) : "—"}
+      icon="cpa"
+      hint={`Reach ${fmtInt(totals.reach)}`}
+    />
   </div>
 
-  <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-8">
+  {/* Main chart */}
+  <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 md:p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h2 class="text-base font-semibold">Spend × Revenue diário</h2>
-        <p class="text-xs text-navy-300">Conta Meta — últimos {days} dias</p>
+        <h2 class="text-base font-semibold">Spend × Revenue</h2>
+        <p class="text-xs text-navy-300 mt-0.5">Diário, conta Meta — últimos {days} {days === 1 ? "dia" : "dias"}</p>
+      </div>
+      <div class="hidden sm:flex items-center gap-3 text-xs text-navy-300">
+        <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-red-400"></span>Spend</span>
+        <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-brand-lime"></span>Revenue</span>
       </div>
     </div>
     {chartData.length > 0 ? (
-      <TrendChart
-        client:only="react"
-        data={chartData}
-        xKey="date"
-        series={[
-          { key: "Spend", label: "Spend", color: "#da291c" },
-          { key: "Revenue", label: "Revenue", color: "#d8ff2c" },
-        ]}
-      />
+      <div class="h-64 md:h-72">
+        <TrendChart
+          client:only="react"
+          data={chartData}
+          xKey="date"
+          series={[
+            { key: "Spend", label: "Spend", color: "#f87171" },
+            { key: "Revenue", label: "Revenue", color: "#d8ff2c" },
+          ]}
+        />
+      </div>
     ) : (
-      <div class="text-sm text-navy-300 py-12 text-center">
-        Sem dados ingeridos ainda. Rode <code class="text-brand-lime">/api/cron/ingest?days=90</code> manualmente para popular.
+      <div class="h-48 grid place-items-center text-sm text-navy-300">
+        Sem dados ingeridos ainda. Cron diário às 03:23 BRT.
       </div>
     )}
   </section>
 
-  <section class="grid lg:grid-cols-2 gap-6">
-    <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5">
+  {/* Two-up: alerts + ingestion */}
+  <section class="grid lg:grid-cols-2 gap-4 md:gap-6">
+    <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 md:p-5">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-base font-semibold">Alertas abertos</h2>
+        <h2 class="text-base font-semibold inline-flex items-center gap-2">
+          <span class="[&>svg]:h-4 [&>svg]:w-4 text-amber-400" set:html={iconAlert} />
+          Alertas abertos
+        </h2>
         <a href="/admin/alerts" class="text-xs text-brand-lime hover:underline">ver todos →</a>
       </div>
-      {alerts && alerts.length > 0 ? (
+      {openAlerts && openAlerts.length > 0 ? (
         <ul class="space-y-3">
-          {alerts.slice(0, 5).map((a: any) => (
-            <li class="flex items-start gap-3 text-sm">
+          {openAlerts.slice(0, 5).map((a: any) => (
+            <li class="flex items-start gap-3 text-sm rounded-lg p-2 -mx-2 hover:bg-navy-700/30 transition">
               <span
                 class:list={[
-                  "mt-0.5 inline-block h-2 w-2 rounded-full flex-shrink-0",
-                  a.severity === "critical" ? "bg-red-500" : a.severity === "warning" ? "bg-amber-400" : "bg-blue-400",
+                  "mt-1 inline-block h-2 w-2 rounded-full flex-shrink-0",
+                  a.severity === "critical"
+                    ? "bg-red-500 ring-2 ring-red-500/30"
+                    : a.severity === "warning"
+                      ? "bg-amber-400 ring-2 ring-amber-400/30"
+                      : "bg-blue-400 ring-2 ring-blue-400/30",
                 ]}
-              ></span>
+              />
               <div class="min-w-0 flex-1">
                 <div class="font-medium truncate">{a.title}</div>
                 <div class="text-xs text-navy-300 truncate">{a.body}</div>
@@ -156,39 +226,51 @@ const admin = (Astro.locals as any).admin;
           ))}
         </ul>
       ) : (
-        <div class="text-sm text-navy-300 py-6 text-center">Sem alertas abertos. ✓</div>
+        <div class="grid place-items-center py-10 text-sm text-navy-300">
+          <span class="[&>svg]:h-8 [&>svg]:w-8 text-emerald-400 mb-2" set:html={iconCheckCircle} />
+          Nenhum alerta aberto.
+        </div>
       )}
     </div>
 
-    <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5">
-      <h2 class="text-base font-semibold mb-4">Ingestão recente</h2>
+    <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 md:p-5">
+      <h2 class="text-base font-semibold inline-flex items-center gap-2 mb-4">
+        <span class="[&>svg]:h-4 [&>svg]:w-4 text-navy-300" set:html={iconRefresh} />
+        Ingestão recente
+      </h2>
       {lastRuns && lastRuns.length > 0 ? (
         <ul class="space-y-3">
           {lastRuns.map((r: any) => (
             <li class="flex items-center justify-between text-sm">
-              <div>
+              <div class="min-w-0">
                 <div class="font-medium capitalize">{r.source}</div>
                 <div class="text-xs text-navy-300">
                   {new Date(r.started_at).toLocaleString("pt-BR")}
                 </div>
               </div>
-              <div class="text-right">
-                <div
+              <div class="text-right flex-shrink-0">
+                <span
                   class:list={[
-                    "text-xs uppercase tracking-wider",
-                    r.status === "success" ? "text-emerald-400" : r.status === "failed" ? "text-red-400" : "text-amber-400",
+                    "inline-block px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-medium",
+                    r.status === "success"
+                      ? "bg-emerald-500/15 text-emerald-400"
+                      : r.status === "failed"
+                        ? "bg-red-500/15 text-red-400"
+                        : "bg-amber-500/15 text-amber-400",
                   ]}
                 >
                   {r.status}
-                </div>
-                {r.rows_upserted ? <div class="text-xs text-navy-300">{fmtInt(r.rows_upserted)} rows</div> : null}
+                </span>
+                {r.rows_upserted ? (
+                  <div class="text-[11px] text-navy-300 mt-0.5">{fmtInt(r.rows_upserted)} rows</div>
+                ) : null}
               </div>
             </li>
           ))}
         </ul>
       ) : (
         <div class="text-sm text-navy-300 py-6 text-center">
-          Cron ainda não rodou. Será disparado às 03:23 BRT diariamente.
+          Cron ainda não rodou.
         </div>
       )}
     </div>

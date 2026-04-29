@@ -69,9 +69,18 @@ const topCampaigns = aggBy("campaign");
 
 const hasData = (rows ?? []).length > 0;
 const admin = (Astro.locals as any).admin;
+
+const { count: alertCount } = await sb
+  .from("alerts")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "open");
+
+const sparkSessions = chartData.map((d) => d.Sessions);
+const sparkUsers = chartData.map((d) => d.Users);
+const sparkConv = chartData.map((d) => d.Conversions);
 ---
 
-<AdminLayout title="GA4 / Site" active="ga4" user={admin}>
+<AdminLayout title="GA4 / Site" active="ga4" user={admin} alertCount={alertCount ?? 0}>
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold">GA4 / Site</h1>
@@ -91,26 +100,33 @@ const admin = (Astro.locals as any).admin;
     </div>
   )}
 
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-    <KpiCard label="Sessões" value={fmtInt(totals.sessions)} />
-    <KpiCard label="Usuários" value={fmtInt(totals.users)} hint={`${fmtInt(totals.new_users)} novos`} />
-    <KpiCard label="Conversões GA4" value={fmtInt(totals.conversions)} accent="lime" />
-    <KpiCard label="Revenue (GA4)" value={fmtBRL(totals.revenue)} hint={`${fmtInt(totals.transactions)} transactions`} />
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+    <KpiCard label="Sessões" value={fmtInt(totals.sessions)} icon="sessions" spark={sparkSessions} />
+    <KpiCard label="Usuários" value={fmtInt(totals.users)} icon="users" hint={`${fmtInt(totals.new_users)} novos`} spark={sparkUsers} />
+    <KpiCard label="Conversões GA4" value={fmtInt(totals.conversions)} icon="conversions" accent="lime" spark={sparkConv} />
+    <KpiCard label="Revenue (GA4)" value={fmtBRL(totals.revenue)} icon="revenue" hint={`${fmtInt(totals.transactions)} transactions`} />
   </div>
 
   {chartData.length > 0 && (
-    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-8">
-      <h2 class="text-base font-semibold mb-4">Tráfego diário</h2>
-      <TrendChart
-        client:load
-        data={chartData}
-        xKey="date"
-        series={[
-          { key: "Sessions", label: "Sessions", color: "#0057b8" },
-          { key: "Users", label: "Users", color: "#43b02a" },
-          { key: "Conversions", label: "Conversions", color: "#d8ff2c" },
-        ]}
-      />
+    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 md:p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold">Tráfego diário</h2>
+          <p class="text-xs text-navy-300 mt-0.5">Sessões, usuários e conversões</p>
+        </div>
+      </div>
+      <div class="h-64 md:h-72">
+        <TrendChart
+          client:only="react"
+          data={chartData}
+          xKey="date"
+          series={[
+            { key: "Sessions", label: "Sessões", color: "#60a5fa" },
+            { key: "Users", label: "Usuários", color: "#4ade80" },
+            { key: "Conversions", label: "Conversões", color: "#d8ff2c" },
+          ]}
+        />
+      </div>
     </section>
   )}
 

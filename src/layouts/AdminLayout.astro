@@ -1,20 +1,30 @@
 ---
 import "../styles/global.css";
+import BottomNav from "../components/admin/BottomNav.astro";
+import {
+  iconBell,
+  iconChartBar,
+  iconGlobe,
+  iconLayout,
+  iconLogOut,
+  iconShoppingBag,
+} from "../components/admin/icons";
 
 interface Props {
   title: string;
   active?: "overview" | "meta" | "ga4" | "sales" | "alerts" | "settings";
   user?: { email: string };
+  alertCount?: number;
 }
 
-const { title, active = "overview", user } = Astro.props;
+const { title, active = "overview", user, alertCount = 0 } = Astro.props;
 
 const navItems = [
-  { id: "overview", label: "Overview", href: "/admin", icon: "📊" },
-  { id: "meta", label: "Meta Ads", href: "/admin/meta", icon: "📈" },
-  { id: "ga4", label: "GA4 / Site", href: "/admin/ga4", icon: "🌐" },
-  { id: "sales", label: "Vendas", href: "/admin/sales", icon: "💰" },
-  { id: "alerts", label: "Alertas", href: "/admin/alerts", icon: "🚨" },
+  { id: "overview", label: "Overview", href: "/admin", icon: iconLayout },
+  { id: "meta", label: "Meta Ads", href: "/admin/meta", icon: iconChartBar },
+  { id: "ga4", label: "GA4 / Site", href: "/admin/ga4", icon: iconGlobe },
+  { id: "sales", label: "Vendas", href: "/admin/sales", icon: iconShoppingBag },
+  { id: "alerts", label: "Alertas", href: "/admin/alerts", icon: iconBell },
 ] as const;
 ---
 
@@ -29,87 +39,103 @@ const navItems = [
   </head>
   <body class="admin-shell min-h-screen bg-navy-900 text-white font-body antialiased">
     <div class="flex min-h-screen">
-      <!-- Sidebar -->
-      <aside class="hidden md:flex w-64 flex-col border-r border-navy-700 bg-navy-800/50 p-6">
-        <div class="mb-8">
-          <div class="font-display text-2xl tracking-tight text-brand-lime">PR Tracker</div>
-          <div class="text-xs uppercase tracking-widest text-navy-300 mt-1">Admin Console</div>
+      {/* Desktop sidebar */}
+      <aside class="hidden md:flex w-60 flex-col border-r border-navy-700 bg-navy-800/40 backdrop-blur-sm">
+        <div class="px-6 pt-7 pb-8">
+          <div class="font-display text-2xl tracking-tight text-brand-lime leading-none">PR Tracker</div>
+          <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300 mt-1.5">Admin Console</div>
         </div>
-        <nav class="flex-1 space-y-1">
+        <nav class="flex-1 px-3 space-y-0.5">
           {
-            navItems.map((item) => (
-              <a
-                href={item.href}
-                class:list={[
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
-                  active === item.id
-                    ? "bg-brand-lime text-navy-900 font-semibold"
-                    : "text-navy-200 hover:bg-navy-700/50 hover:text-white",
-                ]}
-              >
-                <span class="text-lg">{item.icon}</span>
-                <span>{item.label}</span>
-              </a>
-            ))
+            navItems.map((item) => {
+              const isActive = active === item.id;
+              const showBadge = item.id === "alerts" && alertCount > 0;
+              return (
+                <a
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  class:list={[
+                    "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+                    isActive
+                      ? "bg-brand-lime text-navy-900 font-semibold"
+                      : "text-navy-200 hover:bg-navy-700/60 hover:text-white",
+                  ]}
+                >
+                  <span class="inline-flex h-4 w-4 items-center justify-center [&>svg]:h-4 [&>svg]:w-4" set:html={item.icon} />
+                  <span class="flex-1">{item.label}</span>
+                  {showBadge && (
+                    <span class="inline-flex min-w-[1.25rem] justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold leading-4 text-white">
+                      {alertCount > 9 ? "9+" : alertCount}
+                    </span>
+                  )}
+                </a>
+              );
+            })
           }
         </nav>
         {
           user && (
-            <div class="mt-auto border-t border-navy-700 pt-4">
-              <div class="text-xs text-navy-300 mb-2">Logado como</div>
-              <div class="text-sm truncate" title={user.email}>
-                {user.email}
-              </div>
+            <div class="mt-auto border-t border-navy-700 p-4">
+              <div class="text-[10px] uppercase tracking-wider text-navy-400 mb-1">Logado como</div>
+              <div class="text-sm truncate" title={user.email}>{user.email}</div>
               <button
                 id="admin-logout"
-                class="mt-3 w-full text-xs text-navy-300 hover:text-white transition text-left"
+                class="mt-3 inline-flex items-center gap-1.5 text-xs text-navy-300 hover:text-brand-lime transition"
+                aria-label="Sair"
               >
-                ↗ Sair
+                <span class="[&>svg]:h-3.5 [&>svg]:w-3.5" set:html={iconLogOut} />
+                <span>Sair</span>
               </button>
             </div>
           )
         }
       </aside>
 
-      <!-- Main content -->
-      <main class="flex-1 min-w-0 flex flex-col">
-        <header class="md:hidden flex items-center justify-between border-b border-navy-700 px-4 py-3 bg-navy-800/50">
-          <div class="font-display text-lg text-brand-lime">PR Tracker Admin</div>
-          <details class="relative">
-            <summary class="cursor-pointer text-navy-200">☰</summary>
-            <nav
-              class="absolute right-0 top-full mt-2 w-56 rounded-lg border border-navy-700 bg-navy-800 p-2 shadow-xl z-10"
+      {/* Main content */}
+      <main class="flex-1 min-w-0 flex flex-col pb-20 md:pb-0">
+        {/* Mobile top bar — minimal, just the wordmark + alert pip */}
+        <header class="md:hidden flex items-center justify-between px-4 py-3 border-b border-navy-700/80 bg-navy-900/95 backdrop-blur sticky top-0 z-20">
+          <div class="font-display text-lg leading-none tracking-tight text-brand-lime">PR Tracker</div>
+          <div class="flex items-center gap-3">
+            {alertCount > 0 && (
+              <a href="/admin/alerts" class="relative inline-flex p-1 text-navy-200" aria-label={`${alertCount} alertas abertos`}>
+                <span class="[&>svg]:h-5 [&>svg]:w-5" set:html={iconBell} />
+                <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1rem] justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-4 text-white">
+                  {alertCount > 9 ? "9+" : alertCount}
+                </span>
+              </a>
+            )}
+            <button
+              id="admin-logout-mobile"
+              class="inline-flex p-1 text-navy-300 hover:text-brand-lime transition"
+              aria-label="Sair"
             >
-              {
-                navItems.map((item) => (
-                  <a
-                    href={item.href}
-                    class="block rounded px-3 py-2 text-sm text-navy-200 hover:bg-navy-700"
-                  >
-                    {item.icon} {item.label}
-                  </a>
-                ))
-              }
-            </nav>
-          </details>
+              <span class="[&>svg]:h-5 [&>svg]:w-5" set:html={iconLogOut} />
+            </button>
+          </div>
         </header>
 
-        <div class="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto">
+        <div class="flex-1 px-4 py-5 md:px-8 md:py-8 max-w-[1600px] w-full mx-auto">
           <slot />
         </div>
       </main>
     </div>
 
+    <BottomNav active={active} alertCount={alertCount} />
+
     <script>
-      const logoutBtn = document.getElementById("admin-logout");
-      if (logoutBtn) {
-        logoutBtn.addEventListener("click", async () => {
+      function bindLogout(id: string) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener("click", async () => {
           try {
             await fetch("/api/admin/logout", { method: "POST" });
           } catch {}
           window.location.href = "/admin/login";
         });
       }
+      bindLogout("admin-logout");
+      bindLogout("admin-logout-mobile");
     </script>
 
     <style is:global>
