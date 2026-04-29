@@ -47,6 +47,33 @@ const { data: prevRows = [] } = await sb
   .lt("date", prevUntil);
 const prevTotals = aggregateInsights(prevRows ?? []);
 
+// Site sales (Mercado Pago) — current period
+const sinceTs = since + "T00:00:00";
+const todayTs = today + "T23:59:59";
+const { data: salesRows = [] } = await sb
+  .from("sales")
+  .select("total, quantity, created_at, channel")
+  .gte("created_at", sinceTs)
+  .lte("created_at", todayTs);
+
+const siteRevenue = (salesRows ?? []).reduce((s, r: any) => s + Number(r.total ?? 0), 0);
+const siteOrders = (salesRows ?? []).length;
+
+// Sales — previous period
+const prevSinceTs = daysAgoIso(days * 2) + "T00:00:00";
+const prevUntilTs = daysAgoIso(days) + "T00:00:00";
+const { data: prevSalesRows = [] } = await sb
+  .from("sales")
+  .select("total")
+  .gte("created_at", prevSinceTs)
+  .lt("created_at", prevUntilTs);
+const prevSiteRevenue = (prevSalesRows ?? []).reduce((s, r: any) => s + Number(r.total ?? 0), 0);
+const prevSiteOrders = prevSalesRows?.length ?? 0;
+
+// Real ROAS = site revenue / spend (since Meta CAPI revenue is often missing)
+const realRoas = totals.spend > 0 ? siteRevenue / totals.spend : 0;
+const prevRealRoas = prevTotals.spend > 0 ? prevSiteRevenue / prevTotals.spend : 0;
+
 function delta(curr: number, prev: number) {
   if (prev === 0) return null;
   const pct = ((curr - prev) / prev) * 100;
@@ -98,8 +125,23 @@ const admin = (Astro.locals as any).admin;
     <DateRangeSelect current={days} />
   </div>
 
-  {/* Primary KPIs */}
+  {/* Primary KPIs — site sales + ad spend in one row */}
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+    <KpiCard
+      label="Revenue Site"
+      value={fmtBRL(siteRevenue)}
+      icon="revenue"
+      accent="lime"
+      delta={delta(siteRevenue, prevSiteRevenue) ?? undefined}
+      hint={`Anterior: ${fmtBRL(prevSiteRevenue)}`}
+    />
+    <KpiCard
+      label="Pedidos"
+      value={fmtInt(siteOrders)}
+      icon="conversions"
+      delta={delta(siteOrders, prevSiteOrders) ?? undefined}
+      hint={siteOrders > 0 ? `Ticket médio ${fmtBRL(siteRevenue / siteOrders)}` : "via MP"}
+    />
     <KpiCard
       label="Spend Meta"
       value={fmtBRL(totals.spend)}
@@ -109,27 +151,11 @@ const admin = (Astro.locals as any).admin;
       spark={sparkSpend}
     />
     <KpiCard
-      label="Revenue Meta"
-      value={fmtBRL(totals.revenue)}
-      icon="revenue"
-      accent="lime"
-      delta={delta(totals.revenue, prevTotals.revenue) ?? undefined}
-      hint={`Anterior: ${fmtBRL(prevTotals.revenue)}`}
-      spark={sparkRevenue}
-    />
-    <KpiCard
-      label="ROAS"
-      value={fmtNumber(totals.roas)}
+      label="ROAS Real"
+      value={realRoas > 0 ? fmtNumber(realRoas) : "—"}
       icon="roas"
-      delta={delta(totals.roas, prevTotals.roas) ?? undefined}
-      hint={totals.spend === 0 ? "sem spend" : `Anterior: ${fmtNumber(prevTotals.roas)}`}
-    />
-    <KpiCard
-      label="Conversões"
-      value={fmtInt(totals.purchases)}
-      icon="conversions"
-      delta={delta(totals.purchases, prevTotals.purchases) ?? undefined}
-      hint={`Purchase events`}
+      delta={delta(realRoas, prevRealRoas) ?? undefined}
+      hint={totals.spend > 0 ? `Revenue Site / Spend Meta` : "sem spend"}
     />
   </div>
 

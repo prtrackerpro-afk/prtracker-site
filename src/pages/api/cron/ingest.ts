@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { ingestMeta } from "../../../lib/admin/meta-ingest";
 import { ingestWindsor } from "../../../lib/admin/windsor-ingest";
+import { ingestMercadoPago } from "../../../lib/admin/mp-ingest";
 import { evaluateAlerts } from "../../../lib/admin/alerts-engine";
 import { getAdminSupabase } from "../../../lib/supabase/server";
 import { isEmailConfigured, sendAdminEmail } from "../../../lib/admin/email";
@@ -45,7 +46,14 @@ export const GET: APIRoute = async ({ request }) => {
     result.windsor = { error: (e as Error).message };
   }
 
-  // 3) Alerts
+  // 3) Mercado Pago — site sales backfill
+  try {
+    result.mercadopago = await ingestMercadoPago({ daysBack });
+  } catch (e) {
+    result.mercadopago = { error: (e as Error).message };
+  }
+
+  // 4) Alerts
   try {
     result.alerts = await evaluateAlerts({ dateRangeDays: 1 });
   } catch (e) {
