@@ -4,6 +4,10 @@
  *  - public/favicon-32.png            (from favicon.svg)
  *  - public/apple-touch-icon.png      (from favicon.svg, 180x180)
  *  - public/og-default.png            (from og-default.svg, 1200x630)
+ *  - public/admin/icon-192.png        (PWA admin, from admin/icon.svg)
+ *  - public/admin/icon-512.png        (PWA admin, from admin/icon.svg)
+ *  - public/admin/icon-maskable-512.png (PWA admin maskable, from admin/icon-maskable.svg)
+ *  - public/admin/apple-touch-icon.png  (iOS home-screen, 180x180, from admin/icon.svg)
  *
  * Run: npm run gen:assets
  */
@@ -33,6 +37,12 @@ async function main() {
   await svgToPng(join(PUBLIC, "favicon.svg"), join(PUBLIC, "favicon-32.png"), 32);
   await svgToPng(join(PUBLIC, "favicon.svg"), join(PUBLIC, "apple-touch-icon.png"), 180);
   await svgToPng(join(PUBLIC, "og-default.svg"), join(PUBLIC, "og-default.png"), [1200, 630]);
+
+  const ADMIN = join(PUBLIC, "admin");
+  await svgToPng(join(ADMIN, "icon.svg"), join(ADMIN, "icon-192.png"), 192);
+  await svgToPng(join(ADMIN, "icon.svg"), join(ADMIN, "icon-512.png"), 512);
+  await svgToPng(join(ADMIN, "icon.svg"), join(ADMIN, "apple-touch-icon.png"), 180);
+  await svgToPng(join(ADMIN, "icon-maskable.svg"), join(ADMIN, "icon-maskable-512.png"), 512);
   console.log("Done.");
 }
 

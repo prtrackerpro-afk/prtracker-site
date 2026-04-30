@@ -10,10 +10,18 @@ const next = url.searchParams.get("next") || "/admin";
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Login · PR Tracker Admin</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/admin/icon.svg" />
+    {/* PWA — instalável como app no iPhone via "Adicionar à Tela de Início" */}
+    <link rel="manifest" href="/admin/manifest.webmanifest" />
+    <meta name="theme-color" content="#01002A" />
+    <link rel="apple-touch-icon" href="/admin/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PR Admin" />
   </head>
   <body class="min-h-screen bg-navy-900 text-white font-body flex items-center justify-center p-4">
     <div class="w-full max-w-sm">
