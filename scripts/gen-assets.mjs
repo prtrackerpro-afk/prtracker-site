@@ -79,9 +79,12 @@ async function main() {
   await svgToPng(join(PUBLIC, "og-default.svg"), join(PUBLIC, "og-default.png"), [1200, 630]);
 
   const ADMIN = join(PUBLIC, "admin");
-  await adminIconPng(join(ADMIN, "icon-192.png"), 192, 0.10);
-  await adminIconPng(join(ADMIN, "icon-512.png"), 512, 0.10);
-  await adminIconPng(join(ADMIN, "apple-touch-icon.png"), 180, 0.10);
+  // iOS apple-touch-icon convention is full-bleed; padding kept minimal so the
+  // wide PR symbol (1.47:1) fills the canvas horizontally. Maskable keeps the
+  // 18% safe-zone Android requires.
+  await adminIconPng(join(ADMIN, "icon-192.png"), 192, 0.03);
+  await adminIconPng(join(ADMIN, "icon-512.png"), 512, 0.03);
+  await adminIconPng(join(ADMIN, "apple-touch-icon.png"), 180, 0.03);
   await adminIconPng(join(ADMIN, "icon-maskable-512.png"), 512, 0.18);
   console.log("Done.");
 }
