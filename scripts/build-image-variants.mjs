@@ -32,14 +32,10 @@ const sources = [
     emitJpg: true,
     jpgQuality: 84,
   },
-  // Home hero — mobile. Aggressive AVIF quality (48) is fine here because
-  // the hero is rendered behind a dark scrim that masks compression noise,
-  // and we shave another ~25% off file size to help mobile LCP on 4G.
+  // Home hero — mobile (already JPG, just add webp/avif)
   {
     src: "public/images/brand/hero-mobile.jpg",
     outBase: "public/images/brand/hero-mobile",
-    avifQuality: 48,
-    webpQuality: 78,
   },
   // 4 product hero shots — full size for product detail pages
   {
@@ -148,18 +144,16 @@ for (const job of sources) {
       .toFile(outBase + ".jpg");
   }
 
-  // WebP — lossy at quality 82 by default. "effort: 6" = slowest encode,
-  // smallest file.
+  // WebP — lossy at quality 82. "effort: 6" = slowest encode, smallest file.
   await loader(job)
-    .webp({ quality: job.webpQuality ?? 82, effort: 6 })
+    .webp({ quality: 82, effort: 6 })
     .toFile(outBase + ".webp");
 
   // AVIF — quality 60 is visually lossless for photos and ~30% smaller
   // than WebP at the same perceived quality. "effort: 6" for speed/size
-  // balance (9 is slowest, 6 is a good tradeoff). Per-job override lets
-  // hero shots go more aggressive when they sit under a dark scrim.
+  // balance (9 is slowest, 6 is a good tradeoff).
   await loader(job)
-    .avif({ quality: job.avifQuality ?? 60, effort: 6 })
+    .avif({ quality: 60, effort: 6 })
     .toFile(outBase + ".avif");
 
   const origSize = await sizeOf(srcPath);
