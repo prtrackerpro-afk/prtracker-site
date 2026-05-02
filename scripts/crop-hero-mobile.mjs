@@ -24,8 +24,11 @@ const CROP_TOP = 0;
 const CROP_WIDTH = 820;
 const CROP_HEIGHT = 1024;
 
-// Upscale for high-DPI phones.
-const OUT_WIDTH = 1080;
+// Sized for mobile hero box (~412×560 CSS px on Lighthouse Moto G; ~430×640
+// on the largest phones below the 900px breakpoint). 900px wide covers DPR
+// 2.1 retina without being wasteful on bandwidth — the previous 1080px was
+// 2.6× the layout size and pushed mobile LCP past 3s on 4G.
+const OUT_WIDTH = 900;
 const OUT_HEIGHT = Math.round(CROP_HEIGHT * (OUT_WIDTH / CROP_WIDTH));
 
 await sharp(INPUT)
