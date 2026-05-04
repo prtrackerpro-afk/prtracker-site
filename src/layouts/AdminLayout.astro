@@ -3,6 +3,7 @@ import "../styles/global.css";
 import BottomNav from "../components/admin/BottomNav.astro";
 import {
   iconBell,
+  iconBox,
   iconChartBar,
   iconGlobe,
   iconLayout,
@@ -12,7 +13,7 @@ import {
 
 interface Props {
   title: string;
-  active?: "overview" | "meta" | "ga4" | "sales" | "alerts" | "settings";
+  active?: "overview" | "meta" | "ga4" | "sales" | "bling" | "alerts" | "settings";
   user?: { email: string };
   alertCount?: number;
 }
@@ -24,6 +25,7 @@ const navItems = [
   { id: "meta", label: "Meta Ads", href: "/admin/meta", icon: iconChartBar },
   { id: "ga4", label: "GA4 / Site", href: "/admin/ga4", icon: iconGlobe },
   { id: "sales", label: "Vendas", href: "/admin/sales", icon: iconShoppingBag },
+  { id: "bling", label: "Bling", href: "/admin/bling", icon: iconBox },
   { id: "alerts", label: "Alertas", href: "/admin/alerts", icon: iconBell },
 ] as const;
 ---

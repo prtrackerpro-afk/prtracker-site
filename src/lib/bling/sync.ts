@@ -30,8 +30,9 @@ import {
 import { getOrCreateContact } from "./contacts";
 import { getOrCreateProduct } from "./products";
 import { createSalesOrder, type SalesOrderItemInput } from "./orders";
-import { explodeLineToBling, type ItemSku } from "./sku-map";
+import { explodeLineToBling, type ItemSku, type SkuLine } from "./sku-map";
 import { BlingApiError } from "./api";
+import { createAndEmitNfe, type NfeOutcomeStatus } from "./nfe";
 
 type MpPayment = Awaited<ReturnType<Payment["get"]>>;
 
@@ -144,6 +145,9 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
     }
 
     const lines: SalesOrderItemInput[] = [];
+    // Keep the SkuLine[] alongside so we can pass codigo/descricao/ncm to
+    // NF-e emission later without re-walking the cart.
+    const skuLines: SkuLine[] = [];
     for (const item of itemsSkusRaw) {
       const exploded = explodeLineToBling(item);
       for (const line of exploded) {
@@ -162,6 +166,7 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
           quantidade: line.qty,
           valor: line.unitPrice,
         });
+        skuLines.push(line);
       }
     }
 
@@ -206,7 +211,7 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
       accessToken,
     );
 
-    // ---- Persist success ----
+    // ---- Persist pedido success (nfe fields filled in step below) ----
     await sb
       .from("bling_orders")
       .update({
@@ -221,6 +226,66 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
         updated_at: new Date().toISOString(),
         attempt_count: (initial.row?.attempt_count ?? 0) + 1,
         error: null,
+      })
+      .eq("mp_payment_id", paymentId);
+
+    // ---- NF-e emission (decoupled — pedido success is preserved if NF-e fails) ----
+    const naturezaOperacaoId = getEnvInt("BLING_NATUREZA_OPERACAO_ID");
+    let nfeOutcome: NfeOutcomeStatus = "skipped";
+    let nfeError: string | undefined;
+    let nfeFields: Partial<{
+      bling_nfe_id: string;
+      bling_nfe_numero: string;
+      bling_nfe_serie: string;
+      bling_nfe_chave_acesso: string;
+    }> = {};
+
+    if (!naturezaOperacaoId) {
+      console.warn(
+        "[bling-sync] BLING_NATUREZA_OPERACAO_ID not set — skipping NF-e auto-emission",
+      );
+      nfeError = "BLING_NATUREZA_OPERACAO_ID não configurado";
+    } else {
+      const totalValor =
+        skuLines.reduce((s, l) => s + l.unitPrice * l.qty, 0) +
+        (freightCents > 0 ? freightCents / 100 : 0) -
+        (totalDiscountCents > 0 ? totalDiscountCents / 100 : 0);
+      const nfeRes = await createAndEmitNfe(
+        {
+          contatoId: contato.id,
+          naturezaOperacaoId,
+          lojaId: getEnvInt("BLING_LOJA_ID"),
+          itens: skuLines.map((l) => ({
+            codigo: l.codigo,
+            descricao: l.nome,
+            quantidade: l.qty,
+            valor: l.unitPrice,
+            ncm: l.ncm,
+          })),
+          totalValor: Math.max(0.01, totalValor),
+          frete: freightCents > 0 ? freightCents / 100 : undefined,
+          numeroPedido: externalRef,
+          observacoes: `Ref pedido site: ${externalRef}`,
+        },
+        accessToken,
+      );
+
+      nfeOutcome = nfeRes.status;
+      nfeError = nfeRes.error;
+      if (nfeRes.nfeId) nfeFields.bling_nfe_id = String(nfeRes.nfeId);
+      if (nfeRes.numero) nfeFields.bling_nfe_numero = nfeRes.numero;
+      if (nfeRes.serie) nfeFields.bling_nfe_serie = nfeRes.serie;
+      if (nfeRes.chaveAcesso) nfeFields.bling_nfe_chave_acesso = nfeRes.chaveAcesso;
+    }
+
+    await sb
+      .from("bling_orders")
+      .update({
+        ...nfeFields,
+        nfe_status: nfeOutcome,
+        nfe_error: nfeError ?? null,
+        nfe_emitted_at: nfeOutcome === "emitted" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
       })
       .eq("mp_payment_id", paymentId);
 
