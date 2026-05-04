@@ -230,64 +230,15 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
       .eq("mp_payment_id", paymentId);
 
     // ---- NF-e emission (decoupled — pedido success is preserved if NF-e fails) ----
-    const naturezaOperacaoId = getEnvInt("BLING_NATUREZA_OPERACAO_ID");
-    let nfeOutcome: NfeOutcomeStatus = "skipped";
-    let nfeError: string | undefined;
-    let nfeFields: Partial<{
-      bling_nfe_id: string;
-      bling_nfe_numero: string;
-      bling_nfe_serie: string;
-      bling_nfe_chave_acesso: string;
-    }> = {};
-
-    if (!naturezaOperacaoId) {
-      console.warn(
-        "[bling-sync] BLING_NATUREZA_OPERACAO_ID not set — skipping NF-e auto-emission",
-      );
-      nfeError = "BLING_NATUREZA_OPERACAO_ID não configurado";
-    } else {
-      const totalValor =
-        skuLines.reduce((s, l) => s + l.unitPrice * l.qty, 0) +
-        (freightCents > 0 ? freightCents / 100 : 0) -
-        (totalDiscountCents > 0 ? totalDiscountCents / 100 : 0);
-      const nfeRes = await createAndEmitNfe(
-        {
-          contatoId: contato.id,
-          naturezaOperacaoId,
-          lojaId: getEnvInt("BLING_LOJA_ID"),
-          itens: skuLines.map((l) => ({
-            codigo: l.codigo,
-            descricao: l.nome,
-            quantidade: l.qty,
-            valor: l.unitPrice,
-            ncm: l.ncm,
-          })),
-          totalValor: Math.max(0.01, totalValor),
-          frete: freightCents > 0 ? freightCents / 100 : undefined,
-          numeroPedido: externalRef,
-          observacoes: `Ref pedido site: ${externalRef}`,
-        },
-        accessToken,
-      );
-
-      nfeOutcome = nfeRes.status;
-      nfeError = nfeRes.error;
-      if (nfeRes.nfeId) nfeFields.bling_nfe_id = String(nfeRes.nfeId);
-      if (nfeRes.numero) nfeFields.bling_nfe_numero = nfeRes.numero;
-      if (nfeRes.serie) nfeFields.bling_nfe_serie = nfeRes.serie;
-      if (nfeRes.chaveAcesso) nfeFields.bling_nfe_chave_acesso = nfeRes.chaveAcesso;
-    }
-
-    await sb
-      .from("bling_orders")
-      .update({
-        ...nfeFields,
-        nfe_status: nfeOutcome,
-        nfe_error: nfeError ?? null,
-        nfe_emitted_at: nfeOutcome === "emitted" ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("mp_payment_id", paymentId);
+    await emitAndPersistNfe({
+      paymentId,
+      contatoId: contato.id,
+      skuLines,
+      freightCents,
+      totalDiscountCents,
+      externalRef,
+      accessToken,
+    });
 
     return {
       ok: true,
@@ -325,6 +276,158 @@ interface PersistInitial {
     bling_pedido_numero: string | null;
     attempt_count: number;
   } | null;
+}
+
+interface EmitNfeArgs {
+  paymentId: string;
+  contatoId: number;
+  skuLines: SkuLine[];
+  freightCents: number;
+  totalDiscountCents: number;
+  externalRef: string;
+  accessToken: string;
+}
+
+/**
+ * Build NF-e payload from already-resolved order data, call createAndEmitNfe,
+ * and persist outcome to bling_orders. Used by both the initial sync and the
+ * /retry-nfe admin endpoint when the pedido is already in Bling but the NF-e
+ * never emitted (or failed mid-way).
+ */
+async function emitAndPersistNfe(args: EmitNfeArgs): Promise<NfeOutcomeStatus> {
+  const sb = getAdminSupabase();
+  const naturezaOperacaoId = getEnvInt("BLING_NATUREZA_OPERACAO_ID");
+  let nfeOutcome: NfeOutcomeStatus = "skipped";
+  let nfeError: string | undefined;
+  const nfeFields: Partial<{
+    bling_nfe_id: string;
+    bling_nfe_numero: string;
+    bling_nfe_serie: string;
+    bling_nfe_chave_acesso: string;
+  }> = {};
+
+  if (!naturezaOperacaoId) {
+    console.warn("[bling-sync] BLING_NATUREZA_OPERACAO_ID not set — skipping NF-e auto-emission");
+    nfeError = "BLING_NATUREZA_OPERACAO_ID não configurado";
+  } else {
+    const totalValor =
+      args.skuLines.reduce((s, l) => s + l.unitPrice * l.qty, 0) +
+      (args.freightCents > 0 ? args.freightCents / 100 : 0) -
+      (args.totalDiscountCents > 0 ? args.totalDiscountCents / 100 : 0);
+    const nfeRes = await createAndEmitNfe(
+      {
+        contatoId: args.contatoId,
+        naturezaOperacaoId,
+        lojaId: getEnvInt("BLING_LOJA_ID"),
+        itens: args.skuLines.map((l) => ({
+          codigo: l.codigo,
+          descricao: l.nome,
+          quantidade: l.qty,
+          valor: l.unitPrice,
+          ncm: l.ncm,
+        })),
+        totalValor: Math.max(0.01, totalValor),
+        frete: args.freightCents > 0 ? args.freightCents / 100 : undefined,
+        numeroPedido: args.externalRef,
+        observacoes: `Ref pedido site: ${args.externalRef}`,
+      },
+      args.accessToken,
+    );
+
+    nfeOutcome = nfeRes.status;
+    nfeError = nfeRes.error;
+    if (nfeRes.nfeId) nfeFields.bling_nfe_id = String(nfeRes.nfeId);
+    if (nfeRes.numero) nfeFields.bling_nfe_numero = nfeRes.numero;
+    if (nfeRes.serie) nfeFields.bling_nfe_serie = nfeRes.serie;
+    if (nfeRes.chaveAcesso) nfeFields.bling_nfe_chave_acesso = nfeRes.chaveAcesso;
+  }
+
+  await sb
+    .from("bling_orders")
+    .update({
+      ...nfeFields,
+      nfe_status: nfeOutcome,
+      nfe_error: nfeError ?? null,
+      nfe_emitted_at: nfeOutcome === "emitted" ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("mp_payment_id", args.paymentId);
+
+  return nfeOutcome;
+}
+
+/**
+ * Emit NF-e for an MP payment whose pedido already exists in Bling.
+ * Called from /api/admin/bling/retry-nfe when the row is status='synced'
+ * but nfe_status is null/'skipped'/'failed' — re-derives skuLines from the
+ * MP payment metadata and runs the NF-e step in isolation.
+ */
+export async function emitNfeForExistingOrder(
+  payment: MpPayment,
+): Promise<{ ok: boolean; status: NfeOutcomeStatus; error?: string }> {
+  const paymentId = String(payment.id ?? "");
+  const sb = getAdminSupabase();
+
+  const { data: row } = await sb
+    .from("bling_orders")
+    .select("bling_contato_id, external_reference, status")
+    .eq("mp_payment_id", paymentId)
+    .maybeSingle();
+
+  if (!row) {
+    return { ok: false, status: "failed", error: "pedido não encontrado em bling_orders" };
+  }
+  if (!row.bling_contato_id) {
+    return {
+      ok: false,
+      status: "failed",
+      error: "bling_contato_id ausente — re-sincroniza o pedido primeiro",
+    };
+  }
+
+  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+  let itemsSkusRaw: ItemSku[] = [];
+  try {
+    const raw = String(meta.items_skus ?? "");
+    itemsSkusRaw = raw ? JSON.parse(raw) : [];
+  } catch {
+    return { ok: false, status: "failed", error: "metadata.items_skus inválido" };
+  }
+  if (itemsSkusRaw.length === 0) {
+    return { ok: false, status: "failed", error: "items_skus vazio em MP metadata" };
+  }
+
+  const skuLines: SkuLine[] = [];
+  for (const item of itemsSkusRaw) {
+    for (const line of explodeLineToBling(item)) skuLines.push(line);
+  }
+
+  const couponCents = Number(meta.coupon_discount_cents ?? 0);
+  const pixCents = Number(meta.pix_discount_cents ?? 0);
+  const freightCents = Number(meta.freight_cents ?? 0);
+  const totalDiscountCents = couponCents + pixCents;
+  const externalRef = payment.external_reference ?? row.external_reference ?? `mp-${paymentId}`;
+
+  try {
+    const accessToken = await getValidAccessToken();
+    const outcome = await emitAndPersistNfe({
+      paymentId,
+      contatoId: Number(row.bling_contato_id),
+      skuLines,
+      freightCents,
+      totalDiscountCents,
+      externalRef,
+      accessToken,
+    });
+    return { ok: outcome === "emitted" || outcome === "pending", status: outcome };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await sb
+      .from("bling_orders")
+      .update({ nfe_status: "failed", nfe_error: msg, updated_at: new Date().toISOString() })
+      .eq("mp_payment_id", paymentId);
+    return { ok: false, status: "failed", error: msg };
+  }
 }
 
 async function persistInitial(
