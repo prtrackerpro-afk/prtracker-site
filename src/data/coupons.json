@@ -333,6 +333,26 @@
       "exclude_sale_items": false,
       "first_order_only": false,
       "affiliate": null
+    },
+    {
+      "code": "testebling",
+      "discount_type": "percent",
+      "amount": 99,
+      "date_expires": "2026-05-11T03:00:00",
+      "usage_count": 0,
+      "usage_limit": 5,
+      "usage_limit_per_user": 5,
+      "individual_use": true,
+      "free_shipping": true,
+      "minimum_amount_cents": 0,
+      "maximum_amount_cents": 0,
+      "product_ids": [],
+      "excluded_product_ids": [],
+      "product_categories": [],
+      "excluded_product_categories": [],
+      "exclude_sale_items": false,
+      "first_order_only": false,
+      "affiliate": null
     }
   ]
 }
