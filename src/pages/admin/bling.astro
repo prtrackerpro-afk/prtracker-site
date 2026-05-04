@@ -130,6 +130,32 @@ function fmtDate(iso: string | null) {
       )}
     </section>
 
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Configuração fiscal — naturezas de operação</div>
+            <p class="mt-1 text-sm text-navy-200">
+              Lista direto do teu Bling. Copia o ID da natureza certa
+              (ex: "Venda de mercadoria a não contribuinte") e cola em
+              <code class="text-brand-lime">BLING_NATUREZA_OPERACAO_ID</code> nas
+              env vars do Vercel pra ativar a auto-emissão de NF-e.
+            </p>
+          </div>
+          <button
+            id="load-naturezas"
+            type="button"
+            class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+          >
+            Carregar lista
+          </button>
+        </div>
+        <div id="naturezas-result" class="mt-4 text-sm text-navy-300">
+          <span class="text-navy-400">Clica em "Carregar lista" pra puxar do Bling.</span>
+        </div>
+      </section>
+    )}
+
     <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
         <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Sincronizados</div>
@@ -293,5 +319,87 @@ function fmtDate(iso: string | null) {
     }
     bindRetry("data-retry-mp-payment", "/api/admin/bling/retry", "Sincronizando…");
     bindRetry("data-retry-nfe-payment", "/api/admin/bling/retry-nfe", "Emitindo NF-e…");
+
+    // Naturezas de operação loader — fetches Bling cadastros to expose IDs
+    // (the Bling dashboard hides them from non-developer users).
+    const loadBtn = document.getElementById("load-naturezas") as HTMLButtonElement | null;
+    const result = document.getElementById("naturezas-result");
+    if (loadBtn && result) {
+      loadBtn.addEventListener("click", async () => {
+        loadBtn.disabled = true;
+        loadBtn.textContent = "Carregando…";
+        result.innerHTML = '<span class="text-navy-400">Carregando do Bling…</span>';
+        try {
+          const res = await fetch("/api/admin/bling/naturezas", {
+            headers: { Accept: "application/json" },
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            result.innerHTML = `<span class="text-red-300">Erro: ${data.error ?? res.statusText}</span>`;
+            return;
+          }
+          const items: Array<{ id: number; descricao?: string; cfop?: string; tipo?: number; situacao?: number }> = data.naturezas ?? [];
+          if (items.length === 0) {
+            result.innerHTML = '<span class="text-amber-300">Nenhuma natureza de operação encontrada no teu Bling.</span>';
+            return;
+          }
+          const rows = items
+            .map((n) => {
+              const tipo = n.tipo === 1 ? "Saída" : n.tipo === 0 ? "Entrada" : "—";
+              const ativa = n.situacao === 1 ? "Ativa" : "Inativa";
+              const desc = (n.descricao ?? "").replace(/</g, "&lt;");
+              const cfop = n.cfop ? `<span class="text-navy-400">CFOP ${n.cfop}</span>` : "";
+              return `
+                <tr class="hover:bg-navy-700/30">
+                  <td class="px-3 py-2 font-mono text-brand-lime">${n.id}</td>
+                  <td class="px-3 py-2">${desc}</td>
+                  <td class="px-3 py-2 text-xs text-navy-300">${tipo}</td>
+                  <td class="px-3 py-2 text-xs text-navy-300">${ativa}</td>
+                  <td class="px-3 py-2 text-xs">${cfop}</td>
+                  <td class="px-3 py-2"><button type="button" data-copy-id="${n.id}" class="rounded bg-brand-lime/20 hover:bg-brand-lime/40 text-brand-lime px-2 py-0.5 text-[11px]">Copiar ID</button></td>
+                </tr>
+              `;
+            })
+            .join("");
+          result.innerHTML = `
+            <div class="overflow-x-auto rounded border border-navy-700">
+              <table class="w-full text-sm">
+                <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
+                  <tr>
+                    <th class="text-left px-3 py-2">ID</th>
+                    <th class="text-left px-3 py-2">Descrição</th>
+                    <th class="text-left px-3 py-2">Tipo</th>
+                    <th class="text-left px-3 py-2">Situação</th>
+                    <th class="text-left px-3 py-2">CFOP</th>
+                    <th class="text-left px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-navy-700/60">${rows}</tbody>
+              </table>
+            </div>
+            <p class="mt-2 text-xs text-navy-400">Saídas ativas aparecem primeiro. Pega o ID da que tu usou na NF #19 da Thawant — geralmente "Venda de mercadoria a não contribuinte".</p>
+          `;
+          // Wire copy buttons
+          result.querySelectorAll<HTMLButtonElement>("[data-copy-id]").forEach((b) => {
+            b.addEventListener("click", async () => {
+              const id = b.getAttribute("data-copy-id") ?? "";
+              try {
+                await navigator.clipboard.writeText(id);
+                const orig = b.textContent;
+                b.textContent = "Copiado ✓";
+                setTimeout(() => (b.textContent = orig), 1500);
+              } catch {
+                window.prompt("Copia o ID:", id);
+              }
+            });
+          });
+        } catch (e) {
+          result.innerHTML = `<span class="text-red-300">Falha: ${e instanceof Error ? e.message : String(e)}</span>`;
+        } finally {
+          loadBtn.disabled = false;
+          loadBtn.textContent = "Carregar lista";
+        }
+      });
+    }
   </script>
 </AdminLayout>
