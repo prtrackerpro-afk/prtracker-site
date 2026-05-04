@@ -520,6 +520,16 @@ import Loader from "@lucide/astro/icons/loader";
     price_cents: number;
     delivery_days_min: number;
     delivery_days_max: number;
+    /** Endereço da unidade — só preenchido em opções de retirada (id=0). */
+    pickup_address?: string;
+  };
+  type PickupLocation = {
+    name: string;
+    address_line: string;
+    district: string;
+    city: string;
+    state: string;
+    cep: string;
   };
 
   const itemsList = document.querySelector<HTMLUListElement>("[data-checkout-items]")!;
@@ -546,6 +556,7 @@ import Loader from "@lucide/astro/icons/loader";
     code: string;
     discountCents: number;
     creditedTo: string;
+    pickupLocation: PickupLocation | null;
   } | null = null;
 
   function renderSummary(snap: CartSnapshot) {
@@ -665,6 +676,7 @@ import Loader from "@lucide/astro/icons/loader";
         code: data.code,
         discountCents: data.discountCents,
         creditedTo: data.creditedTo,
+        pickupLocation: data.pickupLocation ?? null,
       };
       const discountLabel =
         data.discountType === "percent"
@@ -672,6 +684,10 @@ import Loader from "@lucide/astro/icons/loader";
           : `R$ ${data.amount} OFF`;
       couponStatus.dataset.state = "ok";
       couponStatus.textContent = `✓ Cupom aplicado · ${discountLabel}`;
+      // Cupom com pickup_location adiciona "Retirar na <unidade>" como
+      // mais uma opção de frete, lado a lado com as transportadoras do
+      // Melhor Envio. Re-renderiza a lista pra refletir.
+      rebuildFreteList();
       renderSummary(cart.snapshot());
     } catch (err) {
       couponStatus.dataset.state = "error";
@@ -684,7 +700,46 @@ import Loader from "@lucide/astro/icons/loader";
     appliedCoupon = null;
     couponStatus.dataset.state = "";
     couponStatus.textContent = "";
+    rebuildFreteList();
     renderSummary(cart.snapshot());
+  }
+
+  function buildPickupOption(loc: PickupLocation): FreteOption {
+    const addrLine = `${loc.address_line} · ${loc.district}, ${loc.city}/${loc.state}`;
+    return {
+      id: 0,
+      name: `Retirar na ${loc.name}`,
+      company: "Retirada",
+      company_picture: null,
+      price_cents: 0,
+      delivery_days_min: 0,
+      delivery_days_max: 0,
+      pickup_address: addrLine,
+    };
+  }
+
+  /**
+   * Combina a opção de retirada (se o cupom liberar) com as transportadoras
+   * cotadas via Melhor Envio. Retirada vai sempre no topo (R$ 0 = mais
+   * barato), e auto-seleciona como default — o cliente troca pra carrier
+   * se preferir entrega.
+   */
+  function rebuildFreteList(): void {
+    const pickup = appliedCoupon?.pickupLocation
+      ? [buildPickupOption(appliedCoupon.pickupLocation)]
+      : [];
+    const merged: FreteOption[] = [...pickup, ...carrierOptions];
+
+    if (merged.length === 0) {
+      freteGroup.hidden = true;
+      freteList.innerHTML = "";
+      selectedFrete = null;
+      return;
+    }
+    freteGroup.hidden = false;
+    freteStatus.dataset.error = "false";
+    freteStatus.textContent = "";
+    renderFreteList(merged);
   }
   couponBtn.addEventListener("click", applyCoupon);
 
@@ -761,6 +816,10 @@ import Loader from "@lucide/astro/icons/loader";
 
   let freteAbort: AbortController | null = null;
   let lastFreteCep = "";
+  /** Última lista de transportadoras cotadas via Melhor Envio. Pickup
+   * (quando o cupom libera) é prepended em rebuildFreteList. */
+  let carrierOptions: FreteOption[] = [];
+
   async function fetchFrete(cep: string) {
     if (cep === lastFreteCep) return;
     lastFreteCep = cep;
@@ -795,14 +854,16 @@ import Loader from "@lucide/astro/icons/loader";
         throw new Error(data?.error ?? "Falha ao calcular o frete.");
       }
       const options: FreteOption[] = data?.options ?? [];
-      if (options.length === 0) {
+      // Mesmo se nenhuma transportadora atender, ainda pode haver pickup
+      // disponível via cupom — só erra se não tiver nenhuma opção.
+      carrierOptions = options;
+      if (options.length === 0 && !appliedCoupon?.pickupLocation) {
         freteStatus.dataset.error = "true";
         freteStatus.textContent =
           data?.error ?? "Nenhuma transportadora atende esse CEP.";
         return;
       }
-      freteStatus.textContent = "";
-      renderFreteList(options);
+      rebuildFreteList();
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       freteStatus.dataset.error = "true";
@@ -814,26 +875,34 @@ import Loader from "@lucide/astro/icons/loader";
   function renderFreteList(options: FreteOption[]) {
     freteList.innerHTML = options
       .map((o, idx) => {
-        const daysTxt =
-          o.delivery_days_min && o.delivery_days_max
+        const isPickup = o.id === 0;
+        const isCheapest = idx === 0;
+        const meta = isPickup
+          ? o.pickup_address ?? ""
+          : o.delivery_days_min && o.delivery_days_max
             ? o.delivery_days_min === o.delivery_days_max
               ? `${o.delivery_days_min} dia${o.delivery_days_min === 1 ? "" : "s"} útil${o.delivery_days_min === 1 ? "" : "eis"}`
               : `${o.delivery_days_min}–${o.delivery_days_max} dias úteis`
             : "Prazo a confirmar";
-        const isCheapest = idx === 0;
-        const badge = isCheapest
-          ? `<span class="frete-option__badge">Melhor opção</span>`
-          : "";
+        const badge = isPickup
+          ? `<span class="frete-option__badge">Retirada</span>`
+          : isCheapest
+            ? `<span class="frete-option__badge">Melhor opção</span>`
+            : "";
+        const title = isPickup
+          ? escapeHtml(o.name)
+          : `${escapeHtml(o.company)} · ${escapeHtml(o.name)}`;
+        const price = isPickup ? "Grátis" : formatBRL(o.price_cents);
         return `
           <label class="frete-option">
             <input type="radio" name="frete" value="${o.id}" ${isCheapest ? "checked" : ""} />
             <span class="frete-option__inner">
               <span>
-                <span class="frete-option__name">${escapeHtml(o.company)} · ${escapeHtml(o.name)}</span>${badge}
+                <span class="frete-option__name">${title}</span>${badge}
                 <br/>
-                <span class="frete-option__meta">${escapeHtml(daysTxt)}</span>
+                <span class="frete-option__meta">${escapeHtml(meta)}</span>
               </span>
-              <span class="frete-option__price">${formatBRL(o.price_cents)}</span>
+              <span class="frete-option__price">${price}</span>
             </span>
           </label>
         `;
