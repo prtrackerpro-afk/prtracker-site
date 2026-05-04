@@ -19,6 +19,7 @@ import { applyPix } from "./format";
 import { PIX_DISCOUNT } from "./catalog";
 import { recomputeLine } from "./pricing";
 import { validateCoupon } from "./coupons";
+import type { PickupLocation } from "./coupons";
 import type { CartItem } from "./cart-types";
 
 // ---------------------------------------------------------------------------
@@ -42,7 +43,9 @@ const cartItemSchema = z.object({
 });
 
 const shippingOptionSchema = z.object({
-  id: z.number().int().positive(),
+  // id=0 é sentinela de retirada presencial (pickup unlock via cupom).
+  // Qualquer id positivo é um service do Melhor Envio.
+  id: z.number().int().min(0),
   name: z.string().min(1).max(80),
   company: z.string().min(1).max(80),
   price_cents: z.number().int().min(0).max(1_000_00),
@@ -146,6 +149,18 @@ export function buildOrder(
 
   const items: BuiltOrderItem[] = [];
   const shippingVolumes: BuiltOrder["shippingVolumes"] = [];
+  // Compact SKU bag for downstream integrations (Bling, etc) — keeps the
+  // canonical slug + variant info so we don't have to re-parse MP's
+  // `additional_info.items[].id` (which has the slug embedded but mangled).
+  const itemsSkus: Array<{
+    slug: string;
+    qty: number;
+    title: string;
+    unit_price_cents: number;
+    size?: string;
+    exercise?: string;
+    plates?: Array<{ plateId: string; pairs: number }>;
+  }> = [];
   let subtotalCents = 0;
 
   for (const input of data.items) {
@@ -166,6 +181,17 @@ export function buildOrder(
         picture_url: absoluteUrl(priced.picture_url),
         quantity: input.quantity,
         unit_price: Math.round(priced.unitPriceCents) / 100,
+      });
+      itemsSkus.push({
+        slug: input.productSlug,
+        qty: input.quantity,
+        title: priced.title,
+        unit_price_cents: Math.round(priced.unitPriceCents),
+        ...(input.size ? { size: input.size } : {}),
+        ...(input.exercise ? { exercise: input.exercise } : {}),
+        ...(input.plates && input.plates.length > 0
+          ? { plates: input.plates }
+          : {}),
       });
 
       const dims = product.data.shipping;
@@ -196,6 +222,7 @@ export function buildOrder(
   let couponDiscountCents = 0;
   let couponCreditedTo: string | null = null;
   let couponInfo: BuiltOrder["coupon"] = null;
+  let pickupLocation: PickupLocation | null = null;
 
   if (data.couponCode && data.couponCode.length > 0) {
     const result = validateCoupon(data.couponCode, subtotalCents);
@@ -204,6 +231,7 @@ export function buildOrder(
     }
     couponDiscountCents = result.discountCents;
     couponCreditedTo = result.creditedTo;
+    pickupLocation = result.pickupLocation;
     if (couponDiscountCents > 0) {
       items.push({
         id: `coupon-${result.coupon.code}`,
@@ -219,6 +247,26 @@ export function buildOrder(
       code: result.coupon.code,
       discountCents: couponDiscountCents,
       creditedTo: couponCreditedTo,
+    };
+  }
+
+  // Pickup option (id=0) só pode ser usada com cupom que libera retirada
+  // numa unidade. Qualquer outro caso é payload manipulado.
+  const isPickup = data.shippingOption.id === 0;
+  if (isPickup && !pickupLocation) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Retirada presencial requer um cupom válido para essa unidade.",
+      field: "couponCode",
+    };
+  }
+  if (isPickup && data.shippingOption.price_cents !== 0) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Retirada presencial não cobra frete.",
+      field: "shippingOption",
     };
   }
 
@@ -253,6 +301,10 @@ export function buildOrder(
   const totalCents =
     subtotalCents - couponDiscountCents - pixDiscountCents + freightCents;
 
+  const shippingServiceName = isPickup && pickupLocation
+    ? `Retirada — ${pickupLocation.name}`
+    : `${data.shippingOption.company} · ${data.shippingOption.name}`;
+
   const metadata: Record<string, string | number> = {
     customer_name: data.customer.name,
     customer_email: data.customer.email,
@@ -263,7 +315,7 @@ export function buildOrder(
     shipping_street: data.shipping.street,
     shipping_number: data.shipping.number,
     shipping_service_id: data.shippingOption.id,
-    shipping_service_name: `${data.shippingOption.company} · ${data.shippingOption.name}`,
+    shipping_service_name: shippingServiceName,
     shipping_neighborhood: data.shipping.neighborhood,
     shipping_city: data.shipping.city,
     shipping_state: data.shipping.state,
@@ -271,7 +323,17 @@ export function buildOrder(
     coupon_code: data.couponCode?.toLowerCase() ?? "",
     coupon_discount_cents: couponDiscountCents,
     coupon_credited_to: couponCreditedTo ?? "",
+    pix_discount_cents: pixDiscountCents,
+    subtotal_cents: subtotalCents,
+    freight_cents: freightCents,
+    total_cents: totalCents,
+    items_skus: JSON.stringify(itemsSkus),
     shipping_volumes: JSON.stringify(shippingVolumes),
+    is_pickup: isPickup ? 1 : 0,
+    pickup_name: isPickup && pickupLocation ? pickupLocation.name : "",
+    pickup_address: isPickup && pickupLocation
+      ? `${pickupLocation.address_line} · ${pickupLocation.district}, ${pickupLocation.city}/${pickupLocation.state} · CEP ${pickupLocation.cep}`
+      : "",
   };
 
   return {

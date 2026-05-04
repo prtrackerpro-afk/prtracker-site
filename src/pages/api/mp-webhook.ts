@@ -9,6 +9,7 @@ import {
 import { sendCapiPurchase, sendGa4Purchase } from "~/lib/tracking-server";
 import { getAdminSupabase } from "~/lib/supabase/server";
 import { paymentToSaleRow } from "~/lib/admin/mp-ingest";
+import { syncOrderToBling } from "~/lib/bling/sync";
 
 export const prerender = false;
 
@@ -207,6 +208,18 @@ export const POST: APIRoute = async ({ request }) => {
       sendCapiPurchase(payment, trackingCtx),
       sendGa4Purchase(payment, trackingCtx),
       upsertSaleRow(payment),
+      // Bling: cria pedido de venda → dispara NF-e automática (config validada
+      // por NF Thawant 000019). Idempotente via tabela bling_orders. Falhas
+      // são gravadas pra retry manual via /admin — nunca derrubam o webhook.
+      syncOrderToBling(payment).then((res) => {
+        if (!res.ok && res.status !== "skipped") {
+          console.warn("[mp-webhook] bling sync did not complete:", res);
+        } else if (res.ok && res.status === "synced") {
+          console.log(
+            `[mp-webhook] bling pedido created: id=${res.blingPedidoId} numero=${res.blingPedidoNumero}`,
+          );
+        }
+      }),
     ]);
   } catch (err) {
     console.error("[mp-webhook] post-payment tasks failed:", err);
@@ -282,6 +295,13 @@ function buildOrderEmailData(
     couponCreditedTo: meta.coupon_credited_to
       ? String(meta.coupon_credited_to)
       : undefined,
+    pickup:
+      String(meta.is_pickup ?? "") === "1" && meta.pickup_name
+        ? {
+            name: String(meta.pickup_name),
+            address: String(meta.pickup_address ?? ""),
+          }
+        : undefined,
   };
 }
 
@@ -308,6 +328,17 @@ async function upsertSaleRow(payment: MpPayment): Promise<void> {
 type MpPayment = Awaited<ReturnType<Payment["get"]>>;
 
 async function generateShippingLabel(payment: MpPayment): Promise<void> {
+  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+  // Pickup orders (cliente retira na unidade parceira) não passam pelo
+  // Melhor Envio — não há etiqueta, frete ou rastreio. O e-mail do
+  // cliente já comunica o local de retirada.
+  if (String(meta.is_pickup ?? "") === "1") {
+    console.log("[mp-webhook] pickup order — skipping ME label", {
+      payment_id: payment.id,
+      pickup: meta.pickup_name,
+    });
+    return;
+  }
   const meToken = import.meta.env.ME_ACCESS_TOKEN;
   if (!meToken) {
     console.warn("[mp-webhook] ME_ACCESS_TOKEN missing — skipping label");
@@ -319,7 +350,6 @@ async function generateShippingLabel(payment: MpPayment): Promise<void> {
     : "https://melhorenvio.com.br";
   const cepOrigem = import.meta.env.ME_CEP_ORIGEM;
 
-  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
   const serviceId = Number(meta.shipping_service_id ?? 0);
   const destCep = String(meta.shipping_cep ?? "").replace(/\D/g, "");
   if (!serviceId || !destCep || !cepOrigem) {
