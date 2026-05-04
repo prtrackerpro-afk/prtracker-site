@@ -16,6 +16,13 @@ interface ImportMetaEnv {
   readonly ALERT_EMAIL_FROM?: string;
   readonly ALERT_EMAIL_TO?: string;
   readonly CRON_SECRET?: string;
+  // Bling ERP (OAuth2 Authorization Code flow + sales order sync)
+  readonly BLING_CLIENT_ID?: string;
+  readonly BLING_CLIENT_SECRET?: string;
+  readonly BLING_REDIRECT_URI?: string;
+  readonly BLING_LOJA_ID?: string;
+  readonly BLING_DEPOSITO_ID?: string;
+  readonly BLING_NATUREZA_OPERACAO_ID?: string;
 }
 
 interface ImportMeta {

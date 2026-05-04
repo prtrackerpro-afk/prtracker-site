@@ -1,0 +1,313 @@
+/**
+ * Sync an MP-approved payment into Bling as a new sales order (pedido de venda).
+ *
+ * Called from /api/mp-webhook (and /api/admin/bling/retry/[id]) — both
+ * pass an already-fetched MP payment object so Bling sync stays
+ * de-duplicated on `mp_payment_id`.
+ *
+ * Flow per call:
+ *   1. Acquire idempotency lock via INSERT ... ON CONFLICT DO NOTHING on
+ *      bling_orders.mp_payment_id. If we lost the race, return early
+ *      with the existing record (success or otherwise).
+ *   2. Fetch a valid Bling access_token (auto-refresh inside the lib).
+ *   3. getOrCreateContact(cpf) → contato Bling.
+ *   4. For each item in metadata.items_skus → explode into SkuLines and
+ *      getOrCreateProduct for each código.
+ *   5. createSalesOrder with itens + frete + descontos + loja + observações.
+ *   6. UPDATE bling_orders → status='synced', bling_pedido_id, response.
+ *   7. On any thrown error: UPDATE → status='failed', error message,
+ *      raw payloads. Returns gracefully (no throw to caller) so the
+ *      webhook's Promise.allSettled doesn't reject.
+ */
+
+import type { Payment } from "mercadopago";
+import { getAdminSupabase } from "~/lib/supabase/server";
+import {
+  getValidAccessToken,
+  isConnected,
+  BlingNotConnectedError,
+} from "./oauth";
+import { getOrCreateContact } from "./contacts";
+import { getOrCreateProduct } from "./products";
+import { createSalesOrder, type SalesOrderItemInput } from "./orders";
+import { explodeLineToBling, type ItemSku } from "./sku-map";
+import { BlingApiError } from "./api";
+
+type MpPayment = Awaited<ReturnType<Payment["get"]>>;
+
+export interface SyncResult {
+  ok: boolean;
+  status: "synced" | "skipped" | "failed" | "pending";
+  blingPedidoId?: string;
+  blingPedidoNumero?: string;
+  blingContatoId?: string;
+  error?: string;
+  message?: string;
+}
+
+function digits(s: unknown): string {
+  return String(s ?? "").replace(/\D/g, "");
+}
+
+function getEnvInt(name: string): number | undefined {
+  const raw = (import.meta.env as any)[name] || (process.env as any)[name];
+  if (!raw) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> {
+  const paymentId = String(payment.id ?? "");
+  if (!paymentId) {
+    return { ok: false, status: "failed", error: "missing payment.id" };
+  }
+
+  // Skip cleanly if the operator hasn't run the OAuth dance yet — webhook
+  // shouldn't fail just because Bling isn't configured. Log + persist a
+  // 'pending' row so it shows up in /admin/bling for later retry.
+  if (!(await isConnected())) {
+    await persistInitial(payment, "pending", "bling not connected");
+    return {
+      ok: false,
+      status: "pending",
+      message: "Bling não conectado — pedido aguardando autorização OAuth",
+    };
+  }
+
+  // 1) Idempotency lock: INSERT, take the row, claim ownership.
+  const sb = getAdminSupabase();
+  const initial = await persistInitial(payment, "pending", null);
+  if (initial.alreadyExists && initial.row?.status === "synced") {
+    return {
+      ok: true,
+      status: "skipped",
+      blingPedidoId: initial.row.bling_pedido_id ?? undefined,
+      blingPedidoNumero: initial.row.bling_pedido_numero ?? undefined,
+      message: "already synced — skipping",
+    };
+  }
+  // If status='failed' or 'pending', we let this run proceed (acts as retry).
+
+  try {
+    const accessToken = await getValidAccessToken();
+    const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+    const payer = payment.payer ?? {};
+    const ident = payer.identification ?? {};
+
+    // ---- Customer ----
+    const cpf = digits(meta.customer_cpf ?? ident.number);
+    if (!cpf || cpf.length !== 11) {
+      throw new Error(
+        `CPF inválido ou ausente no payment ${paymentId} (encontrado: "${cpf}")`,
+      );
+    }
+    const customerName =
+      String(meta.customer_name ?? "") ||
+      [payer.first_name, payer.last_name].filter(Boolean).join(" ") ||
+      "Cliente PR Tracker";
+    const customerEmail =
+      String(meta.customer_email ?? "") || String(payer.email ?? "");
+    const customerPhone =
+      String(meta.customer_phone ?? "") ||
+      `${payer.phone?.area_code ?? ""}${payer.phone?.number ?? ""}`;
+
+    const contato = await getOrCreateContact(
+      {
+        nome: customerName,
+        numeroDocumento: cpf,
+        tipo: "F",
+        email: customerEmail,
+        telefone: customerPhone,
+        endereco: {
+          endereco: String(meta.shipping_street ?? ""),
+          numero: String(meta.shipping_number ?? ""),
+          complemento: String(meta.shipping_complement ?? ""),
+          bairro: String(meta.shipping_neighborhood ?? ""),
+          cep: digits(meta.shipping_cep),
+          municipio: String(meta.shipping_city ?? ""),
+          uf: String(meta.shipping_state ?? ""),
+        },
+      },
+      accessToken,
+    );
+
+    // ---- Items ----
+    let itemsSkusRaw: ItemSku[] = [];
+    try {
+      const raw = String(meta.items_skus ?? "");
+      itemsSkusRaw = raw ? JSON.parse(raw) : [];
+    } catch {
+      throw new Error(`metadata.items_skus inválido no payment ${paymentId}`);
+    }
+    if (itemsSkusRaw.length === 0) {
+      throw new Error(`Nenhum item no payment ${paymentId} (items_skus vazio)`);
+    }
+
+    const lines: SalesOrderItemInput[] = [];
+    for (const item of itemsSkusRaw) {
+      const exploded = explodeLineToBling(item);
+      for (const line of exploded) {
+        const produto = await getOrCreateProduct(
+          {
+            nome: line.nome,
+            codigo: line.codigo,
+            preco: line.unitPrice,
+            ncm: line.ncm,
+            ...(line.pesoKg ? { pesoBruto: line.pesoKg } : {}),
+          },
+          accessToken,
+        );
+        lines.push({
+          produtoId: produto.id,
+          quantidade: line.qty,
+          valor: line.unitPrice,
+        });
+      }
+    }
+
+    // ---- Discounts + freight ----
+    // The MP `additional_info.items` already has discount/freight as
+    // negative/positive lines, but Bling has dedicated fields. We use the
+    // metadata totals (cents) for accuracy.
+    const couponCents = Number(meta.coupon_discount_cents ?? 0);
+    const pixCents = Number(meta.pix_discount_cents ?? 0);
+    const totalDiscountCents = couponCents + pixCents;
+    const freightCents = Number(meta.freight_cents ?? 0);
+
+    // ---- Order ----
+    const externalRef = payment.external_reference ?? `mp-${paymentId}`;
+    const observacoesInternas = [
+      `MP payment_id: ${paymentId}`,
+      `external_reference: ${externalRef}`,
+      meta.coupon_code ? `cupom: ${meta.coupon_code}` : null,
+      meta.coupon_credited_to
+        ? `cupom_creditado_a: ${meta.coupon_credited_to}`
+        : null,
+      `payment_method: ${meta.payment_method_hint ?? payment.payment_method_id ?? "—"}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const created = await createSalesOrder(
+      {
+        contatoId: contato.id,
+        itens: lines,
+        frete: freightCents > 0 ? freightCents / 100 : undefined,
+        descontoValor:
+          totalDiscountCents > 0 ? totalDiscountCents / 100 : undefined,
+        numeroLoja: externalRef,
+        lojaId: getEnvInt("BLING_LOJA_ID"),
+        depositoId: getEnvInt("BLING_DEPOSITO_ID"),
+        naturezaOperacaoId: getEnvInt("BLING_NATUREZA_OPERACAO_ID"),
+        transportadorNome: String(meta.shipping_service_name ?? "") || undefined,
+        observacoes: `Pedido site PR Tracker — ${externalRef}`,
+        observacoesInternas,
+      },
+      accessToken,
+    );
+
+    // ---- Persist success ----
+    await sb
+      .from("bling_orders")
+      .update({
+        status: "synced",
+        bling_pedido_id: String(created.id),
+        bling_pedido_numero: created.numero ?? null,
+        bling_contato_id: String(contato.id),
+        external_reference: externalRef,
+        request_payload: { lines, contato_id: contato.id, freightCents, couponCents, pixCents },
+        response_payload: { id: created.id, numero: created.numero },
+        synced_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        attempt_count: (initial.row?.attempt_count ?? 0) + 1,
+        error: null,
+      })
+      .eq("mp_payment_id", paymentId);
+
+    return {
+      ok: true,
+      status: "synced",
+      blingPedidoId: String(created.id),
+      blingPedidoNumero: created.numero,
+      blingContatoId: String(contato.id),
+    };
+  } catch (err) {
+    const message = formatError(err);
+    console.error(`[bling-sync] failed for payment ${paymentId}:`, err);
+    await sb
+      .from("bling_orders")
+      .update({
+        status: "failed",
+        error: message,
+        response_payload:
+          err instanceof BlingApiError
+            ? { status: err.status, type: err.type, fields: err.fields, raw: err.raw }
+            : null,
+        attempt_count: (initial.row?.attempt_count ?? 0) + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("mp_payment_id", paymentId);
+    return { ok: false, status: "failed", error: message };
+  }
+}
+
+interface PersistInitial {
+  alreadyExists: boolean;
+  row: {
+    mp_payment_id: string;
+    status: string;
+    bling_pedido_id: string | null;
+    bling_pedido_numero: string | null;
+    attempt_count: number;
+  } | null;
+}
+
+async function persistInitial(
+  payment: MpPayment,
+  status: "pending",
+  errorReason: string | null,
+): Promise<PersistInitial> {
+  const sb = getAdminSupabase();
+  const paymentId = String(payment.id);
+  const externalRef = payment.external_reference ?? null;
+  // Use UPSERT semantics: insert if not exists; if exists, only bump
+  // updated_at so we have a heartbeat. We don't overwrite an existing
+  // bling_pedido_id or status here.
+  const { data: existing } = await sb
+    .from("bling_orders")
+    .select("mp_payment_id, status, bling_pedido_id, bling_pedido_numero, attempt_count")
+    .eq("mp_payment_id", paymentId)
+    .maybeSingle();
+
+  if (existing) {
+    return { alreadyExists: true, row: existing as any };
+  }
+
+  const { data: inserted } = await sb
+    .from("bling_orders")
+    .insert({
+      mp_payment_id: paymentId,
+      external_reference: externalRef,
+      status,
+      error: errorReason,
+      attempt_count: 0,
+    })
+    .select("mp_payment_id, status, bling_pedido_id, bling_pedido_numero, attempt_count")
+    .single();
+
+  return { alreadyExists: false, row: (inserted as any) ?? null };
+}
+
+function formatError(err: unknown): string {
+  if (err instanceof BlingApiError) {
+    const fieldsBlurb = err.fields?.length
+      ? ` | campos: ${err.fields
+          .map((f) => `${f.element ?? "?"}: ${f.msg}`)
+          .join("; ")}`
+      : "";
+    return `${err.message}${err.description ? ` — ${err.description}` : ""}${fieldsBlurb}`;
+  }
+  if (err instanceof BlingNotConnectedError) return err.message;
+  if (err instanceof Error) return err.message;
+  return String(err);
+}

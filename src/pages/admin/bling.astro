@@ -1,0 +1,208 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { getAdminSupabase } from "../../lib/supabase/server";
+import { getConnectionStatus, type ConnectionStatus } from "../../lib/bling/oauth";
+
+const url = new URL(Astro.request.url);
+const flash = {
+  bling: url.searchParams.get("bling"),
+  msg: url.searchParams.get("msg"),
+};
+
+const status: ConnectionStatus = await getConnectionStatus().catch(
+  () => ({ connected: false, expires_at: null, scope: null }),
+);
+const sb = getAdminSupabase();
+
+const { data: orders = [] } = await sb
+  .from("bling_orders")
+  .select(
+    "id, mp_payment_id, external_reference, bling_pedido_id, bling_pedido_numero, status, error, attempt_count, created_at, synced_at"
+  )
+  .order("created_at", { ascending: false })
+  .limit(50);
+
+const counts = (orders ?? []).reduce(
+  (acc: Record<string, number>, r: any) => {
+    acc[r.status] = (acc[r.status] ?? 0) + 1;
+    return acc;
+  },
+  { synced: 0, failed: 0, pending: 0, skipped: 0 },
+);
+
+function fmtDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+---
+
+<AdminLayout title="Bling" active="bling" user={Astro.locals.admin}>
+  <div class="px-4 md:px-8 py-6 max-w-7xl mx-auto space-y-6">
+    <header class="flex items-baseline justify-between">
+      <div>
+        <h1 class="text-2xl font-display tracking-tight">Bling ERP</h1>
+        <p class="text-sm text-navy-300 mt-1">
+          Sincronização automática de pedidos do site → Bling → NF-e.
+        </p>
+      </div>
+    </header>
+
+    {flash.bling === "connected" && (
+      <div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+        ✅ Bling conectado com sucesso. Próximas vendas vão ser sincronizadas automaticamente.
+      </div>
+    )}
+    {flash.bling === "denied" && (
+      <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        ⚠️ Autorização negada. {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.bling === "config_missing" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Configuração incompleta. {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.bling === "token_failed" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Falha ao trocar código por token. {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.bling === "state_mismatch" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ State CSRF inválido — tente conectar de novo.
+      </div>
+    )}
+    {flash.bling === "missing_params" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Bling não retornou code/state — tente de novo.
+      </div>
+    )}
+
+    <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Status da conexão</div>
+          <div class="mt-2 flex items-center gap-2">
+            {status.connected ? (
+              <>
+                <span class="inline-flex items-center rounded-full bg-green-500/20 text-green-300 px-2.5 py-1 text-xs font-medium">
+                  ● Conectado
+                </span>
+                {status.expires_at && (
+                  <span class="text-xs text-navy-300">
+                    Token válido até {fmtDate(status.expires_at)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span class="inline-flex items-center rounded-full bg-red-500/20 text-red-300 px-2.5 py-1 text-xs font-medium">
+                ● Desconectado
+              </span>
+            )}
+          </div>
+          {status.scope && (
+            <div class="mt-1 text-[11px] text-navy-300/80">Escopos: {status.scope}</div>
+          )}
+        </div>
+        <a
+          href="/api/admin/bling/connect"
+          class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition"
+        >
+          {status.connected ? "Reconectar" : "Conectar Bling"}
+        </a>
+      </div>
+      {!status.connected && (
+        <p class="mt-3 text-xs text-navy-300">
+          Antes de conectar, cadastre o app em <a class="underline" href="https://www.bling.com.br/b/integradores" target="_blank" rel="noreferrer">bling.com.br/b/integradores</a> e configure as variáveis BLING_CLIENT_ID, BLING_CLIENT_SECRET e BLING_REDIRECT_URI no Vercel.
+        </p>
+      )}
+    </section>
+
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Sincronizados</div>
+        <div class="mt-1 text-2xl font-display text-green-300">{counts.synced}</div>
+      </div>
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Falhas</div>
+        <div class="mt-1 text-2xl font-display text-red-300">{counts.failed}</div>
+      </div>
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Aguardando</div>
+        <div class="mt-1 text-2xl font-display text-amber-300">{counts.pending}</div>
+      </div>
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Pulados (dup)</div>
+        <div class="mt-1 text-2xl font-display text-navy-300">{counts.skipped}</div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-navy-700 bg-navy-800/40 overflow-hidden">
+      <header class="px-5 py-3 border-b border-navy-700 flex items-baseline justify-between">
+        <h2 class="text-sm font-medium uppercase tracking-[0.12em] text-navy-200">Últimos 50 pedidos</h2>
+      </header>
+      {(orders ?? []).length === 0 ? (
+        <div class="px-5 py-10 text-center text-sm text-navy-300">
+          Nenhum pedido sincronizado ainda. Faça uma compra de teste no site.
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
+              <tr>
+                <th class="text-left px-4 py-2">Criado</th>
+                <th class="text-left px-4 py-2">MP Payment</th>
+                <th class="text-left px-4 py-2">Pedido Bling</th>
+                <th class="text-left px-4 py-2">Status</th>
+                <th class="text-left px-4 py-2">Tentativas</th>
+                <th class="text-left px-4 py-2">Erro / Ação</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-700/60">
+              {(orders ?? []).map((r: any) => (
+                <tr>
+                  <td class="px-4 py-2 text-navy-200 whitespace-nowrap">{fmtDate(r.created_at)}</td>
+                  <td class="px-4 py-2 font-mono text-xs">{r.mp_payment_id}</td>
+                  <td class="px-4 py-2 font-mono text-xs">
+                    {r.bling_pedido_numero ? `#${r.bling_pedido_numero}` : r.bling_pedido_id ?? "—"}
+                  </td>
+                  <td class="px-4 py-2">
+                    {r.status === "synced" && (
+                      <span class="inline-flex items-center rounded-full bg-green-500/20 text-green-300 px-2 py-0.5 text-[11px]">synced</span>
+                    )}
+                    {r.status === "failed" && (
+                      <span class="inline-flex items-center rounded-full bg-red-500/20 text-red-300 px-2 py-0.5 text-[11px]">failed</span>
+                    )}
+                    {r.status === "pending" && (
+                      <span class="inline-flex items-center rounded-full bg-amber-500/20 text-amber-300 px-2 py-0.5 text-[11px]">pending</span>
+                    )}
+                    {r.status === "skipped" && (
+                      <span class="inline-flex items-center rounded-full bg-navy-600 text-navy-200 px-2 py-0.5 text-[11px]">skipped</span>
+                    )}
+                  </td>
+                  <td class="px-4 py-2 text-navy-300">{r.attempt_count ?? 0}</td>
+                  <td class="px-4 py-2 text-xs text-navy-300">
+                    {r.status === "failed" || r.status === "pending" ? (
+                      <div class="flex items-center gap-2">
+                        <span class="text-red-300/80 max-w-md truncate" title={r.error ?? ""}>{r.error ?? "—"}</span>
+                        <form method="POST" action={`/api/admin/bling/retry/${encodeURIComponent(r.mp_payment_id)}`}>
+                          <button type="submit" class="rounded bg-brand-lime/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-brand-lime">
+                            Tentar de novo
+                          </button>
+                        </form>
+                      </div>
+                    ) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </div>
+</AdminLayout>
