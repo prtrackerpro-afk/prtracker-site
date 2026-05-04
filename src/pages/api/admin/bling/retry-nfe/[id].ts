@@ -16,7 +16,7 @@
 
 import type { APIRoute } from "astro";
 import { MercadoPagoConfig, Payment } from "mercadopago";
-import { syncOrderToBling } from "~/lib/bling/sync";
+import { emitNfeForExistingOrder, syncOrderToBling } from "~/lib/bling/sync";
 import { retryEmitNfe } from "~/lib/bling/nfe";
 import { getValidAccessToken } from "~/lib/bling/oauth";
 import { getAdminSupabase } from "~/lib/supabase/server";
@@ -79,7 +79,10 @@ export const POST: APIRoute = async ({ params, redirect, locals }) => {
     );
   }
 
-  // Path 2: no NF-e yet — re-run full sync (idempotent on pedido, fresh NF-e).
+  // Path 2: re-fetch MP payment, then either re-run full sync (if pedido
+  // not yet created) or emit NF-e on the existing pedido (the common case
+  // when sync succeeded but NF-e step was skipped — e.g., env var added
+  // after the fact).
   const mpToken = import.meta.env.MP_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
   if (!mpToken) {
     return redirect(
@@ -99,6 +102,25 @@ export const POST: APIRoute = async ({ params, redirect, locals }) => {
     );
   }
 
+  // Pedido already exists → emit NF-e directly (skip the sync skip-on-synced).
+  if (row.status === "synced" && row.bling_pedido_id) {
+    const nfeRes = await emitNfeForExistingOrder(payment);
+    if (nfeRes.ok && nfeRes.status === "emitted") {
+      return redirect("/admin/bling?bling=connected", 302);
+    }
+    if (nfeRes.ok && nfeRes.status === "pending") {
+      return redirect(
+        `/admin/bling?bling=denied&msg=${encodeURIComponent("NF-e em processamento na SEFAZ — recarregue em alguns segundos")}`,
+        302,
+      );
+    }
+    return redirect(
+      `/admin/bling?bling=denied&msg=${encodeURIComponent(nfeRes.error ?? nfeRes.status)}`,
+      302,
+    );
+  }
+
+  // Pedido never synced → run full sync (also attempts NF-e).
   const result = await syncOrderToBling(payment);
   if (result.ok && result.status === "synced") {
     return redirect("/admin/bling?bling=connected", 302);
