@@ -53,8 +53,13 @@ export const POST: APIRoute = async ({ params, redirect, locals }) => {
     console.warn("[bling/retry-nfe] audit log failed:", e);
   }
 
-  // Path 1: NF-e already created in Bling — just retry SEFAZ transmission.
-  if (row.bling_nfe_id) {
+  // Path 1: NF-e already created in Bling AND still in flight (pending) —
+  // just retry SEFAZ transmission. We DON'T enter this branch when the prior
+  // NF was rejected (failed), because the rejected draft was created with
+  // potentially stale/wrong payload (e.g., before a payload bug fix); the
+  // only way to incorporate the fix is to recreate it via Path 2. The stale
+  // draft can be deleted manually in Bling.
+  if (row.bling_nfe_id && row.nfe_status === "pending") {
     const accessToken = await getValidAccessToken();
     const res = await retryEmitNfe(Number(row.bling_nfe_id), accessToken);
     await sb
@@ -77,6 +82,23 @@ export const POST: APIRoute = async ({ params, redirect, locals }) => {
       `/admin/bling?bling=denied&msg=${encodeURIComponent(res.error ?? res.status)}`,
       302,
     );
+  }
+
+  // Failed NF previously created in Bling: clear the stale ref so Path 2
+  // recreates the NF from scratch with the current payload.
+  if (row.bling_nfe_id && row.nfe_status === "failed") {
+    await sb
+      .from("bling_orders")
+      .update({
+        bling_nfe_id: null,
+        bling_nfe_numero: null,
+        bling_nfe_serie: null,
+        bling_nfe_chave_acesso: null,
+        nfe_status: null,
+        nfe_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("mp_payment_id", mpPaymentId);
   }
 
   // Path 2: re-fetch MP payment, then either re-run full sync (if pedido
