@@ -189,11 +189,13 @@ function fmtDate(iso: string | null) {
                     {r.status === "failed" || r.status === "pending" ? (
                       <div class="flex items-center gap-2">
                         <span class="text-red-300/80 max-w-md truncate" title={r.error ?? ""}>{r.error ?? "—"}</span>
-                        <form method="POST" action={`/api/admin/bling/retry/${encodeURIComponent(r.mp_payment_id)}`}>
-                          <button type="submit" class="rounded bg-brand-lime/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-brand-lime">
-                            Tentar de novo
-                          </button>
-                        </form>
+                        <button
+                          type="button"
+                          data-retry-mp-payment={r.mp_payment_id}
+                          class="rounded bg-brand-lime/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-brand-lime disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Tentar de novo
+                        </button>
                       </div>
                     ) : "—"}
                   </td>
@@ -205,4 +207,31 @@ function fmtDate(iso: string | null) {
       )}
     </section>
   </div>
+
+  <script>
+    // POST via fetch with JSON content-type to bypass Astro's form CSRF check
+    // (which only triggers for form-encoded content types). Endpoint redirects
+    // to /admin/bling?bling=... — fetch follows the redirect, then we navigate
+    // the window to that final URL so the operator sees the flash banner.
+    document.querySelectorAll<HTMLButtonElement>("[data-retry-mp-payment]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-retry-mp-payment");
+        if (!id) return;
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Sincronizando…";
+        try {
+          const res = await fetch(`/api/admin/bling/retry/${encodeURIComponent(id)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+          window.location.href = res.url || "/admin/bling";
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+          alert("Erro: " + (e instanceof Error ? e.message : String(e)));
+        }
+      });
+    });
+  </script>
 </AdminLayout>
