@@ -32,7 +32,7 @@ import { getOrCreateProduct } from "./products";
 import { createSalesOrder, type SalesOrderItemInput } from "./orders";
 import { explodeLineToBling, type ItemSku, type SkuLine } from "./sku-map";
 import { BlingApiError } from "./api";
-import { createAndEmitNfe, type NfeOutcomeStatus } from "./nfe";
+import { createAndEmitNfe, type NfeContatoSnapshot, type NfeOutcomeStatus } from "./nfe";
 
 type MpPayment = Awaited<ReturnType<Payment["get"]>>;
 
@@ -233,6 +233,12 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
     await emitAndPersistNfe({
       paymentId,
       contatoId: contato.id,
+      contatoSnapshot: buildContatoSnapshotFromMeta(meta, {
+        cpf,
+        nome: customerName,
+        email: customerEmail,
+        telefone: customerPhone,
+      }),
       skuLines,
       freightCents,
       totalDiscountCents,
@@ -281,11 +287,40 @@ interface PersistInitial {
 interface EmitNfeArgs {
   paymentId: string;
   contatoId: number;
+  contatoSnapshot: NfeContatoSnapshot;
   skuLines: SkuLine[];
   freightCents: number;
   totalDiscountCents: number;
   externalRef: string;
   accessToken: string;
+}
+
+/**
+ * Build the contato snapshot for NF-e from MP payment metadata. The shipping
+ * address comes from checkout (meta.shipping_*); falls back to empty strings
+ * which Bling will reject — so any missing field surfaces as a clear SEFAZ
+ * error rather than a silent NF emission with bad data.
+ */
+function buildContatoSnapshotFromMeta(
+  meta: Record<string, unknown>,
+  basics: { cpf: string; nome: string; email: string; telefone: string },
+): NfeContatoSnapshot {
+  return {
+    nome: basics.nome,
+    tipoPessoa: "F",
+    numeroDocumento: basics.cpf,
+    email: basics.email || undefined,
+    telefone: basics.telefone || undefined,
+    endereco: {
+      endereco: String(meta.shipping_street ?? ""),
+      numero: String(meta.shipping_number ?? "") || "S/N",
+      complemento: String(meta.shipping_complement ?? "") || undefined,
+      bairro: String(meta.shipping_neighborhood ?? ""),
+      cep: digits(meta.shipping_cep),
+      municipio: String(meta.shipping_city ?? ""),
+      uf: String(meta.shipping_state ?? ""),
+    },
+  };
 }
 
 /**
@@ -317,6 +352,7 @@ async function emitAndPersistNfe(args: EmitNfeArgs): Promise<NfeOutcomeStatus> {
     const nfeRes = await createAndEmitNfe(
       {
         contatoId: args.contatoId,
+        contato: args.contatoSnapshot,
         naturezaOperacaoId,
         lojaId: getEnvInt("BLING_LOJA_ID"),
         itens: args.skuLines.map((l) => ({
@@ -327,6 +363,8 @@ async function emitAndPersistNfe(args: EmitNfeArgs): Promise<NfeOutcomeStatus> {
           ncm: l.ncm,
         })),
         totalValor: Math.max(0.01, totalValor),
+        descontoValor:
+          args.totalDiscountCents > 0 ? args.totalDiscountCents / 100 : undefined,
         frete: args.freightCents > 0 ? args.freightCents / 100 : undefined,
         numeroPedido: args.externalRef,
         observacoes: `Ref pedido site: ${args.externalRef}`,
@@ -408,11 +446,34 @@ export async function emitNfeForExistingOrder(
   const totalDiscountCents = couponCents + pixCents;
   const externalRef = payment.external_reference ?? row.external_reference ?? `mp-${paymentId}`;
 
+  // Re-derive contato snapshot from the MP payment so the NF gets a complete
+  // destinatário block (name + endereço) even if the original Bling contato
+  // cadastro is missing fields.
+  const payer = payment.payer ?? {};
+  const ident = payer.identification ?? {};
+  const cpf = digits(meta.customer_cpf ?? ident.number);
+  const customerName =
+    String(meta.customer_name ?? "") ||
+    [payer.first_name, payer.last_name].filter(Boolean).join(" ") ||
+    "Cliente PR Tracker";
+  const customerEmail =
+    String(meta.customer_email ?? "") || String(payer.email ?? "");
+  const customerPhone =
+    String(meta.customer_phone ?? "") ||
+    `${payer.phone?.area_code ?? ""}${payer.phone?.number ?? ""}`;
+  const contatoSnapshot = buildContatoSnapshotFromMeta(meta, {
+    cpf,
+    nome: customerName,
+    email: customerEmail,
+    telefone: customerPhone,
+  });
+
   try {
     const accessToken = await getValidAccessToken();
     const outcome = await emitAndPersistNfe({
       paymentId,
       contatoId: Number(row.bling_contato_id),
+      contatoSnapshot,
       skuLines,
       freightCents,
       totalDiscountCents,

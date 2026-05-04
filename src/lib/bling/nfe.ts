@@ -36,9 +36,35 @@ export interface NfeItemInput {
   origem?: number;
 }
 
+export interface NfeContatoSnapshot {
+  /** Razão / nome — populates the destinatário on the NF. */
+  nome?: string;
+  /** Tipo de pessoa: F = física, J = jurídica. */
+  tipoPessoa?: "F" | "J";
+  /** CPF/CNPJ — only digits, no formatting. */
+  numeroDocumento?: string;
+  email?: string;
+  telefone?: string;
+  /** Endereço fiscal — REQUIRED by SEFAZ. Bling does not auto-pull
+   *  from the contato cadastro for NF-e even when given the contato.id. */
+  endereco?: {
+    endereco: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cep: string;
+    municipio: string;
+    uf: string;
+    pais?: string;
+  };
+}
+
 export interface CreateAndEmitNfeInput {
   /** Existing Bling contato (cliente). */
   contatoId: number;
+  /** Snapshot of contato data — passed inline so SEFAZ has all required fields
+   *  even if the cadastro in Bling is incomplete. */
+  contato?: NfeContatoSnapshot;
   /** Required fiscal classification — comes from BLING_NATUREZA_OPERACAO_ID. */
   naturezaOperacaoId: number;
   /** Optional loja (canal de venda) id — same as pedido's loja. */
@@ -49,6 +75,9 @@ export interface CreateAndEmitNfeInput {
   /** Total invoice value (sum after discount + freight). Used for the
    *  default single-installment "à vista" parcel. */
   totalValor: number;
+  /** Discount in BRL (Pix 5% + coupon, etc). When > 0, sent as desconto
+   *  field so SEFAZ totals match what the customer actually paid. */
+  descontoValor?: number;
   /** Forma de pagamento id — Bling-specific (Pix, cartão, etc). Optional;
    *  if absent we omit parcelas and let Bling default to "à vista, sem nf". */
   formaPagamentoId?: number;
@@ -112,12 +141,28 @@ export async function createAndEmitNfe(
 ): Promise<CreateAndEmitNfeResult> {
   const data = input.data ?? todayISO();
 
+  // Build contato block: include id reference + snapshot fields so SEFAZ
+  // gets a complete destinatário regardless of whether Bling's contato
+  // cadastro has all fiscal fields filled in.
+  const contatoBody: Record<string, unknown> = { id: input.contatoId };
+  if (input.contato?.nome) contatoBody.nome = input.contato.nome;
+  if (input.contato?.tipoPessoa) contatoBody.tipoPessoa = input.contato.tipoPessoa;
+  if (input.contato?.numeroDocumento) contatoBody.numeroDocumento = input.contato.numeroDocumento;
+  if (input.contato?.email) contatoBody.email = input.contato.email;
+  if (input.contato?.telefone) contatoBody.fone = input.contato.telefone;
+  if (input.contato?.endereco) {
+    contatoBody.endereco = {
+      ...input.contato.endereco,
+      pais: input.contato.endereco.pais ?? "Brasil",
+    };
+  }
+
   const body: Record<string, unknown> = {
     tipo: 1, // 1 = saída
     finalidade: 1, // 1 = NFe normal
     data,
     dataOperacao: data,
-    contato: { id: input.contatoId },
+    contato: contatoBody,
     naturezaOperacao: { id: input.naturezaOperacaoId },
     itens: input.itens.map((it) => {
       const item: Record<string, unknown> = {
@@ -137,6 +182,12 @@ export async function createAndEmitNfe(
 
   if (input.lojaId) body.loja = { id: input.lojaId };
   if (input.numeroPedido) body.numeroPedido = input.numeroPedido;
+
+  // Discount must be sent so SEFAZ totals match what the customer paid.
+  // Bling expects { valor, unidade: "REAL" } (REAL = absolute BRL value).
+  if (input.descontoValor != null && input.descontoValor > 0) {
+    body.desconto = { valor: input.descontoValor, unidade: "REAL" };
+  }
 
   // Single "à vista" parcel matching the total. Bling requires parcelas for
   // any NF-e tied to a financial flow; if formaPagamentoId is unknown we
