@@ -18,7 +18,7 @@ const sb = getAdminSupabase();
 const { data: orders = [] } = await sb
   .from("bling_orders")
   .select(
-    "id, mp_payment_id, external_reference, bling_pedido_id, bling_pedido_numero, status, error, attempt_count, created_at, synced_at"
+    "id, mp_payment_id, external_reference, bling_pedido_id, bling_pedido_numero, status, error, attempt_count, created_at, synced_at, bling_nfe_id, bling_nfe_numero, bling_nfe_chave_acesso, nfe_status, nfe_error, nfe_emitted_at"
   )
   .order("created_at", { ascending: false })
   .limit(50);
@@ -29,6 +29,14 @@ const counts = (orders ?? []).reduce(
     return acc;
   },
   { synced: 0, failed: 0, pending: 0, skipped: 0 },
+);
+
+const nfeCounts = (orders ?? []).reduce(
+  (acc: Record<string, number>, r: any) => {
+    if (r.nfe_status) acc[r.nfe_status] = (acc[r.nfe_status] ?? 0) + 1;
+    return acc;
+  },
+  { emitted: 0, failed: 0, pending: 0, skipped: 0 },
 );
 
 function fmtDate(iso: string | null) {
@@ -141,6 +149,25 @@ function fmtDate(iso: string | null) {
       </div>
     </section>
 
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">NF-e emitidas</div>
+        <div class="mt-1 text-2xl font-display text-green-300">{nfeCounts.emitted}</div>
+      </div>
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">NF-e falhas</div>
+        <div class="mt-1 text-2xl font-display text-red-300">{nfeCounts.failed}</div>
+      </div>
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">NF-e em processo</div>
+        <div class="mt-1 text-2xl font-display text-amber-300">{nfeCounts.pending}</div>
+      </div>
+      <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">NF-e puladas</div>
+        <div class="mt-1 text-2xl font-display text-navy-300">{nfeCounts.skipped}</div>
+      </div>
+    </section>
+
     <section class="rounded-xl border border-navy-700 bg-navy-800/40 overflow-hidden">
       <header class="px-5 py-3 border-b border-navy-700 flex items-baseline justify-between">
         <h2 class="text-sm font-medium uppercase tracking-[0.12em] text-navy-200">Últimos 50 pedidos</h2>
@@ -158,6 +185,7 @@ function fmtDate(iso: string | null) {
                 <th class="text-left px-4 py-2">MP Payment</th>
                 <th class="text-left px-4 py-2">Pedido Bling</th>
                 <th class="text-left px-4 py-2">Status</th>
+                <th class="text-left px-4 py-2">NF-e</th>
                 <th class="text-left px-4 py-2">Tentativas</th>
                 <th class="text-left px-4 py-2">Erro / Ação</th>
               </tr>
@@ -184,6 +212,23 @@ function fmtDate(iso: string | null) {
                       <span class="inline-flex items-center rounded-full bg-navy-600 text-navy-200 px-2 py-0.5 text-[11px]">skipped</span>
                     )}
                   </td>
+                  <td class="px-4 py-2 text-xs">
+                    {r.nfe_status === "emitted" && (
+                      <span class="inline-flex items-center gap-1 rounded-full bg-green-500/20 text-green-300 px-2 py-0.5">
+                        📄 {r.bling_nfe_numero ?? "—"}
+                      </span>
+                    )}
+                    {r.nfe_status === "failed" && (
+                      <span class="inline-flex items-center rounded-full bg-red-500/20 text-red-300 px-2 py-0.5" title={r.nfe_error ?? ""}>⚠ falhou</span>
+                    )}
+                    {r.nfe_status === "pending" && (
+                      <span class="inline-flex items-center rounded-full bg-amber-500/20 text-amber-300 px-2 py-0.5">⏳ processando</span>
+                    )}
+                    {r.nfe_status === "skipped" && (
+                      <span class="inline-flex items-center rounded-full bg-navy-600 text-navy-200 px-2 py-0.5" title={r.nfe_error ?? ""}>—</span>
+                    )}
+                    {!r.nfe_status && <span class="text-navy-400">—</span>}
+                  </td>
                   <td class="px-4 py-2 text-navy-300">{r.attempt_count ?? 0}</td>
                   <td class="px-4 py-2 text-xs text-navy-300">
                     {r.status === "failed" || r.status === "pending" ? (
@@ -195,6 +240,17 @@ function fmtDate(iso: string | null) {
                           class="rounded bg-brand-lime/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-brand-lime disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Tentar de novo
+                        </button>
+                      </div>
+                    ) : r.status === "synced" && (r.nfe_status === "failed" || r.nfe_status === "skipped" || !r.nfe_status) ? (
+                      <div class="flex items-center gap-2">
+                        <span class="text-red-300/80 max-w-md truncate" title={r.nfe_error ?? ""}>{r.nfe_error ?? "—"}</span>
+                        <button
+                          type="button"
+                          data-retry-nfe-payment={r.mp_payment_id}
+                          class="rounded bg-amber-400/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Emitir NF-e
                         </button>
                       </div>
                     ) : "—"}
@@ -213,25 +269,29 @@ function fmtDate(iso: string | null) {
     // (which only triggers for form-encoded content types). Endpoint redirects
     // to /admin/bling?bling=... — fetch follows the redirect, then we navigate
     // the window to that final URL so the operator sees the flash banner.
-    document.querySelectorAll<HTMLButtonElement>("[data-retry-mp-payment]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-retry-mp-payment");
-        if (!id) return;
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = "Sincronizando…";
-        try {
-          const res = await fetch(`/api/admin/bling/retry/${encodeURIComponent(id)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-          });
-          window.location.href = res.url || "/admin/bling";
-        } catch (e) {
-          btn.disabled = false;
-          btn.textContent = originalText;
-          alert("Erro: " + (e instanceof Error ? e.message : String(e)));
-        }
+    function bindRetry(attr: string, endpointPrefix: string, busyLabel: string) {
+      document.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute(attr) ?? "";
+          if (!id) return;
+          const originalText = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = busyLabel;
+          try {
+            const res = await fetch(`${endpointPrefix}/${encodeURIComponent(id)}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+            });
+            window.location.href = res.url || "/admin/bling";
+          } catch (e) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            alert("Erro: " + (e instanceof Error ? e.message : String(e)));
+          }
+        });
       });
-    });
+    }
+    bindRetry("data-retry-mp-payment", "/api/admin/bling/retry", "Sincronizando…");
+    bindRetry("data-retry-nfe-payment", "/api/admin/bling/retry-nfe", "Emitindo NF-e…");
   </script>
 </AdminLayout>
