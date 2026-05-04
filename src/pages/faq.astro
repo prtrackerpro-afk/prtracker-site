@@ -3,7 +3,10 @@ import BaseLayout from "~/layouts/BaseLayout.astro";
 
 const updatedAt = "4 de maio de 2026";
 
-const sections = [
+type FaqItem = { q: string; a: string };
+type FaqSection = { title: string; items: FaqItem[] };
+
+const sections: FaqSection[] = [
   {
     title: "Sobre o produto",
     items: [
@@ -152,11 +155,30 @@ const sections = [
     ],
   },
 ];
+
+// FAQPage schema.org pra Google Rich Results. O Google ainda exibe FAQ
+// snippets pra páginas que claramente são FAQ (vs. anúncios disfarçados),
+// e este é canonicamente um FAQ — vale a pena marcar.
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: sections.flatMap((section) =>
+    section.items.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.a,
+      },
+    })),
+  ),
+};
 ---
 
 <BaseLayout
   title="Perguntas Frequentes — PR Tracker"
   description="Respostas rápidas sobre produto, pagamento, entrega, troca e parcerias da PR Tracker."
+  jsonLd={faqJsonLd}
 >
   <article class="policy container-page">
     <header class="policy__header">
