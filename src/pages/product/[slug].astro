@@ -59,6 +59,44 @@ const jsonLd = {
     availability: "https://schema.org/InStock",
     url: `${SITE_URL}/product/${slug}`,
     seller: { "@type": "Organization", name: "PR Tracker" },
+    // Pré-requisitos do Google Merchant Center pra eligibilidade em
+    // Shopping ads / Performance Max sem fallback de "merchant-default".
+    shippingDetails: {
+      "@type": "OfferShippingDetails",
+      shippingRate: {
+        "@type": "MonetaryAmount",
+        value: "0",
+        currency: "BRL",
+      },
+      shippingDestination: {
+        "@type": "DefinedRegion",
+        addressCountry: "BR",
+      },
+      deliveryTime: {
+        "@type": "ShippingDeliveryTime",
+        handlingTime: {
+          "@type": "QuantitativeValue",
+          minValue: 5,
+          maxValue: 10,
+          unitCode: "DAY",
+        },
+        transitTime: {
+          "@type": "QuantitativeValue",
+          minValue: 3,
+          maxValue: 10,
+          unitCode: "DAY",
+        },
+      },
+    },
+    hasMerchantReturnPolicy: {
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: "BR",
+      returnPolicyCategory:
+        "https://schema.org/MerchantReturnFiniteReturnWindow",
+      merchantReturnDays: 7,
+      returnMethod: "https://schema.org/ReturnByMail",
+      returnFees: "https://schema.org/ReturnShippingFees",
+    },
   },
 };
 
