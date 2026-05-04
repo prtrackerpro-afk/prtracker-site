@@ -46,6 +46,15 @@ function fmtDate(iso: string | null) {
     hour: "2-digit", minute: "2-digit",
   });
 }
+
+// Multi-line / long Bling error texts get a collapsible <details>; short
+// single-line errors render inline so the table stays compact.
+function splitError(raw: string | null | undefined): { headline: string; rest: string[] | null } {
+  if (!raw) return { headline: "—", rest: null };
+  const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return { headline: "—", rest: null };
+  return { headline: lines[0], rest: lines.length > 1 ? lines.slice(1) : null };
+}
 ---
 
 <AdminLayout title="Bling" active="bling" user={Astro.locals.admin}>
@@ -256,30 +265,56 @@ function fmtDate(iso: string | null) {
                     {!r.nfe_status && <span class="text-navy-400">—</span>}
                   </td>
                   <td class="px-4 py-2 text-navy-300">{r.attempt_count ?? 0}</td>
-                  <td class="px-4 py-2 text-xs text-navy-300">
-                    {r.status === "failed" || r.status === "pending" ? (
-                      <div class="flex items-center gap-2">
-                        <span class="text-red-300/80 max-w-md truncate" title={r.error ?? ""}>{r.error ?? "—"}</span>
-                        <button
-                          type="button"
-                          data-retry-mp-payment={r.mp_payment_id}
-                          class="rounded bg-brand-lime/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-brand-lime disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Tentar de novo
-                        </button>
-                      </div>
-                    ) : r.status === "synced" && (r.nfe_status === "failed" || r.nfe_status === "skipped" || !r.nfe_status) ? (
-                      <div class="flex items-center gap-2">
-                        <span class="text-red-300/80 max-w-md truncate" title={r.nfe_error ?? ""}>{r.nfe_error ?? "—"}</span>
-                        <button
-                          type="button"
-                          data-retry-nfe-payment={r.mp_payment_id}
-                          class="rounded bg-amber-400/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Emitir NF-e
-                        </button>
-                      </div>
-                    ) : "—"}
+                  <td class="px-4 py-2 text-xs text-navy-300 max-w-xl">
+                    {r.status === "failed" || r.status === "pending" ? (() => {
+                      const e = splitError(r.error);
+                      return (
+                        <div class="flex items-start gap-2">
+                          <div class="min-w-0 flex-1">
+                            <div class="text-red-300/80 break-words">{e.headline}</div>
+                            {e.rest && (
+                              <details class="mt-1">
+                                <summary class="cursor-pointer text-navy-400 hover:text-navy-200 text-[10px] uppercase tracking-wider">
+                                  ver detalhes do erro ({e.rest.length})
+                                </summary>
+                                <pre class="mt-1 whitespace-pre-wrap text-[11px] text-red-200/70 bg-navy-900/40 rounded p-2">{e.rest.join("\n")}</pre>
+                              </details>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            data-retry-mp-payment={r.mp_payment_id}
+                            class="shrink-0 rounded bg-brand-lime/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-brand-lime disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Tentar de novo
+                          </button>
+                        </div>
+                      );
+                    })() : r.status === "synced" && (r.nfe_status === "failed" || r.nfe_status === "skipped" || !r.nfe_status) ? (() => {
+                      const e = splitError(r.nfe_error);
+                      return (
+                        <div class="flex items-start gap-2">
+                          <div class="min-w-0 flex-1">
+                            <div class="text-red-300/80 break-words">{e.headline}</div>
+                            {e.rest && (
+                              <details class="mt-1">
+                                <summary class="cursor-pointer text-navy-400 hover:text-navy-200 text-[10px] uppercase tracking-wider">
+                                  ver detalhes SEFAZ ({e.rest.length})
+                                </summary>
+                                <pre class="mt-1 whitespace-pre-wrap text-[11px] text-red-200/70 bg-navy-900/40 rounded p-2">{e.rest.join("\n")}</pre>
+                              </details>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            data-retry-nfe-payment={r.mp_payment_id}
+                            class="shrink-0 rounded bg-amber-400/90 text-navy-900 px-2 py-1 text-[11px] font-medium hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Emitir NF-e
+                          </button>
+                        </div>
+                      );
+                    })() : "—"}
                   </td>
                 </tr>
               ))}

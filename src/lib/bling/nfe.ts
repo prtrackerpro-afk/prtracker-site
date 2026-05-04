@@ -298,19 +298,27 @@ function failResult(
   partial?: { nfeId?: number; numero?: string; serie?: string },
 ): CreateAndEmitNfeResult {
   if (err instanceof BlingApiError) {
+    const fieldErrors = err.fields?.map((f) => ({
+      msg: f.msg,
+      element: f.element,
+    }));
+    const lines = [
+      `Falha ao ${phase === "create" ? "criar" : "transmitir"} NF-e: ${err.message}`,
+    ];
+    if (err.description) lines.push(err.description);
+    if (fieldErrors?.length) {
+      for (const f of fieldErrors) {
+        lines.push(`• ${f.element ? `${f.element}: ` : ""}${f.msg}`);
+      }
+    }
     return {
       ok: false,
       status: "failed",
       nfeId: partial?.nfeId,
       numero: partial?.numero,
       serie: partial?.serie,
-      error: `Falha ao ${phase === "create" ? "criar" : "transmitir"} NF-e: ${err.message}${
-        err.description ? ` — ${err.description}` : ""
-      }`,
-      fieldErrors: err.fields?.map((f) => ({
-        msg: f.msg,
-        element: f.element,
-      })),
+      error: lines.join("\n"),
+      fieldErrors,
     };
   }
   return {
