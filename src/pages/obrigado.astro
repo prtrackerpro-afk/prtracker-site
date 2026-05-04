@@ -35,6 +35,10 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
         </a>
         <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Falar no WhatsApp</a>
       </div>
+
+      <p class="thanks__faq">
+        Dúvidas sobre prazo, troca ou cuidados com a peça? Veja as <a href="/faq">perguntas frequentes</a>.
+      </p>
     </div>
   </section>
 
@@ -174,5 +178,19 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.75rem;
+  }
+  .thanks__faq {
+    margin: 1.75rem auto 0;
+    max-width: 32rem;
+    color: var(--color-brand-gray);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .thanks__faq a {
+    color: var(--color-brand-navy);
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-lime);
+    text-underline-offset: 3px;
+    font-weight: 600;
   }
 </style>
