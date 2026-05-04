@@ -45,6 +45,10 @@ export interface NfeContatoSnapshot {
   numeroDocumento?: string;
   email?: string;
   telefone?: string;
+  /** SEFAZ indIEDest: 1 = contribuinte ICMS, 2 = isento, 9 = não contribuinte.
+   *  PF defaults to 9. Without this Bling may serialize the destinatário as
+   *  contribuinte and SEFAZ rejects when IE is absent. */
+  contribuinte?: 1 | 2 | 9;
   /** Endereço fiscal — REQUIRED by SEFAZ. Bling does not auto-pull
    *  from the contato cadastro for NF-e even when given the contato.id. */
   endereco?: {
@@ -150,6 +154,12 @@ export async function createAndEmitNfe(
   if (input.contato?.numeroDocumento) contatoBody.numeroDocumento = input.contato.numeroDocumento;
   if (input.contato?.email) contatoBody.email = input.contato.email;
   if (input.contato?.telefone) contatoBody.fone = input.contato.telefone;
+  // contribuinte (indIEDest): default 9 (não contribuinte) for PF when caller
+  // didn't specify. Without this Bling may emit indIEDest=1 and SEFAZ rejects
+  // because a PF doesn't have IE.
+  const contribuinte =
+    input.contato?.contribuinte ?? (input.contato?.tipoPessoa === "F" ? 9 : undefined);
+  if (contribuinte != null) contatoBody.contribuinte = contribuinte;
   if (input.contato?.endereco) {
     contatoBody.endereco = {
       ...input.contato.endereco,
@@ -189,22 +199,29 @@ export async function createAndEmitNfe(
     body.desconto = { valor: input.descontoValor, unidade: "REAL" };
   }
 
-  // Single "à vista" parcel matching the total. Bling requires parcelas for
-  // any NF-e tied to a financial flow; if formaPagamentoId is unknown we
-  // omit and let Bling fall back to default (works for most "venda à vista").
-  if (input.formaPagamentoId && input.totalValor > 0) {
-    body.parcelas = [
-      {
-        dataVencimento: data,
-        valor: input.totalValor,
-        formaPagamento: { id: input.formaPagamentoId },
-      },
-    ];
+  // parcelas is REQUIRED by Bling for NF-e creation (per the v3 schema). The
+  // field name is `data`, NOT `dataVencimento` — sending the wrong key is
+  // silently accepted by /nfe (draft) but rejected at /enviar because SEFAZ
+  // requires the `pag` group on the XML. Always emit a single à-vista parcela
+  // matching the total; formaPagamento is included only when caller provides
+  // an id (Bling defaults to "Sem pagamento" otherwise).
+  if (input.totalValor > 0) {
+    const parcela: Record<string, unknown> = {
+      data,
+      valor: input.totalValor,
+    };
+    if (input.formaPagamentoId) {
+      parcela.formaPagamento = { id: input.formaPagamentoId };
+    }
+    body.parcelas = [parcela];
   }
 
-  if (input.frete != null && input.frete > 0) {
-    body.transporte = { frete: input.frete };
-  }
+  // transporte.fretePorConta is part of the SEFAZ modFrete group (0–9). Even
+  // for free shipping it must be set (9 = sem ocorrência de transporte).
+  body.transporte = {
+    fretePorConta: input.frete != null && input.frete > 0 ? 0 : 9,
+    ...(input.frete != null && input.frete > 0 ? { frete: input.frete } : {}),
+  };
 
   if (input.observacoes) body.observacoes = input.observacoes;
   if (input.observacoesInternas) body.observacoesInternas = input.observacoesInternas;
