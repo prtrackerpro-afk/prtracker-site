@@ -27,6 +27,35 @@ import { getAdminSupabase } from "~/lib/supabase/server";
 const BASE_URL = "https://www.bling.com.br/Api/v3";
 const USER_AGENT = "PR Tracker (contato@prtracker.com.br)";
 
+// Bling free plan = 3 req/s. We pace at ~350ms between calls (~2.85 req/s)
+// to leave headroom for clock drift / network jitter. Module-level state is
+// fine here: each Vercel invocation gets its own instance, and our sync
+// loop is sequential within a single invocation.
+const MIN_INTERVAL_MS = 350;
+const MAX_429_RETRIES = 4;
+let lastCallAt = 0;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function rateLimitGate(): Promise<void> {
+  const now = Date.now();
+  const elapsed = now - lastCallAt;
+  if (elapsed < MIN_INTERVAL_MS) await sleep(MIN_INTERVAL_MS - elapsed);
+  lastCallAt = Date.now();
+}
+
+function parseRetryAfterMs(headerValue: string | null): number | null {
+  if (!headerValue) return null;
+  const seconds = Number(headerValue);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000);
+  // HTTP-date form (rare for 429 but spec allows it)
+  const ts = Date.parse(headerValue);
+  if (!Number.isNaN(ts)) return Math.max(0, ts - Date.now());
+  return null;
+}
+
 export class BlingApiError extends Error {
   constructor(
     message: string,
@@ -138,6 +167,7 @@ export async function blingFetch<T = unknown>(
   const url = buildUrl(path, options.query);
   let token = options.accessToken ?? (await getValidAccessToken());
 
+  await rateLimitGate();
   let res = await doFetch(url, method, token, options.body);
 
   if (res.status === 401) {
@@ -147,6 +177,24 @@ export async function blingFetch<T = unknown>(
     if (!rt) throw new BlingNotConnectedError();
     const refreshed = await refreshAccessToken(rt);
     token = refreshed.access_token;
+    await rateLimitGate();
+    res = await doFetch(url, method, token, options.body);
+  }
+
+  // 429 = rate-limited. Bling returns this when the per-second cap is hit.
+  // Retry up to MAX_429_RETRIES times honoring Retry-After header, falling
+  // back to exponential backoff (1s, 2s, 4s, 8s capped).
+  let retry429 = 0;
+  while (res.status === 429 && retry429 < MAX_429_RETRIES) {
+    retry429++;
+    const headerWait = parseRetryAfterMs(res.headers.get("retry-after"));
+    const backoffMs = Math.min(1000 * 2 ** (retry429 - 1), 8000);
+    const waitMs = headerWait ?? backoffMs;
+    console.warn(
+      `[bling] 429 received (attempt ${retry429}/${MAX_429_RETRIES}), waiting ${waitMs}ms`,
+    );
+    await sleep(waitMs);
+    await rateLimitGate();
     res = await doFetch(url, method, token, options.body);
   }
 
