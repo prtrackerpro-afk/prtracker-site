@@ -6,6 +6,15 @@
  */
 import couponsData from "~/data/coupons.json";
 
+export interface PickupLocation {
+  name: string;
+  address_line: string;
+  district: string;
+  city: string;
+  state: string;
+  cep: string;
+}
+
 export interface Coupon {
   code: string;
   discount_type: "percent" | "fixed_cart" | "fixed_product";
@@ -25,6 +34,12 @@ export interface Coupon {
   exclude_sale_items: boolean;
   first_order_only: boolean;
   affiliate: { id: number; name?: string; slug?: string | null } | null;
+  /**
+   * If set, this coupon unlocks an in-person pickup option at the given
+   * location (the customer skips Melhor Envio entirely and picks up on-site).
+   * Each partner location gets its own coupon.
+   */
+  pickup_location?: PickupLocation;
 }
 
 const COUPONS: Coupon[] = (couponsData as { coupons: Coupon[] }).coupons;
@@ -48,6 +63,8 @@ export interface CouponValidation {
   discountCents: number;
   /** True when this coupon also grants free shipping (caller handles). */
   freeShipping: boolean;
+  /** Pickup location unlocked by this coupon, if any. */
+  pickupLocation: PickupLocation | null;
   /** Display name: affiliate attribution or the brand itself. */
   creditedTo: string;
 }
@@ -142,6 +159,7 @@ export function validateCoupon(
     coupon,
     discountCents,
     freeShipping: coupon.free_shipping,
+    pickupLocation: coupon.pickup_location ?? null,
     creditedTo,
   };
 }

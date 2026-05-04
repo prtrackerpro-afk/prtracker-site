@@ -87,5 +87,6 @@ export const POST: APIRoute = async ({ request }) => {
     amount: result.coupon.amount,
     creditedTo: result.creditedTo,
     freeShipping: result.freeShipping,
+    pickupLocation: result.pickupLocation,
   });
 };

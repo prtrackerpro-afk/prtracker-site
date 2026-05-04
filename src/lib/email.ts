@@ -107,6 +107,8 @@ export interface OrderEmailData {
   items: Array<{ title: string; quantity: number; totalBrl: number }>;
   couponCode?: string;
   couponCreditedTo?: string;
+  /** Set when the customer chose in-person pickup at a partner location. */
+  pickup?: { name: string; address: string };
 }
 
 function brl(value: number): string {
@@ -171,12 +173,20 @@ export async function sendOwnerOrderAlert(data: OrderEmailData): Promise<void> {
         <tr><td style="padding:4px 0;color:#666">CPF</td><td>${escapeHtml(data.customer.cpf)}</td></tr>
       </table>
 
-      <h2 style="font-size:15px;margin:24px 0 8px;color:#444">Entrega</h2>
+      <h2 style="font-size:15px;margin:24px 0 8px;color:#444">${data.pickup ? "Retirada" : "Entrega"}</h2>
       <p style="margin:0;font-size:14px;line-height:1.6">
+        ${data.pickup
+          ? `<strong style="color:#01002A">RETIRADA NA UNIDADE</strong><br>
+        ${escapeHtml(data.pickup.name)}<br>
+        ${escapeHtml(data.pickup.address)}<br>
+        <br>
+        <span style="color:#666">Endereço do cliente (cadastro/NF-e):</span><br>
         ${escapeHtml(data.shipping.street)}, ${escapeHtml(data.shipping.number)}${data.shipping.complement ? ` — ${escapeHtml(data.shipping.complement)}` : ""}<br>
+        ${escapeHtml(data.shipping.neighborhood)} · ${escapeHtml(data.shipping.city)}/${escapeHtml(data.shipping.state)} · CEP ${escapeHtml(data.shipping.cep)}`
+          : `${escapeHtml(data.shipping.street)}, ${escapeHtml(data.shipping.number)}${data.shipping.complement ? ` — ${escapeHtml(data.shipping.complement)}` : ""}<br>
         ${escapeHtml(data.shipping.neighborhood)} · ${escapeHtml(data.shipping.city)}/${escapeHtml(data.shipping.state)}<br>
         CEP ${escapeHtml(data.shipping.cep)}<br>
-        <span style="color:#666">Serviço:</span> ${escapeHtml(data.shipping.service)}
+        <span style="color:#666">Serviço:</span> ${escapeHtml(data.shipping.service)}`}
       </p>
 
       <h2 style="font-size:15px;margin:24px 0 8px;color:#444">Pagamento</h2>
@@ -188,9 +198,9 @@ export async function sendOwnerOrderAlert(data: OrderEmailData): Promise<void> {
       </table>
 
       <p style="margin:24px 0 0;padding:12px;background:#f8f9fa;border-radius:6px;font-size:13px;color:#555">
-        <strong>Próximo passo:</strong> a etiqueta já foi gerada automaticamente no Melhor Envio.
-        Imprima em <a href="https://melhorenvio.com.br/painel/shipments">melhorenvio.com.br/painel/shipments</a>
-        e despache.
+        ${data.pickup
+          ? `<strong>Próximo passo:</strong> separar pedido e levar até a <strong>${escapeHtml(data.pickup.name)}</strong>. Quando estiver disponível, avisar o cliente pelo WhatsApp que pode retirar.`
+          : `<strong>Próximo passo:</strong> a etiqueta já foi gerada automaticamente no Melhor Envio. Imprima em <a href="https://melhorenvio.com.br/painel/shipments">melhorenvio.com.br/painel/shipments</a> e despache.`}
       </p>
     </div>
   </div>
@@ -242,7 +252,9 @@ export async function sendCustomerConfirmation(
 
     <div style="padding:28px 24px">
       <p style="font-size:15px;line-height:1.6;margin:0 0 20px;color:#333">
-        Recebemos seu pagamento e já estamos preparando o envio. Você vai receber o código de rastreio assim que a etiqueta for gerada (normalmente até 24h úteis).
+        ${data.pickup
+          ? `Recebemos seu pagamento. Sua peça estará disponível para retirada na <strong>${escapeHtml(data.pickup.name)}</strong>. Avisaremos pelo WhatsApp assim que o pedido estiver pronto para retirada.`
+          : "Recebemos seu pagamento e já estamos preparando o envio. Você vai receber o código de rastreio assim que a etiqueta for gerada (normalmente até 24h úteis)."}
       </p>
 
       <h2 style="font-size:14px;margin:0 0 8px;color:#666;text-transform:uppercase;letter-spacing:0.05em">Seu pedido · ${escapeHtml(data.externalRef)}</h2>
@@ -253,11 +265,13 @@ export async function sendCustomerConfirmation(
         </tr>
       </table>
 
-      <h2 style="font-size:14px;margin:24px 0 8px;color:#666;text-transform:uppercase;letter-spacing:0.05em">Entrega</h2>
+      <h2 style="font-size:14px;margin:24px 0 8px;color:#666;text-transform:uppercase;letter-spacing:0.05em">${data.pickup ? "Retirada" : "Entrega"}</h2>
       <p style="margin:0 0 4px;font-size:14px;line-height:1.6;color:#333">
-        ${escapeHtml(data.shipping.street)}, ${escapeHtml(data.shipping.number)}${data.shipping.complement ? ` — ${escapeHtml(data.shipping.complement)}` : ""}<br>
+        ${data.pickup
+          ? `<strong>${escapeHtml(data.pickup.name)}</strong><br>${escapeHtml(data.pickup.address)}`
+          : `${escapeHtml(data.shipping.street)}, ${escapeHtml(data.shipping.number)}${data.shipping.complement ? ` — ${escapeHtml(data.shipping.complement)}` : ""}<br>
         ${escapeHtml(data.shipping.neighborhood)} · ${escapeHtml(data.shipping.city)}/${escapeHtml(data.shipping.state)} · CEP ${escapeHtml(data.shipping.cep)}<br>
-        <span style="color:#666">Serviço:</span> ${escapeHtml(data.shipping.service)}
+        <span style="color:#666">Serviço:</span> ${escapeHtml(data.shipping.service)}`}
       </p>
 
       <p style="margin:28px 0 0;font-size:13px;color:#888;line-height:1.6">
