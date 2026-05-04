@@ -34,6 +34,7 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
               <dt>Subtotal</dt>
               <dd data-cart-subtotal>R$ 0,00</dd>
             </div>
+            <p class="cart-page__free-progress" data-cart-free-progress hidden></p>
             <div class="cart-page__summary-row cart-page__summary-row--pix">
               <dt>
                 <span class="pix-badge">Pix</span>
@@ -212,6 +213,16 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
     font-size: 1.25rem;
     color: #16a34a;
   }
+  .cart-page__free-progress {
+    margin: -0.25rem 0 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--color-brand-gray);
+  }
+  .cart-page__free-progress[data-unlocked="true"] {
+    color: #15803d;
+    font-weight: 600;
+  }
 
   .pix-badge {
     display: inline-block;
@@ -245,6 +256,8 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
   const subtotalEl = summary.querySelector<HTMLElement>("[data-cart-subtotal]")!;
   const pixEl = summary.querySelector<HTMLElement>("[data-cart-pix-total]")!;
   const installmentEl = summary.querySelector<HTMLElement>("[data-cart-installment]")!;
+  const freeProgressEl = summary.querySelector<HTMLElement>("[data-cart-free-progress]")!;
+  const FREE_SHIPPING_MIN_CENTS = 25_000;
 
   let snap: CartSnapshot = cart.snapshot();
 
@@ -297,6 +310,17 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
     subtotalEl.textContent = formatBRL(snap.subtotalCents);
     pixEl.textContent = formatBRL(snap.pixTotalCents);
     installmentEl.textContent = `${MAX_INSTALLMENTS}× de ${formatBRL(Math.round(snap.subtotalCents / MAX_INSTALLMENTS))} sem juros`;
+
+    if (snap.subtotalCents >= FREE_SHIPPING_MIN_CENTS) {
+      freeProgressEl.hidden = false;
+      freeProgressEl.dataset.unlocked = "true";
+      freeProgressEl.textContent = "🎉 Frete grátis liberado neste pedido.";
+    } else {
+      const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
+      freeProgressEl.hidden = false;
+      freeProgressEl.dataset.unlocked = "false";
+      freeProgressEl.textContent = `Faltam ${formatBRL(missing)} pra frete grátis.`;
+    }
   }
 
   render(snap);
