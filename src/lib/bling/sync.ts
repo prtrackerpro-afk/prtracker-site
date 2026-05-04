@@ -529,12 +529,14 @@ async function persistInitial(
 
 function formatError(err: unknown): string {
   if (err instanceof BlingApiError) {
-    const fieldsBlurb = err.fields?.length
-      ? ` | campos: ${err.fields
-          .map((f) => `${f.element ?? "?"}: ${f.msg}`)
-          .join("; ")}`
-      : "";
-    return `${err.message}${err.description ? ` — ${err.description}` : ""}${fieldsBlurb}`;
+    const lines = [err.message];
+    if (err.description) lines.push(err.description);
+    if (err.fields?.length) {
+      for (const f of err.fields) {
+        lines.push(`• ${f.element ? `${f.element}: ` : ""}${f.msg}`);
+      }
+    }
+    return lines.join("\n");
   }
   if (err instanceof BlingNotConnectedError) return err.message;
   if (err instanceof Error) return err.message;
