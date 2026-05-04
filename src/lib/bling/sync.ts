@@ -345,29 +345,65 @@ async function emitAndPersistNfe(args: EmitNfeArgs): Promise<NfeOutcomeStatus> {
     console.warn("[bling-sync] BLING_NATUREZA_OPERACAO_ID not set — skipping NF-e auto-emission");
     nfeError = "BLING_NATUREZA_OPERACAO_ID não configurado";
   } else {
-    const totalValor =
-      args.skuLines.reduce((s, l) => s + l.unitPrice * l.qty, 0) +
-      (args.freightCents > 0 ? args.freightCents / 100 : 0) -
-      (args.totalDiscountCents > 0 ? args.totalDiscountCents / 100 : 0);
+    // SEFAZ requires sum(parcelas) === total da nota. Bling computes total da
+    // nota as sum(item.valor * qty) + frete (it does NOT subtract a top-level
+    // `desconto` reliably). Instead of sending `desconto`, apply it pro-rata
+    // on item unit prices so total da nota === parcelas by construction.
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const grossItemsCents = args.skuLines.reduce(
+      (s, l) => s + Math.round(l.unitPrice * 100) * l.qty,
+      0,
+    );
+    const discountCents = Math.max(0, args.totalDiscountCents);
+    const freightReais = args.freightCents > 0 ? round2(args.freightCents / 100) : 0;
+    // Pro-rata factor in [0, 1]. If discount >= gross, fall back to 0.01/item
+    // (SEFAZ rejects zero-priced items on a venda).
+    const netItemsCents = Math.max(args.skuLines.length, grossItemsCents - discountCents);
+    const factor = grossItemsCents > 0 ? netItemsCents / grossItemsCents : 1;
+
+    // Allocate the net items total across lines, distributing the rounding
+    // remainder (in cents) to the first line so the sum is exact.
+    let allocatedCents = 0;
+    const itensWithNetUnit = args.skuLines.map((l, idx) => {
+      const lineGrossCents = Math.round(l.unitPrice * 100) * l.qty;
+      const lineNetCents =
+        idx === args.skuLines.length - 1
+          ? netItemsCents - allocatedCents
+          : Math.round(lineGrossCents * factor);
+      allocatedCents += lineNetCents;
+      const unitNetCents = Math.round(lineNetCents / l.qty);
+      return {
+        codigo: l.codigo,
+        descricao: l.nome,
+        quantidade: l.qty,
+        valor: round2(unitNetCents / 100),
+        ncm: l.ncm,
+      };
+    });
+
+    // Recompute the actual sum from the rounded unit prices (defensive — the
+    // unit-rounding step can introduce tiny drift when qty > 1).
+    const itensSumReais = round2(
+      itensWithNetUnit.reduce((s, it) => s + it.valor * it.quantidade, 0),
+    );
+    const totalValor = round2(itensSumReais + freightReais);
+
     const nfeRes = await createAndEmitNfe(
       {
         contatoId: args.contatoId,
         contato: args.contatoSnapshot,
         naturezaOperacaoId,
         lojaId: getEnvInt("BLING_LOJA_ID"),
-        itens: args.skuLines.map((l) => ({
-          codigo: l.codigo,
-          descricao: l.nome,
-          quantidade: l.qty,
-          valor: l.unitPrice,
-          ncm: l.ncm,
-        })),
+        itens: itensWithNetUnit,
         totalValor: Math.max(0.01, totalValor),
-        descontoValor:
-          args.totalDiscountCents > 0 ? args.totalDiscountCents / 100 : undefined,
-        frete: args.freightCents > 0 ? args.freightCents / 100 : undefined,
+        // Discount is now baked into item prices — do NOT also send a
+        // top-level `desconto` (would double-discount).
+        frete: freightReais > 0 ? freightReais : undefined,
         numeroPedido: args.externalRef,
-        observacoes: `Ref pedido site: ${args.externalRef}`,
+        observacoes:
+          discountCents > 0
+            ? `Ref pedido site: ${args.externalRef} | Desconto aplicado proporcionalmente nos itens (cupom/Pix R$ ${(discountCents / 100).toFixed(2)})`
+            : `Ref pedido site: ${args.externalRef}`,
       },
       args.accessToken,
     );
