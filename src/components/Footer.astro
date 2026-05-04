@@ -2,6 +2,7 @@
 import Mail from "@lucide/astro/icons/mail";
 import Clock from "@lucide/astro/icons/clock";
 import Phone from "@lucide/astro/icons/phone";
+import HelpCircle from "@lucide/astro/icons/circle-question-mark";
 import Logo from "./Logo.astro";
 
 const year = new Date().getFullYear();
@@ -73,6 +74,12 @@ const year = new Date().getFullYear();
 
       <h3 class="footer-title mt-8">Atendimento</h3>
       <ul class="footer-list">
+        <li>
+          <a href="/faq" class="footer-list__icon">
+            <HelpCircle size={16} aria-hidden="true" />
+            <span>Perguntas frequentes</span>
+          </a>
+        </li>
         <li>
           <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer" class="footer-list__icon">
             <Phone size={16} aria-hidden="true" />

@@ -1,0 +1,274 @@
+---
+import BaseLayout from "~/layouts/BaseLayout.astro";
+
+const updatedAt = "4 de maio de 2026";
+
+const sections = [
+  {
+    title: "Sobre o produto",
+    items: [
+      {
+        q: "O que exatamente é uma PR Tracker?",
+        a: "É uma miniatura-troféu de equipamentos de musculação. Não é brinquedo, não é souvenir — é uma peça decorativa premium feita pra representar uma conquista de treino (um Personal Record) em formato físico. Você olha pra ela e lembra de um PR específico que você bateu.",
+      },
+      {
+        q: "De que material é feita?",
+        a: "Barra em aço inoxidável usinada com alto relevo, mini presilhas em metal, anilhas em plástico de alta densidade (coloridas no padrão Olímpico, com logo PR Tracker). A base varia conforme o set: My PR Set tem base de acrílico, Bench Press e Power Rack têm base de alumínio, Deadlift tem base de MDF e borracha.",
+      },
+      {
+        q: "O produto vem com gravação personalizada (peso, data, nome)?",
+        a: "Não. A peça em si não tem gravações de peso, tempo, data ou nome. A personalização vem da configuração que você escolhe — quais anilhas montar na barra, qual exercício do My PR Set, etc — pra reproduzir o PR específico que você quer celebrar.",
+      },
+      {
+        q: "As anilhas são removíveis?",
+        a: "Sim. Você monta a barra com a configuração que quiser, igual a uma barra real. As mini presilhas em metal seguram as anilhas no lugar.",
+      },
+      {
+        q: "Que tamanho tem a peça?",
+        a: "É uma miniatura proporcional aos equipamentos reais — cabe em mesa, prateleira ou setup de home office. Não é brinquedo nem peça gigante.",
+      },
+      {
+        q: "É seguro pra crianças?",
+        a: "Não recomendado pra crianças menores de 3 anos. As mini anilhas e presilhas são pequenas partes — risco de engasgamento. É um item decorativo, não um brinquedo.",
+      },
+      {
+        q: "Como cuidar do produto?",
+        a: "Limpe com pano seco ou levemente úmido. Evite imersão em água, produtos abrasivos e exposição direta ao sol por longos períodos. A peça é decorativa — não foi feita pra suportar peso real.",
+      },
+    ],
+  },
+  {
+    title: "Linha de produtos",
+    items: [
+      {
+        q: "Quais produtos vocês fazem hoje?",
+        a: "Deadlift Set, My PR Set (o mais personalizável — 20 exercícios diferentes), Power Rack Set, Bench Press Set, Anilhas avulsas (pares adicionais pra atualizar qualquer set) e Camisetas (Masculina e Feminina Baby Look).",
+      },
+      {
+        q: "Qual o foco da marca?",
+        a: "Força e levantamento de peso — CrossFit, Halterofilismo (LPO), Powerlifting e Musculação. A PR Tracker não atende corrida nem outros esportes.",
+      },
+      {
+        q: "Tem alguma versão pra atletas de Strongman / Powerlifting / Crossfit específico?",
+        a: "Hoje todas as linhas funcionam pra qualquer modalidade de força — basta configurar a carga das anilhas pra refletir o PR que você quer celebrar. Sets específicos de Strongman não estão no catálogo atual.",
+      },
+    ],
+  },
+  {
+    title: "Pedido e pagamento",
+    items: [
+      {
+        q: "Quais formas de pagamento?",
+        a: "Pix (com 5% de desconto automático no total) ou cartão de crédito em até 6× sem juros. Pagamentos processados pelo Mercado Pago.",
+      },
+      {
+        q: "O desconto do Pix é aplicado automaticamente?",
+        a: "Sim. Ao escolher Pix no checkout, o site aplica os 5% antes de gerar o QR Code. Você só paga o valor com desconto.",
+      },
+      {
+        q: "É seguro pagar no site?",
+        a: "Sim. O processamento é 100% feito pelo Mercado Pago — não armazenamos dados de cartão em nossos servidores. O site usa HTTPS criptografado.",
+      },
+      {
+        q: "Posso comprar como presente?",
+        a: "Sim. Basta usar os dados de quem vai receber no endereço de entrega. Se quiser que a nota fiscal saia em nome do comprador (e não do destinatário), avise pelo WhatsApp logo após a compra.",
+      },
+      {
+        q: "Posso alterar a configuração depois de comprar?",
+        a: "Só antes do início da produção. Os sets são produzidos sob demanda conforme sua configuração — anilhas escolhidas, exercício do My PR Set, etc. Em caso de dúvida, fale com a gente imediatamente após a compra pelo WhatsApp.",
+      },
+      {
+        q: "Vocês emitem nota fiscal?",
+        a: "Sim, sempre. Toda compra gera NF-e automática enviada pra SEFAZ — pra isso o CPF é obrigatório no checkout.",
+      },
+    ],
+  },
+  {
+    title: "Entrega e prazos",
+    items: [
+      {
+        q: "Qual o prazo de entrega?",
+        a: "Produção: 5 a 10 dias úteis após confirmação do pagamento. Envio: 3 a 10 dias úteis adicionais conforme sua região (PAC ou SEDEX). O prazo total varia entre 8 e 20 dias úteis.",
+      },
+      {
+        q: "Vocês enviam pra todo o Brasil?",
+        a: "Sim. Envio via Correios (PAC/SEDEX) com rastreio pra todo o território nacional. O frete é calculado automaticamente no checkout pelo seu CEP.",
+      },
+      {
+        q: "Vocês entregam fora do Brasil?",
+        a: "Hoje não. A operação é 100% nacional.",
+      },
+      {
+        q: "Como faço o rastreio?",
+        a: "Assim que o pedido é postado, você recebe o código de rastreio por e-mail. Pode acompanhar pelo site dos Correios ou pelo nosso WhatsApp.",
+      },
+    ],
+  },
+  {
+    title: "Troca, devolução e garantia",
+    items: [
+      {
+        q: "Posso devolver o produto se mudar de ideia?",
+        a: "Pelo Código de Defesa do Consumidor (Art. 49), você tem 7 dias corridos a partir do recebimento pra desistir da compra — desde que o produto esteja sem uso, com embalagem original. Para sets configurados sob demanda, o direito de arrependimento não se aplica após o início da produção. Detalhes na Política de Troca e Devolução.",
+      },
+      {
+        q: "Tem garantia?",
+        a: "90 dias para defeitos de fabricação. Se identificar qualquer problema, mande fotos pelo WhatsApp e resolvemos com prioridade — troca ou reembolso, à sua escolha.",
+      },
+      {
+        q: "E se a camiseta não servir?",
+        a: "Troca por tamanho em até 7 dias após o recebimento — peça sem uso, sem lavagem, etiqueta intacta. Custo do envio de retorno fica por conta do cliente.",
+      },
+    ],
+  },
+  {
+    title: "Parcerias",
+    items: [
+      {
+        q: "Sou criador de conteúdo / influenciador. Como faço pra fechar parceria?",
+        a: "Trabalhamos com creators do universo CrossFit, Powerlifting, LPO e Musculação via comissão progressiva (8% a 20% por venda). Mande mensagem pelo WhatsApp ou e-mail com seu @ e a gente conversa.",
+      },
+      {
+        q: "Sou dono de box. Tem programa pra boxes de CrossFit?",
+        a: "Sim. Modelo zero custo / zero estoque pro box, com cupom exclusivo personalizado e comissão progressiva (10% a 20%). Manda contato que a gente envia a apresentação.",
+      },
+    ],
+  },
+  {
+    title: "Outros",
+    items: [
+      {
+        q: "Qual o horário de atendimento?",
+        a: "Segunda a sexta, das 8h às 18h. WhatsApp (51) 98206-1914 ou e-mail contato@prtracker.com.br. Fora desse horário, mande mensagem que respondemos no próximo dia útil.",
+      },
+      {
+        q: "A PR Tracker tem loja física?",
+        a: "Não. Operação 100% online com envio nacional.",
+      },
+      {
+        q: "Estão em algum marketplace?",
+        a: "Sim, na TikTok Shop (@pr.tracker). Mas o site oficial prtracker.com.br tem o catálogo completo, configurador de sets e o desconto Pix automático de 5%.",
+      },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title="Perguntas Frequentes — PR Tracker"
+  description="Respostas rápidas sobre produto, pagamento, entrega, troca e parcerias da PR Tracker."
+>
+  <article class="policy container-page">
+    <header class="policy__header">
+      <p class="policy__eyebrow">Atendimento</p>
+      <h1>Perguntas Frequentes</h1>
+      <p class="policy__meta">Atualizado em {updatedAt}.</p>
+    </header>
+
+    <section class="policy__body">
+      {sections.map((section) => (
+        <div class="faq-section">
+          <h2>{section.title}</h2>
+          {section.items.map((item) => (
+            <details class="faq-item">
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
+        </div>
+      ))}
+
+      <div class="faq-cta">
+        <h2>Não encontrou sua resposta?</h2>
+        <p>
+          Manda pra gente direto: <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer">WhatsApp (51) 98206-1914</a> ou <a href="mailto:contato@prtracker.com.br">contato@prtracker.com.br</a>. Respondemos rápido em horário comercial.
+        </p>
+      </div>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .policy { padding: 3rem 0 5rem; max-width: 52rem; }
+  .policy__header { margin-bottom: 2.5rem; }
+  .policy__eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    margin: 0 0 0.5rem;
+  }
+  .policy__header h1 { margin: 0 0 0.5rem; }
+  .policy__meta { color: var(--color-brand-gray); font-size: 0.9rem; margin: 0; }
+
+  .faq-section { margin-bottom: 2.5rem; }
+  .faq-section h2 {
+    font-size: 1.35rem;
+    margin: 0 0 1rem;
+    color: var(--color-brand-navy);
+  }
+
+  .faq-item {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 1rem 0;
+  }
+  .faq-item:last-child { border-bottom: 1px solid rgba(0, 0, 0, 0.08); }
+
+  .faq-item summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-brand-navy);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: "+";
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-brand-lime);
+    filter: brightness(0.55);
+    transition: transform 180ms ease;
+    flex-shrink: 0;
+  }
+  .faq-item[open] summary::after {
+    content: "−";
+    transform: scale(1.05);
+  }
+  .faq-item p {
+    margin: 0.75rem 0 0;
+    color: var(--color-brand-gray);
+    line-height: 1.7;
+    font-size: 1rem;
+  }
+
+  .faq-cta {
+    margin-top: 3rem;
+    padding: 1.75rem;
+    background: rgba(216, 255, 44, 0.08);
+    border-left: 3px solid var(--color-brand-lime);
+    border-radius: 0.5rem;
+  }
+  .faq-cta h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+  .faq-cta p {
+    margin: 0;
+    color: var(--color-brand-gray);
+    line-height: 1.6;
+  }
+  .faq-cta a {
+    color: var(--color-brand-navy);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-lime);
+    text-underline-offset: 3px;
+  }
+</style>

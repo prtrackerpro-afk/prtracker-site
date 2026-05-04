@@ -18,6 +18,9 @@ import Clock from "@lucide/astro/icons/clock";
           Pedidos, prazos, trocas, parceria com box ou creator — mande mensagem.
           Respondemos em dias úteis, 8h às 18h.
         </p>
+        <p class="contact__lead contact__lead--muted">
+          Antes de mandar, dá uma olhada nas <a href="/faq">perguntas frequentes</a> — boa parte das dúvidas já está respondida lá.
+        </p>
 
         <ul class="contact__links">
           <li>
@@ -148,6 +151,18 @@ import Clock from "@lucide/astro/icons/clock";
     line-height: 1.6;
     margin: 0 0 2rem;
     max-width: 32rem;
+  }
+  .contact__lead--muted {
+    font-size: 0.95rem;
+    color: rgb(77 77 81 / 0.85);
+    margin-top: -1rem;
+  }
+  .contact__lead--muted a {
+    color: var(--color-brand-navy);
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-lime);
+    text-underline-offset: 3px;
+    font-weight: 600;
   }
 
   .contact__links {

@@ -146,6 +146,7 @@ import Loader from "@lucide/astro/icons/loader";
             <dt>Subtotal</dt>
             <dd data-checkout-subtotal>R$ 0,00</dd>
           </div>
+          <p class="frete-progress" data-frete-progress hidden></p>
           <div class="checkout__row" data-coupon-row hidden>
             <dt>Cupom <span class="text-brand-gray text-sm" data-coupon-applied></span></dt>
             <dd data-checkout-coupon>- R$ 0,00</dd>
@@ -319,6 +320,10 @@ import Loader from "@lucide/astro/icons/loader";
     text-transform: uppercase;
     vertical-align: middle;
   }
+  :global(.frete-option__badge--free) {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+  }
 
   .pay-methods {
     display: grid;
@@ -462,6 +467,17 @@ import Loader from "@lucide/astro/icons/loader";
   .checkout__row dd { margin: 0; font-weight: 700; color: var(--color-brand-navy); }
   .checkout__row--highlight dd { font-family: var(--font-display); font-size: 1.25rem; color: #16a34a; }
 
+  .frete-progress {
+    margin: -0.25rem 0 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--color-brand-gray);
+  }
+  .frete-progress[data-unlocked="true"] {
+    color: #15803d;
+    font-weight: 600;
+  }
+
   .checkout__submit-wrap { margin-top: 1.25rem; }
   .submit-spinner { animation: spin 0.9s linear infinite; display: none; }
   #submitBtn[data-loading="true"] .submit-label { display: none; }
@@ -544,6 +560,8 @@ import Loader from "@lucide/astro/icons/loader";
   const freteGroup = document.querySelector<HTMLFieldSetElement>("#freteGroup")!;
   const freteStatus = document.querySelector<HTMLElement>("[data-frete-status]")!;
   const freteList = document.querySelector<HTMLElement>("[data-frete-list]")!;
+  const freteProgressEl = document.querySelector<HTMLElement>("[data-frete-progress]")!;
+  const FREE_SHIPPING_MIN_CENTS = 25_000;
   const couponInput = document.querySelector<HTMLInputElement>("#coupon-code")!;
   const couponBtn = document.querySelector<HTMLButtonElement>("[data-coupon-apply]")!;
   const couponStatus = document.querySelector<HTMLElement>("[data-coupon-status]")!;
@@ -582,6 +600,19 @@ import Loader from "@lucide/astro/icons/loader";
       .join("");
     subtotalEl.textContent = formatBRL(snap.subtotalCents);
 
+    if (snap.subtotalCents <= 0) {
+      freteProgressEl.hidden = true;
+    } else if (snap.subtotalCents >= FREE_SHIPPING_MIN_CENTS) {
+      freteProgressEl.hidden = false;
+      freteProgressEl.dataset.unlocked = "true";
+      freteProgressEl.textContent = "🎉 Frete grátis aplicado neste pedido.";
+    } else {
+      const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
+      freteProgressEl.hidden = false;
+      freteProgressEl.dataset.unlocked = "false";
+      freteProgressEl.textContent = `Faltam ${formatBRL(missing)} pra frete grátis.`;
+    }
+
     const couponCents = appliedCoupon?.discountCents ?? 0;
     couponRow.hidden = couponCents === 0;
     if (couponCents > 0 && appliedCoupon) {
@@ -590,10 +621,13 @@ import Loader from "@lucide/astro/icons/loader";
     }
 
     const freteCents = selectedFrete?.price_cents ?? 0;
-    freteRow.hidden = freteCents === 0;
-    if (freteCents > 0) {
-      freteNameEl.textContent = selectedFrete ? `· ${selectedFrete.name}` : "";
-      freteTotalEl.textContent = formatBRL(freteCents);
+    // Sem opção selecionada = sem CEP ainda, esconde a linha. Com opção
+    // selecionada (paga ou grátis) sempre mostra, pra o cliente confirmar
+    // a transportadora escolhida no resumo final.
+    freteRow.hidden = !selectedFrete;
+    if (selectedFrete) {
+      freteNameEl.textContent = `· ${selectedFrete.name}`;
+      freteTotalEl.textContent = freteCents === 0 ? "Grátis" : formatBRL(freteCents);
     }
 
     // Pix discount applies to post-coupon subtotal, matching server logic.
@@ -846,6 +880,7 @@ import Loader from "@lucide/astro/icons/loader";
             quantity: i.quantity,
             plates: i.plates,
           })),
+          subtotalCents: snap.subtotalCents,
         }),
         signal: freteAbort.signal,
       });
@@ -884,15 +919,18 @@ import Loader from "@lucide/astro/icons/loader";
               ? `${o.delivery_days_min} dia${o.delivery_days_min === 1 ? "" : "s"} útil${o.delivery_days_min === 1 ? "" : "eis"}`
               : `${o.delivery_days_min}–${o.delivery_days_max} dias úteis`
             : "Prazo a confirmar";
+        const isFree = !isPickup && o.price_cents === 0;
         const badge = isPickup
           ? `<span class="frete-option__badge">Retirada</span>`
-          : isCheapest
-            ? `<span class="frete-option__badge">Melhor opção</span>`
-            : "";
+          : isFree
+            ? `<span class="frete-option__badge frete-option__badge--free">Frete grátis</span>`
+            : isCheapest
+              ? `<span class="frete-option__badge">Melhor opção</span>`
+              : "";
         const title = isPickup
           ? escapeHtml(o.name)
           : `${escapeHtml(o.company)} · ${escapeHtml(o.name)}`;
-        const price = isPickup ? "Grátis" : formatBRL(o.price_cents);
+        const price = isPickup || isFree ? "Grátis" : formatBRL(o.price_cents);
         return `
           <label class="frete-option">
             <input type="radio" name="frete" value="${o.id}" ${isCheapest ? "checked" : ""} />
