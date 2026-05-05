@@ -1,0 +1,50 @@
+---
+export const prerender = false;
+import { getServerSupabase } from "../../../lib/supabase/server";
+
+// Supabase magic-link callback. The link in the email points here with a
+// `code` query param; we exchange it for a session, which sets the auth
+// cookies on the response. Then redirect to the original destination.
+
+const url = new URL(Astro.request.url);
+const code = url.searchParams.get("code");
+const nextPath = url.searchParams.get("next") || "/pr";
+
+let errorMessage: string | null = null;
+
+if (code) {
+  const supabase = getServerSupabase({
+    headers: Astro.request.headers,
+    cookies: Astro.cookies,
+  });
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (!error) {
+    return Astro.redirect(nextPath.startsWith("/pr") ? nextPath : "/pr", 302);
+  }
+  errorMessage = error.message;
+} else {
+  errorMessage = "Link inválido ou expirado.";
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Erro de login · PR Tracker</title>
+    <style>
+      body { background: #01002A; color: #fff; font-family: system-ui, sans-serif; min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
+      .card { max-width: 24rem; text-align: center; }
+      a { color: #D8FF2C; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 style="font-size: 1.25rem; margin-bottom: .5rem;">Não conseguimos te autenticar</h1>
+      <p style="color: #9ca3af; font-size: .875rem; margin-bottom: 1.5rem;">{errorMessage}</p>
+      <a href="/pr/login">Pedir um novo link</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,144 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import { EXERCISES } from "../../lib/pr/exercises";
+
+// Athlete is loaded by middleware (Astro.locals.athlete) — we don't need
+// it here since the form posts to /api/pr/records which re-reads it.
+const today = new Date().toISOString().slice(0, 10);
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Registrar PR · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body">
+    <header class="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <a href="/pr" class="text-sm text-navy-300 hover:text-white">← Voltar</a>
+    </header>
+
+    <main class="max-w-md mx-auto px-4">
+      <h1 class="text-2xl font-semibold tracking-tight mb-1">Registrar PR</h1>
+      <p class="text-sm text-navy-300 mb-6">
+        Logue só o que importa — não é diário de treino.
+      </p>
+
+      <form id="log-form" class="space-y-4">
+        <div>
+          <label for="exercise" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Movimento</label>
+          <select
+            id="exercise"
+            name="exercise"
+            required
+            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+          >
+            {EXERCISES.map((ex) => (
+              <option value={ex.id}>{ex.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label for="weight" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Peso (kg)</label>
+          <input
+            id="weight"
+            name="weight"
+            type="number"
+            step="0.5"
+            min="1"
+            max="999"
+            required
+            inputmode="decimal"
+            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-lg font-display tabular-nums focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+          />
+        </div>
+
+        <div>
+          <label for="date" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Data</label>
+          <input
+            id="date"
+            name="date"
+            type="date"
+            value={today}
+            max={today}
+            required
+            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+          />
+        </div>
+
+        <div>
+          <label for="notes" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Observação (opcional)</label>
+          <input
+            id="notes"
+            name="notes"
+            type="text"
+            maxlength="200"
+            placeholder="ex: cinto, deadlift sumo, primeiro vermelho"
+            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+          />
+        </div>
+
+        <button
+          type="submit"
+          id="submit-btn"
+          class="w-full rounded-lg bg-brand-lime px-4 py-3 text-sm font-semibold text-navy-900 hover:opacity-90 transition disabled:opacity-50"
+        >
+          Salvar PR
+        </button>
+
+        <div id="error-msg" class="text-sm text-red-400 hidden"></div>
+      </form>
+    </main>
+
+    <script>
+      const form = document.getElementById("log-form") as HTMLFormElement;
+      const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
+      const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.classList.add("hidden");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando...";
+
+        const data = new FormData(form);
+        try {
+          const res = await fetch("/api/pr/records", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              exercise: data.get("exercise"),
+              weight_kg: Number(data.get("weight")),
+              performed_at: data.get("date"),
+              notes: data.get("notes") || null,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            errorMsg.textContent = body.message || "Erro ao salvar.";
+            errorMsg.classList.remove("hidden");
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Salvar PR";
+            return;
+          }
+          // If it was a PR, go to celebration; otherwise back to dashboard.
+          if (body.is_personal_record) {
+            window.location.href = `/pr/celebrate/${body.id}`;
+          } else {
+            window.location.href = "/pr";
+          }
+        } catch {
+          errorMsg.textContent = "Erro de conexão. Tente novamente.";
+          errorMsg.classList.remove("hidden");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Salvar PR";
+        }
+      });
+    </script>
+  </body>
+</html>

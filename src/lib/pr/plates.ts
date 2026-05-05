@@ -1,0 +1,88 @@
+// Greedy split of total weight into pairs of plates, respecting the
+// per-plate maximums in the official price table (Brand Bible §Preços).
+//
+// Bar weight is fixed at 20 kg (Olympic). Total weight = bar + 2 × Σplates.
+
+export const BAR_KG = 20;
+
+// Order matters: greedy descends from heaviest. Limits mirror the
+// "Anilhas avulsas" table in CLAUDE.md.
+export const PLATE_CATALOG = [
+  { kg: 25, maxPairs: 4 },
+  { kg: 20, maxPairs: 4 },
+  { kg: 15, maxPairs: 4 },
+  { kg: 10, maxPairs: 4 },
+  { kg: 5, maxPairs: 4 },
+  { kg: 2.5, maxPairs: 1 },
+  { kg: 1.25, maxPairs: 1 },
+] as const;
+
+export type PlateKg = (typeof PLATE_CATALOG)[number]["kg"];
+
+export interface PlateSplit {
+  /** kg per side (excluding bar). */
+  perSide: number;
+  /** Pairs of each plate weight, in descending order. */
+  pairs: { kg: PlateKg; count: number }[];
+  /** Total weight the split actually achieves (may differ from input if not representable). */
+  achieved: number;
+  /** Leftover kg that couldn't fit into the catalog (rounded to .25). */
+  leftover: number;
+}
+
+/**
+ * Greedy split. Input is *total* PR weight in kg (bar included).
+ * Returns the closest representable configuration not exceeding the input.
+ */
+export function splitPlates(totalKg: number): PlateSplit {
+  const target = totalKg - BAR_KG;
+  if (target <= 0) {
+    return { perSide: 0, pairs: [], achieved: BAR_KG, leftover: Math.max(0, target) };
+  }
+  let remaining = target / 2; // per side
+  const pairs: { kg: PlateKg; count: number }[] = [];
+
+  for (const { kg, maxPairs } of PLATE_CATALOG) {
+    if (remaining <= 0) break;
+    const count = Math.min(maxPairs, Math.floor(remaining / kg + 1e-9));
+    if (count > 0) {
+      pairs.push({ kg, count });
+      remaining -= count * kg;
+    }
+  }
+
+  const perSide = (target / 2) - remaining;
+  return {
+    perSide,
+    pairs,
+    achieved: BAR_KG + perSide * 2,
+    leftover: Math.max(0, Math.round(remaining * 100) / 100),
+  };
+}
+
+/**
+ * Builds the deep-link query string for the BarbellConfigurator.
+ * The configurator currently doesn't read query params (TODO: wire that up
+ * in src/components/BarbellConfigurator.astro), but we encode the intent
+ * here so the destination page can populate it.
+ */
+export function configuratorQuery(
+  totalKg: number,
+  exerciseId: string,
+  source: string = "pr"
+): string {
+  const split = splitPlates(totalKg);
+  const params = new URLSearchParams({
+    w: String(totalKg),
+    ex: exerciseId,
+    from: source,
+  });
+  // Encoded as p={kg}x{pairs};{kg}x{pairs};...
+  if (split.pairs.length > 0) {
+    params.set(
+      "p",
+      split.pairs.map((p) => `${p.kg}x${p.count}`).join(";")
+    );
+  }
+  return params.toString();
+}
