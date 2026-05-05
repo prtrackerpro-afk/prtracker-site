@@ -31,7 +31,7 @@ const EXPECTED_CANONICAL_SKUS = new Set<string>([
   "TT-POWER-200",
   "TT-MEGA-600",
   "TT-MEGA-1000",
-  "TT-MYPR",
+  "TT-MYPR-120",
   "TT-TEE-MASC",
   "TT-TEE-BABY",
   // Variações de tamanho (futuro):
