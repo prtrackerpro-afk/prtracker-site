@@ -57,11 +57,16 @@ const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_PREFILL}`
     gap: 12px;
     pointer-events: none;
   }
-  .fab-stack > * {
+  .fab-stack > :global(*) {
     pointer-events: auto;
   }
 
-  .fab {
+  /*
+   * .fab and .fab__tooltip are :global() so the same base styles reach
+   * the chatbot button (rendered from Chatbot.astro). Astro normally
+   * scopes class rules to the file they're declared in.
+   */
+  :global(.fab) {
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -81,13 +86,13 @@ const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_PREFILL}`
       box-shadow 160ms ease,
       background-color 160ms ease;
   }
-  .fab:hover {
+  :global(.fab:hover) {
     transform: translateY(-2px);
     box-shadow:
       0 14px 32px rgb(0 0 0 / 0.22),
       0 4px 10px rgb(0 0 0 / 0.14);
   }
-  .fab:focus-visible {
+  :global(.fab:focus-visible) {
     outline: 3px solid var(--color-brand-lime);
     outline-offset: 3px;
   }
@@ -99,7 +104,7 @@ const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_PREFILL}`
     background: #1ebe5b;
   }
 
-  .fab__tooltip {
+  :global(.fab__tooltip) {
     position: absolute;
     right: calc(100% + 10px);
     top: 50%;
@@ -120,13 +125,13 @@ const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_PREFILL}`
       opacity 140ms ease,
       transform 140ms ease;
   }
-  .fab:hover .fab__tooltip,
-  .fab:focus-visible .fab__tooltip {
+  :global(.fab:hover .fab__tooltip),
+  :global(.fab:focus-visible .fab__tooltip) {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
   }
   @media (max-width: 720px) {
-    .fab__tooltip {
+    :global(.fab__tooltip) {
       display: none;
     }
   }
