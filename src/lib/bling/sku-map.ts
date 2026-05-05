@@ -1,14 +1,18 @@
 /**
  * SKU map: site product slug (+ variant) → Bling código + display name + NCM.
  *
- * Source of truth for the canonical Bling SKUs is `project_integration_checklist_mai2026.md`:
- *   deadlift-set                   → DEAD-V1
- *   bench-press-set                → BENCH-V1
- *   power-rack-set                 → POWER-V1
- *   my-pr-set                      → MYPR-V1
+ * Canonical Bling SKUs (alinhadas com sync-marketplace-skus.ts em mai/2026):
+ *   deadlift-set                   → DEADLIFT-SET
+ *   bench-press-set                → BENCH-SET
+ *   power-rack-set                 → POWER-SET
+ *   my-pr-set                      → MYPR-SET
  *   camiseta-masculina + size      → TEE-MASC-{P|M|G|GG}
  *   camiseta-feminina-baby-look + size → TEE-BABY-{P|M|G|GG}
  *   anilhas + plates[]             → expandido em ANILHA-{plateId} por par
+ *
+ * Os kits-base do site são "Monte sua barra" — sem peso pré-fixo. Bundles
+ * com peso fixo (TT-BENCH-120, TT-DEAD-200, etc.) são SKUs separadas só
+ * usadas em marketplace (ver sync-marketplace-skus.ts).
  *
  * `getOrCreateProduct` in Bling will create products on first encounter
  * with the metadata defined here (NCM, peso, etc).
@@ -57,7 +61,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
     case "deadlift-set":
       return [
         {
-          codigo: "DEAD-V1",
+          codigo: "DEADLIFT-SET",
           nome: "Deadlift Set — PR Tracker",
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
@@ -67,7 +71,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
     case "bench-press-set":
       return [
         {
-          codigo: "BENCH-V1",
+          codigo: "BENCH-SET",
           nome: "Bench Press Set — PR Tracker",
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
@@ -77,7 +81,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
     case "power-rack-set":
       return [
         {
-          codigo: "POWER-V1",
+          codigo: "POWER-SET",
           nome: "Power Rack Set — PR Tracker",
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
@@ -88,7 +92,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
       const exerciseSuffix = item.exercise ? ` (${item.exercise})` : "";
       return [
         {
-          codigo: "MYPR-V1",
+          codigo: "MYPR-SET",
           nome: `My PR Set — PR Tracker${exerciseSuffix}`,
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
