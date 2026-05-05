@@ -4,6 +4,7 @@ import Header from "~/components/Header.astro";
 import Footer from "~/components/Footer.astro";
 import CartDrawer from "~/components/CartDrawer.astro";
 import CookieBanner from "~/components/CookieBanner.astro";
+import FloatingActions from "~/components/FloatingActions.astro";
 import SEO from "~/components/SEO.astro";
 import Analytics from "~/components/Analytics.astro";
 
@@ -21,6 +22,8 @@ interface Props {
   hideHeader?: boolean;
   /** Omit the footer (e.g., minimal flows). */
   hideFooter?: boolean;
+  /** Omit the floating WhatsApp/chatbot buttons (e.g., checkout). */
+  hideFloatingActions?: boolean;
   /** Emit <link rel="preload"> for the home-hero AVIFs (desktop+mobile). */
   preloadHeroHome?: boolean;
 }
@@ -36,6 +39,7 @@ const {
   transparentHeader = false,
   hideHeader = false,
   hideFooter = false,
+  hideFloatingActions = false,
   preloadHeroHome = false,
 } = Astro.props;
 ---
@@ -137,6 +141,7 @@ const {
 
     <CartDrawer />
     <CookieBanner />
+    {!hideFloatingActions && <FloatingActions />}
 
     <!-- Preload the cart script so badge renders from localStorage on first paint -->
     <script>

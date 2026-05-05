@@ -1,0 +1,646 @@
+---
+/**
+ * In-page assistant — floating button + chat panel.
+ *
+ * UI lives entirely client-side; the `/api/chat` endpoint streams
+ * tokens back as SSE. History is persisted to localStorage so the
+ * chat survives page nav.
+ *
+ * The component is rendered from `FloatingActions.astro`, which owns
+ * the bottom-right stacking and visibility rules.
+ */
+import MessageCircle from "@lucide/astro/icons/message-circle";
+import X from "@lucide/astro/icons/x";
+import Send from "@lucide/astro/icons/send-horizontal";
+---
+
+<button
+  type="button"
+  class="fab fab--chat"
+  aria-label="Abrir atendimento PR Tracker"
+  data-chat-toggle
+>
+  <MessageCircle size={26} aria-hidden="true" class="fab__icon-open" />
+  <X size={26} aria-hidden="true" class="fab__icon-close" />
+  <span class="fab__tooltip">Tirar dúvida</span>
+</button>
+
+<div
+  class="chat-panel"
+  data-chat-panel
+  hidden
+  role="dialog"
+  aria-modal="false"
+  aria-label="Atendimento PR Tracker"
+>
+  <header class="chat-panel__header">
+    <div class="chat-panel__title">
+      <span class="chat-panel__dot" aria-hidden="true"></span>
+      <div>
+        <strong>Atendimento PR Tracker</strong>
+        <small>Respostas instantâneas · IA</small>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="chat-panel__close"
+      aria-label="Fechar atendimento"
+      data-chat-close
+    >
+      <X size={20} aria-hidden="true" />
+    </button>
+  </header>
+
+  <div
+    class="chat-panel__messages"
+    data-chat-messages
+    aria-live="polite"
+    aria-busy="false"
+  >
+    <div class="chat-msg chat-msg--bot chat-msg--intro">
+      <p>
+        Olá! Sou o atendente virtual da <strong>PR Tracker</strong>.
+        Posso te ajudar com produtos, preços, prazos, trocas e parcerias.
+      </p>
+      <p class="chat-msg__hint">
+        Pra falar com pessoa: toque no botão verde do WhatsApp.
+      </p>
+    </div>
+  </div>
+
+  <form class="chat-panel__form" data-chat-form>
+    <label class="sr-only" for="chat-input">Sua pergunta</label>
+    <textarea
+      id="chat-input"
+      data-chat-input
+      placeholder="Digite sua pergunta…"
+      rows="1"
+      maxlength="500"
+      autocomplete="off"
+      required></textarea>
+    <button
+      type="submit"
+      class="chat-panel__send"
+      aria-label="Enviar pergunta"
+      data-chat-send
+    >
+      <Send size={18} aria-hidden="true" />
+    </button>
+  </form>
+
+  <p class="chat-panel__disclaimer">
+    Respostas geradas por IA — em caso de dúvida, fale com a gente no
+    <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer">WhatsApp</a>.
+  </p>
+</div>
+
+<style>
+  .fab--chat {
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    border: 2px solid var(--color-brand-lime);
+  }
+  .fab--chat:hover {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+  /* Toggle the open/close icon based on aria-expanded */
+  .fab__icon-close {
+    display: none;
+  }
+  .fab--chat[aria-expanded="true"] .fab__icon-open {
+    display: none;
+  }
+  .fab--chat[aria-expanded="true"] .fab__icon-close {
+    display: inline-block;
+  }
+
+  .chat-panel {
+    position: fixed;
+    right: clamp(12px, 3vw, 24px);
+    bottom: calc(clamp(12px, 3vw, 24px) + 56px + 12px + 56px + 12px);
+    z-index: 70;
+    width: min(380px, calc(100vw - 32px));
+    max-height: min(620px, calc(100vh - 160px));
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow:
+      0 24px 60px rgb(1 0 42 / 0.18),
+      0 6px 16px rgb(1 0 42 / 0.10);
+    overflow: hidden;
+    border: 1px solid rgb(1 0 42 / 0.08);
+    animation: chat-fade 180ms ease;
+  }
+  .chat-panel[hidden] {
+    display: none;
+  }
+
+  @keyframes chat-fade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Mobile: full-width sheet */
+  @media (max-width: 540px) {
+    .chat-panel {
+      right: 8px;
+      left: 8px;
+      width: auto;
+      bottom: calc(clamp(12px, 3vw, 24px) + 56px + 12px + 56px + 12px);
+      max-height: calc(100vh - 200px);
+    }
+  }
+
+  .chat-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    background: var(--color-brand-navy);
+    color: #fff;
+  }
+  .chat-panel__title {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    line-height: 1.15;
+  }
+  .chat-panel__title strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+  .chat-panel__title small {
+    display: block;
+    font-size: 0.72rem;
+    color: rgb(255 255 255 / 0.7);
+    margin-top: 1px;
+  }
+  .chat-panel__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 9999px;
+    background: var(--color-brand-lime);
+    box-shadow: 0 0 0 3px rgb(216 255 44 / 0.25);
+  }
+  .chat-panel__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.08);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 140ms ease;
+  }
+  .chat-panel__close:hover {
+    background: rgb(255 255 255 / 0.18);
+  }
+
+  .chat-panel__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #f8f9fc;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    scroll-behavior: smooth;
+  }
+
+  .chat-msg {
+    max-width: 86%;
+    padding: 0.65rem 0.85rem;
+    border-radius: 14px;
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--color-brand-navy);
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  .chat-msg p {
+    margin: 0;
+  }
+  .chat-msg p + p {
+    margin-top: 0.4rem;
+  }
+  .chat-msg strong {
+    color: var(--color-brand-navy);
+  }
+  .chat-msg a {
+    color: var(--color-brand-navy);
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-lime);
+    text-underline-offset: 3px;
+    font-weight: 600;
+  }
+  .chat-msg ul,
+  .chat-msg ol {
+    margin: 0.4rem 0 0;
+    padding-left: 1.2rem;
+  }
+  .chat-msg li {
+    margin-bottom: 0.2rem;
+  }
+
+  .chat-msg--bot {
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-bottom-left-radius: 4px;
+  }
+  .chat-msg--user {
+    align-self: flex-end;
+    background: var(--color-brand-navy);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .chat-msg--user strong {
+    color: #fff;
+  }
+  .chat-msg--error {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+  }
+  .chat-msg__hint {
+    font-size: 0.78rem;
+    color: var(--color-brand-gray);
+  }
+
+  .chat-msg--typing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0.7rem 0.9rem;
+  }
+  .chat-msg--typing span {
+    width: 6px;
+    height: 6px;
+    background: rgb(1 0 42 / 0.4);
+    border-radius: 9999px;
+    animation: chat-bounce 1.1s infinite;
+  }
+  .chat-msg--typing span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .chat-msg--typing span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+  @keyframes chat-bounce {
+    0%,
+    80%,
+    100% {
+      transform: scale(0.6);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .chat-panel__form {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.7rem 0.7rem 0.4rem;
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+    background: #fff;
+  }
+  .chat-panel__form textarea {
+    flex: 1;
+    resize: none;
+    border: 1.5px solid rgb(1 0 42 / 0.12);
+    border-radius: 12px;
+    padding: 0.6rem 0.75rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: var(--color-brand-navy);
+    max-height: 120px;
+    transition: border-color 140ms ease;
+  }
+  .chat-panel__form textarea:focus-visible {
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 1px;
+    border-color: var(--color-brand-navy);
+  }
+  .chat-panel__send {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    border: none;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      background-color 140ms ease,
+      transform 140ms ease;
+  }
+  .chat-panel__send:hover:not(:disabled) {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+  .chat-panel__send:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .chat-panel__disclaimer {
+    margin: 0;
+    padding: 0.2rem 1rem 0.7rem;
+    font-size: 0.7rem;
+    color: var(--color-brand-gray);
+    background: #fff;
+    text-align: center;
+  }
+  .chat-panel__disclaimer a {
+    color: var(--color-brand-navy);
+    font-weight: 600;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
+
+<script>
+  type ChatMsg = { role: "user" | "assistant"; content: string };
+
+  const STORAGE_KEY = "prtracker_chat_v1";
+  const MAX_HISTORY = 20; // last N turns sent to API
+  const MAX_INPUT = 500;
+
+  const toggle = document.querySelector<HTMLButtonElement>("[data-chat-toggle]");
+  const panel = document.querySelector<HTMLElement>("[data-chat-panel]");
+  const closeBtn = document.querySelector<HTMLButtonElement>("[data-chat-close]");
+  const messagesEl = document.querySelector<HTMLElement>("[data-chat-messages]");
+  const form = document.querySelector<HTMLFormElement>("[data-chat-form]");
+  const input = document.querySelector<HTMLTextAreaElement>("[data-chat-input]");
+  const sendBtn = document.querySelector<HTMLButtonElement>("[data-chat-send]");
+
+  if (toggle && panel && closeBtn && messagesEl && form && input && sendBtn) {
+    let history: ChatMsg[] = loadHistory();
+    let busy = false;
+
+    // Render persisted history (skip if empty — initial intro stays).
+    if (history.length > 0) {
+      // Remove the static intro so it doesn't double up with persisted ones.
+      messagesEl.querySelector(".chat-msg--intro")?.remove();
+      for (const m of history) renderMessage(m.role, m.content);
+      scrollToBottom();
+    }
+
+    toggle.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") === "true";
+      setOpen(!open);
+    });
+    closeBtn.addEventListener("click", () => setOpen(false));
+
+    input.addEventListener("input", autoGrow);
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      if (busy) return;
+      const text = input.value.trim();
+      if (!text || text.length > MAX_INPUT) return;
+      input.value = "";
+      autoGrow();
+      void send(text);
+    });
+
+    function setOpen(open: boolean) {
+      toggle!.setAttribute("aria-expanded", String(open));
+      panel!.hidden = !open;
+      if (open) {
+        setTimeout(() => input?.focus(), 60);
+        scrollToBottom();
+      }
+    }
+
+    function autoGrow() {
+      input!.style.height = "auto";
+      input!.style.height = Math.min(input!.scrollHeight, 120) + "px";
+    }
+
+    async function send(text: string) {
+      busy = true;
+      sendBtn!.disabled = true;
+      messagesEl!.setAttribute("aria-busy", "true");
+
+      // Drop the static intro on the first user message.
+      messagesEl!.querySelector(".chat-msg--intro")?.remove();
+
+      renderMessage("user", text);
+      history.push({ role: "user", content: text });
+      saveHistory();
+
+      const typingEl = document.createElement("div");
+      typingEl.className = "chat-msg chat-msg--bot chat-msg--typing";
+      typingEl.innerHTML = "<span></span><span></span><span></span>";
+      messagesEl!.appendChild(typingEl);
+      scrollToBottom();
+
+      const botEl = document.createElement("div");
+      botEl.className = "chat-msg chat-msg--bot";
+      let assistantText = "";
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: history.slice(-MAX_HISTORY),
+          }),
+        });
+        if (!res.ok || !res.body) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        // Replace typing with empty bot bubble; we'll fill it as tokens arrive.
+        typingEl.remove();
+        messagesEl!.appendChild(botEl);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        readLoop: while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Parse SSE: split on double-newlines, each chunk is "data: {...}".
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (payload === "[DONE]") break readLoop;
+            try {
+              const obj = JSON.parse(payload) as
+                | { text: string }
+                | { error: string };
+              if ("error" in obj) throw new Error(obj.error);
+              assistantText += obj.text;
+              botEl.innerHTML = renderMarkdownLite(assistantText);
+              scrollToBottom();
+            } catch {
+              /* tolerate partial frame */
+            }
+          }
+        }
+
+        if (!assistantText) {
+          throw new Error("Resposta vazia.");
+        }
+
+        history.push({ role: "assistant", content: assistantText });
+        saveHistory();
+      } catch (err) {
+        typingEl.remove();
+        botEl.remove();
+        const errEl = document.createElement("div");
+        errEl.className = "chat-msg chat-msg--bot chat-msg--error";
+        errEl.innerHTML = `
+          <p>Não consegui responder agora. 😕</p>
+          <p class="chat-msg__hint">Fale com a gente direto no <a href="https://wa.me/5551982061914" target="_blank" rel="noopener noreferrer">WhatsApp (51) 98206-1914</a>.</p>
+        `;
+        messagesEl!.appendChild(errEl);
+        // Roll back the user turn so retry is consistent.
+        history = history.filter((_, i) => i !== history.length - 1 || _.role !== "user");
+        saveHistory();
+        // eslint-disable-next-line no-console
+        console.warn("chat error:", err);
+      } finally {
+        busy = false;
+        sendBtn!.disabled = false;
+        messagesEl!.setAttribute("aria-busy", "false");
+        scrollToBottom();
+        input!.focus();
+      }
+    }
+
+    function renderMessage(role: "user" | "assistant", content: string) {
+      const el = document.createElement("div");
+      el.className = "chat-msg " + (role === "user" ? "chat-msg--user" : "chat-msg--bot");
+      el.innerHTML = renderMarkdownLite(content);
+      messagesEl!.appendChild(el);
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      messagesEl!.scrollTop = messagesEl!.scrollHeight;
+    }
+
+    function loadHistory(): ChatMsg[] {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter(
+            (m: unknown): m is ChatMsg =>
+              typeof m === "object" &&
+              m !== null &&
+              ("role" in m) &&
+              ((m as ChatMsg).role === "user" || (m as ChatMsg).role === "assistant") &&
+              typeof (m as ChatMsg).content === "string",
+          )
+          .slice(-MAX_HISTORY);
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(history.slice(-MAX_HISTORY)),
+        );
+      } catch {
+        /* ignore quota errors */
+      }
+    }
+  }
+
+  /**
+   * Tiny markdown subset — bold, italics, links, line breaks, lists.
+   * Escapes HTML first to avoid XSS from streamed model output.
+   */
+  function renderMarkdownLite(src: string): string {
+    let s = src
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Links [text](url) — only http(s) and mailto/tel/wa.me allowed.
+    s = s.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+|tel:[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+    );
+
+    // Bold **text** and italic *text*
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+
+    // Bullets: lines starting with "- " grouped into <ul>
+    const lines = s.split(/\n/);
+    const out: string[] = [];
+    let inList = false;
+    for (const line of lines) {
+      const m = line.match(/^\s*[-•]\s+(.*)$/);
+      if (m) {
+        if (!inList) {
+          out.push("<ul>");
+          inList = true;
+        }
+        out.push(`<li>${m[1]}</li>`);
+      } else {
+        if (inList) {
+          out.push("</ul>");
+          inList = false;
+        }
+        if (line.trim()) out.push(`<p>${line}</p>`);
+      }
+    }
+    if (inList) out.push("</ul>");
+    return out.join("");
+  }
+</script>
