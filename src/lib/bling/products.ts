@@ -163,11 +163,15 @@ export async function getProduct(
 }
 
 /**
- * PUT /produtos/{id} — atualiza campos parciais. Bling exige enviar o
- * payload "completo" no PUT, então buscamos o produto antes e mesclamos
- * apenas os campos a alterar (Bling mantém os outros, mas mesclar local
- * preserva qualquer cadastro fiscal que poderia ser sobrescrito por
- * defaults).
+ * PUT /produtos/{id} — atualiza campos parciais. Bling rejeita PUTs com
+ * payload incompleto (a doc fala em validar o produto inteiro), então
+ * fazemos spread do produto atual e só sobrescrevemos o que veio no
+ * patch. Garante que tributação/dimensões/formato cadastrados manualmente
+ * pelo Felipe não sejam zerados.
+ *
+ * Caveat: alguns campos vêm com `null` no GET (ex: dataValidade) e Bling
+ * pode rejeitar `null` em alguns deles no PUT. Removemos chaves null/undefined
+ * defensivamente.
  */
 export async function updateProduct(
   id: number,
@@ -183,22 +187,33 @@ export async function updateProduct(
   const current = await getProduct(id, accessToken);
   if (!current) throw new BlingApiError(`produto ${id} não encontrado`, 404);
 
-  const body: Record<string, unknown> = {
-    // Campos obrigatórios (mantém o atual se não vier no patch).
-    nome: patch.nome ?? current.nome,
-    codigo: patch.codigo ?? current.codigo,
-    preco: patch.preco ?? current.preco,
-    tipo: current.tipo ?? "P",
-    situacao: patch.situacao ?? (current.situacao === "I" ? "I" : "A"),
-    unidade: current.unidade ?? "UN",
-  };
+  // Spread do produto atual; Bling devolve a forma canônica que ele
+  // próprio aceita de volta no PUT.
+  const body: Record<string, unknown> = { ...(current as Record<string, unknown>) };
+  // O id não vai no body do PUT, ele já está na URL.
+  delete body.id;
+
+  if (patch.codigo != null) body.codigo = patch.codigo;
+  if (patch.nome != null) body.nome = patch.nome;
+  if (patch.preco != null) body.preco = patch.preco;
+  if (patch.situacao != null) body.situacao = patch.situacao;
 
   if (patch.imagensExternas) {
+    const existingMidia = (body.midia ?? {}) as Record<string, unknown>;
+    const existingImagens = (existingMidia.imagens ?? {}) as Record<string, unknown>;
     body.midia = {
+      ...existingMidia,
       imagens: {
+        ...existingImagens,
         externas: patch.imagensExternas.map((link) => ({ link })),
       },
     };
+  }
+
+  // Remove chaves com null no top-level — Bling tende a rejeitar `null`
+  // em campos opcionais tipo dataValidade quando vêm explicitamente nulos.
+  for (const k of Object.keys(body)) {
+    if (body[k] === null) delete body[k];
   }
 
   return await blingFetch<BlingProduct>(`/produtos/${id}`, {
