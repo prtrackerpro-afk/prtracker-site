@@ -1,0 +1,108 @@
+---
+export const prerender = false;
+import "../../../styles/global.css";
+import { getServerSupabase } from "../../../lib/supabase/server";
+import { getRecord } from "../../../lib/pr/db";
+import { exerciseLabel, productSlugForExercise, type ExerciseId } from "../../../lib/pr/exercises";
+import { configuratorQuery, splitPlates } from "../../../lib/pr/plates";
+
+const athlete = Astro.locals.athlete!;
+const id = Astro.params.id!;
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const record = await getRecord(supabase, id);
+if (!record || record.user_id !== athlete.userId) {
+  return Astro.redirect("/pr", 302);
+}
+
+// Previous best for this exercise (excluding this record itself)
+const { data: prev } = await supabase
+  .from("pr_records")
+  .select("weight_kg")
+  .eq("user_id", athlete.userId)
+  .eq("exercise", record.exercise)
+  .neq("id", record.id)
+  .order("weight_kg", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+const previousBest = prev?.weight_kg ? Number(prev.weight_kg) : null;
+const delta = previousBest != null ? Number(record.weight_kg) - previousBest : null;
+
+const productSlug = productSlugForExercise(record.exercise as ExerciseId);
+const trophyHref = `/produto/${productSlug}?${configuratorQuery(
+  Number(record.weight_kg),
+  record.exercise,
+  "pr-celebrate"
+)}`;
+
+const split = splitPlates(Number(record.weight_kg));
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Novo PR · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body grid place-items-center px-4 py-8">
+    <main class="max-w-md w-full text-center">
+      <div class="text-xs uppercase tracking-widest text-brand-lime mb-2">Novo recorde pessoal</div>
+      <h1 class="font-display text-3xl tracking-tight mb-1">{exerciseLabel(record.exercise as ExerciseId)}</h1>
+      <div class="font-display text-7xl text-brand-lime tabular-nums leading-none my-4">
+        {record.weight_kg}
+        <span class="text-2xl text-navy-300 ml-1">kg</span>
+      </div>
+
+      {delta != null ? (
+        <p class="text-sm text-navy-300 mb-8">
+          +{delta.toFixed(1)} kg sobre seu PR anterior ({previousBest} kg).
+        </p>
+      ) : (
+        <p class="text-sm text-navy-300 mb-8">Seu primeiro registro nesse movimento.</p>
+      )}
+
+      <div class="space-y-3">
+        <a
+          href={trophyHref}
+          class="block w-full rounded-lg bg-brand-lime px-4 py-3.5 text-sm font-semibold text-navy-900 hover:opacity-90 transition"
+        >
+          Transforme em troféu →
+        </a>
+
+        <a
+          href={`/api/pr/card/${record.id}.png`}
+          download={`pr-${record.exercise}-${record.weight_kg}kg.png`}
+          class="block w-full rounded-lg border border-navy-600 px-4 py-3 text-sm font-semibold hover:bg-navy-800 transition"
+        >
+          Baixar card pra story
+        </a>
+
+        <a href="/pr" class="block text-xs text-navy-300 hover:text-white pt-2">
+          Voltar pros meus PRs
+        </a>
+      </div>
+
+      {/* Helper preview: which plates would go on the bar */}
+      {split.pairs.length > 0 && (
+        <div class="mt-10 pt-6 border-t border-navy-700">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300 mb-2">Anilhas (cada lado)</div>
+          <div class="flex justify-center flex-wrap gap-1.5">
+            {split.pairs.map((p) => (
+              <span class="text-xs rounded bg-navy-800 px-2 py-1 border border-navy-700">
+                {p.count}× {p.kg} kg
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </main>
+  </body>
+</html>

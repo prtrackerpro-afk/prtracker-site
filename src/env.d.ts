@@ -33,6 +33,12 @@ interface ImportMeta {
 declare namespace App {
   interface Locals {
     admin?: { email: string; userId: string };
+    athlete?: {
+      userId: string;
+      email: string;
+      displayName: string | null;
+      primaryBoxId: string | null;
+    };
   }
 }
 
