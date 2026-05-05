@@ -58,18 +58,27 @@ const RENAMES: RenameSpec[] = [
 // Preço bate com TikTok (sem promoção). Bling Simples Nacional → NCM
 // 39264000 (default em createProduct).
 const CREATES: CreateProductInput[] = [
+  // --- Tier de kits Mini Anilhas (3 níveis, regra "pares × R$10 com leve desconto") ---
+  // Felipe valida pricing como `pares × R$10 - R$1..5`. Ver memory project_pricing_kits_tiktok.md.
   {
-    codigo: "TT-ANILHA-ULTRA",
-    nome: "Ultra Kit Mini Anilhas - Réplica Oficial (TikTok)",
-    preco: 360.0,
-    pesoBruto: 0.5,
+    codigo: "TT-ANILHA-BASIC",
+    nome: "Kit Mini Anilhas Essencial 157,5kg - Réplica Oficial (TikTok)",
+    preco: 69.0, // 7 pares × R$10 - R$1
+    pesoBruto: 0.19,
   },
   {
     codigo: "TT-ANILHA-SUPER",
-    nome: "Super Kit Mini Anilhas - Réplica Oficial (TikTok)",
-    preco: 219.0,
-    pesoBruto: 0.4,
+    nome: "Super Kit Mini Anilhas 307,5kg - Réplica Oficial (TikTok)",
+    preco: 119.0, // 12 pares × R$10 - R$1
+    pesoBruto: 0.314,
   },
+  {
+    codigo: "TT-ANILHA-ULTRA",
+    nome: "Ultra Kit Mini Anilhas 747,5kg - Réplica Oficial (TikTok)",
+    preco: 265.0, // 27 pares × R$10 - R$5
+    pesoBruto: 0.62,
+  },
+  // --- Bundles Bench/Deadlift/Power Rack/Mega Academia ---
   {
     codigo: "TT-BENCH-120",
     nome: "Mini Bench Press + 120kg em anilhas (TikTok)",
