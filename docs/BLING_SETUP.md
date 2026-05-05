@@ -143,13 +143,15 @@ Site usa slugs (`deadlift-set`), Bling exige códigos padronizados. A tradução
 
 | Site slug | Bling código |
 |---|---|
-| `deadlift-set` | `DEAD-V1` |
-| `bench-press-set` | `BENCH-V1` |
-| `power-rack-set` | `POWER-V1` |
-| `my-pr-set` | `MYPR-V1` |
+| `deadlift-set` | `DEADLIFT-SET` |
+| `bench-press-set` | `BENCH-SET` |
+| `power-rack-set` | `POWER-SET` |
+| `my-pr-set` | `MYPR-SET` |
 | `camiseta-masculina` (size) | `TEE-MASC-{P,M,G,GG}` |
 | `camiseta-feminina-baby-look` (size) | `TEE-BABY-{P,M,G,GG}` |
 | `anilhas` (plates[]) | `ANILHA-{25,20,15,10,5,2.5,1.25}` (1 line por peso) |
+
+> Bundles marketplace com peso fixo (`TT-BENCH-120`, `TT-DEAD-200`, `TT-MEGA-1000`, etc) são SKUs separadas — só usadas em listings TikTok/ML/Shopee, não no checkout do site. Ver `sync-marketplace-skus.ts` pro catálogo completo.
 
 Se um produto com esse código já existe no Bling, é reusado. Se não existe, é criado on-the-fly (com NCM e categoria definidos no `sku-map.ts`).
 

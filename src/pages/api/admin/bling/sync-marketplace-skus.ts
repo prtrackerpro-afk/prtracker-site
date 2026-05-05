@@ -298,7 +298,7 @@ const CREATES: CreateProductInput[] = [
 const AUTO_CREATED_PATTERNS = [
   /^0+\d{1,4}$/, // "001", "0001", "00012"
   /^KIT-ANILHAS/i,
-  /^[A-Z0-9]{1,4}$/, // códigos curtos demais pra ser canônicos (DEAD-V1 tem 7)
+  /^[A-Z0-9]{1,4}$/, // códigos curtos demais pra ser canônicos (BENCH-SET tem 9)
 ];
 
 function isLikelyAutoCreated(codigo: string | undefined): boolean {

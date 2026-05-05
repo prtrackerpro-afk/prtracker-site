@@ -24,10 +24,12 @@ const SITE_URL = (
 // SKUs canônicos que o webhook do site cria automaticamente (ver sku-map.ts).
 // Manter sincronizado: se sku-map mudar, este array também.
 const CANONICAL_SITE_SKUS = new Set<string>([
-  "DEAD-V1",
-  "BENCH-V1",
-  "POWER-V1",
-  "MYPR-V1",
+  "DEADLIFT-SET",
+  "BENCH-SET",
+  "POWER-SET",
+  "MYPR-SET",
+  // Camisetas pais (não vendem sozinhos — só pra organizar variações no Bling)
+  "TEE-MASC", "TEE-BABY",
   "TEE-MASC-P", "TEE-MASC-M", "TEE-MASC-G", "TEE-MASC-GG",
   "TEE-BABY-P", "TEE-BABY-M", "TEE-BABY-G", "TEE-BABY-GG",
   "ANILHA-25", "ANILHA-20", "ANILHA-15", "ANILHA-10",
@@ -39,14 +41,16 @@ const CANONICAL_SITE_SKUS = new Set<string>([
 // O Bling baixa e armazena a imagem dessas URLs quando recebe via
 // midia.imagens.externas.
 const CANONICAL_IMAGE_BY_SKU: Record<string, string> = {
-  "DEAD-V1": `${SITE_URL}/images/products/deadlift-set/hero.jpg`,
-  "BENCH-V1": `${SITE_URL}/images/products/bench-press-set/hero.jpg`,
-  "POWER-V1": `${SITE_URL}/images/products/power-rack-set/hero.jpg`,
-  "MYPR-V1": `${SITE_URL}/images/products/my-pr-set/hero.jpg`,
+  "DEADLIFT-SET": `${SITE_URL}/images/products/deadlift-set/hero.jpg`,
+  "BENCH-SET": `${SITE_URL}/images/products/bench-press-set/hero.jpg`,
+  "POWER-SET": `${SITE_URL}/images/products/power-rack-set/hero.jpg`,
+  "MYPR-SET": `${SITE_URL}/images/products/my-pr-set/hero.jpg`,
+  "TEE-MASC": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
   "TEE-MASC-P": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
   "TEE-MASC-M": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
   "TEE-MASC-G": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
   "TEE-MASC-GG": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
+  "TEE-BABY": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
   "TEE-BABY-P": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
   "TEE-BABY-M": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
   "TEE-BABY-G": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
@@ -63,7 +67,7 @@ const CANONICAL_IMAGE_BY_SKU: Record<string, string> = {
 
 // Heurística pra associar produtos com SKUs não-canônicos a um hero do site
 // pelo nome. Útil pros listings de marketplace/legado tipo "Mini Bench Press"
-// que não usam BENCH-V1 mas representam o mesmo produto físico.
+// que não usam BENCH-SET mas representam o mesmo produto físico.
 function suggestImageByName(nome: string): string | null {
   const n = nome.toLowerCase();
   if (n.includes("deadlift")) return `${SITE_URL}/images/products/deadlift-set/hero.jpg`;
