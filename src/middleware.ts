@@ -7,7 +7,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const pathname = url.pathname;
 
   const isAdminRoute =
-    pathname.startsWith("/admin") &&
+    (pathname === "/admin" || pathname.startsWith("/admin/")) &&
     pathname !== "/admin/login" &&
     !pathname.startsWith("/admin/api/");
 
@@ -34,8 +34,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // PR Tracker app — athlete-facing, any signed-in Supabase user. Public:
   // /pr/login, /pr/auth/* (callback flow), and /pr/box/* (read-only boxes).
   // Card image endpoint is also public so it can be embedded anywhere.
+  // BUG fix: `pathname.startsWith("/pr")` casava com `/product/*` (porque
+  // "product" começa com "pr") — fazia o middleware tentar autenticar via
+  // Supabase ao prerenderizar páginas de produto, quebrando o build em
+  // ambientes sem env vars Supabase.
   const isPrAppRoute =
-    pathname.startsWith("/pr") &&
+    (pathname === "/pr" || pathname.startsWith("/pr/")) &&
     !pathname.startsWith("/pr/login") &&
     !pathname.startsWith("/pr/auth/") &&
     !pathname.startsWith("/pr/box/");
