@@ -544,9 +544,20 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
               });
               const data = await res.json().catch(() => ({}));
               if (!res.ok) {
+                const errMsg = (data && (data.error || data.message)) ?? `HTTP ${res.status}`;
                 b.textContent = "Falha";
+                b.title = String(errMsg).slice(0, 400);
                 b.classList.add("text-red-300");
-                console.error("[repair]", id, data);
+                console.error("[repair]", id, errMsg, data);
+                // Mostra detalhe inline em uma linha extra
+                const row = auditResult!.querySelector(`[data-product-row="${id}"]`);
+                const cell = row?.querySelector("td:nth-child(3)");
+                if (cell && !cell.querySelector(".repair-err")) {
+                  const div = document.createElement("div");
+                  div.className = "repair-err mt-1 text-[10px] text-red-300";
+                  div.textContent = `erro: ${String(errMsg).slice(0, 200)}`;
+                  cell.appendChild(div);
+                }
                 setTimeout(() => {
                   b.textContent = orig;
                   b.classList.remove("text-red-300");
