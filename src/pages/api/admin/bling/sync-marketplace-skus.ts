@@ -40,15 +40,20 @@ interface RenameSpec {
 //
 // Outros suspeitos (KIT-ANILHAS-*, 0001) — descobrimos pelo report
 // embutido neste endpoint e refatoramos depois.
+//
+// O "001" do pedido #41 vai pra TEE-MASC-M (tamanho assumido — Felipe
+// despachou pra conta pessoal de teste). Se for outro tamanho, ajustar
+// manualmente no Bling depois (não há como inferir do payload TikTok
+// pré-variação que fizemos hoje).
 const RENAMES: RenameSpec[] = [
   {
     fromCodigo: "001",
-    toCodigo: "TT-TEE-MASC",
+    toCodigo: "TEE-MASC-M",
     fallbackCreate: {
-      codigo: "TT-TEE-MASC",
-      nome: "A melhor camiseta de treino! (TikTok)",
-      preco: 89.0,
-      pesoBruto: 0.25,
+      codigo: "TEE-MASC-M",
+      nome: "Camiseta de Treino PR Tracker - Masculina M",
+      preco: 75.0,
+      pesoBruto: 0.2,
     },
   },
 ];
@@ -116,16 +121,62 @@ const CREATES: CreateProductInput[] = [
     pesoBruto: 0.7,
   },
   {
-    codigo: "TT-MYPR",
-    nome: "Troféu de Crossfit - PR de Todos os Exercícios (TikTok)",
+    codigo: "TT-MYPR-120",
+    nome: "Troféu de Crossfit Mini - 20 Exercícios LPO + 120kg Anilhas (TikTok)",
     preco: 184.0,
-    pesoBruto: 0.5,
+    pesoBruto: 0.3,
   },
   {
     codigo: "TT-MEGA-600",
     nome: "Mini Academia Realista +600kg Em Anilhas (TikTok)",
     preco: 597.0,
     pesoBruto: 1.0,
+  },
+  // --- Camisetas (canônicas, cross-channel — site + marketplaces) ---
+  // Preço TikTok R$ 75 (vs site R$ 80 do Brand Bible). Estoque distribuído
+  // por tamanho: P=6/M=8/G=7/GG=6 (Masculina), P=5/M=6/G=5 (Baby Look).
+  // Baby Look GG não estamos produzindo por ora.
+  {
+    codigo: "TEE-MASC-P",
+    nome: "Camiseta de Treino PR Tracker - Masculina P",
+    preco: 75.0,
+    pesoBruto: 0.18,
+  },
+  {
+    codigo: "TEE-MASC-M",
+    nome: "Camiseta de Treino PR Tracker - Masculina M",
+    preco: 75.0,
+    pesoBruto: 0.2,
+  },
+  {
+    codigo: "TEE-MASC-G",
+    nome: "Camiseta de Treino PR Tracker - Masculina G",
+    preco: 75.0,
+    pesoBruto: 0.22,
+  },
+  {
+    codigo: "TEE-MASC-GG",
+    nome: "Camiseta de Treino PR Tracker - Masculina GG",
+    preco: 75.0,
+    pesoBruto: 0.24,
+  },
+  {
+    codigo: "TEE-BABY-P",
+    nome: "Camiseta de Treino PR Tracker - Baby Look P",
+    preco: 75.0,
+    pesoBruto: 0.16,
+  },
+  {
+    codigo: "TEE-BABY-M",
+    nome: "Camiseta de Treino PR Tracker - Baby Look M",
+    preco: 75.0,
+    pesoBruto: 0.18,
+  },
+  {
+    codigo: "TEE-BABY-G",
+    nome: "Camiseta de Treino PR Tracker - Baby Look G",
+    preco: 75.0,
+    pesoBruto: 0.2,
   },
 ];
 
