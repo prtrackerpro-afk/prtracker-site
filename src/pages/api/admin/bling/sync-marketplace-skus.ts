@@ -18,6 +18,7 @@
 import type { APIRoute } from "astro";
 import {
   findProductByCode,
+  getProduct,
   listAllProducts,
   updateProduct,
   createProduct,
@@ -28,31 +29,187 @@ import { isConnected } from "~/lib/bling/oauth";
 export const prerender = false;
 
 interface RenameSpec {
-  fromCodigo: string;
+  /**
+   * Identificação do produto a renomear. Pelo menos um dos dois deve
+   * ser passado. `fromId` ganha precedência (necessário quando o produto
+   * tem código vazio — caso das 9 variações de camiseta auto-criadas
+   * pelo webhook do site).
+   */
+  fromId?: number;
+  fromCodigo?: string;
   toCodigo: string;
-  /** Se `fromCodigo` não existir mais (já renomeado ou outro motivo), cria com este input. */
+  /** Se o produto não existir mais (já renomeado, deletado etc.), cria com este input. */
   fallbackCreate?: CreateProductInput;
 }
 
-// Renames de produtos auto-criados pelo Bling quando recebeu pedidos
-// TikTok com SKUs erradas. Ver pedido #41 (camiseta) — Bling criou
-// código "001" porque o TikTok mandou SKU "001".
+// Renames cobrem dois cenários:
 //
-// Outros suspeitos (KIT-ANILHAS-*, 0001) — descobrimos pelo report
-// embutido neste endpoint e refatoramos depois.
+// 1) Produtos auto-criados pelo Bling com código placeholder quando
+//    recebeu pedidos com SKUs erradas (ex: "001" do TikTok pedido #41,
+//    "0001" do site, "KIT-ANILHAS-PERSONAL*" auto-gerado).
 //
-// O "001" do pedido #41 vai pra TEE-MASC-M (tamanho assumido — Felipe
-// despachou pra conta pessoal de teste). Se for outro tamanho, ajustar
-// manualmente no Bling depois (não há como inferir do payload TikTok
-// pré-variação que fizemos hoje).
+// 2) Variações de produtos do site cadastradas SEM código (Bling cria
+//    com `codigo: ""` quando webhook do site não traz SKU). Renomear
+//    requer fromId pois `findProductByCode("")` não funciona.
+//
+// CONFLITO TEE-MASC-M: existem dois candidatos:
+//   - id 16642958620 "001" (criado do pedido #41 — Felipe Laier teste)
+//   - id 16595689452 "" "Camiseta Masculina Tamanhos:M" R$80 (variação site)
+// Resolução: o R$80 vira TEE-MASC-M canonical (cross-channel site+marketplace);
+// o "001" vira TEE-MASC-M-LEGACY pra preservar histórico fiscal pedido #41
+// sem ocupar o nome canonical.
+//
+// SKUs canônicas escolhidas:
+//   - Kits-base do site (sem anilhas, "Monte sua barra"): BENCH-SET, DEADLIFT-SET,
+//     POWER-SET, MYPR-SET (sem prefixo — site é o canonical channel)
+//   - Camisetas (cross-channel, mesma peça em todos canais): TEE-MASC-{P,M,G,GG},
+//     TEE-BABY-{P,M,G}
+//   - Bundles marketplace com peso fixo: TT-* (TT-BENCH-120, TT-DEAD-200, etc)
 const RENAMES: RenameSpec[] = [
+  // --- TEE-MASC-M conflict resolution: marca o "001" como LEGACY ANTES
+  //     de renomear o R$80 pra TEE-MASC-M (libera o nome canonical).
   {
     fromCodigo: "001",
+    toCodigo: "TEE-MASC-M-LEGACY",
+  },
+
+  // --- Kits-base do site (modelo "Monte sua barra" — anilhas avulsas) ---
+  {
+    fromId: 16595689321,
+    fromCodigo: "KIT-ANILHAS-PERSONAL-1",
+    toCodigo: "BENCH-SET",
+    fallbackCreate: {
+      codigo: "BENCH-SET",
+      nome: "Bench Press Set",
+      preco: 169.9,
+      pesoBruto: 0.4,
+    },
+  },
+  {
+    fromId: 16595689351,
+    fromCodigo: "KIT-ANILHAS-PERSONAL-1-1",
+    toCodigo: "DEADLIFT-SET",
+    fallbackCreate: {
+      codigo: "DEADLIFT-SET",
+      nome: "Deadlift Set",
+      preco: 119.9,
+      pesoBruto: 0.4,
+    },
+  },
+  {
+    fromId: 16595689283,
+    fromCodigo: "KIT-ANILHAS-PERSONAL",
+    toCodigo: "POWER-SET",
+    fallbackCreate: {
+      codigo: "POWER-SET",
+      nome: "Power Rack Set",
+      preco: 149.9,
+      pesoBruto: 0.4,
+    },
+  },
+  {
+    fromId: 16593185009,
+    fromCodigo: "0001",
+    toCodigo: "MYPR-SET",
+    fallbackCreate: {
+      codigo: "MYPR-SET",
+      nome: "My PR Set",
+      preco: 134.9,
+      pesoBruto: 0.3,
+    },
+  },
+
+  // --- Camisetas Masculinas (variações site, R$80, código vazio) ---
+  // Pai abstrato (não vende sozinho — só pra organizar variações no Bling).
+  {
+    fromId: 16595689393,
+    toCodigo: "TEE-MASC",
+    fallbackCreate: {
+      codigo: "TEE-MASC",
+      nome: "Camiseta de Treino PR Tracker - Masculina",
+      preco: 80,
+      pesoBruto: 0.2,
+    },
+  },
+  {
+    fromId: 16595689456,
+    toCodigo: "TEE-MASC-P",
+    fallbackCreate: {
+      codigo: "TEE-MASC-P",
+      nome: "Camiseta de Treino PR Tracker - Masculina P",
+      preco: 80,
+      pesoBruto: 0.18,
+    },
+  },
+  {
+    fromId: 16595689452,
     toCodigo: "TEE-MASC-M",
     fallbackCreate: {
       codigo: "TEE-MASC-M",
       nome: "Camiseta de Treino PR Tracker - Masculina M",
-      preco: 75.0,
+      preco: 80,
+      pesoBruto: 0.2,
+    },
+  },
+  {
+    fromId: 16595689448,
+    toCodigo: "TEE-MASC-G",
+    fallbackCreate: {
+      codigo: "TEE-MASC-G",
+      nome: "Camiseta de Treino PR Tracker - Masculina G",
+      preco: 80,
+      pesoBruto: 0.22,
+    },
+  },
+  {
+    fromId: 16595689430,
+    toCodigo: "TEE-MASC-GG",
+    fallbackCreate: {
+      codigo: "TEE-MASC-GG",
+      nome: "Camiseta de Treino PR Tracker - Masculina GG",
+      preco: 80,
+      pesoBruto: 0.24,
+    },
+  },
+
+  // --- Camisetas Baby Look (variações site, R$80, código vazio) ---
+  {
+    fromId: 16595689463,
+    toCodigo: "TEE-BABY",
+    fallbackCreate: {
+      codigo: "TEE-BABY",
+      nome: "Camiseta de Treino PR Tracker - Baby Look",
+      preco: 80,
+      pesoBruto: 0.18,
+    },
+  },
+  {
+    fromId: 16595689504,
+    toCodigo: "TEE-BABY-P",
+    fallbackCreate: {
+      codigo: "TEE-BABY-P",
+      nome: "Camiseta de Treino PR Tracker - Baby Look P",
+      preco: 80,
+      pesoBruto: 0.16,
+    },
+  },
+  {
+    fromId: 16595689499,
+    toCodigo: "TEE-BABY-M",
+    fallbackCreate: {
+      codigo: "TEE-BABY-M",
+      nome: "Camiseta de Treino PR Tracker - Baby Look M",
+      preco: 80,
+      pesoBruto: 0.18,
+    },
+  },
+  {
+    fromId: 16595689494,
+    toCodigo: "TEE-BABY-G",
+    fallbackCreate: {
+      codigo: "TEE-BABY-G",
+      nome: "Camiseta de Treino PR Tracker - Baby Look G",
+      preco: 80,
       pesoBruto: 0.2,
     },
   },
@@ -132,52 +289,8 @@ const CREATES: CreateProductInput[] = [
     preco: 597.0,
     pesoBruto: 1.0,
   },
-  // --- Camisetas (canônicas, cross-channel — site + marketplaces) ---
-  // Preço TikTok R$ 75 (vs site R$ 80 do Brand Bible). Estoque distribuído
-  // por tamanho: P=6/M=8/G=7/GG=6 (Masculina), P=5/M=6/G=5 (Baby Look).
-  // Baby Look GG não estamos produzindo por ora.
-  {
-    codigo: "TEE-MASC-P",
-    nome: "Camiseta de Treino PR Tracker - Masculina P",
-    preco: 75.0,
-    pesoBruto: 0.18,
-  },
-  {
-    codigo: "TEE-MASC-M",
-    nome: "Camiseta de Treino PR Tracker - Masculina M",
-    preco: 75.0,
-    pesoBruto: 0.2,
-  },
-  {
-    codigo: "TEE-MASC-G",
-    nome: "Camiseta de Treino PR Tracker - Masculina G",
-    preco: 75.0,
-    pesoBruto: 0.22,
-  },
-  {
-    codigo: "TEE-MASC-GG",
-    nome: "Camiseta de Treino PR Tracker - Masculina GG",
-    preco: 75.0,
-    pesoBruto: 0.24,
-  },
-  {
-    codigo: "TEE-BABY-P",
-    nome: "Camiseta de Treino PR Tracker - Baby Look P",
-    preco: 75.0,
-    pesoBruto: 0.16,
-  },
-  {
-    codigo: "TEE-BABY-M",
-    nome: "Camiseta de Treino PR Tracker - Baby Look M",
-    preco: 75.0,
-    pesoBruto: 0.18,
-  },
-  {
-    codigo: "TEE-BABY-G",
-    nome: "Camiseta de Treino PR Tracker - Baby Look G",
-    preco: 75.0,
-    pesoBruto: 0.2,
-  },
+  // Nota: TEE-MASC-* / TEE-BABY-* NÃO ficam em CREATES — vão ser renames
+  // das variações site existentes (R$80, código vazio). Ver array RENAMES.
 ];
 
 // Patterns que indicam produto auto-criado pelo Bling (não cadastrado
@@ -223,9 +336,12 @@ export const POST: APIRoute = async ({ request }) => {
 
   // --- RENAMES ---
   for (const r of RENAMES) {
+    const fromLabel = r.fromCodigo ?? (r.fromId != null ? `id ${r.fromId}` : "?");
     try {
       const existingTo = await findProductByCode(r.toCodigo);
-      if (existingTo) {
+      if (existingTo && existingTo.id !== r.fromId) {
+        // Já existe um produto DIFERENTE com o código alvo. Skip pra não
+        // colidir. (Se for o mesmo id, significa que rodamos antes — idempotent.)
         log.push({
           action: "skip",
           codigo: r.toCodigo,
@@ -235,13 +351,31 @@ export const POST: APIRoute = async ({ request }) => {
         continue;
       }
 
-      const existingFrom = await findProductByCode(r.fromCodigo);
+      // Resolve produto-origem. fromId tem precedência (necessário pra
+      // produtos com código vazio).
+      let existingFrom = null;
+      if (r.fromId != null) {
+        existingFrom = await getProduct(r.fromId);
+      } else if (r.fromCodigo) {
+        existingFrom = await findProductByCode(r.fromCodigo);
+      }
+
       if (existingFrom) {
+        if (existingFrom.codigo === r.toCodigo) {
+          // Já tem o código alvo — provavelmente rodamos antes. Idempotent skip.
+          log.push({
+            action: "skip",
+            codigo: r.toCodigo,
+            detail: `id ${existingFrom.id} já tem código ${r.toCodigo}`,
+            blingId: existingFrom.id,
+          });
+          continue;
+        }
         if (dryRun) {
           log.push({
             action: "rename",
-            codigo: `${r.fromCodigo} → ${r.toCodigo}`,
-            detail: `dryRun (id ${existingFrom.id})`,
+            codigo: `${fromLabel} → ${r.toCodigo}`,
+            detail: `dryRun (id ${existingFrom.id}, "${existingFrom.nome}")`,
             blingId: existingFrom.id,
           });
         } else {
@@ -250,7 +384,7 @@ export const POST: APIRoute = async ({ request }) => {
           });
           log.push({
             action: "rename",
-            codigo: `${r.fromCodigo} → ${r.toCodigo}`,
+            codigo: `${fromLabel} → ${r.toCodigo}`,
             blingId: updated.id,
           });
         }
@@ -259,7 +393,7 @@ export const POST: APIRoute = async ({ request }) => {
           log.push({
             action: "create",
             codigo: r.toCodigo,
-            detail: "dryRun (fallback create — fromCodigo não encontrado)",
+            detail: "dryRun (fallback create — produto-origem não encontrado)",
           });
         } else {
           const created = await createProduct(r.fallbackCreate);
@@ -272,7 +406,7 @@ export const POST: APIRoute = async ({ request }) => {
       } else {
         log.push({
           action: "skip",
-          codigo: r.fromCodigo,
+          codigo: fromLabel,
           detail: "não encontrado e sem fallback",
         });
       }
@@ -280,7 +414,7 @@ export const POST: APIRoute = async ({ request }) => {
       const msg = err instanceof Error ? err.message : String(err);
       log.push({
         action: "error",
-        codigo: `${r.fromCodigo} → ${r.toCodigo}`,
+        codigo: `${fromLabel} → ${r.toCodigo}`,
         detail: msg,
       });
     }
@@ -322,12 +456,18 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const all = await listAllProducts();
     const renameTargets = new Set(RENAMES.map((r) => r.toCodigo));
-    const renameSources = new Set(RENAMES.map((r) => r.fromCodigo));
+    const renameSourceCodes = new Set(
+      RENAMES.map((r) => r.fromCodigo).filter((c): c is string => Boolean(c)),
+    );
+    const renameSourceIds = new Set(
+      RENAMES.map((r) => r.fromId).filter((i): i is number => i != null),
+    );
     suspects = all
       .filter((p) => {
+        if (renameSourceIds.has(p.id)) return false;
         const c = p.codigo;
         if (!c) return true;
-        if (renameTargets.has(c) || renameSources.has(c)) return false;
+        if (renameTargets.has(c) || renameSourceCodes.has(c)) return false;
         return isLikelyAutoCreated(c);
       })
       .map((p) => ({
