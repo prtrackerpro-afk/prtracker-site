@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(gh pr create --base main --head feat/site-chatbot --title 'feat\\(site\\): WhatsApp FAB + chatbot Groq' --body ' *)",
+      "Bash(gh pr *)",
+      "Bash(npm run *)",
+      "Bash(grep -oE '\\\\.fab[^,{]*\\\\{[^}]{0,80}' .vercel/output/static/index.html)",
+      "Bash(grep -oE '\\\\.fab[^,{]*\\\\{[^}]{0,120}\\\\}' .vercel/output/static/_astro/cart.BKEUZtY3.css)",
+      "Bash(grep -oE '\\\\.chat-msg[^{,]*\\\\{[^}]{0,80}' .vercel/output/static/_astro/cart.MGY38y7N.css)",
+      "Bash(git commit -m ' *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)"
+    ]
+  }
+}
