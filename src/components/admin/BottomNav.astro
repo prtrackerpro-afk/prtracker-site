@@ -9,19 +9,28 @@ import {
 } from "./icons";
 
 interface Props {
-  active: "overview" | "meta" | "ga4" | "sales" | "bling" | "alerts" | "settings";
+  active: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "alerts" | "settings";
   alertCount?: number;
 }
 const { active, alertCount = 0 } = Astro.props;
 
-const items: Array<{ id: Props["active"]; href: string; label: string; icon: string }> = [
+// Mobile bottom nav: 6 itens cabem confortavelmente. TikTok partilha posição
+// com Bling visualmente (categoria "marketplace") — TikTok só aparece quando
+// o usuário está na seção dele, senão prioriza Bling. Refatorar pra menu
+// "marketplaces" agrupado quando ML/Shopee chegarem.
+const allItems: Array<{ id: Props["active"]; href: string; label: string; icon: string }> = [
   { id: "overview", href: "/admin", label: "Overview", icon: iconLayout },
   { id: "meta", href: "/admin/meta", label: "Meta", icon: iconChartBar },
   { id: "ga4", href: "/admin/ga4", label: "GA4", icon: iconGlobe },
   { id: "sales", href: "/admin/sales", label: "Vendas", icon: iconShoppingBag },
   { id: "bling", href: "/admin/bling", label: "Bling", icon: iconBox },
+  { id: "tiktok", href: "/admin/tiktok", label: "TikTok", icon: iconShoppingBag },
   { id: "alerts", href: "/admin/alerts", label: "Alertas", icon: iconBell },
 ];
+
+const items = active === "tiktok"
+  ? allItems.filter((i) => i.id !== "bling")
+  : allItems.filter((i) => i.id !== "tiktok");
 ---
 
 <nav

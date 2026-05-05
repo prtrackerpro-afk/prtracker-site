@@ -1,0 +1,245 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import {
+  getConnectionStatus,
+  type ConnectionStatus,
+} from "../../lib/tiktok/oauth";
+
+const url = new URL(Astro.request.url);
+const flash = {
+  tiktok: url.searchParams.get("tiktok"),
+  msg: url.searchParams.get("msg"),
+};
+
+const status: ConnectionStatus = await getConnectionStatus().catch(() => ({
+  connected: false,
+  shop_id: null,
+  shop_name: null,
+  seller_name: null,
+  region: null,
+  access_expires_at: null,
+  refresh_expires_at: null,
+}));
+
+function fmtDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+---
+
+<AdminLayout title="TikTok Shop" active="tiktok" user={Astro.locals.admin}>
+  <div class="px-4 md:px-8 py-6 max-w-7xl mx-auto space-y-6">
+    <header class="flex items-baseline justify-between">
+      <div>
+        <h1 class="text-2xl font-display tracking-tight">TikTok Shop</h1>
+        <p class="text-sm text-navy-300 mt-1">
+          Sincronização de SKUs e produtos com Bling. Audit + correção em massa.
+        </p>
+      </div>
+    </header>
+
+    {flash.tiktok === "connected" && (
+      <div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+        ✅ TikTok Shop conectado. Audit e correções via API agora disponíveis.
+      </div>
+    )}
+    {flash.tiktok === "denied" && (
+      <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        ⚠️ Autorização negada. {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.tiktok === "config_missing" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Configuração incompleta — TIKTOK_APP_KEY/APP_SECRET/REDIRECT_URI no Vercel.
+        {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.tiktok === "token_failed" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Falha ao trocar código por token.
+        {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.tiktok === "state_mismatch" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ State CSRF inválido — tente conectar de novo.
+      </div>
+    )}
+    {flash.tiktok === "missing_params" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ TikTok não retornou code/state — tente de novo.
+      </div>
+    )}
+
+    <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Status da conexão</div>
+          <div class="mt-2 flex items-center gap-2 flex-wrap">
+            {status.connected ? (
+              <>
+                <span class="inline-flex items-center rounded-full bg-green-500/20 text-green-300 px-2.5 py-1 text-xs font-medium">
+                  ● Conectado
+                </span>
+                {status.shop_name && (
+                  <span class="text-xs text-navy-200">
+                    Shop: <strong>{status.shop_name}</strong>
+                  </span>
+                )}
+                {status.region && (
+                  <span class="text-xs text-navy-300">({status.region})</span>
+                )}
+                {status.access_expires_at && (
+                  <span class="text-xs text-navy-300">
+                    Token válido até {fmtDate(status.access_expires_at)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span class="inline-flex items-center rounded-full bg-red-500/20 text-red-300 px-2.5 py-1 text-xs font-medium">
+                ● Desconectado
+              </span>
+            )}
+          </div>
+          {status.connected && status.seller_name && (
+            <div class="text-xs text-navy-400 mt-2">
+              Seller: {status.seller_name} · Shop ID: <code>{status.shop_id}</code>
+            </div>
+          )}
+        </div>
+        <div>
+          {status.connected ? (
+            <a
+              href="/api/admin/tiktok/connect"
+              class="inline-flex items-center rounded-lg border border-navy-600 px-3 py-1.5 text-xs hover:bg-navy-700/60"
+            >
+              Reconectar
+            </a>
+          ) : (
+            <a
+              href="/api/admin/tiktok/connect"
+              class="inline-flex items-center rounded-lg bg-lime-500 hover:bg-lime-400 text-navy-900 font-medium px-4 py-2 text-sm"
+            >
+              Conectar TikTok
+            </a>
+          )}
+        </div>
+      </div>
+    </section>
+
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <header class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-display tracking-tight">Auditoria de SKUs</h2>
+            <p class="text-sm text-navy-300 mt-1">
+              Lista todos os produtos TikTok e identifica SKUs fora do mapeamento canônico.
+            </p>
+          </div>
+          <button
+            id="btn-audit"
+            class="rounded-lg border border-navy-600 hover:bg-navy-700/60 px-3 py-1.5 text-xs"
+          >
+            Auditar produtos
+          </button>
+        </header>
+        <div id="audit-result" class="text-sm text-navy-200">
+          Clica em "Auditar produtos" pra carregar.
+        </div>
+      </section>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  const btn = document.getElementById("btn-audit");
+  const out = document.getElementById("audit-result");
+
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function badge(category) {
+    const map = {
+      canonical: "bg-green-500/20 text-green-300",
+      "non-canonical": "bg-amber-500/20 text-amber-300",
+      "no-sku": "bg-red-500/20 text-red-300",
+      "duplicate-sku": "bg-red-500/20 text-red-300",
+    };
+    return `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${map[category] ?? "bg-navy-600/40 text-navy-200"}">${category}</span>`;
+  }
+
+  async function runAudit() {
+    if (!btn || !out) return;
+    btn.disabled = true;
+    btn.textContent = "Auditando…";
+    out.innerHTML = '<p class="text-navy-300">Carregando produtos do TikTok…</p>';
+
+    try {
+      const res = await fetch("/api/admin/tiktok/audit-products", {
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+
+      const { summary, products } = json;
+      const rows = products
+        .map((p) => {
+          const skuRows = (p.skus ?? [])
+            .map(
+              (s) => `
+              <tr class="border-t border-navy-700/60">
+                <td class="px-3 py-2"><code class="text-xs">${escapeHtml(s.seller_sku ?? "(vazio)")}</code></td>
+                <td class="px-3 py-2">${badge(s.category)}</td>
+                <td class="px-3 py-2 text-xs text-navy-300">${escapeHtml((s.notes ?? []).join("; ") || "—")}</td>
+              </tr>
+            `,
+            )
+            .join("");
+          return `
+            <details class="rounded-lg border border-navy-700/60 ${p.has_issue ? "bg-amber-500/5" : "bg-navy-800/30"}">
+              <summary class="cursor-pointer px-3 py-2 text-sm flex items-center justify-between">
+                <span>
+                  ${p.has_issue ? "⚠️" : "✓"} <strong>${escapeHtml(p.title)}</strong>
+                  <span class="text-xs text-navy-400 ml-2">${escapeHtml(p.product_id)}</span>
+                </span>
+                <span class="text-xs text-navy-300">${(p.skus ?? []).length} SKU${(p.skus ?? []).length === 1 ? "" : "s"}</span>
+              </summary>
+              <table class="w-full text-sm">
+                <thead class="bg-navy-800/40 text-xs text-navy-300">
+                  <tr><th class="px-3 py-2 text-left">seller_sku</th><th class="px-3 py-2 text-left">categoria</th><th class="px-3 py-2 text-left">notas</th></tr>
+                </thead>
+                <tbody>${skuRows}</tbody>
+              </table>
+            </details>
+          `;
+        })
+        .join("");
+
+      out.innerHTML = `
+        <div class="mb-3 flex gap-3 text-xs text-navy-300">
+          <span><strong>${summary.total}</strong> produtos</span>
+          <span><strong class="text-amber-300">${summary.with_issue}</strong> com problema</span>
+          <span><strong class="text-red-300">${summary.duplicate_sku_count}</strong> SKUs duplicadas</span>
+        </div>
+        <div class="space-y-2">${rows}</div>
+      `;
+    } catch (err) {
+      out.innerHTML = `<p class="text-red-300 text-sm">Falha: ${escapeHtml(err.message ?? err)}</p>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Auditar produtos";
+    }
+  }
+
+  btn?.addEventListener("click", runAudit);
+</script>
