@@ -165,6 +165,33 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
       </section>
     )}
 
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Auditoria de produtos</div>
+            <p class="mt-1 text-sm text-navy-200">
+              Lista todos os produtos cadastrados no Bling, classifica
+              (canônico do site / legado de marketplace / sem código) e
+              mostra quem está sem imagem. Clica "Anexar imagem" pra subir
+              automaticamente a hero do site via API (URL externa,
+              <code class="text-brand-lime">midia.imagens.externas</code>).
+            </p>
+          </div>
+          <button
+            id="audit-products-btn"
+            type="button"
+            class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+          >
+            Auditar produtos
+          </button>
+        </div>
+        <div id="audit-products-result" class="mt-4 text-sm text-navy-300">
+          <span class="text-navy-400">Clica em "Auditar produtos" pra varrer o catálogo Bling.</span>
+        </div>
+      </section>
+    )}
+
     <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
         <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Sincronizados</div>
@@ -433,6 +460,168 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
         } finally {
           loadBtn.disabled = false;
           loadBtn.textContent = "Carregar lista";
+        }
+      });
+    }
+
+    // Audit + repair de produtos Bling. Lista produtos do Bling, classifica
+    // (canônico site / legado marketplace), e oferece botão de "Anexar
+    // imagem" por linha que chama PUT /produtos/{id} via /api/admin/bling/repair-product.
+    const auditBtn = document.getElementById("audit-products-btn") as HTMLButtonElement | null;
+    const auditResult = document.getElementById("audit-products-result");
+    if (auditBtn && auditResult) {
+      type AuditedProduct = {
+        id: number;
+        codigo?: string;
+        nome: string;
+        preco?: number;
+        situacao?: string;
+        category: "canonical-site" | "marketplace-legacy" | "unknown";
+        hasImage: boolean;
+        imageCount: number;
+        suggestedImageUrl: string | null;
+        notes: string[];
+      };
+
+      function escapeHtml(s: string): string {
+        return s.replace(/[&<>"]/g, (c) =>
+          c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+        );
+      }
+
+      function badgeFor(category: AuditedProduct["category"]): string {
+        switch (category) {
+          case "canonical-site":
+            return '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">site</span>';
+          case "marketplace-legacy":
+            return '<span class="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">legado</span>';
+          default:
+            return '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">?</span>';
+        }
+      }
+
+      function renderRow(p: AuditedProduct): string {
+        const codigo = p.codigo ? `<span class="font-mono text-brand-lime">${escapeHtml(p.codigo)}</span>` : '<span class="text-navy-500">—</span>';
+        const preco = p.preco != null ? `R$ ${p.preco.toFixed(2).replace(".", ",")}` : "—";
+        const sit = p.situacao === "A" ? "Ativo" : p.situacao === "I" ? "Inativo" : (p.situacao ?? "—");
+        const imgCell = p.hasImage
+          ? `<span class="text-green-300">${p.imageCount}</span>`
+          : `<span class="text-red-300">0</span>`;
+        const action = !p.hasImage && p.suggestedImageUrl
+          ? `<button type="button" data-attach-id="${p.id}" data-attach-url="${escapeHtml(p.suggestedImageUrl)}" class="rounded bg-brand-lime/20 hover:bg-brand-lime/40 text-brand-lime px-2 py-0.5 text-[11px]">Anexar imagem</button>`
+          : p.suggestedImageUrl
+          ? `<button type="button" data-attach-id="${p.id}" data-attach-url="${escapeHtml(p.suggestedImageUrl)}" class="rounded bg-navy-700 hover:bg-navy-600 text-navy-200 px-2 py-0.5 text-[11px]">+ outra</button>`
+          : `<span class="text-navy-500 text-[11px]">sem sugestão</span>`;
+        const notes = p.notes.length > 0
+          ? `<div class="mt-1 text-[10px] text-navy-400">${p.notes.map(escapeHtml).join(" · ")}</div>`
+          : "";
+        return `
+          <tr class="hover:bg-navy-700/30" data-product-row="${p.id}">
+            <td class="px-3 py-2">${badgeFor(p.category)}</td>
+            <td class="px-3 py-2">${codigo}</td>
+            <td class="px-3 py-2">${escapeHtml(p.nome)}${notes}</td>
+            <td class="px-3 py-2 text-right">${preco}</td>
+            <td class="px-3 py-2 text-xs text-navy-300">${sit}</td>
+            <td class="px-3 py-2 text-center">${imgCell}</td>
+            <td class="px-3 py-2">${action}</td>
+          </tr>
+        `;
+      }
+
+      function wireAttachButtons(): void {
+        auditResult!.querySelectorAll<HTMLButtonElement>("[data-attach-id]").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-attach-id") ?? "";
+            const url = b.getAttribute("data-attach-url") ?? "";
+            const orig = b.textContent;
+            b.disabled = true;
+            b.textContent = "Anexando…";
+            try {
+              const res = await fetch(`/api/admin/bling/repair-product/${id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageUrl: url }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                b.textContent = "Falha";
+                b.classList.add("text-red-300");
+                console.error("[repair]", id, data);
+                setTimeout(() => {
+                  b.textContent = orig;
+                  b.classList.remove("text-red-300");
+                  b.disabled = false;
+                }, 2500);
+                return;
+              }
+              b.textContent = `OK (${data.imageCount})`;
+              b.classList.remove("bg-brand-lime/20", "hover:bg-brand-lime/40", "text-brand-lime");
+              b.classList.add("bg-green-500/30", "text-green-200");
+            } catch (err) {
+              b.textContent = "Erro";
+              b.classList.add("text-red-300");
+              console.error("[repair]", err);
+              setTimeout(() => {
+                b.textContent = orig;
+                b.classList.remove("text-red-300");
+                b.disabled = false;
+              }, 2500);
+            }
+          });
+        });
+      }
+
+      auditBtn.addEventListener("click", async () => {
+        auditBtn.disabled = true;
+        auditBtn.textContent = "Auditando…";
+        auditResult.innerHTML = '<span class="text-navy-400">Lendo catálogo do Bling (pode levar 5-10s)…</span>';
+        try {
+          const res = await fetch("/api/admin/bling/audit-products", {
+            headers: { Accept: "application/json" },
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            auditResult.innerHTML = `<span class="text-red-300">Erro: ${data.error ?? res.statusText}</span>`;
+            return;
+          }
+          const products: AuditedProduct[] = data.products ?? [];
+          const summary = data.summary ?? {};
+          if (products.length === 0) {
+            auditResult.innerHTML = '<span class="text-amber-300">Nenhum produto cadastrado no Bling.</span>';
+            return;
+          }
+          const rows = products.map(renderRow).join("");
+          auditResult.innerHTML = `
+            <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
+              <span class="rounded bg-navy-700 px-2 py-0.5">${summary.total ?? products.length} total</span>
+              <span class="rounded bg-green-500/20 text-green-300 px-2 py-0.5">${summary.canonical_site ?? 0} canônicos</span>
+              <span class="rounded bg-amber-500/20 text-amber-300 px-2 py-0.5">${summary.marketplace_legacy ?? 0} legados</span>
+              <span class="rounded bg-red-500/20 text-red-300 px-2 py-0.5">${summary.missing_image ?? 0} sem imagem</span>
+            </div>
+            <div class="overflow-x-auto rounded border border-navy-700">
+              <table class="w-full text-sm">
+                <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
+                  <tr>
+                    <th class="text-left px-3 py-2">Cat</th>
+                    <th class="text-left px-3 py-2">SKU</th>
+                    <th class="text-left px-3 py-2">Nome</th>
+                    <th class="text-right px-3 py-2">Preço</th>
+                    <th class="text-left px-3 py-2">Sit.</th>
+                    <th class="text-center px-3 py-2">Imgs</th>
+                    <th class="text-left px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-navy-700/60">${rows}</tbody>
+              </table>
+            </div>
+            <p class="mt-2 text-xs text-navy-400">Botão "Anexar imagem" usa PUT /produtos/{id} no Bling com URL pública do site (Bling baixa e armazena).</p>
+          `;
+          wireAttachButtons();
+        } catch (e) {
+          auditResult.innerHTML = `<span class="text-red-300">Falha: ${e instanceof Error ? e.message : String(e)}</span>`;
+        } finally {
+          auditBtn.disabled = false;
+          auditBtn.textContent = "Auditar produtos";
         }
       });
     }
