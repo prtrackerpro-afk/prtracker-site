@@ -9,15 +9,15 @@ import {
 } from "./icons";
 
 interface Props {
-  active: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "alerts" | "settings";
+  active: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "alerts" | "settings";
   alertCount?: number;
 }
 const { active, alertCount = 0 } = Astro.props;
 
-// Mobile bottom nav: 6 itens cabem confortavelmente. TikTok partilha posição
-// com Bling visualmente (categoria "marketplace") — TikTok só aparece quando
-// o usuário está na seção dele, senão prioriza Bling. Refatorar pra menu
-// "marketplaces" agrupado quando ML/Shopee chegarem.
+// Mobile bottom nav: 6 itens cabem confortavelmente. Marketplaces (TikTok, ML)
+// partilham posição com Bling visualmente (categoria "canal de venda") — só
+// aparece o canal ativo, os outros caem fora da bar. Refatorar pra menu
+// "marketplaces" agrupado quando ficarem 3+ canais.
 const allItems: Array<{ id: Props["active"]; href: string; label: string; icon: string }> = [
   { id: "overview", href: "/admin", label: "Overview", icon: iconLayout },
   { id: "meta", href: "/admin/meta", label: "Meta", icon: iconChartBar },
@@ -25,12 +25,15 @@ const allItems: Array<{ id: Props["active"]; href: string; label: string; icon: 
   { id: "sales", href: "/admin/sales", label: "Vendas", icon: iconShoppingBag },
   { id: "bling", href: "/admin/bling", label: "Bling", icon: iconBox },
   { id: "tiktok", href: "/admin/tiktok", label: "TikTok", icon: iconShoppingBag },
+  { id: "ml", href: "/admin/ml", label: "ML", icon: iconShoppingBag },
   { id: "alerts", href: "/admin/alerts", label: "Alertas", icon: iconBell },
 ];
 
-const items = active === "tiktok"
-  ? allItems.filter((i) => i.id !== "bling")
-  : allItems.filter((i) => i.id !== "tiktok");
+// Mostra só o marketplace ATIVO + Bling como default (esconde os outros 2).
+const marketplaceActive: Array<Props["active"]> = ["tiktok", "ml"];
+const items = marketplaceActive.includes(active)
+  ? allItems.filter((i) => i.id !== "bling" && (i.id === active || !marketplaceActive.includes(i.id)))
+  : allItems.filter((i) => !marketplaceActive.includes(i.id));
 ---
 
 <nav
