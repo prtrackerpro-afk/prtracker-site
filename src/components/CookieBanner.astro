@@ -1,0 +1,143 @@
+---
+/**
+ * Banner de consentimento de cookies — LGPD (Lei 13.709/2018).
+ *
+ * Postura "soft consent": tracking carrega por padrão (interesse
+ * legítimo, Art. 7º IX), mas o usuário pode rejeitar e a preferência é
+ * persistida em `localStorage`. Em pageloads subsequentes, Analytics.astro
+ * lê essa flag e pula o carregamento de GA4 + Meta Pixel.
+ *
+ * Não é hard-block GDPR-style. Para apertar a postura no futuro, mudar
+ * Analytics.astro pra exigir 'accepted' explícito antes de carregar.
+ */
+---
+
+<div class="cookie-banner" data-cookie-banner hidden role="dialog" aria-labelledby="cookieBannerTitle" aria-describedby="cookieBannerDesc">
+  <div class="cookie-banner__inner">
+    <p id="cookieBannerTitle" class="cookie-banner__title">A gente usa cookies.</p>
+    <p id="cookieBannerDesc" class="cookie-banner__text">
+      Pra processar pedidos, manter o carrinho e medir audiência. Detalhes na <a href="/politicas/privacidade">Política de Privacidade</a>.
+    </p>
+    <div class="cookie-banner__actions">
+      <button type="button" data-cookie-reject class="cookie-banner__btn cookie-banner__btn--secondary">
+        Rejeitar
+      </button>
+      <button type="button" data-cookie-accept class="cookie-banner__btn cookie-banner__btn--primary">
+        Aceitar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    var CONSENT_KEY = "prtracker_consent";
+    var banner = document.querySelector("[data-cookie-banner]");
+    if (!banner) return;
+    var stored = null;
+    try {
+      stored = localStorage.getItem(CONSENT_KEY);
+    } catch (e) {
+      // localStorage indisponível (modo privado em alguns browsers) —
+      // ainda mostramos o banner sem persistência
+    }
+    if (!stored) {
+      banner.hidden = false;
+    }
+    function persist(value) {
+      try {
+        localStorage.setItem(CONSENT_KEY, value);
+      } catch (e) {}
+    }
+    banner.querySelector("[data-cookie-accept]").addEventListener("click", function () {
+      persist("accepted");
+      banner.hidden = true;
+    });
+    banner.querySelector("[data-cookie-reject]").addEventListener("click", function () {
+      persist("rejected");
+      banner.hidden = true;
+      // GA/Pixel já podem ter carregado neste pageload — a rejeição
+      // tem efeito a partir da próxima navegação, quando Analytics
+      // checar a flag e pular o carregamento.
+    });
+  })();
+</script>
+
+<style>
+  .cookie-banner {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    z-index: 60;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+    border-radius: 0.875rem;
+    box-shadow: 0 14px 38px rgba(1, 0, 42, 0.28);
+  }
+  @media (min-width: 700px) {
+    .cookie-banner {
+      left: 1.5rem;
+      right: auto;
+      max-width: 28rem;
+    }
+  }
+  .cookie-banner__inner {
+    padding: 1.1rem 1.25rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .cookie-banner__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--color-brand-lime);
+    letter-spacing: 0.02em;
+  }
+  .cookie-banner__text {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: rgb(255 255 255 / 0.85);
+  }
+  .cookie-banner__text a {
+    color: var(--color-brand-lime);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .cookie-banner__actions {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: flex-end;
+    margin-top: 0.3rem;
+  }
+  .cookie-banner__btn {
+    font-family: var(--font-display);
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  }
+  .cookie-banner__btn--primary {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+  .cookie-banner__btn--primary:hover {
+    background: var(--color-brand-white);
+  }
+  .cookie-banner__btn--secondary {
+    background: transparent;
+    color: rgb(255 255 255 / 0.85);
+    border-color: rgb(255 255 255 / 0.25);
+  }
+  .cookie-banner__btn--secondary:hover {
+    background: rgb(255 255 255 / 0.08);
+    color: var(--color-brand-white);
+  }
+</style>

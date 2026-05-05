@@ -19,6 +19,23 @@ const isDev = import.meta.env.DEV;
 {
   !isDev && (
     <>
+      {/*
+        LGPD opt-out: se o visitante rejeitou cookies em pageload anterior,
+        sinalizamos via window.__noTracking. Os blocos GA4 e Meta Pixel
+        abaixo checam essa flag antes de carregar. A flag é setada o mais
+        cedo possível (antes dos scripts de tracking) pra garantir que o
+        gate funcione mesmo se a tag <script async> resolver primeiro.
+      */}
+      <script is:inline>
+        (function () {
+          try {
+            if (localStorage.getItem("prtracker_consent") === "rejected") {
+              window.__noTracking = true;
+            }
+          } catch (e) {}
+        })();
+      </script>
+
       {/* Google Analytics 4 (gtag.js) */}
       <script
         is:inline
@@ -26,13 +43,15 @@ const isDev = import.meta.env.DEV;
         src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`}
       />
       <script is:inline define:vars={{ GA4_MEASUREMENT_ID }}>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() {
-          window.dataLayer.push(arguments);
+        if (!window.__noTracking) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag() {
+            window.dataLayer.push(arguments);
+          }
+          window.gtag = gtag;
+          gtag("js", new Date());
+          gtag("config", GA4_MEASUREMENT_ID);
         }
-        window.gtag = gtag;
-        gtag("js", new Date());
-        gtag("config", GA4_MEASUREMENT_ID);
       </script>
 
       {/*
@@ -45,6 +64,7 @@ const isDev = import.meta.env.DEV;
       */}
       <script is:inline define:vars={{ META_PIXEL_ID }}>
         function loadMetaPixel() {
+          if (window.__noTracking) return;
           if (window.fbq) return;
           !(function (f, b, e, v, n, t, s) {
             n = f.fbq = function () {

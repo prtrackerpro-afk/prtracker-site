@@ -28,7 +28,11 @@ const nav = [
   <!-- Top promo strip -->
   <div class="site-header__promo" aria-hidden="false">
     <div class="container-page site-header__promo-inner">
-      <span>PAGUE NO PIX E GANHE 5% DE DESCONTO</span>
+      <span class="site-header__promo-item site-header__promo-item--free">FRETE GRÁTIS ACIMA DE R$ 250</span>
+      <span class="site-header__promo-sep" aria-hidden="true">·</span>
+      <span class="site-header__promo-item">PIX COM 5% OFF</span>
+      <span class="site-header__promo-sep site-header__promo-sep--credit" aria-hidden="true">·</span>
+      <span class="site-header__promo-item site-header__promo-item--credit">6× SEM JUROS NO CARTÃO</span>
     </div>
   </div>
 
@@ -98,12 +102,32 @@ const nav = [
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     padding-block: 0.45rem;
     font-family: var(--font-display);
     font-size: 0.82rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    text-align: center;
+  }
+  .site-header__promo-item--free::before {
+    content: "🚚 ";
+    font-size: 0.95em;
+  }
+  .site-header__promo-sep { opacity: 0.55; }
+  /* No mobile bem estreito, esconde a 3ª promo (cartão) e o seu separador
+     pra não quebrar em três linhas. As duas mais fortes (frete grátis +
+     Pix) ficam sempre visíveis. */
+  @media (max-width: 540px) {
+    .site-header__promo-inner {
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+    }
+    .site-header__promo-item--credit,
+    .site-header__promo-sep--credit { display: none; }
   }
 
   /* Main bar */

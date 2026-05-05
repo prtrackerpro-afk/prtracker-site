@@ -35,7 +35,13 @@ const itemSchema = z.object({
 const payloadSchema = z.object({
   cepDestino: z.string().regex(/^\d{8}$/),
   items: z.array(itemSchema).min(1).max(20),
+  subtotalCents: z.number().int().min(0).max(10_000_000).optional(),
 });
+
+// Subtotal de produtos a partir do qual o frete mais barato vira grátis.
+// Custo absorvido na margem da venda; SEDEX/expressas continuam pagas se
+// o cliente quiser entrega mais rápida.
+const FREE_SHIPPING_MIN_CENTS = 25_000; // R$ 250,00
 
 type MeCarrier = {
   id: number;
@@ -96,7 +102,7 @@ export const POST: APIRoute = async ({ request }) => {
       issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
     });
   }
-  const { cepDestino, items } = parsed.data;
+  const { cepDestino, items, subtotalCents } = parsed.data;
 
   // Trim defensively: Vercel's Sensitive env-var UI has been known to
   // preserve trailing whitespace or a stray newline, which breaks the
@@ -261,6 +267,19 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  // Cacheia os preços brutos das transportadoras, antes de aplicar o
+  // override de frete grátis — assim duas sessões com o mesmo carrinho
+  // mas subtotais diferentes (ex: cupom adicionou desconto) não se
+  // contaminam.
   cache.set(cacheKey, { at: Date.now(), value: options });
-  return jsonResponse(200, { options });
+
+  // Frete grátis acima do threshold: zera o preço da opção mais barata
+  // (já em options[0] após o sort). Modalidades expressas continuam pagas
+  // pra quem quiser receber mais rápido.
+  const finalOptions =
+    subtotalCents != null && subtotalCents >= FREE_SHIPPING_MIN_CENTS
+      ? [{ ...options[0], price_cents: 0 }, ...options.slice(1)]
+      : options;
+
+  return jsonResponse(200, { options: finalOptions });
 };

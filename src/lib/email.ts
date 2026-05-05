@@ -275,7 +275,9 @@ export async function sendCustomerConfirmation(
       </p>
 
       <p style="margin:28px 0 0;font-size:13px;color:#888;line-height:1.6">
-        Dúvidas? Responda este e-mail ou fale no WhatsApp
+        Dúvidas comuns na nossa página de
+        <a href="https://prtracker.com.br/faq" style="color:#01002A">perguntas frequentes</a>.
+        Se preferir, responda este e-mail ou fale no WhatsApp
         <a href="https://wa.me/5551982061914" style="color:#01002A">(51) 98206-1914</a>.
       </p>
     </div>
