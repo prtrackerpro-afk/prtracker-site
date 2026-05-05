@@ -2,8 +2,11 @@
  * Bling v3 — Produtos.
  *
  * Endpoints used:
+ *   GET  /produtos                  → list (paginated)
  *   GET  /produtos?codigo=<sku>     → search by exact código (SKU)
+ *   GET  /produtos/{id}             → fetch full product (inclui imagens)
  *   POST /produtos                  → create
+ *   PUT  /produtos/{id}             → update (preço, situação, mídia)
  *
  * For NF-e to emit cleanly, every line item on the sales order must
  * reference an existing produto.id in Bling. We map site slugs to Bling
@@ -11,6 +14,17 @@
  */
 
 import { blingFetch, BlingApiError } from "./api";
+
+export interface BlingProductImageExternal {
+  link: string;
+}
+
+export interface BlingProductMidia {
+  imagens?: {
+    externas?: BlingProductImageExternal[];
+    internas?: Array<{ link?: string }>;
+  };
+}
 
 export interface BlingProduct {
   id: number;
@@ -20,6 +34,7 @@ export interface BlingProduct {
   tipo?: string;
   situacao?: string;
   unidade?: string;
+  midia?: BlingProductMidia;
 }
 
 export interface CreateProductInput {
@@ -84,6 +99,113 @@ export async function createProduct(
     accessToken,
   });
   return created;
+}
+
+/**
+ * Lista paginada de produtos. Bling devolve 100 por página por padrão.
+ * Use limite=100 explicitamente; pagina = 1-based.
+ */
+export async function listProducts(
+  options: { pagina?: number; limite?: number; situacao?: "A" | "I" | "T" } = {},
+  accessToken?: string,
+): Promise<BlingProduct[]> {
+  const list = await blingFetch<BlingProduct[] | undefined>("/produtos", {
+    method: "GET",
+    query: {
+      pagina: options.pagina ?? 1,
+      limite: options.limite ?? 100,
+      // Bling: criterio=2 = "Apenas inativos", criterio=1 = "Apenas ativos",
+      // criterio=5 = "Todos". Default a "todos" pra audit ver o estado real.
+      criterio: options.situacao === "A" ? 1 : options.situacao === "I" ? 2 : 5,
+    },
+    accessToken,
+  });
+  return Array.isArray(list) ? list : [];
+}
+
+/**
+ * Lista todas as páginas concatenadas. Pra catálogos grandes (≥500 produtos)
+ * isso pode ser lento — use com moderação. Pra catálogo PR Tracker (~14)
+ * cabe tranquilamente em 1 página.
+ */
+export async function listAllProducts(
+  accessToken?: string,
+): Promise<BlingProduct[]> {
+  const out: BlingProduct[] = [];
+  let pagina = 1;
+  while (true) {
+    const page = await listProducts({ pagina, limite: 100 }, accessToken);
+    out.push(...page);
+    if (page.length < 100) break;
+    pagina++;
+    if (pagina > 50) break; // safety cap (5000 produtos)
+  }
+  return out;
+}
+
+/**
+ * Busca produto por ID — retorna o objeto completo incluindo `midia`.
+ * `findProductByCode` chama /produtos?codigo=, que NÃO devolve mídia.
+ */
+export async function getProduct(
+  id: number,
+  accessToken?: string,
+): Promise<BlingProduct | null> {
+  try {
+    return await blingFetch<BlingProduct>(`/produtos/${id}`, {
+      method: "GET",
+      accessToken,
+    });
+  } catch (err) {
+    if (err instanceof BlingApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * PUT /produtos/{id} — atualiza campos parciais. Bling exige enviar o
+ * payload "completo" no PUT, então buscamos o produto antes e mesclamos
+ * apenas os campos a alterar (Bling mantém os outros, mas mesclar local
+ * preserva qualquer cadastro fiscal que poderia ser sobrescrito por
+ * defaults).
+ */
+export async function updateProduct(
+  id: number,
+  patch: Partial<{
+    codigo: string;
+    nome: string;
+    preco: number;
+    situacao: "A" | "I";
+    imagensExternas: string[]; // URLs públicas que o Bling busca e armazena
+  }>,
+  accessToken?: string,
+): Promise<BlingProduct> {
+  const current = await getProduct(id, accessToken);
+  if (!current) throw new BlingApiError(`produto ${id} não encontrado`, 404);
+
+  const body: Record<string, unknown> = {
+    // Campos obrigatórios (mantém o atual se não vier no patch).
+    nome: patch.nome ?? current.nome,
+    codigo: patch.codigo ?? current.codigo,
+    preco: patch.preco ?? current.preco,
+    tipo: current.tipo ?? "P",
+    situacao: patch.situacao ?? (current.situacao === "I" ? "I" : "A"),
+    unidade: current.unidade ?? "UN",
+  };
+
+  if (patch.imagensExternas) {
+    body.midia = {
+      imagens: {
+        externas: patch.imagensExternas.map((link) => ({ link })),
+      },
+    };
+  }
+
+  return await blingFetch<BlingProduct>(`/produtos/${id}`, {
+    method: "PUT",
+    body,
+    accessToken,
+  });
 }
 
 /**
