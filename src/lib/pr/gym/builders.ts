@@ -62,9 +62,9 @@ export interface AvatarParts {
 }
 
 /**
- * Constrói o avatar customizado estilo retrô-stylized (referência Viverse).
- * Pés tocam o chão (root.y = 0). Camisa "PR TRACKER" sempre branded.
- * Pele NÃO recebe emissive (evita tingir de verde quando regata é lime).
+ * Avatar estilo Roblox-moderno: cabeça cubo com rosto polido, cabelo
+ * 3D fora dos olhos, corpo chunky/blocky com cantos suaves. Camisa
+ * PR TRACKER branded. Cores customizáveis via prefs.
  */
 export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   const root = new THREE.Group();
@@ -109,133 +109,194 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
   const headR = 0.21; // BIGGER (era 0.165) — visível de qualquer ângulo
 
-  // === HEAD com FEATURES 3D REAIS ==============================
-  // V6: olhos/nariz/boca/sobrancelhas como objetos 3D reais (não
-  // texture chata num plano). Visíveis de qualquer ângulo, dão
-  // personalidade ao avatar.
+  // === HEAD ROBLOX-MODERNO (cubo polido + face desenhada) =======
   const head = new THREE.Group();
 
-  // Skull: esfera levemente achatada — formato facial humano
-  const skullGeom = new THREE.SphereGeometry(headR, 32, 24);
-  const skull = new THREE.Mesh(skullGeom, skinMat);
-  skull.scale.set(1.0, 1.05, 0.92);
+  // Cube head com cantos levemente suavizados (escala assimétrica)
+  const headSize = headR * 2.0; // cube de ~0.42m de lado
+  const skull = new THREE.Mesh(
+    new THREE.BoxGeometry(headSize, headSize, headSize * 0.88),
+    skinMat
+  );
   skull.castShadow = true;
   head.add(skull);
 
-  // === OLHOS 3D ===
-  // Cada olho: esfera branca grande (esclera) + pequena preta (íris/pupila)
-  const escleraMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.2,
-    metalness: 0,
-  });
-  const irisMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1660,
-    roughness: 0.3,
-    metalness: 0.1,
-  });
-  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-  const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  // FACE TEXTURE polida desenhada na frente do cubo (não plane separado)
+  // — diretamente no front face via canvas → MeshBasicMaterial
+  const faceCanvas = document.createElement("canvas");
+  faceCanvas.width = 512;
+  faceCanvas.height = 512;
+  const fctx = faceCanvas.getContext("2d")!;
+  // Fundo na cor da pele (pra fundir com o cubo skin)
+  fctx.fillStyle = prefs.skin;
+  fctx.fillRect(0, 0, 512, 512);
 
-  for (const sx of [-0.07, 0.07]) {
-    // Esclera (branco do olho) — semicirculo embutido na cabeça
-    const sclera = new THREE.Mesh(
-      new THREE.SphereGeometry(0.038, 16, 12),
-      escleraMat
-    );
-    sclera.scale.set(1, 1.05, 0.8);
-    sclera.position.set(sx, 0.025, headR * 0.86);
-    head.add(sclera);
-
-    // Íris azul-noturno na frente da esclera
-    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.022, 14, 10), irisMat);
-    iris.position.set(sx, 0.025, headR * 0.92);
-    head.add(iris);
-
-    // Pupila pequena preta
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.011, 10, 8), pupilMat);
-    pupil.position.set(sx, 0.025, headR * 0.94);
-    head.add(pupil);
-
-    // Highlight (brilho do olho — ponto branco)
-    const highlight = new THREE.Mesh(
-      new THREE.SphereGeometry(0.005, 8, 6),
-      highlightMat
-    );
-    highlight.position.set(sx + 0.005, 0.03, headR * 0.96);
-    head.add(highlight);
+  // === Olhos cartoon polidos (estilo Roblox moderno) ===
+  // Esclera grande + íris destacada + brilho
+  for (const cx of [180, 332]) {
+    // Esclera arredondada
+    fctx.fillStyle = "#ffffff";
+    fctx.beginPath();
+    fctx.ellipse(cx, 230, 38, 46, 0, 0, Math.PI * 2);
+    fctx.fill();
+    // Borda fina escura
+    fctx.strokeStyle = "#1a1a22";
+    fctx.lineWidth = 4;
+    fctx.beginPath();
+    fctx.ellipse(cx, 230, 38, 46, 0, 0, Math.PI * 2);
+    fctx.stroke();
+    // Íris azul vibrante
+    fctx.fillStyle = "#0057B8";
+    fctx.beginPath();
+    fctx.arc(cx, 235, 22, 0, Math.PI * 2);
+    fctx.fill();
+    // Pupila
+    fctx.fillStyle = "#000";
+    fctx.beginPath();
+    fctx.arc(cx, 238, 11, 0, Math.PI * 2);
+    fctx.fill();
+    // Highlight
+    fctx.fillStyle = "#ffffff";
+    fctx.beginPath();
+    fctx.arc(cx + 6, 230, 6, 0, Math.PI * 2);
+    fctx.fill();
+    // Highlight pequeno
+    fctx.beginPath();
+    fctx.arc(cx - 8, 244, 3, 0, Math.PI * 2);
+    fctx.fill();
   }
 
-  // === SOBRANCELHAS 3D ===
-  const browMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(prefs.hair).multiplyScalar(0.8),
-    roughness: 0.85,
-    metalness: 0,
-  });
-  for (const sx of [-0.07, 0.07]) {
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.012, 0.02), browMat);
-    brow.position.set(sx, 0.075, headR * 0.92);
-    brow.rotation.z = sx > 0 ? 0.1 : -0.1; // ângulo natural
-    head.add(brow);
+  // === Sobrancelhas (na cor do cabelo, expressivas) ===
+  fctx.fillStyle = prefs.hair;
+  fctx.beginPath();
+  fctx.moveTo(140, 168);
+  fctx.lineTo(220, 158);
+  fctx.lineTo(220, 174);
+  fctx.lineTo(140, 184);
+  fctx.closePath();
+  fctx.fill();
+  fctx.beginPath();
+  fctx.moveTo(292, 158);
+  fctx.lineTo(372, 168);
+  fctx.lineTo(372, 184);
+  fctx.lineTo(292, 174);
+  fctx.closePath();
+  fctx.fill();
+
+  // === Sorriso polido (curva expressiva) ===
+  fctx.strokeStyle = "#3a1a1a";
+  fctx.lineWidth = 8;
+  fctx.lineCap = "round";
+  fctx.beginPath();
+  fctx.arc(256, 350, 60, 0.2, Math.PI - 0.2);
+  fctx.stroke();
+  // Sorriso interior (gengiva/dentes sutis)
+  fctx.fillStyle = "#fff";
+  fctx.beginPath();
+  fctx.arc(256, 350, 50, 0.25, Math.PI - 0.25);
+  fctx.fill();
+  fctx.fillStyle = "#3a1a1a";
+  fctx.beginPath();
+  fctx.arc(256, 348, 56, 0.22, Math.PI - 0.22);
+  fctx.lineTo(220, 358);
+  fctx.lineTo(292, 358);
+  fctx.closePath();
+
+  // === Bochechas pink sutis ===
+  fctx.fillStyle = "rgba(255, 130, 130, 0.35)";
+  fctx.beginPath();
+  fctx.ellipse(110, 320, 28, 18, 0, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.ellipse(402, 320, 28, 18, 0, 0, Math.PI * 2);
+  fctx.fill();
+
+  const faceTex = new THREE.CanvasTexture(faceCanvas);
+  faceTex.colorSpace = THREE.SRGBColorSpace;
+  // Face plane afixado JUST FORA do front face do cubo
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(headSize * 0.99, headSize * 0.99),
+    new THREE.MeshBasicMaterial({ map: faceTex })
+  );
+  face.position.set(0, 0, headSize * 0.44 + 0.001);
+  head.add(face);
+
+  // === CABELO 3D fora dos olhos (Roblox-moderno) ===
+  // Estilo: bloco/cap em cima do cubo. NUNCA cobre a frente do face.
+  if (prefs.hairStyle !== "bald") {
+    const hairTopH = 0.08; // altura da camada de cabelo
+    if (prefs.hairStyle === "short") {
+      // Bloco no topo + leve protrusão pra trás
+      const hairTop = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 1.05, hairTopH, headSize * 0.95),
+        hairMat
+      );
+      hairTop.position.set(0, headSize / 2 + hairTopH / 2 - 0.01, -0.01);
+      head.add(hairTop);
+      // Side burns curtos (laterais finas)
+      for (const sx of [-headSize / 2, headSize / 2]) {
+        const sideBurn = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.06, headSize * 0.4),
+          hairMat
+        );
+        sideBurn.position.set(sx + (sx > 0 ? 0.005 : -0.005), headSize / 2 - 0.06, -0.05);
+        head.add(sideBurn);
+      }
+    } else if (prefs.hairStyle === "long") {
+      // Top + cabelo descendo nas costas (NÃO cobre o rosto)
+      const hairTop = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 1.06, hairTopH, headSize * 0.96),
+        hairMat
+      );
+      hairTop.position.set(0, headSize / 2 + hairTopH / 2 - 0.01, -0.01);
+      head.add(hairTop);
+      // Cabelo longo nas costas
+      const hairBack = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 0.95, headSize * 1.1, 0.08),
+        hairMat
+      );
+      hairBack.position.set(0, -headSize * 0.1, -headSize * 0.4);
+      head.add(hairBack);
+      // Mechas nas laterais (caem do rosto, mas atrás das orelhas)
+      for (const sx of [-headSize / 2 - 0.02, headSize / 2 + 0.02]) {
+        const sideMech = new THREE.Mesh(
+          new THREE.BoxGeometry(0.06, headSize * 0.7, 0.1),
+          hairMat
+        );
+        sideMech.position.set(sx, -headSize * 0.05, -headSize * 0.05);
+        head.add(sideMech);
+      }
+    } else if (prefs.hairStyle === "ponytail") {
+      const hairTop = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 1.04, hairTopH, headSize * 0.94),
+        hairMat
+      );
+      hairTop.position.set(0, headSize / 2 + hairTopH / 2 - 0.01, -0.01);
+      head.add(hairTop);
+      // Tie ball
+      const tieBall = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.06, 0.06),
+        hairMat
+      );
+      tieBall.position.set(0, headSize / 2 - 0.03, -headSize * 0.5 - 0.01);
+      head.add(tieBall);
+      // Tail (cilindro suave)
+      const tail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.025, 0.32, 12),
+        hairMat
+      );
+      tail.position.set(0, headSize * 0.1, -headSize * 0.6);
+      tail.rotation.x = -0.4;
+      head.add(tail);
+    }
   }
 
-  // === NARIZ 3D ===
-  // Pequeno volume cônico saindo da cabeça
-  const noseMat = skinMat;
-  const nose = new THREE.Mesh(
-    new THREE.ConeGeometry(0.018, 0.05, 6),
-    noseMat
-  );
-  nose.rotation.x = Math.PI / 2;
-  nose.rotation.z = Math.PI;
-  nose.position.set(0, -0.005, headR * 0.97);
-  head.add(nose);
-
-  // Sombra abaixo do nariz (subtle)
-  const noseShadow = new THREE.Mesh(
-    new THREE.SphereGeometry(0.012, 8, 6),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 })
-  );
-  noseShadow.position.set(0, -0.04, headR * 0.92);
-  head.add(noseShadow);
-
-  // === BOCA 3D (sorriso) ===
-  // Torus segment criando uma curva de sorriso
-  const mouthMat = new THREE.MeshStandardMaterial({
-    color: 0x6b1f1f,
-    roughness: 0.6,
-    metalness: 0,
-  });
-  const mouth = new THREE.Mesh(
-    new THREE.TorusGeometry(0.04, 0.008, 6, 16, Math.PI * 0.7),
-    mouthMat
-  );
-  mouth.rotation.x = Math.PI;
-  mouth.rotation.z = Math.PI / 2;
-  mouth.position.set(0, -0.07, headR * 0.92);
-  head.add(mouth);
-
-  // === BOCHECHAS 3D ===
-  const cheekMat = new THREE.MeshBasicMaterial({
-    color: 0xff8888,
-    transparent: true,
-    opacity: 0.25,
-  });
-  for (const sx of [-0.105, 0.105]) {
-    const cheek = new THREE.Mesh(
-      new THREE.SphereGeometry(0.025, 10, 8),
-      cheekMat
-    );
-    cheek.position.set(sx, -0.04, headR * 0.78);
-    head.add(cheek);
-  }
-
-  // Pescoço
+  // Pescoço (cilindro cheio, conecta ao torso)
   const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.085, 0.09, 12),
+    new THREE.CylinderGeometry(0.075, 0.09, 0.08, 12),
     skinMat
   );
-  neck.position.y = -headR - 0.02;
+  neck.position.y = -headSize / 2 - 0.04;
   head.add(neck);
 
   // CABELO conforme estilo (3D real, não cap chato)
@@ -1310,6 +1371,214 @@ export function buildPlatformWithRack(accentHex: string): THREE.Group {
     g.add(side);
   }
   return g;
+}
+
+// =================================================================
+// HALL PEDESTAL — pedestal individual para Hall of Fame V7
+// Estilo Palmeiras Decacampeão Brasileiro: pedestal off-white,
+// LED stripe na cor do tier, plaqueta com kg + exercise, mini-
+// barbell "My PR Set" com plate split real do peso.
+// Para exercícios sem PR: ghost pedestal dim com "?" + "DESBLOQUEAR".
+// =================================================================
+
+export interface HallPedestalParts {
+  group: THREE.Group;
+  /** LED stripe pulsante (animação no loop). null se ghost. */
+  ledStripe: THREE.Mesh | null;
+  /** Mesh ref pro raycast → modal. */
+  hitBox: THREE.Mesh;
+}
+
+export interface HallPedestalProps {
+  exerciseLabel: string;
+  exerciseShort: string;
+  weightKg: number | null; // null = ghost pedestal (não desbloqueado)
+  tierColorHex: string; // cor do tier (ou cinza se ghost)
+  hasUnlocked: boolean;
+}
+
+export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
+  const group = new THREE.Group();
+  const { exerciseLabel, exerciseShort, weightKg, tierColorHex, hasUnlocked } = props;
+
+  // === BASE branca off-white estilo museum ====================
+  const baseW = 0.75;
+  const baseH = 1.05;
+  const baseD = 0.5;
+  const baseColor = hasUnlocked ? 0xf2f2ee : 0x4a4a52; // off-white vs cinza dim
+  const baseMat = new THREE.MeshStandardMaterial({
+    color: baseColor,
+    roughness: 0.5,
+    metalness: 0.05,
+  });
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW, baseH, baseD),
+    baseMat
+  );
+  base.position.y = baseH / 2;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  group.add(base);
+
+  // Inset bevel inferior — efeito de "flutuando" via box menor
+  const inset = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW * 0.92, 0.04, baseD * 0.92),
+    new THREE.MeshStandardMaterial({
+      color: hasUnlocked ? 0xe2e2dc : 0x35353a,
+      roughness: 0.7,
+    })
+  );
+  inset.position.y = 0.03;
+  group.add(inset);
+
+  // === LED STRIPE no topo da base, na cor do tier =============
+  let ledStripe: THREE.Mesh | null = null;
+  if (hasUnlocked) {
+    const ledMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(tierColorHex),
+    });
+    ledStripe = new THREE.Mesh(
+      new THREE.BoxGeometry(baseW + 0.01, 0.025, baseD + 0.01),
+      ledMat
+    );
+    ledStripe.position.y = baseH;
+    group.add(ledStripe);
+
+    // Glow externo via segundo plano levemente maior, semitransp
+    const glow = new THREE.Mesh(
+      new THREE.BoxGeometry(baseW + 0.06, 0.05, baseD + 0.06),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(tierColorHex),
+        transparent: true,
+        opacity: 0.18,
+      })
+    );
+    glow.position.y = baseH;
+    group.add(glow);
+  } else {
+    // LED apagado pro ghost
+    const dimLed = new THREE.Mesh(
+      new THREE.BoxGeometry(baseW + 0.01, 0.018, baseD + 0.01),
+      new THREE.MeshBasicMaterial({ color: 0x252530 })
+    );
+    dimLed.position.y = baseH;
+    group.add(dimLed);
+  }
+
+  // === PLAQUETA frontal — kg + exercise (ou ? + DESBLOQUEAR) ==
+  const plaqueCanvas = document.createElement("canvas");
+  plaqueCanvas.width = 768;
+  plaqueCanvas.height = 512;
+  const pctx = plaqueCanvas.getContext("2d")!;
+
+  if (hasUnlocked && weightKg != null) {
+    // Plaqueta UNLOCKED: fundo branco, número GIGANTE em tier color
+    pctx.fillStyle = "#ffffff";
+    pctx.fillRect(0, 0, 768, 512);
+    // Borda grossa na cor do tier
+    pctx.strokeStyle = tierColorHex;
+    pctx.lineWidth = 14;
+    pctx.strokeRect(7, 7, 754, 498);
+    // Tag "PR" pequena
+    pctx.fillStyle = tierColorHex;
+    pctx.font = "900 50px Archivo Black, Inter, sans-serif";
+    pctx.textAlign = "center";
+    pctx.textBaseline = "middle";
+    pctx.fillText("PR", 384, 80);
+    // Número GIGANTE
+    pctx.fillStyle = "#01002A";
+    pctx.font = "900 280px Archivo Black, Inter, sans-serif";
+    pctx.fillText(String(Math.round(weightKg)), 384, 270);
+    // KG
+    pctx.fillStyle = "#4d4d51";
+    pctx.font = "700 60px Inter, sans-serif";
+    pctx.fillText("KG", 384, 410);
+    // Exercise embaixo
+    pctx.fillStyle = "#01002A";
+    pctx.font = "600 38px Inter, sans-serif";
+    pctx.fillText(exerciseShort.toUpperCase(), 384, 470);
+  } else {
+    // Plaqueta GHOST: fundo cinza, "?" gigante
+    pctx.fillStyle = "#1a1a22";
+    pctx.fillRect(0, 0, 768, 512);
+    pctx.strokeStyle = "#3a3a44";
+    pctx.lineWidth = 8;
+    pctx.strokeRect(4, 4, 760, 504);
+    // "?" gigante
+    pctx.fillStyle = "#3a3a44";
+    pctx.font = "900 320px Archivo Black, Inter, sans-serif";
+    pctx.textAlign = "center";
+    pctx.textBaseline = "middle";
+    pctx.fillText("?", 384, 240);
+    // Exercise nome
+    pctx.fillStyle = "#6a6a74";
+    pctx.font = "600 38px Inter, sans-serif";
+    pctx.fillText(exerciseShort.toUpperCase(), 384, 400);
+    // Call to action
+    pctx.fillStyle = "#9a9aa4";
+    pctx.font = "500 28px Inter, sans-serif";
+    pctx.fillText("DESBLOQUEAR", 384, 460);
+  }
+
+  const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
+  plaqueTex.colorSpace = THREE.SRGBColorSpace;
+  const plaque = new THREE.Mesh(
+    new THREE.PlaneGeometry(baseW * 0.92, baseH * 0.78),
+    new THREE.MeshBasicMaterial({ map: plaqueTex })
+  );
+  plaque.position.set(0, baseH / 2, baseD / 2 + 0.005);
+  group.add(plaque);
+
+  // === MINI-BARBELL com plate split em cima do pedestal ==========
+  if (hasUnlocked && weightKg != null) {
+    // Topo "show stand" — pequena placa metálica onde a barbell descansa
+    const showStand = new THREE.Mesh(
+      new THREE.BoxGeometry(baseW * 0.92, 0.04, baseD * 0.92),
+      new THREE.MeshStandardMaterial({
+        color: 0x2a2540,
+        roughness: 0.4,
+        metalness: 0.6,
+      })
+    );
+    showStand.position.y = baseH + 0.045;
+    group.add(showStand);
+
+    const barbell = buildMiniBarbell(weightKg);
+    barbell.position.set(0, baseH + 0.18, 0);
+    group.add(barbell);
+  }
+
+  // === ETIQUETA do exercício na parte da frente do pedestal ====
+  const tagCanvas = document.createElement("canvas");
+  tagCanvas.width = 768;
+  tagCanvas.height = 96;
+  const tctx = tagCanvas.getContext("2d")!;
+  tctx.clearRect(0, 0, 768, 96);
+  tctx.fillStyle = hasUnlocked ? tierColorHex : "#5a5a64";
+  tctx.fillRect(0, 0, 768, 96);
+  tctx.fillStyle = hasUnlocked ? "#01002A" : "#9a9aa4";
+  tctx.font = "900 56px Archivo Black, Inter, sans-serif";
+  tctx.textAlign = "center";
+  tctx.textBaseline = "middle";
+  tctx.fillText(exerciseLabel.toUpperCase(), 384, 48);
+  const tagTex = new THREE.CanvasTexture(tagCanvas);
+  tagTex.colorSpace = THREE.SRGBColorSpace;
+  const tag = new THREE.Mesh(
+    new THREE.PlaneGeometry(baseW + 0.06, 0.12),
+    new THREE.MeshBasicMaterial({ map: tagTex })
+  );
+  tag.position.set(0, 0.16, baseD / 2 + 0.005);
+  group.add(tag);
+
+  // === HIT BOX invisível pro raycast ===========================
+  const hitBox = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW + 0.3, baseH + 0.6, baseD + 0.3),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitBox.position.y = (baseH + 0.6) / 2;
+  group.add(hitBox);
+
+  return { group, ledStripe, hitBox };
 }
 
 // =================================================================
