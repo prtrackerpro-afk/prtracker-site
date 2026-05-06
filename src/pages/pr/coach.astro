@@ -1,0 +1,211 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import { getServerSupabase } from "../../lib/supabase/server";
+
+const athlete = Astro.locals.athlete!; // gated by middleware
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+// Boxes owned by this athlete
+const { data: ownedBoxes = [] } = await supabase
+  .from("pr_boxes")
+  .select("id, slug, name, city, state, created_at")
+  .eq("owner_user_id", athlete.userId)
+  .order("created_at", { ascending: false });
+
+// Member counts per owned box (single round-trip with rpc, but for V1
+// just one count per box — usually <5 boxes per coach).
+const memberCounts: Record<string, number> = {};
+for (const b of ownedBoxes ?? []) {
+  const { count } = await supabase
+    .from("pr_box_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("box_id", b.id);
+  memberCounts[b.id] = count ?? 0;
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Coach Dashboard · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <link rel="manifest" href="/pr/manifest.webmanifest" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
+      <a href="/pr" class="text-xs text-navy-300 hover:text-white">← Meus PRs</a>
+      <div class="text-[10px] uppercase tracking-widest text-brand-lime">COACH</div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4">
+      <h1 class="font-display text-2xl tracking-tight mb-2">Suas academias</h1>
+      <p class="text-sm text-navy-300 mb-6">
+        Cada box que você administra tem uma página pública de leaderboard. Compartilhe com os alunos e o ranking se popula sozinho.
+      </p>
+
+      {ownedBoxes && ownedBoxes.length > 0 ? (
+        <ul class="space-y-3 mb-8">
+          {ownedBoxes.map((box) => (
+            <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-4">
+              <div class="flex items-start justify-between gap-3 mb-2">
+                <div class="min-w-0">
+                  <div class="font-display text-lg leading-tight">{box.name}</div>
+                  <div class="text-xs text-navy-300 truncate">
+                    /pr/box/{box.slug}
+                    {box.city && <span> · {box.city}{box.state ? `, ${box.state}` : ""}</span>}
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="font-display text-2xl tabular-nums text-brand-lime">
+                    {memberCounts[box.id] ?? 0}
+                  </div>
+                  <div class="text-[10px] uppercase tracking-widest text-navy-300">
+                    membros
+                  </div>
+                </div>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <a
+                  href={`/pr/box/${box.slug}`}
+                  class="text-xs rounded-lg border border-navy-600 px-3 py-1.5 hover:bg-navy-800 transition"
+                >
+                  Ver leaderboard
+                </a>
+                <a
+                  href={`/pr/box/${box.slug}/admin`}
+                  class="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5 hover:opacity-90 transition"
+                >
+                  Painel admin
+                </a>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-6 text-center mb-8">
+          <p class="text-sm text-navy-300 mb-3">
+            Você ainda não tem nenhum box. Crie um pra começar a montar o leaderboard dos seus alunos.
+          </p>
+        </div>
+      )}
+
+      <section class="rounded-2xl border border-brand-lime/30 bg-brand-lime/5 p-5">
+        <h2 class="font-display text-lg tracking-tight mb-1">Criar novo box</h2>
+        <p class="text-xs text-navy-300 mb-4">
+          O slug aparece na URL pública: <code>prtracker.com.br/pr/box/<strong>seu-slug</strong></code>
+        </p>
+
+        <form id="create-box-form" class="space-y-3">
+          <div>
+            <label for="box_name" class="block text-[10px] uppercase tracking-widest text-navy-300 mb-1">Nome do box <span class="text-red-400">*</span></label>
+            <input id="box_name" name="name" type="text" required maxlength="80"
+                   placeholder="ex: CrossFit Pelican"
+                   class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"/>
+          </div>
+          <div>
+            <label for="box_slug" class="block text-[10px] uppercase tracking-widest text-navy-300 mb-1">Slug (URL) <span class="text-red-400">*</span></label>
+            <input id="box_slug" name="slug" type="text" required minlength="3" maxlength="40"
+                   pattern="[a-z0-9-]+"
+                   placeholder="crossfit-pelican"
+                   class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm font-mono focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"/>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="col-span-2">
+              <label for="box_city" class="block text-[10px] uppercase tracking-widest text-navy-300 mb-1">Cidade</label>
+              <input id="box_city" name="city" type="text" maxlength="60"
+                     placeholder="Porto Alegre"
+                     class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"/>
+            </div>
+            <div>
+              <label for="box_state" class="block text-[10px] uppercase tracking-widest text-navy-300 mb-1">UF</label>
+              <input id="box_state" name="state" type="text" maxlength="2" pattern="[A-Za-z]{2}"
+                     placeholder="RS"
+                     class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm uppercase focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"/>
+            </div>
+          </div>
+          <div>
+            <label for="box_ig" class="block text-[10px] uppercase tracking-widest text-navy-300 mb-1">Instagram (opcional)</label>
+            <div class="flex items-center rounded-lg border border-navy-600 bg-navy-900 focus-within:border-brand-lime focus-within:ring-1 focus-within:ring-brand-lime">
+              <span class="pl-3 text-navy-300 text-sm">@</span>
+              <input id="box_ig" name="instagram_handle" type="text" maxlength="30"
+                     placeholder="crossfitpelican"
+                     class="flex-1 bg-transparent px-2 py-2.5 text-sm focus:outline-none"/>
+            </div>
+          </div>
+          <button type="submit" id="submit-btn"
+                  class="w-full rounded-lg bg-brand-lime px-4 py-3 text-sm font-semibold text-navy-900 hover:opacity-90 transition disabled:opacity-50">
+            Criar box
+          </button>
+          <div id="error-msg" class="text-sm text-red-400 hidden"></div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById("create-box-form") as HTMLFormElement;
+      const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
+      const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.classList.add("hidden");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Criando...";
+
+        const data = new FormData(form);
+        try {
+          const res = await fetch("/api/pr/boxes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: (data.get("name") || "").toString().trim(),
+              slug: (data.get("slug") || "").toString().trim().toLowerCase(),
+              city: (data.get("city") || "").toString().trim() || null,
+              state: (data.get("state") || "").toString().trim().toUpperCase() || null,
+              instagram_handle: (data.get("instagram_handle") || "").toString().trim() || null,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            errorMsg.textContent = body.message || "Erro ao criar box.";
+            errorMsg.classList.remove("hidden");
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Criar box";
+            return;
+          }
+          window.location.href = `/pr/box/${body.slug}/admin`;
+        } catch {
+          errorMsg.textContent = "Erro de conexão.";
+          errorMsg.classList.remove("hidden");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Criar box";
+        }
+      });
+
+      // Auto-suggest slug from name on first interaction
+      const nameEl = document.getElementById("box_name") as HTMLInputElement;
+      const slugEl = document.getElementById("box_slug") as HTMLInputElement;
+      let slugTouched = false;
+      slugEl?.addEventListener("input", () => { slugTouched = true; });
+      nameEl?.addEventListener("input", () => {
+        if (slugTouched || !slugEl) return;
+        slugEl.value = nameEl.value
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .replace(/[^a-z0-9\s-]/g, "")
+          .trim()
+          .replace(/\s+/g, "-")
+          .slice(0, 40);
+      });
+    </script>
+  </body>
+</html>

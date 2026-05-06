@@ -229,8 +229,11 @@ const movement = exerciseLabel(record.exercise as ExerciseId);
         recordId: record.id,
         weight: Number(record.weight_kg),
         exercise: record.exercise,
+        exerciseLabelStr: movement,
         isLevelUp,
         tierColorHex: currentTier ? tierColor(currentTier) : "#D8FF2C",
+        tierLabelStr: currentTier ? tierLabel(currentTier) : null,
+        percentile: strengthData?.percentile ?? null,
       }}
     >
       // === Count-up animation =========================================
@@ -378,9 +381,40 @@ const movement = exerciseLabel(record.exercise as ExerciseId);
         }
       });
 
+      // === Auto-generated share caption ===============================
+      // PT-BR caption with emoji + tier + percentile + hashtags. The body
+      // is crafted to read well as Story sticker, Reel description, or
+      // WhatsApp message. Optimized to drop into IG/TikTok natively.
+      function buildCaption() {
+        const lines = [];
+        if (isLevelUp && tierLabelStr) {
+          lines.push(`🔥 LEVEL UP — ${tierLabelStr.toUpperCase()}`);
+          lines.push(`${exerciseLabelStr} · ${weight} kg`);
+        } else if (tierLabelStr) {
+          lines.push(`💪 Novo PR — ${exerciseLabelStr}`);
+          lines.push(`${weight} kg · ${tierLabelStr}`);
+        } else {
+          lines.push(`💪 Novo PR — ${exerciseLabelStr}`);
+          lines.push(`${weight} kg`);
+        }
+        if (percentile != null) {
+          const top = Math.max(1, Math.round(100 - percentile));
+          lines.push(`Top ${top}% Brasil`);
+        }
+        const hashtags = [
+          "#PRTracker",
+          "#" + exerciseLabelStr.replace(/\s|&|·/g, ""),
+          "#Personal Record",
+          tierLabelStr ? "#" + tierLabelStr.replace(/\s/g, "") : null,
+        ].filter(Boolean);
+        lines.push("");
+        lines.push(hashtags.join(" "));
+        lines.push("@pr.tracker · prtracker.com.br");
+        return lines.join("\n");
+      }
       const shareBtn = document.getElementById("share-btn");
       shareBtn?.addEventListener("click", async () => {
-        const text = `Novo PR de ${exercise.replace(/_/g, " ")}: ${weight} kg`;
+        const text = buildCaption();
         try {
           const blob = await svgToPngBlob();
           if (blob && navigator.canShare && navigator.share) {

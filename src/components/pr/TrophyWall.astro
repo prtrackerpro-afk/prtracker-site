@@ -1,0 +1,234 @@
+---
+// Isometric "Trophy Wall" — V1.5 lite of the virtual gym vision.
+//
+// Pure inline SVG, no JS, no deps. Composition mimics an isometric room
+// (back wall + floor) with shelves of mini PR Tracker trophies. Each
+// trophy reads as a barbell with brand-color anilhas; the colour comes
+// from the lift's strength tier, not the IWF plate colour, so the wall
+// doubles as a visual ranking.
+//
+// Replaces the flat "Sua estante" grid on /pr/profile. Future V2 ships
+// this as a real Three.js scene with avatar + multiplayer; this 2D
+// version is the staging ground for that vision.
+
+import { type ExerciseId } from "~/lib/pr/exercises";
+import { tierLabel, tierColor, TIER_META, type Tier } from "~/lib/pr/strength-score";
+
+interface LiftEntry {
+  exerciseId: ExerciseId;
+  weightKg: number;
+  tier: Tier;
+}
+
+interface Props {
+  athleteName: string;
+  overallTier: Tier | null;
+  lifts: LiftEntry[];
+}
+
+const { athleteName, overallTier, lifts } = Astro.props;
+
+// Sort lifts by tier rank (highest first), then by weight
+const sorted = [...lifts].sort((a, b) => {
+  const r = TIER_META[b.tier].rank - TIER_META[a.tier].rank;
+  return r !== 0 ? r : b.weightKg - a.weightKg;
+});
+
+// Layout: 3 shelves × 4 slots = 12 trophies max in V1
+const SLOTS_PER_SHELF = 4;
+const SHELVES = 3;
+const visibleLifts = sorted.slice(0, SLOTS_PER_SHELF * SHELVES);
+
+const wallColor = overallTier ? tierColor(overallTier) : "#D8FF2C";
+const tierName = overallTier ? tierLabel(overallTier).toUpperCase() : "ATLETA";
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Build shelf rows server-side as SVG strings.
+const shelfMarkup: string[] = [];
+for (let shelfIdx = 0; shelfIdx < SHELVES; shelfIdx++) {
+  const shelfY = 165 + shelfIdx * 80;
+  const shelfStart = shelfIdx * SLOTS_PER_SHELF;
+  const shelfLifts = visibleLifts.slice(shelfStart, shelfStart + SLOTS_PER_SHELF);
+
+  const slots: string[] = [];
+  for (let slotIdx = 0; slotIdx < SLOTS_PER_SHELF; slotIdx++) {
+    const lift = shelfLifts[slotIdx];
+    const cx = 175 + slotIdx * 150;
+    const baseY = shelfY + 30;
+
+    if (lift) {
+      const c = tierColor(lift.tier);
+      const w = lift.weightKg;
+      // Mini-trophy: pedestal + barbell with two color plates per side
+      slots.push(`
+        <g class="trophy" data-tier="${lift.tier}">
+          <!-- Pedestal -->
+          <rect x="${cx - 26}" y="${baseY - 14}" width="52" height="14" rx="2" fill="url(#tw-pedestal)"/>
+          <rect x="${cx - 26}" y="${baseY - 14}" width="52" height="3" fill="rgba(255,255,255,0.25)"/>
+          <!-- Plate stack left -->
+          <rect x="${cx - 38}" y="${baseY - 36}" width="6" height="22" rx="1" fill="${c}" stroke="#0a0a14" stroke-width="0.6"/>
+          <rect x="${cx - 31}" y="${baseY - 38}" width="5" height="26" rx="1" fill="${c}" stroke="#0a0a14" stroke-width="0.6"/>
+          <!-- Bar shaft -->
+          <rect x="${cx - 26}" y="${baseY - 26}" width="52" height="3" rx="1.5" fill="#E4E8ED"/>
+          <!-- Plate stack right -->
+          <rect x="${cx + 26}" y="${baseY - 38}" width="5" height="26" rx="1" fill="${c}" stroke="#0a0a14" stroke-width="0.6"/>
+          <rect x="${cx + 32}" y="${baseY - 36}" width="6" height="22" rx="1" fill="${c}" stroke="#0a0a14" stroke-width="0.6"/>
+          <!-- Weight label on pedestal -->
+          <text x="${cx}" y="${baseY - 4}" text-anchor="middle" fill="#01002A" font-family="'Archivo Black','Inter',sans-serif" font-size="8" font-weight="900">${w}</text>
+          <!-- Subtle glow under -->
+          <ellipse cx="${cx}" cy="${baseY + 4}" rx="22" ry="3" fill="${c}" opacity="0.35"/>
+        </g>
+      `);
+    } else {
+      // Empty slot — placeholder dotted square
+      slots.push(`
+        <g opacity="0.2">
+          <rect x="${cx - 18}" y="${baseY - 28}" width="36" height="28" rx="3" fill="none" stroke="${wallColor}" stroke-width="1" stroke-dasharray="3 3"/>
+        </g>
+      `);
+    }
+  }
+
+  shelfMarkup.push(`
+    <g>
+      <polygon points="100,${shelfY + 30} 700,${shelfY + 30} 720,${shelfY + 38} 80,${shelfY + 38}" fill="url(#tw-shelf)"/>
+      <line x1="80" y1="${shelfY + 38}" x2="720" y2="${shelfY + 38}" stroke="${wallColor}" stroke-width="0.5" opacity="0.4"/>
+      ${slots.join("")}
+    </g>
+  `);
+}
+const shelvesSvg = shelfMarkup.join("");
+---
+
+<div class="trophy-wall-wrapper">
+  <svg
+    class="trophy-wall"
+    viewBox="0 0 800 600"
+    xmlns="http://www.w3.org/2000/svg"
+    role="img"
+    aria-label={`Estante de troféus — ${athleteName}, tier ${tierName}`}
+  >
+    <defs>
+      <linearGradient id="tw-bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#01002A"/>
+        <stop offset="100%" stop-color="#0a0050"/>
+      </linearGradient>
+      <linearGradient id="tw-floor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0f0a55" stop-opacity="0.8"/>
+        <stop offset="100%" stop-color="#01002A"/>
+      </linearGradient>
+      <linearGradient id="tw-shelf" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3a3970"/>
+        <stop offset="100%" stop-color="#1e1b50"/>
+      </linearGradient>
+      <linearGradient id="tw-pedestal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#9aa0aa"/>
+        <stop offset="100%" stop-color="#5a5f68"/>
+      </linearGradient>
+      <radialGradient id="tw-glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color={wallColor} stop-opacity="0.25"/>
+        <stop offset="100%" stop-color={wallColor} stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <!-- Background -->
+    <rect width="800" height="600" fill="url(#tw-bg)"/>
+
+    <!-- Floor (isometric tilt) -->
+    <polygon points="0,400 800,400 800,600 0,600" fill="url(#tw-floor)"/>
+
+    <!-- Floor grid lines (faint) -->
+    <g opacity="0.08" stroke={wallColor} stroke-width="1" fill="none">
+      <line x1="100" y1="400" x2="40" y2="600"/>
+      <line x1="200" y1="400" x2="160" y2="600"/>
+      <line x1="300" y1="400" x2="280" y2="600"/>
+      <line x1="400" y1="400" x2="400" y2="600"/>
+      <line x1="500" y1="400" x2="520" y2="600"/>
+      <line x1="600" y1="400" x2="640" y2="600"/>
+      <line x1="700" y1="400" x2="760" y2="600"/>
+      <line x1="20" y1="450" x2="780" y2="450"/>
+      <line x1="40" y1="500" x2="760" y2="500"/>
+      <line x1="60" y1="550" x2="740" y2="550"/>
+    </g>
+
+    <!-- Back wall trim -->
+    <line x1="0" y1="400" x2="800" y2="400" stroke={wallColor} stroke-width="2" opacity="0.6"/>
+
+    <!-- Halo behind the brand plaque -->
+    <ellipse cx="400" cy="60" rx="280" ry="60" fill="url(#tw-glow)"/>
+
+    <!-- Brand plaque -->
+    <text
+      x="400" y="50"
+      text-anchor="middle"
+      fill={wallColor}
+      font-family="'Archivo Black', 'Inter', sans-serif"
+      font-size="28"
+      font-weight="900"
+      letter-spacing="10"
+    >PR TRACKER</text>
+    <line x1="320" y1="68" x2="480" y2="68" stroke={wallColor} stroke-width="1.5"/>
+    <text
+      x="400" y="92"
+      text-anchor="middle"
+      fill="#ffffff"
+      font-family="'Inter', sans-serif"
+      font-size="14"
+      font-weight="700"
+      letter-spacing="6"
+    >{escapeXml(athleteName.toUpperCase())}</text>
+    {overallTier && (
+      <text
+        x="400" y="115"
+        text-anchor="middle"
+        fill={wallColor}
+        font-family="'Inter', sans-serif"
+        font-size="11"
+        font-weight="600"
+        letter-spacing="4"
+      >· {tierName} ·</text>
+    )}
+
+    <!-- Shelves with trophies (server-rendered SVG) -->
+    <g set:html={shelvesSvg} />
+
+    <!-- Bottom-left avatar plaque (sets up the future 3D avatar slot) -->
+    <g transform="translate(50, 480)">
+      <rect x="0" y="0" width="80" height="100" rx="6" fill="rgba(0,0,0,0.4)" stroke={wallColor} stroke-opacity="0.3" stroke-width="1"/>
+      <text x="40" y="20" text-anchor="middle" fill="#9ca3af" font-family="'Inter', sans-serif" font-size="8" letter-spacing="2">AVATAR</text>
+      <text x="40" y="35" text-anchor="middle" fill={wallColor} font-family="'Inter', sans-serif" font-size="7" font-weight="600" letter-spacing="2">EM BREVE</text>
+      <circle cx="40" cy="55" r="6" fill={wallColor} opacity="0.5"/>
+      <line x1="40" y1="61" x2="40" y2="80" stroke={wallColor} stroke-width="2" opacity="0.5"/>
+      <line x1="40" y1="68" x2="32" y2="76" stroke={wallColor} stroke-width="2" opacity="0.5" stroke-linecap="round"/>
+      <line x1="40" y1="68" x2="48" y2="76" stroke={wallColor} stroke-width="2" opacity="0.5" stroke-linecap="round"/>
+      <line x1="40" y1="80" x2="34" y2="92" stroke={wallColor} stroke-width="2" opacity="0.5" stroke-linecap="round"/>
+      <line x1="40" y1="80" x2="46" y2="92" stroke={wallColor} stroke-width="2" opacity="0.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Stat plaque bottom-right -->
+    <g transform="translate(640, 480)">
+      <rect x="0" y="0" width="120" height="100" rx="6" fill="rgba(0,0,0,0.4)" stroke={wallColor} stroke-opacity="0.3" stroke-width="1"/>
+      <text x="60" y="22" text-anchor="middle" fill="#9ca3af" font-family="'Inter', sans-serif" font-size="9" letter-spacing="3">TROFÉUS</text>
+      <text x="60" y="58" text-anchor="middle" fill={wallColor} font-family="'Archivo Black', 'Inter', sans-serif" font-size="36" font-weight="900">{visibleLifts.length}</text>
+      <text x="60" y="80" text-anchor="middle" fill="#9ca3af" font-family="'Inter', sans-serif" font-size="8" letter-spacing="2">DE {SLOTS_PER_SHELF * SHELVES} POSSÍVEIS</text>
+    </g>
+  </svg>
+</div>
+
+<style>
+  .trophy-wall-wrapper {
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgb(216 255 44 / 0.15);
+  }
+  .trophy-wall {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: #01002A;
+  }
+</style>
