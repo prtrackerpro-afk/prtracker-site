@@ -107,13 +107,13 @@ const cardSvg = renderCardSvg({
           >
             Compartilhar
           </button>
-          <a
-            href={`/api/pr/card/${record.id}.svg`}
-            download={`pr-${record.exercise}-${record.weight_kg}kg.svg`}
-            class="rounded-lg border border-navy-600 px-3 py-2.5 text-sm font-semibold hover:bg-navy-800 transition text-center"
+          <button
+            type="button"
+            id="download-png-btn"
+            class="rounded-lg border border-navy-600 px-3 py-2.5 text-sm font-semibold hover:bg-navy-800 transition"
           >
-            Baixar SVG
-          </a>
+            Baixar PNG
+          </button>
         </div>
 
         <a href="/pr" class="block text-center text-xs text-navy-300 hover:text-white pt-1">
@@ -161,16 +161,104 @@ const cardSvg = renderCardSvg({
         requestAnimationFrame(animate);
       }
 
-      // Share button — uses Web Share API on mobile (Instagram, WhatsApp,
-      // Stories, etc.). Falls back to copying the public card URL.
+      // === Client-side SVG → PNG conversion =============================
+      // Inline SVG is rendered to a 1080×1920 PNG via canvas, on demand.
+      // Zero server deps; uses the page's already-loaded fonts (Archivo
+      // Black, Inter) so the rasterized output matches the preview.
+      // Returns a Blob ready for download or Web Share API (with `files`).
+      async function svgToPngBlob() {
+        const svgEl = document.querySelector(".card-preview svg");
+        if (!svgEl) return null;
+        const xml = new XMLSerializer().serializeToString(svgEl);
+        // Force the SVG width/height attrs to the export size — the inline
+        // version has been width:100% via CSS for layout, but for the PNG
+        // we want native 1080×1920.
+        const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(svgBlob);
+        try {
+          const img = new Image();
+          // Wait for fonts to be ready so the rasterized text uses the
+          // same Archivo Black / Inter as the preview.
+          if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+          }
+          await new Promise((resolve, reject) => {
+            img.onload = () => resolve(null);
+            img.onerror = reject;
+            img.src = url;
+          });
+          const canvas = document.createElement("canvas");
+          canvas.width = 1080;
+          canvas.height = 1920;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return null;
+          // Safety opaque background — if fonts didn't load the dark navy
+          // bg from the SVG should still be there, but belt and suspenders.
+          ctx.fillStyle = "#01002A";
+          ctx.fillRect(0, 0, 1080, 1920);
+          ctx.drawImage(img, 0, 0, 1080, 1920);
+          return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      const filename = `pr-${exercise}-${weight}kg.png`;
+
+      // Download PNG button
+      const downloadBtn = document.getElementById("download-png-btn");
+      downloadBtn?.addEventListener("click", async () => {
+        const original = downloadBtn.textContent;
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = "Gerando...";
+        try {
+          const blob = await svgToPngBlob();
+          if (!blob) throw new Error("conversion failed");
+          downloadBlob(blob, filename);
+          downloadBtn.textContent = "Baixado";
+          setTimeout(() => { downloadBtn.textContent = original; downloadBtn.disabled = false; }, 1200);
+        } catch {
+          // Fallback to SVG download
+          window.location.href = `/api/pr/card/${recordId}.svg`;
+          downloadBtn.textContent = original;
+          downloadBtn.disabled = false;
+        }
+      });
+
+      // Share button — uses Web Share API with the PNG file on mobile so
+      // Instagram / WhatsApp / Stories pick it up directly. Desktop falls
+      // back to downloading the PNG (no native share sheet for files).
       const shareBtn = document.getElementById("share-btn");
       shareBtn?.addEventListener("click", async () => {
-        const url = `${window.location.origin}/api/pr/card/${recordId}.svg`;
         const text = `Novo PR de ${exercise.replace(/_/g, " ")}: ${weight} kg`;
         try {
-          if (navigator.share) {
-            await navigator.share({ title: "PR Tracker", text, url });
+          const blob = await svgToPngBlob();
+          if (blob && navigator.canShare && navigator.share) {
+            const file = new File([blob], filename, { type: "image/png" });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({ title: "PR Tracker", text, files: [file] });
+              return;
+            }
+          }
+          // Fallback: download the PNG (covers desktop and older mobile)
+          if (blob) {
+            downloadBlob(blob, filename);
+            shareBtn.textContent = "PNG salvo";
+            setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
           } else {
+            // Last resort: copy public SVG URL
+            const url = `${window.location.origin}/api/pr/card/${recordId}.svg`;
             await navigator.clipboard.writeText(url);
             shareBtn.textContent = "Link copiado";
             setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
