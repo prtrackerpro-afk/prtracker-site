@@ -1,7 +1,9 @@
 import type { APIRoute } from "astro";
-import { getServerSupabase } from "../../../../lib/supabase/server";
+import { getServerSupabase, getAdminSupabase } from "../../../../lib/supabase/server";
 import { isExercise } from "../../../../lib/pr/exercises";
 import { insertPR } from "../../../../lib/pr/db";
+import { tierForLift, TIER_META, type Tier } from "../../../../lib/pr/strength-score";
+import { sendLevelUpEmail } from "../../../../lib/pr/email";
 
 export const prerender = false;
 
@@ -37,7 +39,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   const supabase = getServerSupabase({ headers: request.headers, cookies });
 
   try {
-    const { record } = await insertPR(supabase, {
+    const { record, previousBestKg, isPR } = await insertPR(supabase, {
       userId: athlete.userId,
       exercise: body.exercise,
       weightKg: weight,
@@ -46,6 +48,24 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       photoUrl: body.photo_url ?? null,
       boxId: body.box_id ?? null,
     });
+
+    // Side-effects: level-up notification + email. Best-effort, never
+    // block the response — the celebrate page reads tier directly from
+    // the record + body data, so the user UX doesn't depend on these.
+    if (isPR && athlete.bodyWeightKg && athlete.sex && previousBestKg != null) {
+      void notifyLevelUp({
+        userId: athlete.userId,
+        toEmail: athlete.email,
+        athleteName: athlete.displayName ?? "Atleta",
+        exercise: body.exercise,
+        weight,
+        previousBestKg: Number(previousBestKg),
+        bodyWeightKg: athlete.bodyWeightKg,
+        sex: athlete.sex,
+        recordId: record.id,
+      });
+    }
+
     return new Response(JSON.stringify(record), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -55,6 +75,51 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     return jsonError(500, "insert_failed", message);
   }
 };
+
+async function notifyLevelUp(opts: {
+  userId: string;
+  toEmail: string;
+  athleteName: string;
+  exercise: import("../../../../lib/pr/exercises").ExerciseId;
+  weight: number;
+  previousBestKg: number;
+  bodyWeightKg: number;
+  sex: "male" | "female";
+  recordId: string;
+}) {
+  try {
+    const newScore = tierForLift(opts.exercise, opts.weight, opts.bodyWeightKg, opts.sex);
+    const oldScore = tierForLift(opts.exercise, opts.previousBestKg, opts.bodyWeightKg, opts.sex);
+    if (TIER_META[newScore.tier].rank <= TIER_META[oldScore.tier].rank) return;
+
+    // In-app notification (service-role; trigger doesn't fire for level_up).
+    const admin = getAdminSupabase();
+    await admin.from("pr_notifications").insert({
+      user_id: opts.userId,
+      type: "level_up",
+      payload: {
+        tier: newScore.tier as Tier,
+        previous_tier: oldScore.tier as Tier,
+        exercise: opts.exercise,
+        weight_kg: opts.weight,
+        record_id: opts.recordId,
+      },
+    });
+
+    // Email (best-effort, silent if Resend unavailable).
+    await sendLevelUpEmail({
+      toEmail: opts.toEmail,
+      athleteName: opts.athleteName,
+      newTier: newScore.tier as Tier,
+      previousTier: oldScore.tier as Tier,
+      exerciseId: opts.exercise,
+      weightKg: opts.weight,
+      recordId: opts.recordId,
+    });
+  } catch (e) {
+    console.warn("[pr:notifyLevelUp] failed", e);
+  }
+}
 
 function jsonError(status: number, code: string, message?: string) {
   return new Response(JSON.stringify({ error: code, message }), {

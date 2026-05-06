@@ -1,0 +1,178 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import { getServerSupabase } from "../../lib/supabase/server";
+import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
+import { tierLabel, tierColor, type Tier } from "../../lib/pr/strength-score";
+
+const athlete = Astro.locals.athlete!;
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const { data: notifications = [] } = await supabase
+  .from("pr_notifications")
+  .select("id, type, payload, read_at, created_at, actor_user_id")
+  .eq("user_id", athlete.userId)
+  .order("created_at", { ascending: false })
+  .limit(100);
+
+const list = (notifications ?? []) as Array<{
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  read_at: string | null;
+  created_at: string;
+  actor_user_id: string | null;
+}>;
+
+// Resolve actor display names in one round-trip
+const actorIds = Array.from(
+  new Set(list.map((n) => n.actor_user_id).filter((id): id is string => !!id))
+);
+const { data: actors = [] } = actorIds.length > 0
+  ? await supabase.from("pr_athletes").select("user_id, display_name").in("user_id", actorIds)
+  : { data: [] };
+const actorById = new Map((actors ?? []).map((a) => [a.user_id as string, a.display_name as string]));
+
+// Mark all read on visit (fire and forget — we'll just await it once)
+const unreadIds = list.filter((n) => !n.read_at).map((n) => n.id);
+if (unreadIds.length > 0) {
+  await supabase
+    .from("pr_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .in("id", unreadIds);
+}
+
+function fmtRelative(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return "agora";
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Notificações · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <link rel="manifest" href="/pr/manifest.webmanifest" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
+      <a href="/pr" class="text-xs text-navy-300 hover:text-white">← Meus PRs</a>
+      <h1 class="font-display text-base tracking-tight">Notificações</h1>
+      <span class="w-10"></span>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4">
+      {list.length === 0 ? (
+        <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-8 text-center">
+          <div class="text-3xl mb-2">🔔</div>
+          <p class="text-sm text-navy-300">Nenhuma notificação ainda.</p>
+        </div>
+      ) : (
+        <ul class="space-y-2">
+          {list.map((n) => {
+            const actor = n.actor_user_id ? actorById.get(n.actor_user_id) : null;
+            return (
+              <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 flex items-start gap-3">
+                {n.type === "reaction" && (() => {
+                  const emoji = n.payload.emoji as string;
+                  const exId = n.payload.exercise as ExerciseId;
+                  const w = n.payload.weight_kg as number;
+                  return (
+                    <>
+                      <span class="text-2xl flex-shrink-0">{emoji}</span>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-sm leading-tight">
+                          <strong>{actor ?? "Alguém"}</strong>
+                          <span class="text-navy-300"> reagiu ao seu PR de </span>
+                          <strong>{exerciseLabel(exId)} {w} kg</strong>
+                        </div>
+                        <div class="text-[10px] text-navy-300 mt-1">{fmtRelative(n.created_at)}</div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {n.type === "follow" && (
+                  <>
+                    <span class="text-2xl flex-shrink-0">👀</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm leading-tight">
+                        <strong>{actor ?? "Alguém"}</strong>
+                        <span class="text-navy-300"> está seguindo você</span>
+                      </div>
+                      <div class="text-[10px] text-navy-300 mt-1">{fmtRelative(n.created_at)}</div>
+                    </div>
+                  </>
+                )}
+
+                {n.type === "level_up" && (() => {
+                  const tier = n.payload.tier as Tier;
+                  const exId = n.payload.exercise as ExerciseId;
+                  const w = n.payload.weight_kg as number;
+                  const recordId = n.payload.record_id as string;
+                  return (
+                    <>
+                      <span class="text-2xl flex-shrink-0">🔥</span>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-sm leading-tight">
+                          <span class="text-navy-300">Você evoluiu pra </span>
+                          <strong style={`color: ${tierColor(tier)}`}>{tierLabel(tier).toUpperCase()}</strong>
+                          <span class="text-navy-300"> em </span>
+                          <strong>{exerciseLabel(exId)} {w} kg</strong>
+                        </div>
+                        <a href={`/pr/celebrate/${recordId}`} class="text-[11px] text-brand-lime mt-1 inline-block">Ver celebração →</a>
+                        <div class="text-[10px] text-navy-300 mt-1">{fmtRelative(n.created_at)}</div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {n.type === "box_join" && (() => {
+                  const slug = n.payload.slug as string;
+                  return (
+                    <>
+                      <span class="text-2xl flex-shrink-0">🏋️</span>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-sm leading-tight">
+                          <strong>{actor ?? "Alguém"}</strong>
+                          <span class="text-navy-300"> entrou no seu box</span>
+                        </div>
+                        <a href={`/pr/box/${slug}/admin`} class="text-[11px] text-brand-lime mt-1 inline-block">Abrir admin →</a>
+                        <div class="text-[10px] text-navy-300 mt-1">{fmtRelative(n.created_at)}</div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {n.type === "achievement" && (
+                  <>
+                    <span class="text-2xl flex-shrink-0">🏆</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm leading-tight text-brand-lime">Nova conquista desbloqueada</div>
+                      <div class="text-[10px] text-navy-300 mt-1">{fmtRelative(n.created_at)}</div>
+                    </div>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </main>
+  </body>
+</html>
