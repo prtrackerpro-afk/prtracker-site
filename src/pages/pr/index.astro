@@ -5,6 +5,7 @@ import { getServerSupabase } from "../../lib/supabase/server";
 import { listOwnRecords, listBestLifts } from "../../lib/pr/db";
 import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor } from "../../lib/pr/strength-score";
+import { computeQuests, formatRemaining } from "../../lib/pr/quests";
 import PRProgressionChart from "../../components/pr/PRProgressionChart";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
@@ -51,6 +52,15 @@ const chartRecords = records.map((r) => ({
   performed_at: r.performed_at,
   is_personal_record: r.is_personal_record,
 }));
+
+// Weekly + monthly quests
+const quests = computeQuests({
+  prDates: records.filter((r) => r.is_personal_record).map((r) => r.performed_at),
+  recordDates: records.map((r) => r.performed_at),
+  distinctExercises: new Set(records.map((r) => r.exercise as ExerciseId)),
+});
+const activeQuests = quests.filter((q) => !q.completed);
+const completedThisPeriod = quests.filter((q) => q.completed);
 ---
 
 <!doctype html>
@@ -66,6 +76,18 @@ const chartRecords = records.map((r) => ({
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="PR Tracker" />
+    <script is:inline>
+      // Service worker registration — scoped to /pr so the rest of the
+      // storefront stays untouched. Only registers once installed flag is
+      // set to avoid surprising existing users.
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/pr/sw.js", { scope: "/pr/" })
+            .catch(() => { /* ignore — non-critical */ });
+        });
+      }
+    </script>
   </head>
   <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
     <header class="px-4 pt-6 pb-4 flex items-center justify-between max-w-2xl mx-auto">
@@ -94,6 +116,45 @@ const chartRecords = records.map((r) => ({
     </header>
 
     <main class="max-w-2xl mx-auto px-4">
+      {/* === ACTIVE QUESTS === */}
+      {activeQuests.length > 0 && (
+        <section class="mb-4">
+          <div class="flex items-baseline justify-between mb-2">
+            <h2 class="text-[10px] uppercase tracking-widest text-brand-lime">Missões ativas</h2>
+            {completedThisPeriod.length > 0 && (
+              <span class="text-[10px] uppercase tracking-widest text-navy-300">
+                {completedThisPeriod.length} concluída{completedThisPeriod.length > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+          <ul class="space-y-2">
+            {activeQuests.map((q) => {
+              const pct = Math.min(100, (q.current / q.target) * 100);
+              return (
+                <li class="rounded-xl border border-navy-700 bg-navy-800/30 px-3 py-2.5 flex items-center gap-3">
+                  <span class="text-2xl flex-shrink-0">{q.emoji}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-baseline justify-between gap-2">
+                      <div class="font-semibold text-sm leading-tight">{q.label}</div>
+                      <div class="text-[10px] text-navy-300 whitespace-nowrap">{formatRemaining(q.endsAt)}</div>
+                    </div>
+                    <div class="text-[11px] text-navy-300 leading-tight mb-1.5">{q.description}</div>
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 h-1.5 rounded-full bg-navy-900 overflow-hidden">
+                        <div class="h-full rounded-full bg-brand-lime" style={`width: ${pct}%`}></div>
+                      </div>
+                      <div class="text-[10px] text-navy-300 tabular-nums whitespace-nowrap">
+                        {q.current}/{q.target}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* Stats grid — only meaningful once you have at least 1 PR */}
       {records.length > 0 && (
         <section class="grid grid-cols-3 gap-2 mb-6">

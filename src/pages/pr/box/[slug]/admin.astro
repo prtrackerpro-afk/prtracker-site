@@ -202,13 +202,79 @@ const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=1
         </section>
       )}
 
-      {/* === MONETIZATION HINT (vision: B2B/sponsorship) === */}
+      {/* === SPONSORSHIP SLOT (preview, B2B marketplace coming) === */}
+      <section class="mb-6">
+        <div class="flex items-baseline justify-between mb-2">
+          <h2 class="text-[10px] uppercase tracking-widest text-brand-lime">Patrocínio do box</h2>
+          <span class="text-[10px] uppercase tracking-widest text-navy-300">preview</span>
+        </div>
+
+        <div class="rounded-2xl border-2 border-dashed border-navy-600 p-5 relative">
+          <div class="absolute top-3 right-3 text-[9px] uppercase tracking-widest font-display bg-navy-700 text-navy-300 px-2 py-0.5 rounded">SLOT VAZIO</div>
+
+          <div class="grid sm:grid-cols-[80px_1fr] gap-4 items-center">
+            <div class="w-20 h-20 rounded-xl bg-navy-800 grid place-items-center text-navy-300">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5L9 20"/></svg>
+            </div>
+            <div class="min-w-0">
+              <div class="font-display text-base mb-1">Aqui vai o seu patrocinador</div>
+              <p class="text-xs text-navy-300 leading-relaxed">
+                Marcas BR (Growth, Centauro, Vitafor, Madrugão) pagam pra estar no topo do leaderboard do seu box. Você divide a receita.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-navy-700">
+            <div class="text-center">
+              <div class="text-[10px] uppercase tracking-widest text-navy-300">CPM est.</div>
+              <div class="font-display text-base">R$15-30</div>
+            </div>
+            <div class="text-center">
+              <div class="text-[10px] uppercase tracking-widest text-navy-300">Sua %</div>
+              <div class="font-display text-base text-brand-lime">40%</div>
+            </div>
+            <div class="text-center">
+              <div class="text-[10px] uppercase tracking-widest text-navy-300">Lançamento</div>
+              <div class="font-display text-base">Q1 27</div>
+            </div>
+          </div>
+
+          <div class="mt-4 text-center">
+            <span class="text-[11px] text-navy-300">Quer ser dos primeiros? </span>
+            <a href="https://wa.me/5551982061914?text=Quero%20ser%20box%20parceiro%20PR%20Tracker"
+               target="_blank" rel="noopener"
+               class="text-[11px] text-brand-lime underline">
+              Avisa pelo WhatsApp →
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* === COMMISSION ON TROPHY SALES === */}
       <section class="rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800/50 to-purple-900/20 p-5 mb-6">
         <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">EM BREVE</div>
-        <h2 class="font-display text-lg tracking-tight mb-1">Comissão sobre vendas + sponsor banner</h2>
+        <h2 class="font-display text-lg tracking-tight mb-1">Comissão sobre vendas</h2>
         <p class="text-sm text-navy-300">
-          Quando seus alunos compram um troféu PR Tracker, você ganha comissão progressiva (8%–20%). Banner do seu box no topo da página pública (B2B sponsorship) também tá no roadmap.
+          Quando seus alunos compram um troféu PR Tracker, você ganha comissão progressiva: 8% nas primeiras 10 unidades / mês, 20% acima de 50 (Nível MAX).
         </p>
+        <div class="grid grid-cols-4 gap-2 mt-3">
+          <div class="rounded-lg border border-navy-700 p-2 text-center">
+            <div class="text-[9px] text-navy-300 uppercase tracking-widest">≤10</div>
+            <div class="font-display text-sm">8%</div>
+          </div>
+          <div class="rounded-lg border border-navy-700 p-2 text-center">
+            <div class="text-[9px] text-navy-300 uppercase tracking-widest">≤20</div>
+            <div class="font-display text-sm">15%</div>
+          </div>
+          <div class="rounded-lg border border-navy-700 p-2 text-center">
+            <div class="text-[9px] text-navy-300 uppercase tracking-widest">≤50</div>
+            <div class="font-display text-sm">17,5%</div>
+          </div>
+          <div class="rounded-lg border border-brand-lime/40 p-2 text-center">
+            <div class="text-[9px] text-brand-lime uppercase tracking-widest">+50 MAX</div>
+            <div class="font-display text-sm text-brand-lime">20%</div>
+          </div>
+        </div>
       </section>
     </main>
 
