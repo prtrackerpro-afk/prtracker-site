@@ -1,0 +1,121 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import { getServerSupabase } from "../../lib/supabase/server";
+import { listBestLifts } from "../../lib/pr/db";
+import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
+import { summarize, tierColor, tierLabel, TIER_META, type Tier } from "../../lib/pr/strength-score";
+import VirtualGym, { type GymTrophy } from "../../components/pr/VirtualGym";
+import BottomNav from "../../components/pr/BottomNav.astro";
+
+const athlete = Astro.locals.athlete!;
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const bestLifts = (await listBestLifts(supabase, athlete.userId)) as Partial<Record<ExerciseId, number>>;
+const summary = summarize({
+  bodyWeightKg: athlete.bodyWeightKg,
+  sex: athlete.sex,
+  bestLifts,
+});
+
+// Build the trophies for the gym scene — sorted by tier rank desc, then weight desc.
+const sorted = [...summary.lifts].sort((a, b) => {
+  const r = TIER_META[b.tier].rank - TIER_META[a.tier].rank;
+  return r !== 0 ? r : b.weightKg - a.weightKg;
+});
+
+const trophies: GymTrophy[] = sorted.map((l) => ({
+  color: tierColor(l.tier),
+  weightKg: l.weightKg,
+  shortLabel: shortName(exerciseLabel(l.exerciseId)),
+}));
+
+// Fallback when athlete has no body data — show records with lime accent
+const fallbackTrophies: GymTrophy[] =
+  trophies.length === 0
+    ? Object.entries(bestLifts)
+        .slice(0, 12)
+        .map(([id, kg]) => ({
+          color: "#D8FF2C",
+          weightKg: Number(kg),
+          shortLabel: shortName(exerciseLabel(id as ExerciseId)),
+        }))
+    : trophies;
+
+const accent = summary.hasBodyData ? tierColor(summary.overallTier) : "#D8FF2C";
+const tierName = summary.hasBodyData ? tierLabel(summary.overallTier) : "Atleta";
+
+function shortName(label: string): string {
+  // Take first letter of each word, max 4 chars
+  return label
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 4)
+    .toUpperCase();
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Ginásio Virtual · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <link rel="manifest" href="/pr/manifest.webmanifest" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-20">
+    <header class="px-4 pt-4 pb-2 max-w-4xl mx-auto flex items-center justify-between">
+      <a href="/pr/profile" class="text-xs text-navy-300 hover:text-white">← Perfil</a>
+      <div class="text-center">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime">GINÁSIO VIRTUAL</div>
+        <div class="font-display text-base tracking-tight">{athlete.displayName}</div>
+      </div>
+      <span class="w-10"></span>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-2">
+      <div class="rounded-2xl overflow-hidden border border-navy-700 bg-navy-900 relative" style="aspect-ratio: 16/10; min-height: 480px;">
+        <VirtualGym
+          client:only="react"
+          athleteName={athlete.displayName ?? "Atleta"}
+          accent={accent}
+          trophies={fallbackTrophies}
+        />
+
+        {/* HUD overlay */}
+        <div class="pointer-events-none absolute top-3 left-3 text-[10px] uppercase tracking-widest">
+          <div class="text-navy-300">Tier</div>
+          <div class="font-display text-base" style={`color: ${accent}`}>{tierName}</div>
+        </div>
+        <div class="pointer-events-none absolute bottom-3 right-3 text-[10px] uppercase tracking-widest text-navy-300 text-right">
+          <div>{fallbackTrophies.length} troféu{fallbackTrophies.length === 1 ? "" : "s"}</div>
+          <div class="text-brand-lime">Arrasta para girar</div>
+        </div>
+      </div>
+
+      <section class="mt-4 rounded-2xl border border-brand-lime/30 bg-brand-lime/5 p-4">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">EM BREVE</div>
+        <div class="text-sm">
+          <strong>TV vai tocar Reels dos teus PRs.</strong>
+          <span class="text-navy-300"> Avatar customizável. Visitar o ginásio dos amigos. Cada novo PR vira animação de unlock.</span>
+        </div>
+      </section>
+
+      {fallbackTrophies.length === 0 && (
+        <div class="mt-4 rounded-2xl border border-navy-700 bg-navy-800/30 p-6 text-center">
+          <p class="text-sm text-navy-300 mb-3">Seu ginásio está vazio. Cada PR registrado vira um troféu na parede.</p>
+          <a href="/pr/log" class="inline-block text-xs bg-brand-lime text-navy-900 font-semibold rounded px-3 py-1.5">Registrar primeiro PR</a>
+        </div>
+      )}
+    </main>
+
+    <BottomNav active="profile" />
+  </body>
+</html>
