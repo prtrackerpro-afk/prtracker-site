@@ -1,0 +1,108 @@
+---
+export const prerender = false;
+import "../../../../styles/global.css";
+import { getServerSupabase } from "../../../../lib/supabase/server";
+import { exerciseLabel, type ExerciseId } from "../../../../lib/pr/exercises";
+
+// Iframe-friendly leaderboard. The box owner embeds this on their own
+// website with <iframe src="https://prtracker.com.br/pr/box/[slug]/embed"
+// width="100%" height="600" frameborder="0">.
+//
+// Stripped chrome — no header, no nav, no footer. Just the leaderboard
+// + a subtle "Powered by PR Tracker" link. The iframe doesn't carry the
+// athlete's session, so this is read-only public content (same as the
+// public box page but without the join/admin CTAs).
+
+const slug = Astro.params.slug!;
+const url = new URL(Astro.request.url);
+const exerciseFilter = (url.searchParams.get("ex") as ExerciseId | null) ?? null;
+const limit = Math.max(5, Math.min(100, Number(url.searchParams.get("limit") ?? 25)));
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const { data: box } = await supabase
+  .from("pr_boxes")
+  .select("id, slug, name, instagram_handle")
+  .eq("slug", slug)
+  .maybeSingle();
+
+if (!box) {
+  return new Response("Box não encontrado", { status: 404 });
+}
+
+const { data: leaderboard = [] } = await supabase.rpc("pr_box_leaderboard", {
+  p_box_slug: slug,
+  p_exercise: exerciseFilter,
+  p_limit: limit,
+});
+
+const rows = (leaderboard ?? []) as Array<{
+  user_id: string;
+  display_name: string | null;
+  exercise: ExerciseId;
+  weight_kg: number;
+}>;
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{box.name} · Leaderboard</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      :root { color-scheme: dark; }
+      html, body {
+        margin: 0;
+        background: transparent;
+        color: #fff;
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="bg-navy-900 min-h-screen">
+      <div class="px-3 py-3">
+        <div class="flex items-baseline justify-between mb-2">
+          <h1 class="font-display text-base tracking-tight truncate">{box.name}</h1>
+          <span class="text-[10px] uppercase tracking-widest text-brand-lime">LEADERBOARD</span>
+        </div>
+
+        {rows.length === 0 ? (
+          <div class="text-sm text-navy-300 py-6 text-center">
+            Nenhum PR registrado nesse box ainda.
+          </div>
+        ) : (
+          <ol class="space-y-1.5">
+            {rows.map((row, i) => (
+              <li class="rounded-lg border border-navy-700 bg-navy-800/30 px-2.5 py-2 flex items-center gap-2.5">
+                <span class="font-display text-sm text-navy-300 w-5 text-center flex-shrink-0">{i + 1}</span>
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold text-sm truncate">{row.display_name ?? "Atleta"}</div>
+                  <div class="text-[10px] text-navy-300 truncate">{exerciseLabel(row.exercise)}</div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="font-display text-base tabular-nums text-brand-lime">{row.weight_kg}</div>
+                  <div class="text-[9px] uppercase tracking-wider text-navy-300">kg</div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        <a
+          href={`https://prtracker.com.br/pr/box/${slug}`}
+          target="_blank"
+          rel="noopener"
+          class="block text-center text-[9px] uppercase tracking-widest text-navy-300 mt-3 pt-3 border-t border-navy-700 hover:text-brand-lime"
+        >
+          POWERED BY PR TRACKER
+        </a>
+      </div>
+    </main>
+  </body>
+</html>

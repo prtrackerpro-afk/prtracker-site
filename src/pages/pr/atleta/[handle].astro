@@ -2,8 +2,9 @@
 export const prerender = false;
 import "../../../styles/global.css";
 import { getAdminSupabase } from "../../../lib/supabase/server";
-import { exerciseLabel, type ExerciseId } from "../../../lib/pr/exercises";
+import { exerciseLabel, productSlugForExercise, type ExerciseId } from "../../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../../lib/pr/strength-score";
+import { configuratorQuery } from "../../../lib/pr/plates";
 
 // PUBLIC athlete profile, indexed by Instagram handle. No auth required —
 // this is the shareable link an athlete posts in their bio. Renders the
@@ -131,8 +132,10 @@ const pageDesc =
           <ul class="grid grid-cols-2 gap-2">
             {sortedLifts.map((lift) => {
               const c = tierColor(lift.tier);
+              const productSlug = productSlugForExercise(lift.exerciseId);
+              const trophyHref = `/produto/${productSlug}?${configuratorQuery(lift.weightKg, lift.exerciseId, "pr-public")}`;
               return (
-                <li class="rounded-xl border bg-navy-800/30 p-3" style={`border-color: ${c}33`}>
+                <li class="rounded-xl border bg-navy-800/30 p-3 flex flex-col" style={`border-color: ${c}33`}>
                   <div class="text-[10px] uppercase tracking-widest" style={`color: ${c}`}>
                     {tierLabel(lift.tier)}
                   </div>
@@ -141,6 +144,13 @@ const pageDesc =
                     {lift.weightKg}
                     <span class="text-xs text-navy-300 font-body ml-0.5">kg</span>
                   </div>
+                  <a
+                    href={trophyHref}
+                    class="mt-2 text-[10px] uppercase tracking-widest text-center rounded-md py-1.5 border transition hover:opacity-90"
+                    style={`color: ${c}; border-color: ${c}55; background: ${c}10`}
+                  >
+                    Quero esse troféu →
+                  </a>
                 </li>
               );
             })}
