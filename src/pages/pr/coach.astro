@@ -2,6 +2,7 @@
 export const prerender = false;
 import "../../styles/global.css";
 import { getServerSupabase } from "../../lib/supabase/server";
+import BottomNav from "../../components/pr/BottomNav.astro";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
 
@@ -148,6 +149,8 @@ for (const b of ownedBoxes ?? []) {
         </form>
       </section>
     </main>
+
+    <BottomNav active="coach" />
 
     <script>
       const form = document.getElementById("create-box-form") as HTMLFormElement;

@@ -6,6 +6,7 @@ import { listBestLifts } from "../../lib/pr/db";
 import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../lib/pr/strength-score";
 import TrophyWall from "../../components/pr/TrophyWall.astro";
+import BottomNav from "../../components/pr/BottomNav.astro";
 import { computeAchievements } from "../../lib/pr/achievements";
 
 const athlete = Astro.locals.athlete!;
@@ -340,14 +341,15 @@ const overallTierColor = tierColor(summary.overallTier);
       </section>
     </main>
 
-    {/* Sticky add button */}
     <a
       href="/pr/log"
-      class="fixed bottom-6 right-6 rounded-full bg-brand-lime text-navy-900 font-semibold w-14 h-14 grid place-items-center shadow-lg shadow-brand-lime/20 hover:scale-105 transition"
+      class="hidden md:grid fixed bottom-6 right-6 rounded-full bg-brand-lime text-navy-900 font-semibold w-14 h-14 place-items-center shadow-lg shadow-brand-lime/20 hover:scale-105 transition"
       aria-label="Registrar novo PR"
     >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
     </a>
+
+    <BottomNav active="profile" />
 
     <script>
       // "Compartilhar perfil" — opens native share sheet (mobile) or copies
