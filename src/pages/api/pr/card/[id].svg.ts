@@ -4,15 +4,12 @@ import { exerciseLabel, type ExerciseId } from "../../../../lib/pr/exercises";
 
 export const prerender = false;
 
-// V1 stub: returns an SVG placeholder. The story-card image is the share
-// asset for the PR — a vertical 1080×1920 dark navy / lime composition with
-// the athlete's name, exercise, weight, and the PR Tracker handle.
+// Returns a 1080×1920 SVG share card. Useful for desktop preview, browser
+// embedding, and editing. NOT a story-ready asset on mobile — Instagram /
+// TikTok mobile uploaders don't import SVG; for that we need real PNG via
+// Satori/Resvg (TODO #3 in docs/PR_TRACKER_MVP.md).
 //
-// V2: render via @vercel/og (Satori) or Resvg + canvas. Both libs need to
-// be added to package.json — left out of the scaffold to keep the diff
-// small and avoid bundling a renderer we may not ship.
-//
-// Service-role read because the PNG is meant to be embeddable (anyone with
+// Service-role read because the card is meant to be embeddable (anyone with
 // the link). Treat record.id as the only auth here. If we need privacy
 // later, gate behind an athlete-scoped token.
 
