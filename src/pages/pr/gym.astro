@@ -73,56 +73,6 @@ function shortName(label: string): string {
     <title>Ginásio Virtual · PR Tracker</title>
     <link rel="icon" type="image/png" href="/favicon-32.png" />
     <link rel="manifest" href="/pr/manifest.webmanifest" />
-    <script is:inline>
-      // DIAGNOSTIC TEMP: captura qualquer erro de JS / promise rejection
-      // e renderiza no topo da pagina pra debug do gym vazio.
-      // Remover apos identificar a causa raiz.
-      (function () {
-        function show(bg, prefix, text) {
-          var d = document.createElement("div");
-          d.style.cssText =
-            "position:fixed;top:0;left:0;right:0;background:" + bg +
-            ";color:#000;padding:8px;z-index:99999;font:11px monospace;line-height:1.4;white-space:pre-wrap;word-break:break-word;";
-          d.textContent = prefix + ": " + text;
-          document.body && document.body.appendChild(d);
-        }
-        window.addEventListener(
-          "error",
-          function (e) {
-            var src = e.filename ? e.filename.split("/").pop() : "?";
-            show(
-              "#ff4488",
-              "JS ERROR",
-              (e.message || "?") + " @ " + src + ":" + (e.lineno || "?")
-            );
-          },
-          true
-        );
-        window.addEventListener("unhandledrejection", function (e) {
-          var msg = (e.reason && (e.reason.message || e.reason.toString())) || "?";
-          show("#ffaa00", "PROMISE REJ", msg);
-        });
-        // Heartbeat: marca que o script-inline rodou. Se voce ve essa
-        // strip lime, o HTML chegou ate aqui e o JS basico funciona.
-        window.addEventListener("DOMContentLoaded", function () {
-          show("#D8FF2C", "HTML-OK", "DOM pronto · aguardando hidratacao da ilha React");
-        });
-        // Apos 4s, se ainda nao tiver havido erro nem hidratacao
-        // (ilha nao montou), avisa explicitamente.
-        setTimeout(function () {
-          var island = document.querySelector("astro-island");
-          var hydrated = island && island.hasAttribute("ssr") === false;
-          var canvas = document.querySelector("astro-island canvas");
-          show(
-            canvas ? "#88ff88" : "#ff8888",
-            "POST-4s",
-            "astro-island=" + (island ? "yes" : "no") +
-              " canvas=" + (canvas ? "yes" : "no") +
-              " children=" + (island ? island.children.length : 0)
-          );
-        }, 4000);
-      })();
-    </script>
   </head>
   <body class="min-h-screen bg-navy-900 text-white font-body pb-20">
     <header class="px-4 pt-4 pb-2 max-w-4xl mx-auto flex items-center justify-between">
