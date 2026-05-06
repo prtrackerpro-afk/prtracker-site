@@ -32,6 +32,8 @@ const trophies: GymTrophy[] = sorted.map((l) => ({
   color: tierColor(l.tier),
   weightKg: l.weightKg,
   shortLabel: shortName(exerciseLabel(l.exerciseId)),
+  exerciseId: l.exerciseId,
+  exerciseLabel: exerciseLabel(l.exerciseId),
 }));
 
 // Fallback when athlete has no body data — show records with lime accent
@@ -43,6 +45,8 @@ const fallbackTrophies: GymTrophy[] =
           color: "#D8FF2C",
           weightKg: Number(kg),
           shortLabel: shortName(exerciseLabel(id as ExerciseId)),
+          exerciseId: id as ExerciseId,
+          exerciseLabel: exerciseLabel(id as ExerciseId),
         }))
     : trophies;
 
@@ -96,7 +100,8 @@ function shortName(label: string): string {
         </div>
         <div class="pointer-events-none absolute bottom-3 right-3 text-[10px] uppercase tracking-widest text-navy-300 text-right">
           <div>{fallbackTrophies.length} troféu{fallbackTrophies.length === 1 ? "" : "s"}</div>
-          <div class="text-brand-lime">Arrasta para girar</div>
+          <div class="text-brand-lime hidden sm:block">WASD pra andar · Clica num troféu</div>
+          <div class="text-brand-lime sm:hidden">Joystick + tap no troféu</div>
         </div>
       </div>
 
