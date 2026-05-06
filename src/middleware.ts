@@ -43,6 +43,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const isPublicBoxLeaderboard =
     /^\/pr\/box\/[^/]+\/?$/.test(pathname);
 
+  // Iframe-friendly embed of the box leaderboard (boxes embed on their
+  // own website). Public, no auth.
+  const isPublicBoxEmbed =
+    /^\/pr\/box\/[^/]+\/embed\/?$/.test(pathname);
+
   // Public athlete profile (shareable via @handle, no auth needed).
   const isPublicAthleteProfile =
     /^\/pr\/atleta\/[^/]+\/?$/.test(pathname);
@@ -52,6 +57,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     !pathname.startsWith("/pr/login") &&
     !pathname.startsWith("/pr/auth/") &&
     !isPublicBoxLeaderboard &&
+    !isPublicBoxEmbed &&
     !isPublicAthleteProfile;
 
   const isPrAppApi =
