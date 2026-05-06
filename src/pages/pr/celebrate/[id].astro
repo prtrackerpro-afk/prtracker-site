@@ -212,7 +212,12 @@ const movement = exerciseLabel(record.exercise as ExerciseId);
     ></canvas>
 
     <style>
-      .card-preview svg {
+      /* `:global(svg)` é necessário porque o SVG é injetado via set:html
+         (raw HTML do server) e o scoped-CSS do Astro só aplica em
+         elementos com o atributo de scope que ele injeta no SSR. Sem o
+         :global, a regra nao matchava e o SVG renderizava no tamanho
+         nativo de Story (1080×1920) — gigante no desktop. */
+      .card-preview :global(svg) {
         width: 100%;
         height: auto;
         display: block;
