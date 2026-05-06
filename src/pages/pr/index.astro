@@ -2,8 +2,9 @@
 export const prerender = false;
 import "../../styles/global.css";
 import { getServerSupabase } from "../../lib/supabase/server";
-import { listOwnRecords } from "../../lib/pr/db";
+import { listOwnRecords, listBestLifts } from "../../lib/pr/db";
 import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
+import { summarize, tierLabel, tierColor } from "../../lib/pr/strength-score";
 import PRProgressionChart from "../../components/pr/PRProgressionChart";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
@@ -13,6 +14,14 @@ const supabase = getServerSupabase({
   cookies: Astro.cookies,
 });
 const records = await listOwnRecords(supabase, athlete.userId, 100);
+
+// Strength summary drives the tier pill in the header.
+const bestLiftsRaw = await listBestLifts(supabase, athlete.userId);
+const summary = summarize({
+  bodyWeightKg: athlete.bodyWeightKg,
+  sex: athlete.sex,
+  bestLifts: bestLiftsRaw as Partial<Record<ExerciseId, number>>,
+});
 
 // Stats summary
 const personalRecords = records.filter((r) => r.is_personal_record);
@@ -52,15 +61,30 @@ const chartRecords = records.map((r) => ({
     <meta name="robots" content="noindex,nofollow" />
     <title>Meus PRs · PR Tracker</title>
     <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <link rel="manifest" href="/pr/manifest.webmanifest" />
+    <meta name="theme-color" content="#01002A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PR Tracker" />
   </head>
   <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
     <header class="px-4 pt-6 pb-4 flex items-center justify-between max-w-2xl mx-auto">
-      <div>
-        <div class="font-display text-xl tracking-tight text-brand-lime">PR Tracker</div>
-        <div class="text-xs uppercase tracking-widest text-navy-300">
-          {athlete.displayName}
+      <a href="/pr/profile" class="flex items-center gap-3 min-w-0 hover:opacity-90 transition">
+        <div class="min-w-0">
+          <div class="font-display text-xl tracking-tight text-brand-lime">PR Tracker</div>
+          <div class="text-xs uppercase tracking-widest text-navy-300 truncate">
+            {athlete.displayName}
+          </div>
         </div>
-      </div>
+        {summary.hasBodyData && (
+          <span
+            class="inline-flex items-center text-[10px] uppercase tracking-widest font-display rounded-full px-2.5 py-1 border whitespace-nowrap"
+            style={`color: ${tierColor(summary.overallTier)}; border-color: ${tierColor(summary.overallTier)}`}
+          >
+            {tierLabel(summary.overallTier)}
+          </span>
+        )}
+      </a>
       <form method="post" action="/api/pr/auth/logout">
         <button class="text-xs text-navy-300 hover:text-white">Sair</button>
       </form>
