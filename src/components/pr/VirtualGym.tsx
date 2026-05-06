@@ -480,11 +480,33 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     <>
       <div ref={mountRef} style={{ position: "absolute", inset: 0 }} />
 
+      {/* TEMP DIAGNOSTIC: faixa magenta no topo. Se voce ve isso, a
+          ilha React montou. Vou remover assim que confirmar. */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 28,
+          background: "#ff00aa",
+          color: "#000",
+          fontWeight: 700,
+          textAlign: "center",
+          lineHeight: "28px",
+          fontSize: 12,
+          zIndex: 50,
+          letterSpacing: "0.2em",
+        }}
+      >
+        REACT-OK · {trophies.length} TROFÉU(S) · TIER {accent.toUpperCase()}
+      </div>
+
       {/* Camera mode toggle — top-right of the gym */}
       <button
         type="button"
         onClick={() => setMode((m) => (m === "follow" ? "orbit" : "follow"))}
-        style={{ position: "absolute", top: 12, right: 12, zIndex: 10 }}
+        style={{ position: "absolute", top: 40, right: 12, zIndex: 10 }}
         className="text-[10px] uppercase tracking-widest font-display rounded-full border border-white/30 bg-navy-900/80 text-white px-3 py-1.5 hover:border-brand-lime hover:text-brand-lime transition"
         aria-label="Trocar modo de câmera"
       >

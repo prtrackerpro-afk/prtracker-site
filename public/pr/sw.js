@@ -11,7 +11,7 @@
 // Scope is /pr by default (manifest scope). Athletes installing as a
 // home-screen app see a working dashboard even on shaky 3G.
 
-const VERSION = "pr-v1";
+const VERSION = "pr-v3";
 const SHELL_CACHE = `pr-shell-${VERSION}`;
 const PAGE_CACHE = `pr-pages-${VERSION}`;
 const ASSET_CACHE = `pr-assets-${VERSION}`;
