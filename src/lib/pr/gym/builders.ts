@@ -62,241 +62,402 @@ export interface AvatarParts {
 }
 
 /**
- * Constrói o avatar customizado. Retorna refs pras partes pra animação
- * de caminhada no loop principal.
+ * Constrói o avatar customizado estilo retrô-stylized (referência Viverse).
+ * Pés tocam o chão (root.y = 0). Camisa "PR TRACKER" sempre branded.
+ * Pele NÃO recebe emissive (evita tingir de verde quando regata é lime).
  */
 export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   const root = new THREE.Group();
 
-  // Materiais por preferência
+  // Materiais por preferência. CRÍTICO: nenhum emissive na pele/cabelo,
+  // senão o reflexo da luz lime ambient + o emissive da regata se
+  // misturam e a pele fica com tom esverdeado horrível.
   const skinMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(prefs.skin),
-    roughness: 0.55,
-    metalness: 0.05,
+    roughness: 0.7,
+    metalness: 0.0,
   });
   const hairMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(prefs.hair),
-    roughness: 0.7,
-    metalness: 0.05,
+    roughness: 0.85,
+    metalness: 0.0,
   });
   const topMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(prefs.top),
-    roughness: 0.6,
-    metalness: 0.1,
-    emissive: new THREE.Color(prefs.top),
-    emissiveIntensity: 0.05,
+    roughness: 0.75,
+    metalness: 0.0,
+    // Sem emissive — nas mensagens anteriores isso pintava a pele de verde.
   });
   const shortsMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(prefs.shorts),
-    roughness: 0.7,
-    metalness: 0.05,
+    roughness: 0.85,
+    metalness: 0.0,
   });
   const shoeMat = new THREE.MeshStandardMaterial({
     color: 0x111111,
     roughness: 0.6,
     metalness: 0.1,
   });
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0a0a14 });
 
-  // Proporções por gênero (fluid = média)
+  // Proporções por gênero. Total height ~1.85m. Layout absoluto:
+  //   Pés:    y=0 a y=0.08
+  //   Pernas: y=0.08 a y=0.95 (joelho ~0.5)
+  //   Hip:    y=0.95 a y=1.10
+  //   Torso:  y=1.10 a y=1.65
+  //   Pescoço:y=1.65 a y=1.72
+  //   Cabeça: y=1.72 a y=2.05 (radius 0.165, center 1.88)
   const isF = prefs.gender === "female";
   const isM = prefs.gender === "male";
-  const torsoTopR = isF ? 0.26 : isM ? 0.32 : 0.28;
-  const torsoBotR = isF ? 0.22 : isM ? 0.28 : 0.24;
-  const hipR = isF ? 0.28 : isM ? 0.26 : 0.27;
-  const shoulderW = isF ? 0.36 : isM ? 0.42 : 0.38;
+  const torsoTopR = isF ? 0.18 : isM ? 0.22 : 0.20;
+  const torsoBotR = isF ? 0.16 : isM ? 0.18 : 0.17;
+  const hipR = isF ? 0.20 : isM ? 0.18 : 0.19;
+  const shoulderHalfW = isF ? 0.20 : isM ? 0.24 : 0.22;
+  const headR = 0.165;
 
-  // === HEAD ===
+  // === HEAD com FACE TEXTURE ====================================
   const head = new THREE.Group();
-  // Cabeça arredondada (esfera levemente achatada vertical)
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.18, 24, 18), skinMat);
-  skull.scale.set(1, 1.05, 1);
-  skull.position.y = 0;
+  // Skull: esfera levemente achatada nas laterais pra dar formato facial
+  const skullGeom = new THREE.SphereGeometry(headR, 28, 22);
+  const skull = new THREE.Mesh(skullGeom, skinMat);
+  skull.scale.set(1.0, 1.08, 0.95);
   skull.castShadow = true;
   head.add(skull);
 
+  // Face texture: olhos + boca + sobrancelhas via canvas, em um plane
+  // arredondado na frente da cabeça. MUDA TUDO visualmente.
+  const faceCanvas = document.createElement("canvas");
+  faceCanvas.width = 256;
+  faceCanvas.height = 256;
+  const fctx = faceCanvas.getContext("2d")!;
+  // Fundo transparente pra não cobrir a esfera
+  fctx.clearRect(0, 0, 256, 256);
+
+  // Sobrancelhas
+  fctx.fillStyle = prefs.hair;
+  fctx.fillRect(70, 95, 38, 8);
+  fctx.fillRect(148, 95, 38, 8);
+
+  // Olhos brancos (esclera)
+  fctx.fillStyle = "#ffffff";
+  fctx.beginPath();
+  fctx.ellipse(89, 122, 18, 14, 0, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.ellipse(167, 122, 18, 14, 0, 0, Math.PI * 2);
+  fctx.fill();
+
+  // Íris (azul-noturno)
+  fctx.fillStyle = "#1a1660";
+  fctx.beginPath();
+  fctx.arc(89, 124, 9, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.arc(167, 124, 9, 0, Math.PI * 2);
+  fctx.fill();
+
+  // Pupilas
+  fctx.fillStyle = "#000";
+  fctx.beginPath();
+  fctx.arc(89, 124, 4, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.arc(167, 124, 4, 0, Math.PI * 2);
+  fctx.fill();
+
+  // Highlight nos olhos
+  fctx.fillStyle = "#ffffff";
+  fctx.beginPath();
+  fctx.arc(91, 121, 2, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.arc(169, 121, 2, 0, Math.PI * 2);
+  fctx.fill();
+
+  // Nariz (linha sutil)
+  fctx.strokeStyle = "rgba(0,0,0,0.18)";
+  fctx.lineWidth = 2;
+  fctx.beginPath();
+  fctx.moveTo(128, 140);
+  fctx.lineTo(122, 158);
+  fctx.lineTo(132, 162);
+  fctx.stroke();
+
+  // Boca (sorriso leve)
+  fctx.strokeStyle = "#3a1f1f";
+  fctx.lineWidth = 4;
+  fctx.lineCap = "round";
+  fctx.beginPath();
+  fctx.arc(128, 178, 26, 0.15, Math.PI - 0.15);
+  fctx.stroke();
+
+  // Bochecha sutil
+  fctx.fillStyle = "rgba(220, 100, 100, 0.18)";
+  fctx.beginPath();
+  fctx.arc(70, 165, 14, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.arc(186, 165, 14, 0, Math.PI * 2);
+  fctx.fill();
+
+  const faceTex = new THREE.CanvasTexture(faceCanvas);
+  faceTex.colorSpace = THREE.SRGBColorSpace;
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(headR * 1.7, headR * 1.7),
+    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+  );
+  // Posicionado um pouco à frente da esfera, à altura dos olhos
+  face.position.set(0, 0, headR * 0.92);
+  head.add(face);
+
   // Pescoço
   const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.08, 0.08, 12),
+    new THREE.CylinderGeometry(0.06, 0.07, 0.07, 12),
     skinMat
   );
-  neck.position.y = -0.18;
+  neck.position.y = -headR - 0.02;
   head.add(neck);
 
-  // Olhos (2 esferas pretas pequenas)
-  for (const sx of [-0.07, 0.07]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), eyeMat);
-    eye.position.set(sx, 0.02, 0.165);
-    head.add(eye);
-  }
-
-  // Cabelo conforme estilo
+  // CABELO conforme estilo (3D real, não cap chato)
   if (prefs.hairStyle !== "bald") {
     if (prefs.hairStyle === "short") {
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.185, 18, 14, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
-      cap.position.y = 0.0;
+      // Cap esférica fina cobrindo topo + atrás
+      const capGeom = new THREE.SphereGeometry(headR + 0.012, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.9);
+      const cap = new THREE.Mesh(capGeom, hairMat);
+      cap.position.y = 0.005;
       head.add(cap);
+      // Pequena franja na frente
+      const fringe = new THREE.Mesh(
+        new THREE.BoxGeometry(headR * 1.6, 0.04, 0.06),
+        hairMat
+      );
+      fringe.position.set(0, headR * 0.55, headR * 0.85);
+      head.add(fringe);
     } else if (prefs.hairStyle === "long") {
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.19, 18, 14, 0, Math.PI * 2, 0, Math.PI / 1.6), hairMat);
-      cap.position.y = -0.02;
-      head.add(cap);
-      // Cabelo descendo nas costas
-      const back = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.32, 0.08), hairMat);
-      back.position.set(0, -0.16, -0.13);
-      head.add(back);
-    } else if (prefs.hairStyle === "ponytail") {
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.185, 18, 14, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+      const cap = new THREE.Mesh(
+        new THREE.SphereGeometry(headR + 0.014, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.7),
+        hairMat
+      );
       cap.position.y = 0;
       head.add(cap);
-      // Tail
-      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.32, 10), hairMat);
-      tail.position.set(0, -0.05, -0.18);
-      tail.rotation.x = -0.4;
+      // Cabelo longo nas costas (capsula achatada)
+      const back = new THREE.Mesh(
+        new THREE.CapsuleGeometry(headR * 0.85, 0.4, 6, 12),
+        hairMat
+      );
+      back.scale.set(1, 1, 0.4);
+      back.position.set(0, -0.15, -headR * 0.45);
+      head.add(back);
+    } else if (prefs.hairStyle === "ponytail") {
+      const cap = new THREE.Mesh(
+        new THREE.SphereGeometry(headR + 0.012, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.9),
+        hairMat
+      );
+      head.add(cap);
+      const tieBall = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 12, 10),
+        hairMat
+      );
+      tieBall.position.set(0, 0.02, -headR * 0.95);
+      head.add(tieBall);
+      const tail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.025, 0.32, 10),
+        hairMat
+      );
+      tail.position.set(0, -0.12, -headR * 1.0);
+      tail.rotation.x = -0.45;
       head.add(tail);
     }
   }
 
-  head.position.y = 1.85;
+  // Cabeça posicionada em y=1.88 absoluto (centro do crânio)
+  head.position.y = 1.88;
   root.add(head);
 
-  // === TORSO ===
-  const torso = new THREE.Mesh(
-    new THREE.CylinderGeometry(torsoTopR, torsoBotR, 0.65, 18),
-    topMat
-  );
-  torso.position.y = 1.3;
+  // === TORSO + CAMISA "PR TRACKER" =============================
+  // Torso é uma capsula achatada (mais human, menos cylinder de barril)
+  const torsoH = 0.55;
+  const torsoY = 1.10 + torsoH / 2; // = 1.375
+  const torsoGeom = new THREE.CylinderGeometry(torsoTopR, torsoBotR, torsoH, 22);
+  const torso = new THREE.Mesh(torsoGeom, topMat);
+  torso.position.y = torsoY;
   torso.castShadow = true;
   root.add(torso);
 
-  // Tank top straps (2 cilindros finos sobre os ombros)
-  for (const sx of [-shoulderW * 0.4, shoulderW * 0.4]) {
-    const strap = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8),
+  // Ombros arredondados (esferas) pra dar definição vs "barril"
+  for (const sx of [-shoulderHalfW, shoulderHalfW]) {
+    const shoulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.085, 14, 12),
       topMat
     );
-    strap.position.set(sx, 1.55, 0);
-    strap.rotation.z = sx > 0 ? -0.1 : 0.1;
-    root.add(strap);
+    shoulder.position.set(sx, torsoY + torsoH / 2 - 0.04, 0);
+    shoulder.castShadow = true;
+    root.add(shoulder);
   }
 
-  // Logo PR Tracker no peito (mini quadrado lime sutil — só se top não for lime)
-  if (prefs.top !== "#D8FF2C" && prefs.top !== "#d8ff2c") {
-    const logoCanvas = document.createElement("canvas");
-    logoCanvas.width = 128;
-    logoCanvas.height = 64;
-    const lctx = logoCanvas.getContext("2d")!;
-    lctx.fillStyle = "rgba(0,0,0,0)";
-    lctx.fillRect(0, 0, 128, 64);
-    lctx.fillStyle = "#D8FF2C";
-    lctx.font = "900 38px Archivo Black, Inter, sans-serif";
-    lctx.textAlign = "center";
-    lctx.textBaseline = "middle";
-    lctx.fillText("PR", 64, 32);
-    const logoTex = new THREE.CanvasTexture(logoCanvas);
-    logoTex.colorSpace = THREE.SRGBColorSpace;
-    const logo = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.18, 0.09),
-      new THREE.MeshBasicMaterial({ map: logoTex, transparent: true })
-    );
-    logo.position.set(0, 1.4, torsoTopR + 0.001);
-    root.add(logo);
-  }
+  // CAMISA PR TRACKER — texto SEMPRE visível, com cor contrastante.
+  // Texto fica em lime se a regata é escura, e em navy se a regata é clara/lime.
+  const lightTops = ["#ffffff", "#D8FF2C", "#d8ff2c", "#FFC72C", "#ffc72c"];
+  const isLightTop = lightTops.includes(prefs.top);
+  const textColor = isLightTop ? "#01002A" : "#D8FF2C";
 
-  // === HIPS / SHORTS ===
+  const shirtCanvas = document.createElement("canvas");
+  shirtCanvas.width = 512;
+  shirtCanvas.height = 256;
+  const shctx = shirtCanvas.getContext("2d")!;
+  shctx.clearRect(0, 0, 512, 256);
+  // "PR" gigante (logo central)
+  shctx.fillStyle = textColor;
+  shctx.font = "900 160px Archivo Black, Inter, sans-serif";
+  shctx.textAlign = "center";
+  shctx.textBaseline = "middle";
+  shctx.fillText("PR", 256, 100);
+  // "TRACKER" abaixo
+  shctx.font = "700 56px Inter, sans-serif";
+  shctx.fillText("TRACKER", 256, 195);
+
+  const shirtTex = new THREE.CanvasTexture(shirtCanvas);
+  shirtTex.colorSpace = THREE.SRGBColorSpace;
+  const shirt = new THREE.Mesh(
+    new THREE.PlaneGeometry(torsoTopR * 1.6, torsoH * 0.7),
+    new THREE.MeshBasicMaterial({ map: shirtTex, transparent: true })
+  );
+  shirt.position.set(0, torsoY + 0.03, torsoTopR + 0.005);
+  root.add(shirt);
+
+  // === HIPS / SHORTS ============================================
+  const hipsH = 0.18;
+  const hipsY = 1.0;
   const hips = new THREE.Mesh(
-    new THREE.CylinderGeometry(hipR, hipR * 0.92, 0.28, 16),
+    new THREE.CylinderGeometry(hipR, hipR * 0.95, hipsH, 18),
     shortsMat
   );
-  hips.position.y = 0.83;
+  hips.position.y = hipsY;
   hips.castShadow = true;
   root.add(hips);
 
-  // Shorts visíveis (cilindro mais largo embaixo do hip)
-  const shortsBlock = new THREE.Mesh(
-    new THREE.CylinderGeometry(hipR * 0.96, hipR * 0.85, 0.22, 16),
-    shortsMat
-  );
-  shortsBlock.position.y = 0.61;
-  root.add(shortsBlock);
-
-  // === LEGS ===
-  const leftLeg = buildLeg(skinMat, shoeMat);
-  leftLeg.position.set(-0.13, 0.5, 0);
+  // === LEGS — pés tocam o chão ==================================
+  // legGroup origin = quadril (y=0.985). Parts vão pra baixo até a sola
+  // do tênis encostar no chão (sole bottom y ≈ 0).
+  const leftLeg = buildLeg(skinMat, shortsMat, shoeMat);
+  leftLeg.position.set(-0.10, 0.985, 0);
   root.add(leftLeg);
 
-  const rightLeg = buildLeg(skinMat, shoeMat);
-  rightLeg.position.set(0.13, 0.5, 0);
+  const rightLeg = buildLeg(skinMat, shortsMat, shoeMat);
+  rightLeg.position.set(0.10, 0.985, 0);
   root.add(rightLeg);
 
-  // === ARMS ===
-  const leftArm = buildArm(skinMat, true);
-  leftArm.position.set(-shoulderW / 2, 1.5, 0);
+  // === ARMS — pendurados ao lado do torso =======================
+  // armGroup origin = ombro (y=1.62). Parts vão pra baixo.
+  const leftArm = buildArm(skinMat, topMat);
+  leftArm.position.set(-shoulderHalfW - 0.02, 1.62, 0);
   root.add(leftArm);
 
-  const rightArm = buildArm(skinMat, false);
-  rightArm.position.set(shoulderW / 2, 1.5, 0);
+  const rightArm = buildArm(skinMat, topMat);
+  rightArm.position.set(shoulderHalfW + 0.02, 1.62, 0);
   root.add(rightArm);
 
   return { root, leftLeg, rightLeg, leftArm, rightArm, head };
 }
 
-function buildLeg(skinMat: THREE.Material, shoeMat: THREE.Material): THREE.Group {
+/**
+ * Perna: shorts curto no topo (visível abaixo do hip), depois coxa,
+ * panturrilha, tênis. Origin = quadril (top of thigh).
+ */
+function buildLeg(
+  skinMat: THREE.Material,
+  shortsMat: THREE.Material,
+  shoeMat: THREE.Material
+): THREE.Group {
   const g = new THREE.Group();
-  // Coxa (mais grossa em cima, afina)
+  // Shorts cobrindo topo da coxa (até ~10cm abaixo do hip)
+  const shortsCover = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.11, 0.105, 0.18, 10),
+    shortsMat
+  );
+  shortsCover.position.y = -0.09;
+  shortsCover.castShadow = true;
+  g.add(shortsCover);
+
+  // Coxa (skin)
   const thigh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.105, 0.085, 0.42, 10),
+    new THREE.CylinderGeometry(0.085, 0.07, 0.28, 10),
     skinMat
   );
-  thigh.position.y = -0.21;
+  thigh.position.y = -0.32;
   thigh.castShadow = true;
   g.add(thigh);
+
+  // Joelho (esfera pra suavizar a junção)
+  const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), skinMat);
+  knee.position.y = -0.46;
+  g.add(knee);
+
   // Panturrilha
   const calf = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.075, 0.06, 0.4, 10),
+    new THREE.CylinderGeometry(0.065, 0.055, 0.36, 10),
     skinMat
   );
-  calf.position.y = -0.61;
+  calf.position.y = -0.65;
   calf.castShadow = true;
   g.add(calf);
-  // Tênis (caixa preta)
-  const shoe = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.09, 0.26),
-    shoeMat
-  );
-  shoe.position.set(0, -0.86, 0.04);
+
+  // Tornozelo
+  const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 6), skinMat);
+  ankle.position.y = -0.84;
+  g.add(ankle);
+
+  // Tênis (caixa de couro preto + sola lime)
+  const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.24), shoeMat);
+  shoe.position.set(0, -0.91, 0.05);
   shoe.castShadow = true;
   g.add(shoe);
-  // Sole (faixa lime sutil pra "tênis de academia")
+  // Sola lime (assinatura visual da marca)
   const sole = new THREE.Mesh(
-    new THREE.BoxGeometry(0.17, 0.018, 0.27),
+    new THREE.BoxGeometry(0.135, 0.025, 0.25),
     new THREE.MeshStandardMaterial({ color: 0xd8ff2c, roughness: 0.5 })
   );
-  sole.position.set(0, -0.91, 0.04);
+  sole.position.set(0, -0.97, 0.05);
   g.add(sole);
+
   return g;
 }
 
-function buildArm(skinMat: THREE.Material, _isLeft: boolean): THREE.Group {
+/**
+ * Braço: regata (mangueta curta) cobrindo topo, depois pele.
+ * Origin = ombro (top of upper arm).
+ */
+function buildArm(skinMat: THREE.Material, topMat: THREE.Material): THREE.Group {
   const g = new THREE.Group();
-  // Braço (com bíceps mais grosso no topo)
+  // Mangueta curta da regata cobrindo o ombro (3cm da regata desce pelo braço)
+  const sleeve = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.075, 0.07, 0.06, 10),
+    topMat
+  );
+  sleeve.position.y = -0.03;
+  g.add(sleeve);
+  // Bíceps
   const upper = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.085, 0.07, 0.36, 10),
+    new THREE.CylinderGeometry(0.07, 0.06, 0.28, 10),
     skinMat
   );
-  upper.position.y = -0.18;
+  upper.position.y = -0.2;
   upper.castShadow = true;
   g.add(upper);
+  // Cotovelo
+  const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), skinMat);
+  elbow.position.y = -0.36;
+  g.add(elbow);
   // Antebraço
   const lower = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.065, 0.058, 0.34, 10),
+    new THREE.CylinderGeometry(0.058, 0.052, 0.26, 10),
     skinMat
   );
-  lower.position.y = -0.52;
+  lower.position.y = -0.5;
   lower.castShadow = true;
   g.add(lower);
   // Mão (esfera)
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), skinMat);
-  hand.position.y = -0.71;
+  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), skinMat);
+  hand.position.y = -0.66;
   g.add(hand);
   return g;
 }
@@ -317,79 +478,107 @@ export function buildTrophy(
 ): THREE.Group {
   const g = new THREE.Group();
 
-  // Pedestal (base larga pro número caber)
-  const pedW = 1.0;
-  const pedH = 0.18;
-  const pedD = 0.35;
+  // PEDESTAL CHEIO — bloco sólido alto pra ser visualmente uma "torre
+  // de troféu". Dimensões: 1.4m largura × 0.85m altura × 0.55m profundidade.
+  // Fica sobre a prateleira / chão. Número gigante ocupa a frente toda.
+  const pedW = 1.4;
+  const pedH = 0.85;
+  const pedD = 0.55;
+
+  // Bloco principal (corpo do pedestal)
+  const pedestalMat = new THREE.MeshStandardMaterial({
+    color: 0x14111e,
+    roughness: 0.55,
+    metalness: 0.35,
+  });
   const pedestal = new THREE.Mesh(
     new THREE.BoxGeometry(pedW, pedH, pedD),
-    new THREE.MeshStandardMaterial({
-      color: 0x14111e,
-      roughness: 0.55,
-      metalness: 0.4,
-    })
+    pedestalMat
   );
   pedestal.position.y = pedH / 2;
   pedestal.castShadow = true;
   pedestal.receiveShadow = true;
   g.add(pedestal);
 
-  // Faixa de acento na borda superior do pedestal
-  const accentStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(pedW, 0.012, 0.04),
+  // Faixa de acento na BASE do pedestal (linha lime grossa)
+  const baseStrip = new THREE.Mesh(
+    new THREE.BoxGeometry(pedW + 0.01, 0.04, pedD + 0.01),
     new THREE.MeshBasicMaterial({ color: accentHex })
   );
-  accentStrip.position.set(0, pedH + 0.003, pedD / 2);
-  g.add(accentStrip);
+  baseStrip.position.y = 0.02;
+  g.add(baseStrip);
 
-  // Big number panel na FRENTE do pedestal
+  // Topo arredondado (placa onde a barbell descansa)
+  const topPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(pedW + 0.06, 0.06, pedD + 0.06),
+    new THREE.MeshStandardMaterial({
+      color: 0x2a2540,
+      roughness: 0.4,
+      metalness: 0.5,
+    })
+  );
+  topPlate.position.y = pedH + 0.03;
+  topPlate.castShadow = true;
+  g.add(topPlate);
+
+  // PAINEL FRONTAL — número GIGANTE ocupando a frente quase toda do
+  // pedestal (90% × 80%). Aplicado como textura BasicMaterial direto
+  // no plane, fica sempre visível e não depende de iluminação.
   const numCanvas = document.createElement("canvas");
   numCanvas.width = 1024;
-  numCanvas.height = 512;
+  numCanvas.height = 768;
   const nctx = numCanvas.getContext("2d")!;
-  // Fundo navy
-  nctx.fillStyle = "#01002A";
-  nctx.fillRect(0, 0, 1024, 512);
-  // Borda lime fina
+  // Fundo navy escuro
+  nctx.fillStyle = "#0a0828";
+  nctx.fillRect(0, 0, 1024, 768);
+  // Borda dupla lime (fina + grossa pra dar profundidade)
   nctx.strokeStyle = accentHex;
-  nctx.lineWidth = 6;
-  nctx.strokeRect(8, 8, 1008, 496);
-  // Big kg
+  nctx.lineWidth = 8;
+  nctx.strokeRect(20, 20, 984, 728);
+  nctx.lineWidth = 2;
+  nctx.strokeRect(40, 40, 944, 688);
+  // Tag "PR" pequena no topo
   nctx.fillStyle = accentHex;
-  nctx.font = "900 360px Archivo Black, Inter, sans-serif";
+  nctx.font = "900 60px Archivo Black, Inter, sans-serif";
   nctx.textAlign = "center";
   nctx.textBaseline = "middle";
+  nctx.fillText("PR", 512, 110);
+  // NÚMERO GIGANTE
+  nctx.fillStyle = accentHex;
+  nctx.font = "900 480px Archivo Black, Inter, sans-serif";
   const numStr = String(Math.round(weightKg));
-  nctx.fillText(numStr, 512, 220);
+  nctx.fillText(numStr, 512, 410);
   // KG suffix
   nctx.fillStyle = "#9ca3af";
-  nctx.font = "700 64px Inter, sans-serif";
-  nctx.fillText("KG", 512, 400);
-  // Exercise
+  nctx.font = "700 80px Inter, sans-serif";
+  nctx.fillText("KG", 512, 620);
+  // Exercise abaixo
   nctx.fillStyle = "#ffffff";
-  nctx.font = "500 38px Inter, sans-serif";
-  nctx.fillText(exerciseShort.toUpperCase(), 512, 460);
+  nctx.font = "500 48px Inter, sans-serif";
+  nctx.fillText(exerciseShort.toUpperCase(), 512, 695);
 
   const numTex = new THREE.CanvasTexture(numCanvas);
   numTex.colorSpace = THREE.SRGBColorSpace;
+  // Painel ocupa 92% da largura e 88% da altura do pedestal
   const numPlate = new THREE.Mesh(
-    new THREE.PlaneGeometry(pedW * 0.92, pedH * 5.2),
+    new THREE.PlaneGeometry(pedW * 0.92, pedH * 0.88),
     new THREE.MeshBasicMaterial({ map: numTex })
   );
-  numPlate.position.set(0, pedH * 2.7, pedD / 2 + 0.001);
+  // Centrado verticalmente no pedestal, ligeiramente à frente da face
+  numPlate.position.set(0, pedH / 2, pedD / 2 + 0.005);
   g.add(numPlate);
 
-  // Mini-barbell em cima do pedestal carregada com plate split real
+  // BARBELL CARREGADA em cima do pedestal — peça centerpiece visual
   const barbell = buildMiniBarbell(weightKg);
-  barbell.position.set(0, pedH + 0.02, 0);
+  barbell.position.set(0, pedH + 0.18, 0);
   g.add(barbell);
 
-  // Hit-box pro raycast (cobre o trophy todo)
+  // Hit-box invisível pro raycast (cobre todo o troféu)
   const hit = new THREE.Mesh(
-    new THREE.BoxGeometry(pedW + 0.3, 1.2, pedD + 0.2),
+    new THREE.BoxGeometry(pedW + 0.3, pedH + 0.6, pedD + 0.3),
     new THREE.MeshBasicMaterial({ visible: false })
   );
-  hit.position.y = 0.55;
+  hit.position.y = (pedH + 0.6) / 2;
   g.add(hit);
 
   return g;
@@ -403,75 +592,67 @@ function buildMiniBarbell(weightKg: number): THREE.Group {
   const g = new THREE.Group();
   const split = splitPlates(weightKg);
 
-  // Bar (cilindro horizontal) + sleeves
+  // Bar (cilindro horizontal) + sleeves — escala 1.4x do anterior pra
+  // dar presença em cima do pedestal maior.
+  const BAR_LEN = 1.3;
   const bar = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.018, 0.85, 14),
+    new THREE.CylinderGeometry(0.025, 0.025, BAR_LEN, 16),
     CHROME_MAT
   );
   bar.rotation.z = Math.PI / 2;
-  bar.position.y = 0.18;
   g.add(bar);
 
   // Sleeves (mais grossos onde encaixam anilhas)
   for (const side of [-1, 1]) {
     const sleeve = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.032, 0.032, 0.22, 14),
+      new THREE.CylinderGeometry(0.045, 0.045, 0.32, 16),
       STEEL_MAT
     );
     sleeve.rotation.z = Math.PI / 2;
-    sleeve.position.set(side * 0.4, 0.18, 0);
+    sleeve.position.set(side * (BAR_LEN / 2 - 0.16), 0, 0);
     g.add(sleeve);
   }
 
-  // Anilhas em ordem (greedy descending)
+  // Anilhas em ordem (greedy descending) — raios maiores
   for (const side of [-1, 1]) {
-    let offset = 0.32;
+    let offset = 0.5;
     for (const pair of split.pairs) {
       const colorHex = IWF_COLOR_BY_KG[pair.kg] ?? 0x9ca3af;
-      // Raio escala com peso pra anilha grande aparecer maior
-      const radius = 0.06 + (pair.kg / 25) * 0.05;
-      const thickness = 0.022 + (pair.kg / 25) * 0.015;
+      const radius = 0.1 + (pair.kg / 25) * 0.08;
+      const thickness = 0.035 + (pair.kg / 25) * 0.02;
       const mat = new THREE.MeshStandardMaterial({
         color: colorHex,
-        roughness: 0.45,
-        metalness: 0.15,
+        roughness: 0.4,
+        metalness: 0.2,
         emissive: colorHex,
-        emissiveIntensity: 0.18,
+        emissiveIntensity: 0.12,
       });
       for (let i = 0; i < pair.count; i++) {
         const plate = new THREE.Mesh(
-          new THREE.CylinderGeometry(radius, radius, thickness, 24),
+          new THREE.CylinderGeometry(radius, radius, thickness, 28),
           mat
         );
         plate.rotation.z = Math.PI / 2;
-        plate.position.set(side * (offset + thickness / 2), 0.18, 0);
+        plate.position.set(side * (offset + thickness / 2), 0, 0);
         plate.castShadow = true;
         g.add(plate);
         offset += thickness;
       }
     }
-    // Mini clamp
+    // Clamp
     if (split.pairs.length > 0) {
       const clamp = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.04, 0.04, 0.025, 12),
+        new THREE.CylinderGeometry(0.06, 0.06, 0.04, 16),
         STEEL_MAT
       );
       clamp.rotation.z = Math.PI / 2;
-      clamp.position.set(side * (offset + 0.02), 0.18, 0);
+      clamp.position.set(side * (offset + 0.025), 0, 0);
       g.add(clamp);
     }
   }
 
-  // Se não conseguiu fazer split (peso < 20kg), mostra só a barra
-  if (split.pairs.length === 0) {
-    const noPlateLabel = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.5, 0.1),
-      new THREE.MeshBasicMaterial({ color: 0x9ca3af, transparent: true, opacity: 0.5 })
-    );
-    noPlateLabel.position.y = 0.05;
-    noPlateLabel.rotation.x = -Math.PI / 2;
-    g.add(noPlateLabel);
-  }
+  // Se peso baixo, sem anilhas, mostra só a barra (já visível)
+
 
   return g;
 }

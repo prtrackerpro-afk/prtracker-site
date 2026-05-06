@@ -137,43 +137,53 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
 
     const accentColor = new THREE.Color(accent);
 
-    // === Lighting cinematográfica (3-point + spotlights) ============
-    const hemi = new THREE.HemisphereLight(0x6f7cff, 0x0a0028, 0.5);
+    // === Lighting cinematográfica (3-point) =========================
+    // CRÍTICO: as 3 luzes principais são BRANCAS (não accent). A versão
+    // anterior usava accent em fill+rim e isso pintava a pele do avatar
+    // de verde quando a regata era lime. Accent fica restrito ao spot
+    // do projetor + trophyLight (pequenos, mirados, não atingem o avatar).
+    const hemi = new THREE.HemisphereLight(0xb8c0ff, 0x1a1640, 0.55);
     scene.add(hemi);
 
-    // Key light (sol vindo de cima-frente-direita)
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    // Key light (sol vindo de cima-frente-direita) — cor branca quente
+    const keyLight = new THREE.DirectionalLight(0xfff4e4, 1.4);
     keyLight.position.set(6, 9, 5);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(1024, 1024);
-    keyLight.shadow.camera.left = -8;
-    keyLight.shadow.camera.right = 8;
-    keyLight.shadow.camera.top = 8;
-    keyLight.shadow.camera.bottom = -8;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.left = -10;
+    keyLight.shadow.camera.right = 10;
+    keyLight.shadow.camera.top = 10;
+    keyLight.shadow.camera.bottom = -10;
     keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.normalBias = 0.02;
     scene.add(keyLight);
 
-    // Fill light (suave, oposto, accent color pra dar identidade)
-    const fillLight = new THREE.DirectionalLight(accentColor, 0.4);
-    fillLight.position.set(-5, 5, -3);
+    // Fill light (suave, oposto, BRANCA-AZULADA — não accent)
+    const fillLight = new THREE.DirectionalLight(0xc8d4ff, 0.45);
+    fillLight.position.set(-5, 6, 3);
     scene.add(fillLight);
 
-    // Rim light (atrás do avatar pra silhueta)
-    const rim = new THREE.DirectionalLight(0xffffff, 0.55);
+    // Rim light (atrás pra silhueta) — branca
+    const rim = new THREE.DirectionalLight(0xffffff, 0.5);
     rim.position.set(0, 4, -8);
     scene.add(rim);
 
-    // Spotlight na plataforma (cinemático)
-    const spot = new THREE.SpotLight(0xffffff, 1.6, 12, Math.PI / 6, 0.4, 1.2);
+    // Spotlight na plataforma (cinemático, branco)
+    const spot = new THREE.SpotLight(0xffe9c4, 1.8, 14, Math.PI / 6, 0.4, 1.2);
     spot.position.set(-2, 5.5, 0);
     spot.target.position.set(-2, 0, 0);
     scene.add(spot);
     scene.add(spot.target);
 
-    // Accent light em cima dos troféus
-    const trophyLight = new THREE.PointLight(accentColor, 1.8, 10);
-    trophyLight.position.set(0, 4.5, -4);
+    // Accent point light SÓ em cima dos troféus (range curto pra não atingir avatar)
+    const trophyLight = new THREE.PointLight(accentColor, 2.5, 6);
+    trophyLight.position.set(0, 4.0, -5.5);
     scene.add(trophyLight);
+
+    // Accent point light pequeno no projetor (dá presença ao lens)
+    const projAccent = new THREE.PointLight(accentColor, 1.0, 3);
+    projAccent.position.set(0.8, 4.6, 0);
+    scene.add(projAccent);
 
     // === Sala (chão texturizado + 3 paredes + trim) ================
     const floorTex = buildFloorTexture(8);
@@ -259,40 +269,45 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     plaque.position.set(0, 4.0, -ROOM_D / 2 + 0.04);
     scene.add(plaque);
 
-    // === Shelves with trophies ====================================
-    const SHELF_LEVELS = [3.0, 2.05]; // 2 níveis (ao invés de 3 estreitos) — troféus maiores
-    const PER_SHELF = 4;
-    const visibleTrophies = trophies.slice(0, SHELF_LEVELS.length * PER_SHELF);
-
-    const shelfMat = new THREE.MeshStandardMaterial({
-      color: 0x1e1b50,
-      roughness: 0.65,
-      metalness: 0.25,
-    });
+    // === HALL OF FAME — troféus em fileira no chão contra parede do fundo ==
+    // V5: troféus baseados no chão (não em prateleiras) — visualmente
+    // mais imponentes, número GIGANTE legível. Hall of fame de até 6
+    // PRs em ordem de tier rank → kg desc.
+    const MAX_TROPHIES = 6;
+    const visibleTrophies = trophies.slice(0, MAX_TROPHIES);
     const trophiesGroup = new THREE.Group();
     scene.add(trophiesGroup);
 
-    SHELF_LEVELS.forEach((y, shelfIdx) => {
-      const shelf = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.1, 0.7), shelfMat);
-      shelf.position.set(0, y, -ROOM_D / 2 + 0.38);
-      shelf.castShadow = true;
-      shelf.receiveShadow = true;
-      scene.add(shelf);
+    // Plataforma elevada de 15cm onde os troféus ficam (cinematográfico)
+    const fameDeck = new THREE.Mesh(
+      new THREE.BoxGeometry(ROOM_W - 1.5, 0.15, 1.2),
+      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
+    );
+    fameDeck.position.set(0, 0.075, -ROOM_D / 2 + 0.85);
+    fameDeck.receiveShadow = true;
+    scene.add(fameDeck);
 
-      const slotTrophies = visibleTrophies.slice(
-        shelfIdx * PER_SHELF,
-        (shelfIdx + 1) * PER_SHELF
-      );
-      slotTrophies.forEach((t, i) => {
-        const x = -3 + i * 2;
-        const trophy = buildTrophy(t.weightKg, t.shortLabel, t.color);
-        trophy.position.set(x, y + 0.05, -ROOM_D / 2 + 0.42);
-        trophy.userData.trophy = t;
-        trophy.traverse((c) => {
-          c.userData.trophy = t;
-        });
-        trophiesGroup.add(trophy);
+    // Faixa lime na frente do deck
+    const fameStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(ROOM_W - 1.5, 0.04, 0.06),
+      new THREE.MeshBasicMaterial({ color: accentColor })
+    );
+    fameStrip.position.set(0, 0.155, -ROOM_D / 2 + 1.42);
+    scene.add(fameStrip);
+
+    // Troféus espaçados — cada um ocupa ~1.7m horizontal
+    const SLOT_WIDTH = 1.8;
+    const totalWidth = (visibleTrophies.length - 1) * SLOT_WIDTH;
+    visibleTrophies.forEach((t, i) => {
+      const x = -totalWidth / 2 + i * SLOT_WIDTH;
+      const trophy = buildTrophy(t.weightKg, t.shortLabel, t.color);
+      // Sentado em cima do fameDeck (deck top y=0.15)
+      trophy.position.set(x, 0.15, -ROOM_D / 2 + 0.95);
+      trophy.userData.trophy = t;
+      trophy.traverse((c) => {
+        c.userData.trophy = t;
       });
+      trophiesGroup.add(trophy);
     });
 
     // === Projetor + tela cinema ====================================
