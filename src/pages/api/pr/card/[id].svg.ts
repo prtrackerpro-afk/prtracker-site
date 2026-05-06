@@ -1,17 +1,15 @@
 import type { APIRoute } from "astro";
 import { getAdminSupabase } from "../../../../lib/supabase/server";
-import { exerciseLabel, type ExerciseId } from "../../../../lib/pr/exercises";
+import { isExercise } from "../../../../lib/pr/exercises";
+import { renderCardSvg } from "../../../../lib/pr/card-svg";
 
 export const prerender = false;
 
-// Returns a 1080×1920 SVG share card. Useful for desktop preview, browser
-// embedding, and editing. NOT a story-ready asset on mobile — Instagram /
-// TikTok mobile uploaders don't import SVG; for that we need real PNG via
-// Satori/Resvg (TODO #3 in docs/PR_TRACKER_MVP.md).
+// Returns a 1080×1920 SVG share card. Composition lives in lib/pr/card-svg.ts
+// so the same renderer can be inlined in /pr/celebrate (no extra HTTP hop).
 //
-// Service-role read because the card is meant to be embeddable (anyone with
-// the link). Treat record.id as the only auth here. If we need privacy
-// later, gate behind an athlete-scoped token.
+// Public read by record id — anyone with the link can render the card.
+// IDs are uuid v4, unguessable; treat that as the only auth here.
 
 export const GET: APIRoute = async ({ params }) => {
   const id = params.id;
@@ -20,41 +18,27 @@ export const GET: APIRoute = async ({ params }) => {
   const sb = getAdminSupabase();
   const { data: record } = await sb
     .from("pr_records")
-    .select("exercise, weight_kg, user_id")
+    .select("exercise, weight_kg, performed_at, user_id")
     .eq("id", id)
     .maybeSingle();
 
-  if (!record) return new Response("not found", { status: 404 });
+  if (!record || !isExercise(record.exercise)) {
+    return new Response("not found", { status: 404 });
+  }
 
   const { data: athlete } = await sb
     .from("pr_athletes")
-    .select("display_name, instagram_handle")
+    .select("display_name")
     .eq("user_id", record.user_id)
     .maybeSingle();
 
-  const name = athlete?.display_name ?? "Atleta";
-  const exercise = exerciseLabel(record.exercise as ExerciseId);
-  const weight = record.weight_kg;
+  const svg = renderCardSvg({
+    athleteName: athlete?.display_name ?? "Atleta",
+    exerciseId: record.exercise,
+    weightKg: Number(record.weight_kg),
+    performedAt: record.performed_at,
+  });
 
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#01002A"/>
-      <stop offset="1" stop-color="#0a0050"/>
-    </linearGradient>
-  </defs>
-  <rect width="1080" height="1920" fill="url(#bg)"/>
-  <text x="540" y="280" text-anchor="middle" fill="#D8FF2C" font-family="Archivo Black, sans-serif" font-size="48" letter-spacing="8">PR TRACKER</text>
-  <text x="540" y="700" text-anchor="middle" fill="#fff" font-family="Inter, sans-serif" font-size="56" font-weight="600">${escapeXml(name)}</text>
-  <text x="540" y="800" text-anchor="middle" fill="#9ca3af" font-family="Inter, sans-serif" font-size="44" letter-spacing="4">${escapeXml(exercise.toUpperCase())}</text>
-  <text x="540" y="1180" text-anchor="middle" fill="#D8FF2C" font-family="Archivo Black, sans-serif" font-size="320" font-weight="900">${weight}</text>
-  <text x="540" y="1280" text-anchor="middle" fill="#fff" font-family="Inter, sans-serif" font-size="64" letter-spacing="10">KG</text>
-  <text x="540" y="1820" text-anchor="middle" fill="#9ca3af" font-family="Inter, sans-serif" font-size="32" letter-spacing="6">@PR.TRACKER · PRTRACKER.COM.BR</text>
-</svg>`;
-
-  // Returning SVG with image/svg+xml works for download and most embeds.
-  // For true PNG, swap to a Satori/Resvg pipeline.
   return new Response(svg, {
     status: 200,
     headers: {
@@ -63,12 +47,3 @@ export const GET: APIRoute = async ({ params }) => {
     },
   });
 };
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}

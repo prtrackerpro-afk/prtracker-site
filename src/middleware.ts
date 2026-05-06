@@ -62,6 +62,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return context.redirect(`/pr/login?next=${nextParam}`, 302);
     }
     context.locals.athlete = athlete;
+
+    // Onboarding gate: every authenticated /pr/* page (except onboarding
+    // itself, the profile API, and auth endpoints) requires display_name.
+    // Without it the share card and leaderboards show "Atleta" placeholder.
+    const isOnboardingException =
+      pathname === "/pr/onboarding" ||
+      pathname.startsWith("/api/pr/profile") ||
+      pathname.startsWith("/api/pr/auth/");
+    if (!athlete.displayName && isPrAppRoute && !isOnboardingException) {
+      const nextParam = encodeURIComponent(pathname + url.search);
+      return context.redirect(`/pr/onboarding?next=${nextParam}`, 302);
+    }
   }
 
   return next();

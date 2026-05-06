@@ -51,6 +51,13 @@ const CONFIG_JSON = JSON.stringify({
   data-config={CONFIG_JSON}
   data-anilhas-only={isAnilhasOnly ? "true" : "false"}
 >
+  <!-- PR-deep-link banner: shown when arriving from /pr/celebrate.
+       Filled in by the script when ?from=pr-celebrate&w=… is present. -->
+  <div class="cfg__pr-banner" data-pr-banner hidden role="status">
+    <span class="cfg__pr-banner-tag">PR</span>
+    <span class="cfg__pr-banner-text">Configurado a partir do seu <strong data-pr-banner-detail></strong>. Ajuste antes de adicionar.</span>
+  </div>
+
   <!-- Summary: weight, price, space used -->
   <div class="cfg__summary">
     {!isAnilhasOnly && (
@@ -186,6 +193,34 @@ const CONFIG_JSON = JSON.stringify({
     border-radius: var(--radius-card);
     background: var(--color-paper);
   }
+
+  /* PR deep-link banner — appears at top when arriving from /pr/celebrate */
+  .cfg__pr-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    border-radius: var(--radius-card);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+  .cfg__pr-banner[hidden] { display: none; }
+  .cfg__pr-banner-tag {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.18rem 0.55rem;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .cfg__pr-banner-text strong { color: #ffffff; font-family: var(--font-display); font-weight: 900; }
   @media (min-width: 640px) { .configurator { padding: 2rem; } }
 
   /* Summary rail: weight & space side-by-side */
@@ -504,6 +539,90 @@ const CONFIG_JSON = JSON.stringify({
     const state: Record<string, number> = {};
     config.plates.forEach((p) => { state[p.id] = 0; });
 
+    // === PR deep-link query params ====================================
+    // /pr/celebrate funnels users here with their PR pre-encoded:
+    //   ?p=25x2;15x1   — plate id × pairs, semicolon-separated
+    //   ?ex=back_squat — exercise id (My PR Set only)
+    //   ?w=150         — informational total kg, used by banner
+    //   ?from=pr-celebrate — triggers the banner
+    //   ?prId=<uuid>   — back-reference for trophy-purchase attribution
+    //
+    // Plate IDs match PlateSpec.id ("25", "20", "15", "10", "5", "2_5", "1_25").
+    // Exercise IDs use the snake_case form from src/lib/pr/exercises.ts and
+    // are mapped to the configurator's display labels here.
+    const EX_ID_TO_LABEL: Record<string, string> = {
+      back_squat: "Back Squat",
+      bench_press: "Bench Press",
+      clean: "Clean",
+      clean_and_jerk: "Clean & Jerk",
+      deadlift: "Deadlift",
+      front_squat: "Front Squat",
+      hang_clean: "Hang Clean",
+      hang_power_clean: "Hang Power Clean",
+      overhead_squat: "Overhead Squat",
+      power_clean: "Power Clean",
+      power_snatch: "Power Snatch",
+      push_jerk: "Push Jerk",
+      push_press: "Push Press",
+      shoulder_press: "Shoulder Press",
+      snatch: "Snatch",
+      split_jerk: "Split Jerk",
+      squat_clean: "Squat Clean",
+      squat_snatch: "Squat Snatch",
+      sumo_deadlift: "Sumo Deadlift",
+      thruster: "Thruster",
+    };
+
+    let prId: string | null = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const pParam = params.get("p");
+      if (pParam) {
+        for (const piece of pParam.split(";")) {
+          const m = piece.match(/^([\w_]+)x(\d+)$/);
+          if (!m) continue;
+          const [, plateId, pairsStr] = m;
+          if (platesById.has(plateId)) {
+            const pairs = Math.max(0, Math.min(Number(pairsStr), platesById.get(plateId)!.maxPairs));
+            state[plateId] = pairs;
+          }
+        }
+      }
+      const fromParam = params.get("from");
+      const wParam = params.get("w");
+      const exParam = params.get("ex");
+      prId = params.get("prId");
+
+      // Banner copy uses exercise + weight when both available.
+      if (fromParam === "pr-celebrate") {
+        const banner = root.querySelector<HTMLElement>("[data-pr-banner]");
+        const detail = root.querySelector<HTMLElement>("[data-pr-banner-detail]");
+        if (banner && detail) {
+          const label = exParam && EX_ID_TO_LABEL[exParam] ? EX_ID_TO_LABEL[exParam] : "PR";
+          const weight = wParam ? `${wParam} kg` : "";
+          detail.textContent = weight ? `${label} ${weight}` : label;
+          banner.hidden = false;
+        }
+      }
+
+      // Pre-select exercise on My PR Set
+      if (config.hasExerciseSelector && exParam && EX_ID_TO_LABEL[exParam]) {
+        const exSelect = root.querySelector<HTMLSelectElement>("[data-exercise]");
+        if (exSelect) {
+          const target = EX_ID_TO_LABEL[exParam];
+          for (const opt of Array.from(exSelect.options)) {
+            if (opt.value === target) {
+              exSelect.value = target;
+              break;
+            }
+          }
+        }
+      }
+    } catch {
+      // Bad URL params should never break the page — silently ignore.
+    }
+    // ==================================================================
+
     const selects = root.querySelectorAll<HTMLSelectElement>("[data-plate-select]");
     const exerciseSelect = root.querySelector<HTMLSelectElement>("[data-exercise]");
     const addBtn = root.querySelector<HTMLButtonElement>("[data-add-btn]")!;
@@ -517,6 +636,22 @@ const CONFIG_JSON = JSON.stringify({
 
     const leftGroup = root.querySelector<SVGGElement>("[data-plates-left]");
     const rightGroup = root.querySelector<SVGGElement>("[data-plates-right]");
+
+    // Sync select.value with any state we picked up from the URL params.
+    selects.forEach((sel) => {
+      const id = sel.dataset.plateId!;
+      if (state[id] > 0) sel.value = String(state[id]);
+    });
+
+    // Persist the PR record id so the post-purchase flow can attribute the
+    // sale back to pr_records.trophy_purchase_id. Cleared on cart clear.
+    if (prId) {
+      try {
+        sessionStorage.setItem("pr-trophy-prId", prId);
+      } catch {
+        // Private mode / storage disabled — drop silently.
+      }
+    }
 
     selects.forEach((sel) => {
       sel.addEventListener("change", () => {
