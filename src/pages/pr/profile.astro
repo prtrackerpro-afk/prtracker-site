@@ -5,6 +5,7 @@ import { getServerSupabase } from "../../lib/supabase/server";
 import { listBestLifts } from "../../lib/pr/db";
 import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../lib/pr/strength-score";
+import TrophyWall from "../../components/pr/TrophyWall.astro";
 
 const athlete = Astro.locals.athlete!;
 
@@ -161,10 +162,27 @@ const overallTierColor = tierColor(summary.overallTier);
         </div>
       </section>
 
-      {/* === TROPHY WALL === */}
+      {/* === TROPHY WALL (isometric SVG scene) === */}
+      {sortedLifts.length > 0 && (
+        <section class="mb-6">
+          <div class="flex items-baseline justify-between mb-3">
+            <h2 class="text-base font-semibold tracking-tight">Sua estante</h2>
+            <div class="text-[10px] uppercase tracking-widest text-navy-300">
+              cena 2D · 3D em breve
+            </div>
+          </div>
+          <TrophyWall
+            athleteName={athlete.displayName ?? "Atleta"}
+            overallTier={summary.hasBodyData ? summary.overallTier : null}
+            lifts={sortedLifts.map((l) => ({ exerciseId: l.exerciseId, weightKg: l.weightKg, tier: l.tier }))}
+          />
+        </section>
+      )}
+
+      {/* === LIFT BREAKDOWN === */}
       <section class="mb-6">
         <div class="flex items-baseline justify-between mb-3">
-          <h2 class="text-base font-semibold tracking-tight">Sua estante</h2>
+          <h2 class="text-base font-semibold tracking-tight">Detalhe por movimento</h2>
           <div class="text-[10px] uppercase tracking-widest text-navy-300">
             {sortedLifts.length} {sortedLifts.length === 1 ? "movimento" : "movimentos"}
           </div>
