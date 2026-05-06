@@ -93,6 +93,61 @@ LTV pra premium subscriber: ~R$120/ano. CAC alvo: <R$30 via Reels orgânico.
 
 ---
 
+## Tentpole #2 detalhado — Virtual Gym 3D (V1 → V4)
+
+A peça mais ambiciosa. Mistura Liftoff (números) + GymRats (social) + Sims/Animal Crossing (mundo). Decisão de stack: **Three.js cru** (sem R3F/Drei/Rapier) — bundle isolado em `/pr/gym`, mantido até Capacitor V4. Skill `pr-tracker-3d-gym` em `.claude/skills/` documenta convenções.
+
+### V1 — Static room (entregar até 2026-05-13)
+
+Estado atual: scaffold em `src/components/pr/VirtualGym.tsx` mas canvas renderiza vazio em prod (bug `aspect-ratio` + `h-full`).
+
+- [ ] **Fix empty-canvas** — substituir `w-full h-full` por `position: absolute; inset: 0` no mount; medir via `getBoundingClientRect` no `useEffect`.
+- [ ] **Validate em mobile real** (360×640) — screenshot anexado ao PR.
+- [x] Sala: 3 paredes + chão + grid + plaque do atleta
+- [x] 3 prateleiras com até 12 troféus
+- [x] TV na parede direita com loop "PR REELS — EM BREVE"
+- [x] Avatar low-poly idle bob
+- [x] OrbitControls com damping
+- [ ] **HUD overlay polish** — tier color para o nome, contador de troféus em Archivo Black
+
+### V2 — Walking avatar + interactive trophies (até 2026-06-15)
+
+- [ ] Refator pra `src/lib/pr/gym/` com mini-ECS em TS puro (~200 LOC, zero dep)
+- [ ] **InputSystem**: WASD desktop + virtual joystick mobile (bottom-left)
+- [ ] **MovementSystem**: avatar anda a ~2.5 u/s com colisão AABB nas paredes e pedestais
+- [ ] **CameraSystem**: third-person follow padrão + toggle pra free orbit
+- [ ] **InteractionSystem**: raycast no clique/tap → emit `TrophyClicked`
+- [ ] **TrophyDetailModal** (HTML overlay, não 3D): peso, exercício, data, "Ver PR" + "Comprar troféu real" → deep-link ao BarbellConfigurator
+- [ ] **Performance budget**: 30 FPS em Android mid-range, pixel ratio cap 1.5 mobile, desabilitar shadows se FPS<25
+
+### V2.5 — Real avatar (até 2026-07-15)
+
+- [ ] **GLTFLoader** com Ready Player Me (free CDN, GLB ~2MB)
+- [ ] **AnimationMixer** com blend tree idle ↔ walk (Mixamo FBX retargetado)
+- [ ] **Avatar customization page** (Premium tier perk): cor de pele, regata lime/branca/preta
+- [ ] **Wave animation** ao chegar perto de troféu novo (PR daquela semana)
+
+### V3 — TV plays Reels + multiplayer visits (até 2026-09-30)
+
+- [ ] **VideoTexture na TV**: cycla os últimos 5 Reels do atleta (depende de tentpole #4)
+- [ ] **Visit a friend's gym**: `/pr/gym/[handle]` carrega gym do amigo, atleta vê troféus do outro
+- [ ] **Realtime presence**: Supabase Realtime channel `pr-gym-{handle}`, position broadcast a 10Hz, ghost avatars dos visitantes
+- [ ] **Quest overlay no HUD**: missão ativa visível enquanto no gym
+- [ ] **Spatial audio** (opcional): sons de ambiente + feedback de unlock quando bate PR novo
+
+### V4 — Native + monetização (até 2026-12-31)
+
+- [ ] **Capacitor wrap** — gym roda inalterado dentro do WebView nativo
+- [ ] **In-gym ad slot**: billboard na parede esquerda, texture do CDN. Premium tier oculta.
+- [ ] **Sponsor "patrocínio do box"**: gym do atleta de box partnership exibe logo do box discreto na TV durante intermissions
+- [ ] **Drops/limited editions**: troféus de eventos especiais (Crossfit Open, Brasileiro de LPO) com material/glow exclusivo no gym
+
+### Critério "Wow" para shipear V2
+
+O atleta abre `/pr/gym` no celular, vê o avatar dele, anda com o joystick, clica num troféu e vê o PR. Sem framerate drop. Sem precisar de tutorial. Esse é o ponto onde o app vira **viral** — porque ninguém no Brasil tem isso e o screenshot/video do gym vira gancho orgânico de aquisição.
+
+---
+
 ## Riscos (CMO honesto na sala)
 
 1. **Janela de ~18 meses** antes de Liftoff/Hevy lançarem PT-BR. Velocidade matters.

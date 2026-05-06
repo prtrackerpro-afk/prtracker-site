@@ -31,19 +31,27 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
+    const mountMaybe = mountRef.current;
+    if (!mountMaybe) return;
+    const mount: HTMLDivElement = mountMaybe;
 
     // === Scene + renderer ===========================================
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#01002A");
-    scene.fog = new THREE.Fog("#01002A", 12, 26);
+    scene.fog = new THREE.Fog("#01002A", 14, 30);
 
-    const width = mount.clientWidth;
-    const height = mount.clientHeight;
+    // Initial size — fall back to container's bounding rect since
+    // clientWidth/Height can be 0 during hydration when the parent
+    // uses aspect-ratio CSS. ResizeObserver below corrects on layout.
+    const rect0 = mount.getBoundingClientRect();
+    const width = Math.max(1, mount.clientWidth || rect0.width || 800);
+    const height = Math.max(1, mount.clientHeight || rect0.height || 480);
+
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     renderer.setSize(width, height);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
@@ -63,13 +71,15 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     controls.enablePan = false;
 
     // === Lighting ===================================================
-    const ambient = new THREE.AmbientLight(0x4040ff, 0.4);
-    scene.add(ambient);
+    // Hemisphere gives ambient color shift (sky vs ground) much more
+    // legible than a flat AmbientLight on a near-monochromatic palette.
+    const hemi = new THREE.HemisphereLight(0x6f7cff, 0x0a0028, 0.7);
+    scene.add(hemi);
 
     // Brand-accent rim light from above
     const accentColor = new THREE.Color(accent);
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    keyLight.position.set(5, 8, 4);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    keyLight.position.set(5, 9, 5);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(1024, 1024);
     keyLight.shadow.camera.left = -8;
@@ -78,20 +88,28 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     keyLight.shadow.camera.bottom = -8;
     scene.add(keyLight);
 
-    const fillLight = new THREE.PointLight(accentColor, 1.6, 14);
-    fillLight.position.set(0, 4, 1);
-    scene.add(fillLight);
+    // Two accent point lights for depth: one over the trophies, one over
+    // the avatar, both in tier color to color-tag the athlete's identity.
+    const trophyLight = new THREE.PointLight(accentColor, 2.2, 14);
+    trophyLight.position.set(0, 4.2, -3.5);
+    scene.add(trophyLight);
+
+    const avatarLight = new THREE.PointLight(accentColor, 1.4, 8);
+    avatarLight.position.set(0, 3.0, 1.5);
+    scene.add(avatarLight);
 
     // === Room (3 walls + floor + ceiling) ===========================
+    // Walls bumped from #0a0050 → #1a1660 so they read against the
+    // #01002A bg. The previous near-equal values made the room invisible.
     const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0050,
-      roughness: 0.9,
+      color: 0x1a1660,
+      roughness: 0.85,
       metalness: 0.05,
     });
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x040028,
-      roughness: 0.95,
-      metalness: 0.1,
+      color: 0x0d0a3a,
+      roughness: 0.9,
+      metalness: 0.15,
     });
 
     const ROOM_W = 12;
@@ -103,11 +121,11 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // Floor grid lines (faint accent)
+    // Floor grid lines (faint accent) — bumped opacity so the floor reads.
     const grid = new THREE.GridHelper(ROOM_W, 12, accentColor, accentColor);
     (grid.material as THREE.Material).transparent = true;
-    (grid.material as THREE.Material).opacity = 0.08;
-    grid.position.y = 0.001;
+    (grid.material as THREE.Material).opacity = 0.22;
+    grid.position.y = 0.002;
     scene.add(grid);
 
     // Back wall
@@ -153,6 +171,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     pctx.font = "700 64px Inter, sans-serif";
     pctx.fillText(athleteName.toUpperCase(), 512, 180);
     const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
+    plaqueTex.colorSpace = THREE.SRGBColorSpace;
     const plaque = new THREE.Mesh(
       new THREE.PlaneGeometry(5, 1.25),
       new THREE.MeshBasicMaterial({ map: plaqueTex, transparent: false })
@@ -205,6 +224,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     screenCanvas.height = 432;
     const sctx = screenCanvas.getContext("2d")!;
     const screenTex = new THREE.CanvasTexture(screenCanvas);
+    screenTex.colorSpace = THREE.SRGBColorSpace;
     const screen = new THREE.Mesh(
       new THREE.PlaneGeometry(2.7, 1.6),
       new THREE.MeshBasicMaterial({ map: screenTex })
@@ -249,15 +269,20 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     scene.add(avatar);
 
     // === Resize handler =============================================
+    // Belt-and-suspenders: ResizeObserver covers most cases, but during
+    // hydration with aspect-ratio CSS the first observation can fire
+    // with 0×0. We also schedule an rAF resize to catch the case where
+    // the parent has just laid out.
     function onResize() {
-      const w = mount.clientWidth;
-      const h = mount.clientHeight;
-      renderer.setSize(w, h);
+      const w = Math.max(1, mount.clientWidth);
+      const h = Math.max(1, mount.clientHeight);
+      renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     }
     const ro = new ResizeObserver(onResize);
     ro.observe(mount);
+    requestAnimationFrame(onResize);
 
     // === Render loop ================================================
     let raf = 0;
@@ -290,7 +315,10 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     };
   }, [athleteName, accent, trophies]);
 
-  return <div ref={mountRef} className="w-full h-full min-h-[480px]" />;
+  // `position: absolute; inset: 0` instead of `w-full h-full` because
+  // an aspect-ratio parent can momentarily report 0×0 during hydration,
+  // which would size the renderer at 0×0 and render an empty canvas.
+  return <div ref={mountRef} className="absolute inset-0" />;
 }
 
 function buildTrophy(colorHex: string, weightKg: number, shortLabel: string): THREE.Group {
@@ -351,6 +379,7 @@ function buildTrophy(colorHex: string, weightKg: number, shortLabel: string): TH
   lctx.font = "700 18px Inter, sans-serif";
   lctx.fillText(shortLabel.toUpperCase(), 128, 110);
   const labelTex = new THREE.CanvasTexture(labelCanvas);
+  labelTex.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Mesh(
     new THREE.PlaneGeometry(0.3, 0.15),
     new THREE.MeshBasicMaterial({ map: labelTex, transparent: false })
