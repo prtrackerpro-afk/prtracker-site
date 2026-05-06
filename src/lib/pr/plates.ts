@@ -6,15 +6,16 @@
 export const BAR_KG = 20;
 
 // Order matters: greedy descends from heaviest. Limits mirror the
-// "Anilhas avulsas" table in CLAUDE.md.
+// "Anilhas avulsas" table in CLAUDE.md. `id` matches `PlateId` in
+// src/lib/catalog.ts so the configurator can read our `?p=` querystring.
 export const PLATE_CATALOG = [
-  { kg: 25, maxPairs: 4 },
-  { kg: 20, maxPairs: 4 },
-  { kg: 15, maxPairs: 4 },
-  { kg: 10, maxPairs: 4 },
-  { kg: 5, maxPairs: 4 },
-  { kg: 2.5, maxPairs: 1 },
-  { kg: 1.25, maxPairs: 1 },
+  { id: "25",   kg: 25,   maxPairs: 4 },
+  { id: "20",   kg: 20,   maxPairs: 4 },
+  { id: "15",   kg: 15,   maxPairs: 4 },
+  { id: "10",   kg: 10,   maxPairs: 4 },
+  { id: "5",    kg: 5,    maxPairs: 4 },
+  { id: "2_5",  kg: 2.5,  maxPairs: 1 },
+  { id: "1_25", kg: 1.25, maxPairs: 1 },
 ] as const;
 
 export type PlateKg = (typeof PLATE_CATALOG)[number]["kg"];
@@ -62,26 +63,35 @@ export function splitPlates(totalKg: number): PlateSplit {
 
 /**
  * Builds the deep-link query string for the BarbellConfigurator.
- * The configurator currently doesn't read query params (TODO: wire that up
- * in src/components/BarbellConfigurator.astro), but we encode the intent
- * here so the destination page can populate it.
+ * The configurator (src/components/BarbellConfigurator.astro) reads:
+ *   ?p=<plateId>x<pairs>;<plateId>x<pairs>... — pre-selected plates
+ *   ?ex=<exercise_id>                          — pre-selected exercise (My PR Set)
+ *   ?w=<totalKg>                               — informational, used by banner
+ *   ?from=<source>                             — UTM-style source tag
+ *   ?prId=<uuid>                               — back-reference for attribution
+ *
+ * Plate IDs match `PlateId` in src/lib/catalog.ts (e.g. "2_5" not "2.5").
  */
 export function configuratorQuery(
   totalKg: number,
   exerciseId: string,
-  source: string = "pr"
+  source: string = "pr",
+  prRecordId?: string
 ): string {
   const split = splitPlates(totalKg);
+  const idByKg = new Map(PLATE_CATALOG.map((p) => [p.kg, p.id]));
   const params = new URLSearchParams({
     w: String(totalKg),
     ex: exerciseId,
     from: source,
   });
-  // Encoded as p={kg}x{pairs};{kg}x{pairs};...
+  if (prRecordId) params.set("prId", prRecordId);
   if (split.pairs.length > 0) {
     params.set(
       "p",
-      split.pairs.map((p) => `${p.kg}x${p.count}`).join(";")
+      split.pairs
+        .map((p) => `${idByKg.get(p.kg) ?? p.kg}x${p.count}`)
+        .join(";")
     );
   }
   return params.toString();

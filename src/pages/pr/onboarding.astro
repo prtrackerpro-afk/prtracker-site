@@ -1,0 +1,122 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+
+const athlete = Astro.locals.athlete!; // gated by middleware
+
+// If already onboarded, skip to dashboard. Middleware also enforces this
+// but the explicit redirect avoids a flash of the form on direct visits.
+if (athlete.displayName) {
+  return Astro.redirect("/pr", 302);
+}
+
+const url = new URL(Astro.request.url);
+const next = url.searchParams.get("next") || "/pr";
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Bem-vindo · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body grid place-items-center px-4 py-8">
+    <main class="w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="font-display text-3xl tracking-tight text-brand-lime">PR Tracker</div>
+        <div class="text-xs uppercase tracking-widest text-navy-300 mt-1">Configure seu perfil</div>
+      </div>
+
+      <p class="text-sm text-navy-300 text-center mb-6">
+        Como quer aparecer no seu card de PR e nos rankings de box?
+      </p>
+
+      <form id="onboarding-form" class="space-y-4 rounded-2xl border border-navy-700 bg-navy-800/50 p-6">
+        <div>
+          <label for="display_name" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Nome (obrigatório)</label>
+          <input
+            id="display_name"
+            name="display_name"
+            type="text"
+            required
+            maxlength="60"
+            autocomplete="name"
+            placeholder="ex: Felipe Laier"
+            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+          />
+          <p class="text-[11px] text-navy-300 mt-1">Aparece no card que vai pra story e no ranking do box.</p>
+        </div>
+
+        <div>
+          <label for="instagram_handle" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Instagram (opcional)</label>
+          <div class="flex items-center rounded-lg border border-navy-600 bg-navy-900 focus-within:border-brand-lime focus-within:ring-1 focus-within:ring-brand-lime">
+            <span class="pl-3 text-navy-300 text-sm">@</span>
+            <input
+              id="instagram_handle"
+              name="instagram_handle"
+              type="text"
+              maxlength="30"
+              pattern="[a-zA-Z0-9._]+"
+              placeholder="seu.handle"
+              class="flex-1 bg-transparent px-2 py-2.5 text-sm focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          id="submit-btn"
+          class="w-full rounded-lg bg-brand-lime px-4 py-3 text-sm font-semibold text-navy-900 hover:opacity-90 transition disabled:opacity-50"
+        >
+          Pronto, vamos começar
+        </button>
+
+        <div id="error-msg" class="text-sm text-red-400 hidden"></div>
+      </form>
+    </main>
+
+    <script define:vars={{ next }}>
+      const form = document.getElementById("onboarding-form");
+      const errorMsg = document.getElementById("error-msg");
+      const submitBtn = document.getElementById("submit-btn");
+
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.classList.add("hidden");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando...";
+
+        const data = new FormData(form);
+        const handle = (data.get("instagram_handle") || "").toString().trim().replace(/^@/, "");
+
+        try {
+          const res = await fetch("/api/pr/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              display_name: (data.get("display_name") || "").toString().trim(),
+              instagram_handle: handle || null,
+            }),
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            errorMsg.textContent = body.message || "Erro ao salvar.";
+            errorMsg.classList.remove("hidden");
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Pronto, vamos começar";
+            return;
+          }
+          window.location.href = next;
+        } catch {
+          errorMsg.textContent = "Erro de conexão.";
+          errorMsg.classList.remove("hidden");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Pronto, vamos começar";
+        }
+      });
+    </script>
+  </body>
+</html>

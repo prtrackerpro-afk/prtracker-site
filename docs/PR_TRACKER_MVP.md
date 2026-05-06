@@ -32,14 +32,16 @@ Caderno de troféus + funil pra venda física. Branch: `feat/pr-tracker-app`.
 
 ### Crítico (sem isso o funil não fecha)
 
-- [ ] **Configurador aceitar query params** — `BarbellConfigurator.astro` precisa ler `?w=`, `?ex=`, `?p=25x2;20x1` e pré-popular o estado. Sem isso, o CTA "Transforme em troféu" leva pra página correta mas não pré-seleciona as anilhas.
+- [x] **Configurador aceita query params** — `?w=`, `?ex=`, `?p=`, `?from=pr-celebrate`, `?prId=` integrados no `BarbellConfigurator.astro`. Plate IDs alinhados com `lib/catalog.ts`.
 - [ ] **Card PNG real** — atualmente o endpoint serve SVG. Pra story do Instagram, precisa ser PNG. Opções: `@vercel/og` (Satori) ou `resvg-js`. Adicionar dep + reescrever endpoint.
-- [ ] **Onboarding** — primeira vez logando, pedir `display_name` (e opcionalmente `instagram_handle`, `primary_box_id`). Sem isso, leaderboards não mostram nome.
-- [ ] **Tracking de conversão PR→troféu** — quando o checkout do produto vir com `?from=pr-celebrate`, gravar `trophy_purchase_id` no `pr_records` correspondente. Métrica de sucesso V1 depende disso.
+- [x] **Onboarding** — `/pr/onboarding` + `/api/pr/profile` + middleware redirect quando `display_name` for null.
+- [x] **Tracking de conversão PR→troféu** — `prId` stashado no sessionStorage pelo configurador, `/api/pr/records/[id]/trophy-purchase` chamado em `/obrigado` com `payment_id` da MP.
 
 ### Importante (V1.1)
 
-- [ ] **Gráfico de progressão** por movimento (Recharts island, padrão `admin/TrendChart`).
+- [x] **Gráfico de progressão** — `PRProgressionChart.tsx` (Recharts island) por movimento, com PR-true marcado em destaque.
+- [x] **Stats no dashboard** — total PRs, dias desde última, maior peso já registrado.
+- [x] **Celebrate inline preview** — card SVG renderizado direto na página, count-up no peso, botão "Compartilhar" usando Web Share API.
 - [ ] **Editar/deletar PR** (UPDATE/DELETE na API, modal de confirmação no dashboard).
 - [ ] **Ingresso em box** — endpoint `POST /api/pr/box/:slug/join` que insere em `pr_box_members`.
 - [ ] **Perfil público do atleta** — `/pr/atleta/:handle` mostrando PRs + box.
