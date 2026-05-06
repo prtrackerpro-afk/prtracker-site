@@ -57,12 +57,35 @@ function fmtRelative(iso: string): string {
     <link rel="icon" type="image/png" href="/favicon-32.png" />
     <link rel="manifest" href="/pr/manifest.webmanifest" />
   </head>
+  <script
+    define:vars={{
+      anonKey: import.meta.env.SUPABASE_ANON_KEY ?? import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "",
+      supabaseUrl: import.meta.env.SUPABASE_URL ?? import.meta.env.PUBLIC_SUPABASE_URL ?? "",
+    }}
+  >
+    // Hand the runtime keys to the client realtime subscriber. Anon key
+    // is safe to expose — RLS gates writes; reads of pr_records still
+    // pass through the SECURITY DEFINER function (pr_friend_feed) so
+    // even with the key, athletes only see records they're entitled to.
+    window.__PR_SUPA__ = { url: supabaseUrl, anon: anonKey };
+  </script>
   <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
     <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
       <a href="/pr" class="text-xs text-navy-300 hover:text-white">← Meus PRs</a>
-      <h1 class="font-display text-base tracking-tight">Feed</h1>
+      <h1 class="font-display text-base tracking-tight flex items-center gap-2">
+        Feed
+        <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-navy-700" title="conexão realtime"></span>
+      </h1>
       <a href="/pr/atletas" class="text-xs text-brand-lime hover:underline">+ Seguir</a>
     </header>
+
+    {/* Realtime banner — fires when a new PR drops while page is open */}
+    <div
+      id="new-pr-banner"
+      class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 rounded-full bg-brand-lime text-navy-900 font-semibold text-xs px-4 py-2 shadow-lg shadow-brand-lime/40 cursor-pointer animate-bounce"
+    >
+      <span id="new-pr-count">0</span> novo PR. Toque pra ver →
+    </div>
 
     <main class="max-w-2xl mx-auto px-4">
       {rows.length === 0 ? (
@@ -135,6 +158,50 @@ function fmtRelative(iso: string): string {
     </main>
 
     <script>
+      // === Realtime: subscribe to new PR-true records via Supabase ====
+      // When a friend logs a PR, the green dot pulses and a banner appears
+      // offering to refresh the feed. We do NOT auto-prepend rows because
+      // RLS doesn't expose other athletes' records on the client — we'd
+      // need to re-fetch via the SECURITY DEFINER feed function. Cheaper
+      // to just nudge the user to reload.
+      (async () => {
+        const cfg = (window as typeof window & { __PR_SUPA__?: { url: string; anon: string } }).__PR_SUPA__;
+        if (!cfg?.url || !cfg.anon) return;
+        const liveDot = document.getElementById("live-dot");
+        const banner = document.getElementById("new-pr-banner");
+        const countEl = document.getElementById("new-pr-count");
+        if (!liveDot || !banner || !countEl) return;
+
+        let newCount = 0;
+        banner.addEventListener("click", () => window.location.reload());
+
+        try {
+          const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
+          const sb = createClient(cfg.url, cfg.anon);
+          const ch = sb
+            .channel("pr-feed")
+            .on(
+              "postgres_changes",
+              { event: "INSERT", schema: "public", table: "pr_records" },
+              (payload) => {
+                if (!payload.new || !(payload.new as { is_personal_record?: boolean }).is_personal_record) return;
+                newCount += 1;
+                countEl.textContent = String(newCount);
+                banner.classList.remove("hidden");
+              }
+            )
+            .subscribe((status) => {
+              liveDot.classList.toggle("bg-brand-lime", status === "SUBSCRIBED");
+              liveDot.classList.toggle("animate-pulse", status === "SUBSCRIBED");
+              liveDot.classList.toggle("bg-navy-700", status !== "SUBSCRIBED");
+            });
+          window.addEventListener("beforeunload", () => sb.removeChannel(ch));
+        } catch {
+          // ESM CDN unreachable — degrade silently to non-realtime.
+        }
+      })();
+
+      // === Reaction buttons (existing) =================================
       // Wire up reaction buttons — optimistic UI, revert on error.
       document.querySelectorAll<HTMLElement>("[data-react-row]").forEach((row) => {
         const recordId = row.dataset.recordId;

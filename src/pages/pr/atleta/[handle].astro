@@ -1,0 +1,174 @@
+---
+export const prerender = false;
+import "../../../styles/global.css";
+import { getAdminSupabase } from "../../../lib/supabase/server";
+import { exerciseLabel, type ExerciseId } from "../../../lib/pr/exercises";
+import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../../lib/pr/strength-score";
+
+// PUBLIC athlete profile, indexed by Instagram handle. No auth required —
+// this is the shareable link an athlete posts in their bio. Renders the
+// Lifter Card + Strength Tier + Trophy Wall (read-only) so visitors can
+// see what the app is and create their own.
+
+const handle = (Astro.params.handle ?? "").trim().toLowerCase();
+if (!handle) return new Response("Missing handle", { status: 400 });
+
+// Service-role read (RLS would block cross-athlete reads). Safe because
+// we only return the columns the athlete chose to make discoverable
+// (no email, no body data — body data ratio used in tiers stays opaque).
+const sb = getAdminSupabase();
+
+const { data: profile } = await sb
+  .from("pr_athletes")
+  .select("user_id, display_name, instagram_handle, body_weight_kg, sex")
+  .ilike("instagram_handle", handle)
+  .maybeSingle();
+
+if (!profile || !profile.display_name) {
+  return new Response("Atleta não encontrado", { status: 404 });
+}
+
+const { data: bestRows = [] } = await sb
+  .from("pr_best_lifts")
+  .select("exercise, weight_kg, performed_at")
+  .eq("user_id", profile.user_id);
+
+const bestLifts: Partial<Record<ExerciseId, number>> = {};
+for (const r of bestRows ?? []) {
+  bestLifts[r.exercise as ExerciseId] = Number(r.weight_kg);
+}
+
+const summary = summarize({
+  bodyWeightKg: profile.body_weight_kg != null ? Number(profile.body_weight_kg) : null,
+  sex: (profile.sex as "male" | "female" | undefined) ?? null,
+  bestLifts,
+});
+
+const sortedLifts = [...summary.lifts].sort(
+  (a, b) => TIER_META[b.tier].rank - TIER_META[a.tier].rank || b.ratio - a.ratio
+);
+
+const overallTier: Tier | null = summary.hasBodyData ? summary.overallTier : null;
+const tColor = overallTier ? tierColor(overallTier) : "#D8FF2C";
+const tName = overallTier ? tierLabel(overallTier).toUpperCase() : "ATLETA";
+
+const SITE = (import.meta.env.PUBLIC_SITE_URL || "https://prtracker.com.br").replace(/\/$/, "");
+const ogImage = `${SITE}/images/brand/logo-lime.png`;
+const pageTitle = `${profile.display_name} · ${tName} · PR Tracker`;
+const pageDesc =
+  sortedLifts.length > 0
+    ? `${sortedLifts.length} movimentos registrados · ${tName} · veja a estante de troféus.`
+    : `Atleta no PR Tracker — registre seu PR, vire troféu.`;
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDesc} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDesc} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:type" content="profile" />
+    <meta property="og:url" content={`${SITE}/pr/atleta/${handle}`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
+      <a href="/pr" class="font-display text-base tracking-tight text-brand-lime">PR TRACKER</a>
+      <a href="/pr/login" class="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5">
+        Crie o seu
+      </a>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4">
+      {/* === HERO LIFTER CARD === */}
+      <section
+        class="rounded-2xl p-6 mb-6 border-2 relative overflow-hidden"
+        style={`border-color: ${tColor}; background: linear-gradient(135deg, rgba(1,0,42,0.95), rgba(10,0,80,0.95))`}
+      >
+        <div class="text-[10px] uppercase tracking-[0.3em] text-navy-300">Atleta</div>
+        <h1 class="font-display text-3xl tracking-tight mt-1">{profile.display_name}</h1>
+        {profile.instagram_handle && (
+          <a
+            href={`https://instagram.com/${profile.instagram_handle}`}
+            target="_blank"
+            rel="noopener"
+            class="text-sm text-navy-300 hover:text-white"
+          >@{profile.instagram_handle}</a>
+        )}
+        <div class="text-center mt-6">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-navy-300">Strength Tier</div>
+          <div class="font-display text-5xl mt-1" style={`color: ${tColor}`}>{tName}</div>
+          {summary.hasBodyData && (
+            <div class="text-sm text-white mt-1">
+              Top {Math.max(1, Math.round(100 - summary.percentile))}% Brasil
+            </div>
+          )}
+        </div>
+
+        {summary.powerlifting && (
+          <div class="rounded-lg bg-navy-900/50 p-3 mt-5 text-center">
+            <div class="text-[10px] uppercase tracking-widest text-navy-300">Powerlifting Total</div>
+            <div class="font-display text-3xl tabular-nums mt-1">{Math.round(summary.powerlifting.totalKg)}<span class="text-sm text-navy-300 ml-0.5">kg</span></div>
+            <div class="text-xs text-navy-300 mt-1">
+              {summary.powerlifting.ratio.toFixed(2).replace(".", ",")}× peso · {tierLabel(summary.powerlifting.tier)}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* === TROPHY GRID === */}
+      {sortedLifts.length > 0 ? (
+        <section class="mb-6">
+          <div class="flex items-baseline justify-between mb-3">
+            <h2 class="text-base font-semibold tracking-tight">Estante de troféus</h2>
+            <div class="text-[10px] uppercase tracking-widest text-navy-300">{sortedLifts.length}</div>
+          </div>
+          <ul class="grid grid-cols-2 gap-2">
+            {sortedLifts.map((lift) => {
+              const c = tierColor(lift.tier);
+              return (
+                <li class="rounded-xl border bg-navy-800/30 p-3" style={`border-color: ${c}33`}>
+                  <div class="text-[10px] uppercase tracking-widest" style={`color: ${c}`}>
+                    {tierLabel(lift.tier)}
+                  </div>
+                  <div class="font-display text-sm leading-tight truncate">{exerciseLabel(lift.exerciseId)}</div>
+                  <div class="font-display text-2xl tabular-nums mt-1" style={`color: ${c}`}>
+                    {lift.weightKg}
+                    <span class="text-xs text-navy-300 font-body ml-0.5">kg</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : (
+        <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-8 text-center mb-6">
+          <p class="text-sm text-navy-300">Esse atleta ainda não registrou nenhum PR.</p>
+        </section>
+      )}
+
+      {/* === CTA SIGN-UP === */}
+      <section class="rounded-2xl border border-brand-lime/30 bg-brand-lime/5 p-6 text-center mb-6">
+        <h2 class="font-display text-xl tracking-tight mb-2">Você também é atleta?</h2>
+        <p class="text-sm text-navy-300 mb-4">
+          Registra seus PRs · vira tier · estante de troféus · pode pedir o troféu físico
+        </p>
+        <a
+          href="/pr/login"
+          class="inline-block rounded-lg bg-brand-lime px-5 py-3 text-sm font-semibold text-navy-900 hover:opacity-90 transition"
+        >
+          Entrar no PR Tracker
+        </a>
+      </section>
+
+      <footer class="text-center text-[10px] uppercase tracking-widest text-navy-300 pt-6 pb-12">
+        prtracker.com.br · @pr.tracker
+      </footer>
+    </main>
+  </body>
+</html>

@@ -43,11 +43,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const isPublicBoxLeaderboard =
     /^\/pr\/box\/[^/]+\/?$/.test(pathname);
 
+  // Public athlete profile (shareable via @handle, no auth needed).
+  const isPublicAthleteProfile =
+    /^\/pr\/atleta\/[^/]+\/?$/.test(pathname);
+
   const isPrAppRoute =
     (pathname === "/pr" || pathname.startsWith("/pr/")) &&
     !pathname.startsWith("/pr/login") &&
     !pathname.startsWith("/pr/auth/") &&
-    !isPublicBoxLeaderboard;
+    !isPublicBoxLeaderboard &&
+    !isPublicAthleteProfile;
 
   const isPrAppApi =
     pathname.startsWith("/api/pr/") &&

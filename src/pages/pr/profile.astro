@@ -60,6 +60,15 @@ const achievements = computeAchievements({
 const earned = achievements.filter((a) => a.earned);
 const upcoming = achievements.filter((a) => !a.earned).slice(0, 3);
 
+// Public profile share — resolves the athlete's instagram_handle so the
+// "Compartilhar perfil" button can deep-link to /pr/atleta/[handle].
+const { data: profileRow } = await supabase
+  .from("pr_athletes")
+  .select("instagram_handle")
+  .eq("user_id", athlete.userId)
+  .maybeSingle();
+const handleForShare: string | null = (profileRow?.instagram_handle as string | undefined) ?? null;
+
 function computeStreak(dates: string[]): number {
   if (dates.length === 0) return 0;
   const months = new Set(dates.map((d) => d.slice(0, 7))); // YYYY-MM
@@ -90,7 +99,15 @@ const overallTierColor = tierColor(summary.overallTier);
   <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
     <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
       <a href="/pr" class="text-xs text-navy-300 hover:text-white">← Meus PRs</a>
-      <a href="/api/pr/auth/logout" class="text-xs text-navy-300 hover:text-white">Sair</a>
+      <div class="flex items-center gap-3">
+        {handleForShare && (
+          <button id="share-profile" type="button" data-handle={handleForShare}
+                  class="text-xs text-brand-lime hover:underline">
+            Compartilhar
+          </button>
+        )}
+        <a href="/api/pr/auth/logout" class="text-xs text-navy-300 hover:text-white">Sair</a>
+      </div>
     </header>
 
     <main class="max-w-2xl mx-auto px-4">
@@ -331,5 +348,28 @@ const overallTierColor = tierColor(summary.overallTier);
     >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
     </a>
+
+    <script>
+      // "Compartilhar perfil" — opens native share sheet (mobile) or copies
+      // the public profile URL to clipboard (desktop).
+      const shareBtn = document.getElementById("share-profile") as HTMLButtonElement | null;
+      shareBtn?.addEventListener("click", async () => {
+        const handle = shareBtn.dataset.handle;
+        if (!handle) return;
+        const url = `${window.location.origin}/pr/atleta/${handle}`;
+        const text = "Meu perfil no PR Tracker";
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: "PR Tracker", text, url });
+          } else {
+            await navigator.clipboard.writeText(url);
+            shareBtn.textContent = "Link copiado";
+            setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
+          }
+        } catch {
+          // user cancelled
+        }
+      });
+    </script>
   </body>
 </html>
