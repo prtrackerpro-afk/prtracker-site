@@ -94,7 +94,20 @@ function shortName(label: string): string {
           athleteName={athlete.displayName ?? "Atleta"}
           accent={accent}
           trophies={fallbackTrophies}
-        />
+        >
+          {/* Fallback enquanto a ilha React hidrata. Se isso ficar visível
+              por mais de 2-3s, a hidratação falhou (cheque o console). */}
+          <div class="absolute inset-0 grid place-items-center">
+            <div class="text-center">
+              <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">
+                Carregando ginásio
+              </div>
+              <div class="text-xs text-navy-300">
+                Montando paredes, prateleiras e troféus...
+              </div>
+            </div>
+          </div>
+        </VirtualGym>
 
         {/* HUD overlay */}
         <div class="pointer-events-none absolute top-3 left-3 text-[10px] uppercase tracking-widest">

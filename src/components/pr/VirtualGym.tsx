@@ -470,15 +470,22 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       )}`
     : "#";
 
+  // IMPORTANT: usamos `position: absolute` via inline style em cada nó
+  // top-level e retornamos um Fragment (não um wrapper). O <astro-island>
+  // que envolve a ilha tem display inconsistente entre browsers — em iOS
+  // Safari um wrapper `w-full h-full` chegou a ficar 0×0, escondendo
+  // tudo. Posicionamento absolute escapa do astro-island e ancora direto
+  // no container `relative` do gym.astro. Sem backdrop-blur (iOS quirk).
   return (
-    <div className="relative w-full h-full">
-      <div ref={mountRef} className="absolute inset-0" />
+    <>
+      <div ref={mountRef} style={{ position: "absolute", inset: 0 }} />
 
       {/* Camera mode toggle — top-right of the gym */}
       <button
         type="button"
         onClick={() => setMode((m) => (m === "follow" ? "orbit" : "follow"))}
-        className="absolute top-3 right-3 z-10 text-[10px] uppercase tracking-widest font-display rounded-full border border-white/30 bg-navy-900/70 backdrop-blur text-white px-3 py-1.5 hover:border-brand-lime hover:text-brand-lime transition"
+        style={{ position: "absolute", top: 12, right: 12, zIndex: 10 }}
+        className="text-[10px] uppercase tracking-widest font-display rounded-full border border-white/30 bg-navy-900/80 text-white px-3 py-1.5 hover:border-brand-lime hover:text-brand-lime transition"
         aria-label="Trocar modo de câmera"
       >
         {mode === "follow" ? "📷 Seguir" : "🔄 Girar"}
@@ -488,8 +495,8 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
           work for touch + mouse; on desktop the user can also use WASD. */}
       <div
         ref={joystickRef}
-        className="absolute bottom-4 left-4 z-10 w-24 h-24 rounded-full border-2 border-white/30 bg-navy-900/40 backdrop-blur-sm touch-none select-none"
-        style={{ touchAction: "none" }}
+        style={{ position: "absolute", bottom: 16, left: 16, zIndex: 10, touchAction: "none" }}
+        className="w-24 h-24 rounded-full border-2 border-white/30 bg-navy-900/60 select-none"
         aria-label="Joystick"
       >
         <div
@@ -501,7 +508,8 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       {/* Trophy detail modal */}
       {selected && (
         <div
-          className="absolute inset-0 z-20 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          style={{ position: "absolute", inset: 0, zIndex: 20 }}
+          className="flex items-end sm:items-center justify-center bg-black/70 p-4"
           onClick={() => setSelected(null)}
         >
           <div
@@ -545,7 +553,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
