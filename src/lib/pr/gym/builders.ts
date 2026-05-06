@@ -99,119 +99,140 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
     metalness: 0.1,
   });
 
-  // Proporções por gênero. Total height ~1.85m. Layout absoluto:
-  //   Pés:    y=0 a y=0.08
-  //   Pernas: y=0.08 a y=0.95 (joelho ~0.5)
-  //   Hip:    y=0.95 a y=1.10
-  //   Torso:  y=1.10 a y=1.65
-  //   Pescoço:y=1.65 a y=1.72
-  //   Cabeça: y=1.72 a y=2.05 (radius 0.165, center 1.88)
+  // Proporções estilo "stylized cartoon" — head GRANDE pra parecer
+  // Animal Crossing/Viverse Retro vs realismo seco. Total ~1.95m.
   const isF = prefs.gender === "female";
   const isM = prefs.gender === "male";
-  const torsoTopR = isF ? 0.18 : isM ? 0.22 : 0.20;
-  const torsoBotR = isF ? 0.16 : isM ? 0.18 : 0.17;
-  const hipR = isF ? 0.20 : isM ? 0.18 : 0.19;
-  const shoulderHalfW = isF ? 0.20 : isM ? 0.24 : 0.22;
-  const headR = 0.165;
+  const torsoTopR = isF ? 0.20 : isM ? 0.24 : 0.22;
+  const torsoBotR = isF ? 0.18 : isM ? 0.20 : 0.19;
+  const hipR = isF ? 0.22 : isM ? 0.20 : 0.21;
+  const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
+  const headR = 0.21; // BIGGER (era 0.165) — visível de qualquer ângulo
 
-  // === HEAD com FACE TEXTURE ====================================
+  // === HEAD com FEATURES 3D REAIS ==============================
+  // V6: olhos/nariz/boca/sobrancelhas como objetos 3D reais (não
+  // texture chata num plano). Visíveis de qualquer ângulo, dão
+  // personalidade ao avatar.
   const head = new THREE.Group();
-  // Skull: esfera levemente achatada nas laterais pra dar formato facial
-  const skullGeom = new THREE.SphereGeometry(headR, 28, 22);
+
+  // Skull: esfera levemente achatada — formato facial humano
+  const skullGeom = new THREE.SphereGeometry(headR, 32, 24);
   const skull = new THREE.Mesh(skullGeom, skinMat);
-  skull.scale.set(1.0, 1.08, 0.95);
+  skull.scale.set(1.0, 1.05, 0.92);
   skull.castShadow = true;
   head.add(skull);
 
-  // Face texture: olhos + boca + sobrancelhas via canvas, em um plane
-  // arredondado na frente da cabeça. MUDA TUDO visualmente.
-  const faceCanvas = document.createElement("canvas");
-  faceCanvas.width = 256;
-  faceCanvas.height = 256;
-  const fctx = faceCanvas.getContext("2d")!;
-  // Fundo transparente pra não cobrir a esfera
-  fctx.clearRect(0, 0, 256, 256);
+  // === OLHOS 3D ===
+  // Cada olho: esfera branca grande (esclera) + pequena preta (íris/pupila)
+  const escleraMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.2,
+    metalness: 0,
+  });
+  const irisMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1660,
+    roughness: 0.3,
+    metalness: 0.1,
+  });
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-  // Sobrancelhas
-  fctx.fillStyle = prefs.hair;
-  fctx.fillRect(70, 95, 38, 8);
-  fctx.fillRect(148, 95, 38, 8);
+  for (const sx of [-0.07, 0.07]) {
+    // Esclera (branco do olho) — semicirculo embutido na cabeça
+    const sclera = new THREE.Mesh(
+      new THREE.SphereGeometry(0.038, 16, 12),
+      escleraMat
+    );
+    sclera.scale.set(1, 1.05, 0.8);
+    sclera.position.set(sx, 0.025, headR * 0.86);
+    head.add(sclera);
 
-  // Olhos brancos (esclera)
-  fctx.fillStyle = "#ffffff";
-  fctx.beginPath();
-  fctx.ellipse(89, 122, 18, 14, 0, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.ellipse(167, 122, 18, 14, 0, 0, Math.PI * 2);
-  fctx.fill();
+    // Íris azul-noturno na frente da esclera
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.022, 14, 10), irisMat);
+    iris.position.set(sx, 0.025, headR * 0.92);
+    head.add(iris);
 
-  // Íris (azul-noturno)
-  fctx.fillStyle = "#1a1660";
-  fctx.beginPath();
-  fctx.arc(89, 124, 9, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.arc(167, 124, 9, 0, Math.PI * 2);
-  fctx.fill();
+    // Pupila pequena preta
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.011, 10, 8), pupilMat);
+    pupil.position.set(sx, 0.025, headR * 0.94);
+    head.add(pupil);
 
-  // Pupilas
-  fctx.fillStyle = "#000";
-  fctx.beginPath();
-  fctx.arc(89, 124, 4, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.arc(167, 124, 4, 0, Math.PI * 2);
-  fctx.fill();
+    // Highlight (brilho do olho — ponto branco)
+    const highlight = new THREE.Mesh(
+      new THREE.SphereGeometry(0.005, 8, 6),
+      highlightMat
+    );
+    highlight.position.set(sx + 0.005, 0.03, headR * 0.96);
+    head.add(highlight);
+  }
 
-  // Highlight nos olhos
-  fctx.fillStyle = "#ffffff";
-  fctx.beginPath();
-  fctx.arc(91, 121, 2, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.arc(169, 121, 2, 0, Math.PI * 2);
-  fctx.fill();
+  // === SOBRANCELHAS 3D ===
+  const browMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(prefs.hair).multiplyScalar(0.8),
+    roughness: 0.85,
+    metalness: 0,
+  });
+  for (const sx of [-0.07, 0.07]) {
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.012, 0.02), browMat);
+    brow.position.set(sx, 0.075, headR * 0.92);
+    brow.rotation.z = sx > 0 ? 0.1 : -0.1; // ângulo natural
+    head.add(brow);
+  }
 
-  // Nariz (linha sutil)
-  fctx.strokeStyle = "rgba(0,0,0,0.18)";
-  fctx.lineWidth = 2;
-  fctx.beginPath();
-  fctx.moveTo(128, 140);
-  fctx.lineTo(122, 158);
-  fctx.lineTo(132, 162);
-  fctx.stroke();
-
-  // Boca (sorriso leve)
-  fctx.strokeStyle = "#3a1f1f";
-  fctx.lineWidth = 4;
-  fctx.lineCap = "round";
-  fctx.beginPath();
-  fctx.arc(128, 178, 26, 0.15, Math.PI - 0.15);
-  fctx.stroke();
-
-  // Bochecha sutil
-  fctx.fillStyle = "rgba(220, 100, 100, 0.18)";
-  fctx.beginPath();
-  fctx.arc(70, 165, 14, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.arc(186, 165, 14, 0, Math.PI * 2);
-  fctx.fill();
-
-  const faceTex = new THREE.CanvasTexture(faceCanvas);
-  faceTex.colorSpace = THREE.SRGBColorSpace;
-  const face = new THREE.Mesh(
-    new THREE.PlaneGeometry(headR * 1.7, headR * 1.7),
-    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+  // === NARIZ 3D ===
+  // Pequeno volume cônico saindo da cabeça
+  const noseMat = skinMat;
+  const nose = new THREE.Mesh(
+    new THREE.ConeGeometry(0.018, 0.05, 6),
+    noseMat
   );
-  // Posicionado um pouco à frente da esfera, à altura dos olhos
-  face.position.set(0, 0, headR * 0.92);
-  head.add(face);
+  nose.rotation.x = Math.PI / 2;
+  nose.rotation.z = Math.PI;
+  nose.position.set(0, -0.005, headR * 0.97);
+  head.add(nose);
+
+  // Sombra abaixo do nariz (subtle)
+  const noseShadow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.012, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 })
+  );
+  noseShadow.position.set(0, -0.04, headR * 0.92);
+  head.add(noseShadow);
+
+  // === BOCA 3D (sorriso) ===
+  // Torus segment criando uma curva de sorriso
+  const mouthMat = new THREE.MeshStandardMaterial({
+    color: 0x6b1f1f,
+    roughness: 0.6,
+    metalness: 0,
+  });
+  const mouth = new THREE.Mesh(
+    new THREE.TorusGeometry(0.04, 0.008, 6, 16, Math.PI * 0.7),
+    mouthMat
+  );
+  mouth.rotation.x = Math.PI;
+  mouth.rotation.z = Math.PI / 2;
+  mouth.position.set(0, -0.07, headR * 0.92);
+  head.add(mouth);
+
+  // === BOCHECHAS 3D ===
+  const cheekMat = new THREE.MeshBasicMaterial({
+    color: 0xff8888,
+    transparent: true,
+    opacity: 0.25,
+  });
+  for (const sx of [-0.105, 0.105]) {
+    const cheek = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 10, 8),
+      cheekMat
+    );
+    cheek.position.set(sx, -0.04, headR * 0.78);
+    head.add(cheek);
+  }
 
   // Pescoço
   const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.06, 0.07, 0.07, 12),
+    new THREE.CylinderGeometry(0.07, 0.085, 0.09, 12),
     skinMat
   );
   neck.position.y = -headR - 0.02;
@@ -270,7 +291,7 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   }
 
   // Cabeça posicionada em y=1.88 absoluto (centro do crânio)
-  head.position.y = 1.88;
+  head.position.y = 1.95; // ajustado pra cabeça maior (headR=0.21)
   root.add(head);
 
   // === TORSO + CAMISA "PR TRACKER" =============================
@@ -926,4 +947,409 @@ export function buildBanner(accentHex: string): THREE.Mesh {
     new THREE.MeshBasicMaterial({ map: tex })
   );
   return banner;
+}
+
+// =================================================================
+// CROSSFIT RIG — estrutura central alta com rings, ropes, pull-up bars
+// =================================================================
+
+export interface CrossFitRig {
+  group: THREE.Group;
+  /** Rings que balançam levemente (animação no loop). */
+  rings: THREE.Group[];
+  /** Ropes que balançam levemente. */
+  ropes: THREE.Group[];
+}
+
+/**
+ * Rig central de CrossFit. 6 colunas de aço + travessas superiores
+ * + pull-up bars em 3 vãos + 2 pares de rings + 2 ropes pendurando.
+ */
+export function buildCrossFitRig(width: number, depth: number): CrossFitRig {
+  const group = new THREE.Group();
+  const rings: THREE.Group[] = [];
+  const ropes: THREE.Group[] = [];
+
+  const H = 3.6; // altura do rig (alto, dá presença)
+  const colR = 0.06;
+  // 6 colunas verticais em 2 fileiras (3 frente, 3 trás), 3 vãos
+  for (const z of [-depth / 2, depth / 2]) {
+    for (let i = 0; i < 4; i++) {
+      const x = -width / 2 + (i / 3) * width;
+      const col = new THREE.Mesh(
+        new THREE.BoxGeometry(colR, H, colR),
+        STEEL_MAT
+      );
+      col.position.set(x, H / 2, z);
+      col.castShadow = true;
+      group.add(col);
+    }
+  }
+
+  // Travessas horizontais conectando colunas no topo (pull-up bars)
+  // 3 vãos de pull-up bar (cilindros entre colunas adjacentes da frente)
+  for (let i = 0; i < 3; i++) {
+    const xL = -width / 2 + (i / 3) * width;
+    const xR = -width / 2 + ((i + 1) / 3) * width;
+    const xMid = (xL + xR) / 2;
+    const len = xR - xL;
+
+    // Pull-up bar (cilindro horizontal, em z=+depth/2)
+    const bar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.024, 0.024, len, 12),
+      CHROME_MAT
+    );
+    bar.rotation.z = Math.PI / 2;
+    bar.position.set(xMid, H - 0.04, depth / 2);
+    bar.castShadow = true;
+    group.add(bar);
+
+    // Bar nas costas tambem (paralela atras)
+    const barBack = bar.clone();
+    barBack.position.set(xMid, H - 0.04, -depth / 2);
+    group.add(barBack);
+
+    // Travessa de teto conectando frente e trás (formando uma "U" invertido)
+    const topConnector = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.04, depth),
+      STEEL_MAT
+    );
+    topConnector.position.set(xMid, H, 0);
+    group.add(topConnector);
+  }
+
+  // Travessas laterais conectando topo da frente com topo da trás (frames)
+  for (let i = 0; i < 4; i++) {
+    const x = -width / 2 + (i / 3) * width;
+    const sideRail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.05, depth),
+      STEEL_MAT
+    );
+    sideRail.position.set(x, H, 0);
+    group.add(sideRail);
+  }
+
+  // 2 pares de rings pendurando no vão central + lateral
+  const ringPositions = [
+    { x: -width / 6, z: 0 },
+    { x: width / 6, z: 0 },
+  ];
+  for (const pos of ringPositions) {
+    // Cada par tem 2 rings espaçados 0.5m
+    const pairGroup = new THREE.Group();
+    pairGroup.position.set(pos.x, H, pos.z);
+
+    for (const sx of [-0.25, 0.25]) {
+      const ringGroup = new THREE.Group();
+      // Strap (faixa que prende ao teto)
+      const strap = new THREE.Mesh(
+        new THREE.BoxGeometry(0.025, 1.4, 0.005),
+        new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.85 })
+      );
+      strap.position.y = -0.7;
+      ringGroup.add(strap);
+      // O ring (anel de madeira)
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.085, 0.018, 10, 24),
+        new THREE.MeshStandardMaterial({
+          color: 0xa06832,
+          roughness: 0.5,
+          metalness: 0.05,
+        })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = -1.45;
+      ringGroup.add(ring);
+      ringGroup.position.set(sx, 0, 0);
+      pairGroup.add(ringGroup);
+      rings.push(ringGroup);
+    }
+    group.add(pairGroup);
+  }
+
+  // 2 cordas penduradas (ropes) — cilindros longos texturizados
+  const ropePositions = [-width / 2 + width / 3, width / 2 - width / 3];
+  for (const x of ropePositions) {
+    const ropeGroup = new THREE.Group();
+    ropeGroup.position.set(x, H, depth / 2 + 0.4);
+    // Corda (cilindro longo cor castanha)
+    const rope = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.035, 2.6, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0x6b4a2a,
+        roughness: 0.85,
+        metalness: 0,
+      })
+    );
+    rope.position.y = -1.3;
+    ropeGroup.add(rope);
+    // Nó na ponta de baixo (esfera)
+    const knot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x4a3318, roughness: 0.9 })
+    );
+    knot.position.y = -2.65;
+    ropeGroup.add(knot);
+    group.add(ropeGroup);
+    ropes.push(ropeGroup);
+  }
+
+  return { group, rings, ropes };
+}
+
+// =================================================================
+// PLATE TREE — armazenamento vertical de anilhas no canto
+// =================================================================
+
+export function buildPlateTree(): THREE.Group {
+  const g = new THREE.Group();
+
+  // Base T grande
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.06, 0.7),
+    STEEL_MAT
+  );
+  base.position.y = 0.03;
+  base.castShadow = true;
+  g.add(base);
+
+  // Coluna central
+  const post = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 1.6, 12),
+    STEEL_MAT
+  );
+  post.position.y = 0.86;
+  g.add(post);
+
+  // 4 pinos horizontais saindo (peg) com anilhas IWF empilhadas
+  const pegHeights = [0.3, 0.6, 0.9, 1.2];
+  const pegPlates = [
+    { kg: 25, color: 0xda291c, count: 3 },
+    { kg: 20, color: 0x0057b8, count: 3 },
+    { kg: 15, color: 0xffc72c, count: 3 },
+    { kg: 10, color: 0x43b02a, count: 4 },
+  ];
+
+  pegHeights.forEach((y, idx) => {
+    // 2 pegs (frente e trás) por nível
+    for (const dz of [-0.25, 0.25]) {
+      const peg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.024, 0.024, 0.32, 10),
+        STEEL_MAT
+      );
+      peg.rotation.x = Math.PI / 2;
+      peg.position.set(0, y, dz * 0.6);
+      g.add(peg);
+
+      // Anilhas no peg
+      const data = pegPlates[idx];
+      if (!data) continue;
+      const radius = 0.08 + (data.kg / 25) * 0.07;
+      const thickness = 0.025;
+      const plateMat = new THREE.MeshStandardMaterial({
+        color: data.color,
+        roughness: 0.45,
+        metalness: 0.15,
+      });
+      for (let i = 0; i < data.count; i++) {
+        const plate = new THREE.Mesh(
+          new THREE.CylinderGeometry(radius, radius, thickness, 24),
+          plateMat
+        );
+        plate.rotation.x = Math.PI / 2;
+        plate.position.set(0, y, dz * (0.6 - 0.04 - i * thickness));
+        plate.castShadow = true;
+        g.add(plate);
+      }
+    }
+  });
+
+  return g;
+}
+
+// =================================================================
+// WALL PLATES — anilhas decorativas penduradas em parede
+// =================================================================
+
+export function buildWallPlates(rows: number = 2, perRow: number = 6): THREE.Group {
+  const g = new THREE.Group();
+  const colors = [0xda291c, 0x0057b8, 0xffc72c, 0x43b02a];
+  const ROW_GAP = 0.55;
+  const COL_GAP = 0.5;
+
+  for (let r = 0; r < rows; r++) {
+    for (let i = 0; i < perRow; i++) {
+      const colorHex = colors[(i + r) % colors.length] ?? 0x9ca3af;
+      const radius = 0.18;
+      const plate = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, 0.04, 24),
+        new THREE.MeshStandardMaterial({
+          color: colorHex,
+          roughness: 0.4,
+          metalness: 0.2,
+        })
+      );
+      plate.rotation.z = Math.PI / 2;
+      plate.position.set(
+        -((perRow - 1) / 2) * COL_GAP + i * COL_GAP,
+        r * ROW_GAP,
+        0
+      );
+      plate.castShadow = true;
+      g.add(plate);
+
+      // Pino de aço suportando cada anilha
+      const peg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.06, 8),
+        STEEL_MAT
+      );
+      peg.rotation.z = Math.PI / 2;
+      peg.position.set(
+        -((perRow - 1) / 2) * COL_GAP + i * COL_GAP - 0.02,
+        r * ROW_GAP,
+        0
+      );
+      g.add(peg);
+    }
+  }
+  return g;
+}
+
+// =================================================================
+// CEILING BEAMS — vigas de aço industriais visíveis
+// =================================================================
+
+export function buildCeilingBeams(roomW: number, roomD: number, height: number): THREE.Group {
+  const g = new THREE.Group();
+  const beamMat = new THREE.MeshStandardMaterial({
+    color: 0x14141a,
+    roughness: 0.7,
+    metalness: 0.3,
+  });
+
+  // 4 vigas longitudinais
+  for (let i = 0; i < 5; i++) {
+    const z = -roomD / 2 + (i / 4) * roomD;
+    const beam = new THREE.Mesh(
+      new THREE.BoxGeometry(roomW, 0.18, 0.12),
+      beamMat
+    );
+    beam.position.set(0, height - 0.1, z);
+    g.add(beam);
+  }
+  // Travessas perpendiculares
+  for (let i = 0; i < 5; i++) {
+    const x = -roomW / 2 + (i / 4) * roomW;
+    const beam = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.12, roomD),
+      beamMat
+    );
+    beam.position.set(x, height - 0.05, 0);
+    g.add(beam);
+  }
+  return g;
+}
+
+// =================================================================
+// WALL LOGO — texto "PR TRACKER" gigante na parede
+// =================================================================
+
+export function buildWallLogo(width: number, accentHex: string): THREE.Mesh {
+  const c = document.createElement("canvas");
+  c.width = 4096;
+  c.height = 1024;
+  const ctx = c.getContext("2d")!;
+  ctx.clearRect(0, 0, 4096, 1024);
+
+  // Outline duplo
+  ctx.strokeStyle = accentHex;
+  ctx.lineWidth = 12;
+  ctx.font = "900 600px Archivo Black, Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.strokeText("PR TRACKER", 2048, 480);
+
+  // Fill principal
+  ctx.fillStyle = accentHex;
+  ctx.fillText("PR TRACKER", 2048, 480);
+
+  // Subtitle abaixo
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "500 100px Inter, sans-serif";
+  ctx.fillText("HALL OF FAME", 2048, 880);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const logo = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, width / 4),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+  );
+  return logo;
+}
+
+// =================================================================
+// LIFTING PLATFORM (com rack opcional acoplado)
+// =================================================================
+
+export function buildPlatformWithRack(accentHex: string): THREE.Group {
+  const g = new THREE.Group();
+  // Plataforma menor (3m × 2m) pra caber 2 lado a lado
+  const accentRubber = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(accentHex),
+    roughness: 0.85,
+    metalness: 0.05,
+  });
+  const center = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.06, 2.4), WOOD_MAT);
+  center.position.y = 0.03;
+  center.receiveShadow = true;
+  g.add(center);
+  for (const x of [-1.1, 1.1]) {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 2.4), accentRubber);
+    side.position.set(x, 0.03, 0);
+    side.receiveShadow = true;
+    g.add(side);
+  }
+  return g;
+}
+
+// =================================================================
+// SQUAT RACK — versão compacta pra acoplar com plataforma
+// =================================================================
+
+export function buildSquatRack(accentHex: string): THREE.Group {
+  const g = new THREE.Group();
+  const accent = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(accentHex),
+    roughness: 0.5,
+    metalness: 0.4,
+  });
+  const W = 1.4;
+  const H = 2.3;
+  // 2 colunas verticais (frente)
+  for (const x of [-W / 2, W / 2]) {
+    const col = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 0.08), STEEL_MAT);
+    col.position.set(x, H / 2, 0);
+    col.castShadow = true;
+    g.add(col);
+    // Base
+    const baseFoot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.5), STEEL_MAT);
+    baseFoot.position.set(x, 0.025, 0);
+    g.add(baseFoot);
+  }
+  // Travessa superior
+  const topBar = new THREE.Mesh(new THREE.BoxGeometry(W + 0.08, 0.06, 0.08), STEEL_MAT);
+  topBar.position.set(0, H, 0);
+  g.add(topBar);
+  // J-hooks lime
+  for (const x of [-W / 2, W / 2]) {
+    const hook = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.16), accent);
+    hook.position.set(x, 1.55, 0.05);
+    g.add(hook);
+  }
+  // Barbell apoiada nos hooks
+  const barbell = buildLoadedBarbell();
+  barbell.position.set(0, 1.65, 0.05);
+  g.add(barbell);
+
+  return g;
 }

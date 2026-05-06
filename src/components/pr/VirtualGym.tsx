@@ -14,8 +14,16 @@ import {
   buildKettlebell,
   buildPlyoBox,
   buildBanner,
+  buildCrossFitRig,
+  buildPlateTree,
+  buildWallPlates,
+  buildCeilingBeams,
+  buildWallLogo,
+  buildPlatformWithRack,
+  buildSquatRack,
   STEEL_MAT,
 } from "../../lib/pr/gym/builders";
+import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 import {
   loadAvatarPrefs,
   saveAvatarPrefs,
@@ -115,7 +123,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     renderer.setSize(initW, initH);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.45; // bem mais bright (era 1.05)
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
@@ -137,52 +145,60 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
 
     const accentColor = new THREE.Color(accent);
 
-    // === Lighting cinematográfica (3-point) =========================
-    // CRÍTICO: as 3 luzes principais são BRANCAS (não accent). A versão
-    // anterior usava accent em fill+rim e isso pintava a pele do avatar
-    // de verde quando a regata era lime. Accent fica restrito ao spot
-    // do projetor + trophyLight (pequenos, mirados, não atingem o avatar).
-    const hemi = new THREE.HemisphereLight(0xb8c0ff, 0x1a1640, 0.55);
+    // === Lighting BRIGHT — academia diurna real ===================
+    // Inspiração: KUBE Box / Rogue gym dia. Branco, claro, definido.
+    // Accent SÓ em pontos mirados (trophies, projetor, rig).
+    const hemi = new THREE.HemisphereLight(0xeef2ff, 0x2a2540, 1.1);
     scene.add(hemi);
 
-    // Key light (sol vindo de cima-frente-direita) — cor branca quente
-    const keyLight = new THREE.DirectionalLight(0xfff4e4, 1.4);
-    keyLight.position.set(6, 9, 5);
+    // KEY light (sol grande, branco) — bem mais forte
+    const keyLight = new THREE.DirectionalLight(0xfffaf0, 2.4);
+    keyLight.position.set(6, 11, 5);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.camera.left = -10;
-    keyLight.shadow.camera.right = 10;
-    keyLight.shadow.camera.top = 10;
-    keyLight.shadow.camera.bottom = -10;
+    keyLight.shadow.camera.left = -12;
+    keyLight.shadow.camera.right = 12;
+    keyLight.shadow.camera.top = 12;
+    keyLight.shadow.camera.bottom = -12;
     keyLight.shadow.bias = -0.0005;
     keyLight.shadow.normalBias = 0.02;
     scene.add(keyLight);
 
-    // Fill light (suave, oposto, BRANCA-AZULADA — não accent)
-    const fillLight = new THREE.DirectionalLight(0xc8d4ff, 0.45);
-    fillLight.position.set(-5, 6, 3);
+    // Fill light forte (oposto, branca-fria)
+    const fillLight = new THREE.DirectionalLight(0xcce0ff, 0.95);
+    fillLight.position.set(-6, 8, 4);
     scene.add(fillLight);
 
-    // Rim light (atrás pra silhueta) — branca
-    const rim = new THREE.DirectionalLight(0xffffff, 0.5);
-    rim.position.set(0, 4, -8);
+    // Rim light traseira (silhueta)
+    const rim = new THREE.DirectionalLight(0xffffff, 0.7);
+    rim.position.set(0, 5, -10);
     scene.add(rim);
 
-    // Spotlight na plataforma (cinemático, branco)
-    const spot = new THREE.SpotLight(0xffe9c4, 1.8, 14, Math.PI / 6, 0.4, 1.2);
-    spot.position.set(-2, 5.5, 0);
-    spot.target.position.set(-2, 0, 0);
-    scene.add(spot);
-    scene.add(spot.target);
+    // 4 spotlights de teto (industriais visíveis, distribuídos)
+    const ceilingSpots: THREE.SpotLight[] = [];
+    const spotPositions = [
+      { x: -4, z: -4 },
+      { x: 4, z: -4 },
+      { x: -4, z: 4 },
+      { x: 4, z: 4 },
+    ];
+    for (const p of spotPositions) {
+      const s = new THREE.SpotLight(0xfff5e0, 1.4, 12, Math.PI / 5, 0.5, 1.4);
+      s.position.set(p.x, 6.4, p.z);
+      s.target.position.set(p.x, 0, p.z);
+      scene.add(s);
+      scene.add(s.target);
+      ceilingSpots.push(s);
+    }
 
-    // Accent point light SÓ em cima dos troféus (range curto pra não atingir avatar)
-    const trophyLight = new THREE.PointLight(accentColor, 2.5, 6);
-    trophyLight.position.set(0, 4.0, -5.5);
+    // Accent point light em cima dos troféus (Hall of Fame)
+    const trophyLight = new THREE.PointLight(accentColor, 3.0, 8);
+    trophyLight.position.set(0, 4.5, -5.5);
     scene.add(trophyLight);
 
-    // Accent point light pequeno no projetor (dá presença ao lens)
-    const projAccent = new THREE.PointLight(accentColor, 1.0, 3);
-    projAccent.position.set(0.8, 4.6, 0);
+    // Accent no projetor
+    const projAccent = new THREE.PointLight(accentColor, 1.2, 3);
+    projAccent.position.set(0.8, 5.5, 0);
     scene.add(projAccent);
 
     // === Sala (chão texturizado + 3 paredes + trim) ================
@@ -201,23 +217,16 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       metalness: 0.15,
     });
 
-    const ROOM_W = 14;
-    const ROOM_D = 14;
-    const WALL_H = 5.2;
+    const ROOM_W = 18;
+    const ROOM_D = 16;
+    const WALL_H = 7.0; // teto mais alto pra acomodar rig + ceiling beams
 
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // Linhas finas lime delimitando "lift zone" sob a plataforma
-    const liftZone = new THREE.Mesh(
-      new THREE.RingGeometry(2.2, 2.26, 64),
-      new THREE.MeshBasicMaterial({ color: accentColor, transparent: true, opacity: 0.4 })
-    );
-    liftZone.rotation.x = -Math.PI / 2;
-    liftZone.position.set(-2, 0.005, 0);
-    scene.add(liftZone);
+    // (Floor markings agora ficam abaixo, depois do equipamento.)
 
     const backWall = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, WALL_H), wallMat);
     backWall.position.set(0, WALL_H / 2, -ROOM_D / 2);
@@ -242,32 +251,33 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     trim.position.set(0, WALL_H - 0.3, -ROOM_D / 2 + 0.04);
     scene.add(trim);
 
-    // Plaque na parede do fundo (com luz emissiva sutil pra brilhar)
-    const plaqueCanvas = document.createElement("canvas");
-    plaqueCanvas.width = 1536;
-    plaqueCanvas.height = 384;
-    const pctx = plaqueCanvas.getContext("2d")!;
-    pctx.fillStyle = "#01002A";
-    pctx.fillRect(0, 0, 1536, 384);
-    pctx.strokeStyle = accent;
-    pctx.lineWidth = 8;
-    pctx.strokeRect(12, 12, 1512, 360);
-    pctx.fillStyle = accent;
-    pctx.font = "900 130px Archivo Black, Inter, sans-serif";
-    pctx.textAlign = "center";
-    pctx.textBaseline = "middle";
-    pctx.fillText("PR TRACKER", 768, 130);
-    pctx.fillStyle = "#ffffff";
-    pctx.font = "700 90px Inter, sans-serif";
-    pctx.fillText(athleteName.toUpperCase(), 768, 270);
-    const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
-    plaqueTex.colorSpace = THREE.SRGBColorSpace;
-    const plaque = new THREE.Mesh(
-      new THREE.PlaneGeometry(6, 1.5),
-      new THREE.MeshBasicMaterial({ map: plaqueTex })
+    // === WALL LOGO gigante ATRAS dos troféus =======================
+    // "PR TRACKER · HALL OF FAME" ocupando ~10m de largura na parede.
+    // Domina a parede do fundo como num CrossFit box real.
+    const wallLogo = buildWallLogo(11, accent);
+    wallLogo.position.set(0, WALL_H - 1.6, -ROOM_D / 2 + 0.04);
+    scene.add(wallLogo);
+
+    // Subtítulo com nome do atleta abaixo do logo
+    const subPlaqueCanvas = document.createElement("canvas");
+    subPlaqueCanvas.width = 1536;
+    subPlaqueCanvas.height = 192;
+    const sptx = subPlaqueCanvas.getContext("2d")!;
+    sptx.fillStyle = "#01002A";
+    sptx.fillRect(0, 0, 1536, 192);
+    sptx.fillStyle = "#ffffff";
+    sptx.font = "700 80px Inter, sans-serif";
+    sptx.textAlign = "center";
+    sptx.textBaseline = "middle";
+    sptx.fillText(athleteName.toUpperCase(), 768, 96);
+    const subTex = new THREE.CanvasTexture(subPlaqueCanvas);
+    subTex.colorSpace = THREE.SRGBColorSpace;
+    const subPlaque = new THREE.Mesh(
+      new THREE.PlaneGeometry(5, 0.6),
+      new THREE.MeshBasicMaterial({ map: subTex, transparent: true })
     );
-    plaque.position.set(0, 4.0, -ROOM_D / 2 + 0.04);
-    scene.add(plaque);
+    subPlaque.position.set(0, WALL_H - 3.6, -ROOM_D / 2 + 0.05);
+    scene.add(subPlaque);
 
     // === HALL OF FAME — troféus em fileira no chão contra parede do fundo ==
     // V5: troféus baseados no chão (não em prateleiras) — visualmente
@@ -427,76 +437,180 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     }
 
     // === Equipment + colliders =====================================
-    // Cada chamada ao builder também adiciona um AABB no array de
-    // colisão, com folga (padding) pra parecer natural quando avatar
-    // toca o objeto.
+    // CrossFit box layout. Cada equipamento adiciona um AABB no array
+    // colliders pra avatar não atravessar.
     const colliders: AABB[] = [];
 
-    const powerRack = buildPowerRack(accent);
-    const powerRackPos = { x: -ROOM_W / 2 + 1.8, z: -ROOM_D / 2 + 2.0 };
-    powerRack.position.set(powerRackPos.x, 0, powerRackPos.z);
-    powerRack.rotation.y = Math.PI / 12;
-    scene.add(powerRack);
-    colliders.push({ cx: powerRackPos.x, cz: powerRackPos.z, hw: 1.0, hd: 1.0 });
+    // === CEILING BEAMS (estrutura industrial visivel no teto) =====
+    const ceilingBeams = buildCeilingBeams(ROOM_W, ROOM_D, WALL_H);
+    scene.add(ceilingBeams);
 
-    const platform = buildPlatform(accent);
-    platform.position.set(-2, 0, 0);
-    scene.add(platform);
-    // Plataforma é baixa (6cm) — não precisa colisão; deixa avatar pisar nela.
+    // === RIG CENTRAL DE CROSSFIT (pull-up bars + rings + ropes) ====
+    // 6.5m largura × 2.2m profundidade, centro da sala recuado.
+    // Avatar pode caminhar sob o rig pra interagir com rings.
+    const rig = buildCrossFitRig(6.5, 2.2);
+    rig.group.position.set(0, 0, -0.5);
+    scene.add(rig.group);
+    // Colliders das colunas do rig (só os pilares verticais)
+    for (const dz of [-1.1, 1.1]) {
+      for (let i = 0; i < 4; i++) {
+        const colX = -6.5 / 2 + (i / 3) * 6.5;
+        colliders.push({ cx: colX, cz: -0.5 + dz, hw: 0.1, hd: 0.1 });
+      }
+    }
+    // Refs pras anim do rig (rings + ropes balançam)
+    const rigRings = rig.rings;
+    const rigRopes = rig.ropes;
 
-    const bench = buildBench();
-    bench.position.set(-3.5, 0, -2);
-    bench.rotation.y = Math.PI / 6;
-    scene.add(bench);
-    colliders.push({ cx: -3.5, cz: -2, hw: 0.6, hd: 0.7 });
-
-    const dumbbellRack = buildDumbbellRack();
-    dumbbellRack.position.set(-ROOM_W / 2 + 0.45, 0, 2.5);
-    dumbbellRack.rotation.y = Math.PI / 2;
-    scene.add(dumbbellRack);
-    colliders.push({ cx: -ROOM_W / 2 + 0.45, cz: 2.5, hw: 0.4, hd: 1.6 });
-
-    const banner = buildBanner(accent);
-    banner.position.set(-ROOM_W / 2 + 0.04, 3.5, 2.5);
-    banner.rotation.y = Math.PI / 2;
-    scene.add(banner);
-
-    // Kettlebells fileira (cada um é um collider pequeno)
-    for (let i = 0; i < 6; i++) {
-      const kb = buildKettlebell(0.16 + (i % 3) * 0.02);
-      const x = ROOM_W / 2 - 1.2;
-      const z = -2.5 + i * 0.85;
-      kb.position.set(x, 0, z);
-      scene.add(kb);
-      colliders.push({ cx: x, cz: z, hw: 0.22, hd: 0.22 });
+    // === 3 SQUAT RACKS alinhados na parede do fundo (à esquerda dos troféus) ==
+    const rackPositions = [-7.5, -5.5, -3.5];
+    for (const x of rackPositions) {
+      const rack = buildSquatRack(accent);
+      rack.position.set(x, 0, -ROOM_D / 2 + 1.8);
+      scene.add(rack);
+      colliders.push({
+        cx: x,
+        cz: -ROOM_D / 2 + 1.8,
+        hw: 0.85,
+        hd: 0.45,
+      });
     }
 
-    // Plyo boxes
-    const plyo1 = buildPlyoBox(0.5);
-    plyo1.position.set(ROOM_W / 2 - 2.2, 0, 3.6);
+    // === 2 PLATAFORMAS LADO A LADO (centro-esquerda) ===============
+    const platform1 = buildPlatformWithRack(accent);
+    platform1.position.set(-6, 0, 4);
+    scene.add(platform1);
+
+    const platform2 = buildPlatformWithRack(accent);
+    platform2.position.set(-2.5, 0, 4);
+    scene.add(platform2);
+
+    // === MIRROR WALL na parede esquerda (THREE.Reflector) ==========
+    // Espelho gigante 6m × 2.5m na parede esquerda, parte mid-superior
+    const mirror = new Reflector(new THREE.PlaneGeometry(6, 2.5), {
+      color: 0x303040,
+      textureWidth: 1024,
+      textureHeight: 1024,
+    });
+    mirror.position.set(-ROOM_W / 2 + 0.04, 2.6, -2);
+    mirror.rotation.y = Math.PI / 2;
+    scene.add(mirror);
+
+    // Frame escuro ao redor do mirror
+    const mirrorFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 2.65, 6.15),
+      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.4, metalness: 0.5 })
+    );
+    mirrorFrame.position.set(-ROOM_W / 2 + 0.02, 2.6, -2);
+    scene.add(mirrorFrame);
+
+    // === BANCO DE SUPINO ==========================================
+    const bench = buildBench();
+    bench.position.set(-7, 0, -1);
+    bench.rotation.y = Math.PI / 6;
+    scene.add(bench);
+    colliders.push({ cx: -7, cz: -1, hw: 0.6, hd: 0.7 });
+
+    // === RACK DE HALTERES =========================================
+    const dumbbellRack = buildDumbbellRack();
+    dumbbellRack.position.set(-ROOM_W / 2 + 0.5, 0, 5.5);
+    dumbbellRack.rotation.y = Math.PI / 2;
+    scene.add(dumbbellRack);
+    colliders.push({ cx: -ROOM_W / 2 + 0.5, cz: 5.5, hw: 0.4, hd: 1.6 });
+
+    // === BANNER MOTIVACIONAL (parede direita) =====================
+    const banner = buildBanner(accent);
+    banner.position.set(ROOM_W / 2 - 0.04, 4.8, -5);
+    banner.rotation.y = -Math.PI / 2;
+    scene.add(banner);
+
+    // === PLATE TREE (canto traseiro direito) ======================
+    const plateTree = buildPlateTree();
+    plateTree.position.set(ROOM_W / 2 - 1.2, 0, -ROOM_D / 2 + 1.5);
+    scene.add(plateTree);
+    colliders.push({
+      cx: ROOM_W / 2 - 1.2,
+      cz: -ROOM_D / 2 + 1.5,
+      hw: 0.4,
+      hd: 0.4,
+    });
+
+    // === ANILHAS NA PAREDE (decoração colorida — parede direita) ===
+    const wallPlates = buildWallPlates(2, 6);
+    wallPlates.position.set(ROOM_W / 2 - 0.04, 1.5, 2);
+    wallPlates.rotation.y = -Math.PI / 2;
+    scene.add(wallPlates);
+
+    // === KETTLEBELLS (8 unidades em fileira no canto direito) =====
+    for (let i = 0; i < 8; i++) {
+      const kb = buildKettlebell(0.18 + (i % 4) * 0.02);
+      const x = ROOM_W / 2 - 0.6;
+      const z = -ROOM_D / 2 + 4 + i * 0.55;
+      kb.position.set(x, 0, z);
+      scene.add(kb);
+      colliders.push({ cx: x, cz: z, hw: 0.24, hd: 0.24 });
+    }
+
+    // === PLYO BOXES (3 empilhados — visual stacks) ================
+    const plyo1 = buildPlyoBox(0.6);
+    plyo1.position.set(ROOM_W / 2 - 2.5, 0, ROOM_D / 2 - 1.5);
     scene.add(plyo1);
-    colliders.push({ cx: ROOM_W / 2 - 2.2, cz: 3.6, hw: 0.32, hd: 0.32 });
+    colliders.push({
+      cx: ROOM_W / 2 - 2.5,
+      cz: ROOM_D / 2 - 1.5,
+      hw: 0.4,
+      hd: 0.4,
+    });
 
-    const plyo2 = buildPlyoBox(0.4);
-    plyo2.position.set(ROOM_W / 2 - 2.6, 0.5, 3.6);
-    plyo2.rotation.y = Math.PI / 14;
+    const plyo2 = buildPlyoBox(0.5);
+    plyo2.position.set(ROOM_W / 2 - 3.5, 0, ROOM_D / 2 - 1.5);
     scene.add(plyo2);
+    colliders.push({
+      cx: ROOM_W / 2 - 3.5,
+      cz: ROOM_D / 2 - 1.5,
+      hw: 0.32,
+      hd: 0.32,
+    });
 
-    // Chalk bowl
+    const plyo3 = buildPlyoBox(0.4);
+    plyo3.position.set(ROOM_W / 2 - 2.5, 0.6, ROOM_D / 2 - 1.5);
+    plyo3.rotation.y = Math.PI / 16;
+    scene.add(plyo3);
+
+    // === CHALK BOWL ================================================
     const chalkBase = new THREE.Mesh(
       new THREE.CylinderGeometry(0.18, 0.22, 0.7, 16),
       STEEL_MAT
     );
-    chalkBase.position.set(0.5, 0.35, -2.5);
+    chalkBase.position.set(0.5, 0.35, 6);
     chalkBase.castShadow = true;
     scene.add(chalkBase);
     const chalkBowl = new THREE.Mesh(
       new THREE.CylinderGeometry(0.16, 0.14, 0.06, 16),
       new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.95 })
     );
-    chalkBowl.position.set(0.5, 0.73, -2.5);
+    chalkBowl.position.set(0.5, 0.73, 6);
     scene.add(chalkBowl);
-    colliders.push({ cx: 0.5, cz: -2.5, hw: 0.22, hd: 0.22 });
+    colliders.push({ cx: 0.5, cz: 6, hw: 0.22, hd: 0.22 });
+
+    // === FLOOR MARKINGS (linhas + circulo central olímpico) =======
+    // Quadrado de competição (2m × 2m no centro-frente)
+    const compZone = new THREE.Mesh(
+      new THREE.RingGeometry(0.95, 1.0, 4, 1, 0, Math.PI * 2),
+      new THREE.MeshBasicMaterial({ color: accentColor, transparent: true, opacity: 0.25 })
+    );
+    compZone.rotation.x = -Math.PI / 2;
+    compZone.position.set(0, 0.005, 5);
+    scene.add(compZone);
+
+    // Linha lime atravessando a sala (lane marker estilo box)
+    const laneLine = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.06, ROOM_D - 2),
+      new THREE.MeshBasicMaterial({ color: accentColor, transparent: true, opacity: 0.5 })
+    );
+    laneLine.rotation.x = -Math.PI / 2;
+    laneLine.position.set(0, 0.004, 0);
+    scene.add(laneLine);
 
     // === Avatar ====================================================
     const avatarParts = buildAvatar(avatarPrefs);
@@ -618,7 +732,9 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     // === Render loop ==============================================
     const ROOM_HALF_W = ROOM_W / 2 - AVATAR_RADIUS - 0.3;
     const ROOM_HALF_D = ROOM_D / 2 - AVATAR_RADIUS - 0.3;
-    const SHELF_BLOCK_Z = -ROOM_D / 2 + 0.9;
+    // Avatar não pode chegar mais perto do que isso da parede do fundo
+    // (trophy hall deck termina em z=-ROOM_D/2 + 1.45 = -6.55).
+    const SHELF_BLOCK_Z = -ROOM_D / 2 + 2.0;
     const SPEED = 3.0;
     const followOffset = new THREE.Vector3(0, 4.5, 6.5);
     const tmpV = new THREE.Vector3();
@@ -709,6 +825,19 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
         camera.lookAt(controls.target);
       } else {
         controls.update();
+      }
+
+      // Anima rings + ropes do rig (balanço sutil pra dar vida)
+      for (let i = 0; i < rigRings.length; i++) {
+        const r = rigRings[i];
+        if (r) r.rotation.x = Math.sin(t * 1.5 + i * 0.5) * 0.05;
+      }
+      for (let i = 0; i < rigRopes.length; i++) {
+        const r = rigRopes[i];
+        if (r) {
+          r.rotation.z = Math.sin(t * 1.2 + i) * 0.04;
+          r.rotation.x = Math.cos(t * 0.9 + i * 0.7) * 0.03;
+        }
       }
 
       drawScreen(t, activeReelRef.current);
