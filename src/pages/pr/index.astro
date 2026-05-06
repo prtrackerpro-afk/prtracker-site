@@ -85,9 +85,12 @@ const chartRecords = records.map((r) => ({
           </span>
         )}
       </a>
-      <form method="post" action="/api/pr/auth/logout">
-        <button class="text-xs text-navy-300 hover:text-white">Sair</button>
-      </form>
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <a href="/pr/coach" class="text-xs text-navy-300 hover:text-white">Coach</a>
+        <form method="post" action="/api/pr/auth/logout">
+          <button class="text-xs text-navy-300 hover:text-white">Sair</button>
+        </form>
+      </div>
     </header>
 
     <main class="max-w-2xl mx-auto px-4">

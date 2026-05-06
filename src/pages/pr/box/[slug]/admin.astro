@@ -1,0 +1,230 @@
+---
+export const prerender = false;
+import "../../../../styles/global.css";
+import { getServerSupabase } from "../../../../lib/supabase/server";
+import { exerciseLabel, type ExerciseId } from "../../../../lib/pr/exercises";
+import { tierForLift, tierLabel, tierColor } from "../../../../lib/pr/strength-score";
+
+const athlete = Astro.locals.athlete!; // gated by middleware
+const slug = Astro.params.slug!;
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const { data: box } = await supabase
+  .from("pr_boxes")
+  .select("id, slug, name, city, state, instagram_handle, owner_user_id, coupon_code")
+  .eq("slug", slug)
+  .maybeSingle();
+
+if (!box) {
+  return new Response("Box não encontrado", { status: 404 });
+}
+
+if (box.owner_user_id !== athlete.userId) {
+  return Astro.redirect(`/pr/box/${slug}`, 302);
+}
+
+// Members + their best lifts
+const { data: members = [] } = await supabase
+  .from("pr_box_members")
+  .select("user_id, joined_at")
+  .eq("box_id", box.id)
+  .order("joined_at", { ascending: false });
+
+const memberIds = (members ?? []).map((m) => m.user_id as string);
+
+const { data: profiles = [] } = memberIds.length > 0
+  ? await supabase
+      .from("pr_athletes")
+      .select("user_id, display_name, instagram_handle, body_weight_kg, sex")
+      .in("user_id", memberIds)
+  : { data: [] };
+
+const profileById = new Map((profiles ?? []).map((p) => [p.user_id as string, p]));
+
+// Top lifts via the leaderboard rpc (same query the public page uses)
+const { data: leaderboardRows = [] } = await supabase.rpc("pr_box_leaderboard", {
+  p_box_slug: slug,
+  p_exercise: null,
+  p_limit: 20,
+});
+
+const SITE_URL = (import.meta.env.PUBLIC_SITE_URL || "https://prtracker.com.br").replace(/\/$/, "");
+const joinUrl = `${SITE_URL}/pr/box/${slug}`;
+const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=12&color=01002A&bgcolor=D8FF2C&data=${encodeURIComponent(joinUrl)}`;
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{box.name} · Admin · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <link rel="manifest" href="/pr/manifest.webmanifest" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
+      <a href="/pr/coach" class="text-xs text-navy-300 hover:text-white">← Coach</a>
+      <div class="text-[10px] uppercase tracking-widest text-brand-lime">ADMIN</div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4">
+      <div class="mb-6">
+        <h1 class="font-display text-3xl tracking-tight">{box.name}</h1>
+        <p class="text-sm text-navy-300 mt-1">
+          {box.city && <span>{box.city}{box.state ? `, ${box.state}` : ""}</span>}
+          {box.instagram_handle && (
+            <span> · <a href={`https://instagram.com/${box.instagram_handle}`} class="text-brand-lime">@{box.instagram_handle}</a></span>
+          )}
+        </p>
+      </div>
+
+      {/* === STATS === */}
+      <section class="grid grid-cols-3 gap-2 mb-6">
+        <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 text-center">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">Membros</div>
+          <div class="font-display text-2xl tabular-nums text-brand-lime">{(members ?? []).length}</div>
+        </div>
+        <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 text-center">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">PRs no ranking</div>
+          <div class="font-display text-2xl tabular-nums">{(leaderboardRows ?? []).length}</div>
+        </div>
+        <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 text-center">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">URL</div>
+          <a href={`/pr/box/${slug}`} class="font-display text-sm tabular-nums text-brand-lime truncate block">/{slug}</a>
+        </div>
+      </section>
+
+      {/* === QR ONBOARDING === */}
+      <section class="rounded-2xl border border-brand-lime/30 bg-brand-lime/5 p-5 mb-6">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">ONBOARDING DE ALUNOS</div>
+        <h2 class="font-display text-xl tracking-tight mb-3">QR pra parede do box</h2>
+        <p class="text-sm text-navy-300 mb-4">
+          Imprime e cola na entrada. Aluno escaneia → cria conta em 30s → começa a registrar PRs e o ranking se popula sozinho.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 items-center">
+          <div class="bg-brand-lime rounded-xl p-3 flex-shrink-0">
+            <img src={qrSrc} alt={`QR para entrar no ${box.name}`} class="w-40 h-40 block" />
+          </div>
+          <div class="text-center sm:text-left flex-1">
+            <div class="text-xs text-navy-300 mb-1">URL pública</div>
+            <div class="font-mono text-sm break-all mb-3">{joinUrl}</div>
+            <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
+              <button
+                type="button"
+                id="copy-url"
+                data-url={joinUrl}
+                class="text-xs rounded-lg border border-navy-600 px-3 py-1.5 hover:bg-navy-800 transition"
+              >
+                Copiar URL
+              </button>
+              <a
+                href={qrSrc}
+                target="_blank"
+                rel="noopener"
+                download={`qr-${slug}.png`}
+                class="text-xs rounded-lg border border-navy-600 px-3 py-1.5 hover:bg-navy-800 transition"
+              >
+                Baixar QR (PNG)
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* === MEMBERS === */}
+      <section class="mb-6">
+        <div class="flex items-baseline justify-between mb-3">
+          <h2 class="text-base font-semibold tracking-tight">Membros ({(members ?? []).length})</h2>
+        </div>
+        {(members ?? []).length === 0 ? (
+          <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-6 text-center text-sm text-navy-300">
+            Nenhum membro ainda. Compartilha o QR.
+          </div>
+        ) : (
+          <ul class="space-y-2">
+            {(members ?? []).slice(0, 20).map((m) => {
+              const p = profileById.get(m.user_id as string);
+              return (
+                <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 flex items-center justify-between">
+                  <div class="min-w-0">
+                    <div class="font-semibold truncate">{p?.display_name ?? "Atleta"}</div>
+                    <div class="text-xs text-navy-300 truncate">
+                      {p?.instagram_handle && <span>@{p.instagram_handle} · </span>}
+                      {new Date(m.joined_at as string).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      {/* === LEADERBOARD PREVIEW === */}
+      {(leaderboardRows ?? []).length > 0 && (
+        <section class="mb-6">
+          <div class="flex items-baseline justify-between mb-3">
+            <h2 class="text-base font-semibold tracking-tight">Top 10 PRs</h2>
+            <a href={`/pr/box/${slug}`} class="text-xs text-brand-lime hover:underline">ver completo →</a>
+          </div>
+          <ol class="space-y-2">
+            {(leaderboardRows ?? []).slice(0, 10).map((row: any, i: number) => {
+              const p = profileById.get(row.user_id);
+              const tier = p?.body_weight_kg && p?.sex
+                ? tierForLift(row.exercise as ExerciseId, Number(row.weight_kg), Number(p.body_weight_kg), p.sex as "male" | "female").tier
+                : null;
+              return (
+                <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 flex items-center gap-3">
+                  <span class="font-display text-lg text-navy-300 w-7 text-center">{i + 1}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold truncate">{row.display_name ?? "Atleta"}</div>
+                    <div class="text-xs text-navy-300 truncate">
+                      {exerciseLabel(row.exercise)}
+                      {tier && (
+                        <span class="ml-2" style={`color: ${tierColor(tier)}`}>· {tierLabel(tier)}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="font-display text-lg tabular-nums">{row.weight_kg}</div>
+                    <div class="text-[10px] uppercase tracking-wider text-navy-300">kg</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+
+      {/* === MONETIZATION HINT (vision: B2B/sponsorship) === */}
+      <section class="rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800/50 to-purple-900/20 p-5 mb-6">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">EM BREVE</div>
+        <h2 class="font-display text-lg tracking-tight mb-1">Comissão sobre vendas + sponsor banner</h2>
+        <p class="text-sm text-navy-300">
+          Quando seus alunos compram um troféu PR Tracker, você ganha comissão progressiva (8%–20%). Banner do seu box no topo da página pública (B2B sponsorship) também tá no roadmap.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      const copyBtn = document.getElementById("copy-url") as HTMLButtonElement;
+      copyBtn?.addEventListener("click", async () => {
+        const url = copyBtn.dataset.url;
+        if (!url) return;
+        try {
+          await navigator.clipboard.writeText(url);
+          copyBtn.textContent = "Copiado";
+          setTimeout(() => { copyBtn.textContent = "Copiar URL"; }, 1500);
+        } catch {
+          // ignore
+        }
+      });
+    </script>
+  </body>
+</html>

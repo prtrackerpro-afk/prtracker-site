@@ -2,6 +2,7 @@
 export const prerender = false;
 import "../../../styles/global.css";
 import { getServerSupabase } from "../../../lib/supabase/server";
+import { getAuthenticatedAthlete } from "../../../lib/pr/auth";
 import { EXERCISES, exerciseLabel, type ExerciseId } from "../../../lib/pr/exercises";
 
 const slug = Astro.params.slug!;
@@ -15,12 +16,32 @@ const supabase = getServerSupabase({
 
 const { data: box } = await supabase
   .from("pr_boxes")
-  .select("id, slug, name, city, state, instagram_handle")
+  .select("id, slug, name, city, state, instagram_handle, owner_user_id")
   .eq("slug", slug)
   .maybeSingle();
 
 if (!box) {
   return new Response("Box não encontrado", { status: 404 });
+}
+
+// Check athlete state for the join/leave/admin CTA. The middleware doesn't
+// gate this page (public leaderboard), so we look up auth ourselves.
+const athlete = await getAuthenticatedAthlete({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+let isMember = false;
+let isOwner = false;
+if (athlete) {
+  isOwner = box.owner_user_id === athlete.userId;
+  const { data: membership } = await supabase
+    .from("pr_box_members")
+    .select("user_id")
+    .eq("box_id", box.id)
+    .eq("user_id", athlete.userId)
+    .maybeSingle();
+  isMember = !!membership;
 }
 
 const { data: leaderboard } = await supabase.rpc("pr_box_leaderboard", {
@@ -61,6 +82,53 @@ const rows = (leaderboard ?? []) as Array<{
     </header>
 
     <main class="max-w-2xl mx-auto px-4">
+      {/* Membership / owner CTA */}
+      <div class="mb-4 flex items-center justify-between gap-2 rounded-xl border border-brand-lime/20 bg-brand-lime/5 px-4 py-3">
+        {isOwner ? (
+          <>
+            <div class="text-sm">
+              <strong class="text-brand-lime">Você é o coach.</strong>
+              <span class="text-navy-300 ml-1">Painel admin disponível.</span>
+            </div>
+            <a href={`/pr/box/${slug}/admin`} class="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5">
+              Abrir admin
+            </a>
+          </>
+        ) : isMember ? (
+          <>
+            <div class="text-sm">
+              <strong class="text-brand-lime">Você é membro.</strong>
+              <span class="text-navy-300 ml-1">Seus PRs aparecem no ranking.</span>
+            </div>
+            <a href="/pr/log" class="text-xs rounded-lg border border-brand-lime/40 px-3 py-1.5">
+              Registrar PR
+            </a>
+          </>
+        ) : athlete ? (
+          <>
+            <div class="text-sm text-navy-300">Quer aparecer aqui?</div>
+            <button
+              type="button"
+              id="join-btn"
+              data-slug={slug}
+              class="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5"
+            >
+              Entrar nesse box
+            </button>
+          </>
+        ) : (
+          <>
+            <div class="text-sm text-navy-300">Atleta? Crie sua conta e entre nesse ranking.</div>
+            <a
+              href={`/pr/login?next=${encodeURIComponent(`/pr/box/${slug}`)}`}
+              class="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5"
+            >
+              Entrar
+            </a>
+          </>
+        )}
+      </div>
+
       <form class="mb-4 flex items-center gap-2" method="get">
         <label class="text-xs uppercase tracking-wider text-navy-300">Filtrar:</label>
         <select
@@ -100,7 +168,28 @@ const rows = (leaderboard ?? []) as Array<{
         </ol>
       )}
 
-      {/* TODO: "Junte-se a esse box" CTA for authenticated athletes (POST /api/pr/box/:slug/join) */}
     </main>
+
+    <script>
+      const joinBtn = document.getElementById("join-btn") as HTMLButtonElement | null;
+      joinBtn?.addEventListener("click", async () => {
+        const slug = joinBtn.dataset.slug;
+        if (!slug) return;
+        joinBtn.disabled = true;
+        joinBtn.textContent = "Entrando...";
+        try {
+          const res = await fetch(`/api/pr/boxes/${slug}/join`, { method: "POST" });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            joinBtn.textContent = "Erro";
+            setTimeout(() => { joinBtn.textContent = "Entrar nesse box"; joinBtn.disabled = false; }, 1500);
+          }
+        } catch {
+          joinBtn.textContent = "Erro";
+          setTimeout(() => { joinBtn.textContent = "Entrar nesse box"; joinBtn.disabled = false; }, 1500);
+        }
+      });
+    </script>
   </body>
 </html>
