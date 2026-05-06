@@ -2,15 +2,23 @@
 export const prerender = false;
 import { getServerSupabase } from "../../../lib/supabase/server";
 
-// Supabase magic-link callback. The link in the email points here with a
-// `code` query param; we exchange it for a session, which sets the auth
-// cookies on the response. Then redirect to the original destination.
+// Supabase magic-link callback. Two flows handled:
+//
+// 1. PKCE flow (signInWithOtp em /pr/login → email com link) — Supabase
+//    redireciona aqui com `?code=...` na query. Server troca por sessão.
+//
+// 2. Implicit flow (auth.admin.generateLink usado pelos scripts admin) —
+//    Supabase redireciona aqui com `#access_token=...&refresh_token=...`
+//    no fragmento da URL. Servidor não enxerga hash, então renderizamos
+//    uma página que lê o hash via JS e POSTa os tokens em
+//    /api/pr/auth/set-session (que persiste via cookies).
 
 const url = new URL(Astro.request.url);
 const code = url.searchParams.get("code");
 const nextPath = url.searchParams.get("next") || "/pr";
 
 let errorMessage: string | null = null;
+let renderHashHandler = false;
 
 if (code) {
   const supabase = getServerSupabase({
@@ -23,7 +31,9 @@ if (code) {
   }
   errorMessage = error.message;
 } else {
-  errorMessage = "Link inválido ou expirado.";
+  // Sem `?code=` na query — pode ser implicit flow com tokens no hash.
+  // O JS embaixo decide entre sucesso (redireciona) e mostra erro.
+  renderHashHandler = true;
 }
 ---
 
@@ -33,18 +43,72 @@ if (code) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>Erro de login · PR Tracker</title>
+    <title>Autenticando · PR Tracker</title>
     <style>
       body { background: #01002A; color: #fff; font-family: system-ui, sans-serif; min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
       .card { max-width: 24rem; text-align: center; }
       a { color: #D8FF2C; }
+      .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #1e1b50; border-top-color: #D8FF2C; border-radius: 50%; animation: sp .8s linear infinite; margin-bottom: 1rem; }
+      @keyframes sp { to { transform: rotate(360deg); } }
     </style>
   </head>
   <body>
     <div class="card">
-      <h1 style="font-size: 1.25rem; margin-bottom: .5rem;">Não conseguimos te autenticar</h1>
-      <p style="color: #9ca3af; font-size: .875rem; margin-bottom: 1.5rem;">{errorMessage}</p>
-      <a href="/pr/login">Pedir um novo link</a>
+      {renderHashHandler ? (
+        <>
+          <div class="spinner"></div>
+          <p id="msg" style="color: #9ca3af; font-size: .875rem;">Autenticando...</p>
+        </>
+      ) : (
+        <>
+          <h1 style="font-size: 1.25rem; margin-bottom: .5rem;">Não conseguimos te autenticar</h1>
+          <p style="color: #9ca3af; font-size: .875rem; margin-bottom: 1.5rem;">{errorMessage}</p>
+          <a href="/pr/login">Pedir um novo link</a>
+        </>
+      )}
     </div>
+
+    {renderHashHandler && (
+      <script define:vars={{ nextPath }} is:inline>
+        (async () => {
+          const msg = document.getElementById("msg");
+          const fail = (text) => {
+            document.querySelector(".card").innerHTML =
+              '<h1 style="font-size:1.25rem;margin-bottom:.5rem;">Não conseguimos te autenticar</h1>' +
+              '<p style="color:#9ca3af;font-size:.875rem;margin-bottom:1.5rem;">' + text + '</p>' +
+              '<a href="/pr/login" style="color:#D8FF2C;">Pedir um novo link</a>';
+          };
+          try {
+            const hash = (window.location.hash || "").replace(/^#/, "");
+            if (!hash) {
+              return fail("Link inválido ou expirado.");
+            }
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get("access_token");
+            const refreshToken = params.get("refresh_token");
+            const errParam = params.get("error_description") || params.get("error");
+            if (errParam) {
+              return fail(decodeURIComponent(errParam.replace(/\+/g, " ")));
+            }
+            if (!accessToken || !refreshToken) {
+              return fail("Link inválido ou expirado.");
+            }
+            const res = await fetch("/api/pr/auth/set-session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+            });
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              return fail(body.message || "Não conseguimos persistir a sessão.");
+            }
+            const dest = nextPath && nextPath.startsWith("/pr") ? nextPath : "/pr";
+            window.location.replace(dest);
+          } catch (e) {
+            fail("Erro inesperado durante autenticação.");
+          }
+        })();
+      </script>
+    )}
   </body>
 </html>
