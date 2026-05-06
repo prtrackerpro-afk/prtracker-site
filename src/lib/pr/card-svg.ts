@@ -8,6 +8,36 @@
 import { exerciseLabel, type ExerciseId } from "./exercises";
 import { splitPlates, type PlateSplit, BAR_KG } from "./plates";
 
+// Inter weights via Vite asset URLs — same-origin, decent fallback if
+// network blocks them.
+import interBoldUrl from "@fontsource/inter/files/inter-latin-700-normal.woff2?url";
+import interSemiUrl from "@fontsource/inter/files/inter-latin-600-normal.woff2?url";
+import interMedUrl from "@fontsource/inter/files/inter-latin-500-normal.woff2?url";
+
+// Archivo Black is the brand font (logo + huge weight number). We import
+// it via Vite's ?url so it's emitted into the Vercel deployment, then on
+// the server we read the raw file at module init and base64-encode it as
+// a data: URL. Browsers block external font loading inside <img>-rendered
+// SVGs (which is how the client converts to PNG), but data: URLs always
+// work — so the rasterized PNG matches the inline preview.
+import archivoBlackUrl from "@fontsource/archivo-black/files/archivo-black-latin-400-normal.woff2?url";
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+
+const archivoBlackDataUrl = (() => {
+  try {
+    const req = createRequire(import.meta.url);
+    const p = req.resolve("@fontsource/archivo-black/files/archivo-black-latin-400-normal.woff2");
+    const b64 = readFileSync(p).toString("base64");
+    return `data:font/woff2;base64,${b64}`;
+  } catch {
+    // Vercel cold-start without bundled font file → fall back to URL.
+    // Tradeoff: client-side PNG export uses system Arial Black instead,
+    // but the inline preview (which uses page-loaded fonts) is fine.
+    return archivoBlackUrl;
+  }
+})();
+
 export interface CardData {
   athleteName: string;
   exerciseId: ExerciseId;
@@ -122,6 +152,12 @@ export function renderCardSvg(data: CardData): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CANVAS_W} ${CANVAS_H}" width="${CANVAS_W}" height="${CANVAS_H}">
   <defs>
+    <style>
+      @font-face { font-family: 'Archivo Black'; font-weight: 400; src: url('${archivoBlackDataUrl}') format('woff2'); }
+      @font-face { font-family: 'Inter'; font-weight: 700; src: url('${interBoldUrl}') format('woff2'); }
+      @font-face { font-family: 'Inter'; font-weight: 600; src: url('${interSemiUrl}') format('woff2'); }
+      @font-face { font-family: 'Inter'; font-weight: 500; src: url('${interMedUrl}') format('woff2'); }
+    </style>
     <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#01002A"/>
       <stop offset="55%" stop-color="#0a0050"/>
