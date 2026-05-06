@@ -1,0 +1,199 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import { getServerSupabase } from "../../lib/supabase/server";
+
+const athlete = Astro.locals.athlete!; // gated by middleware
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const url = new URL(Astro.request.url);
+const query = url.searchParams.get("q")?.trim() ?? "";
+
+let results: Array<{ user_id: string; display_name: string; instagram_handle: string | null }> = [];
+if (query.length >= 2) {
+  const { data } = await supabase.rpc("pr_search_athletes", {
+    p_query: query,
+    p_limit: 30,
+  });
+  results = (data ?? []) as typeof results;
+}
+
+// Already-followed user_ids so we can show the right CTA per row
+const { data: followingRows = [] } = await supabase
+  .from("pr_follows")
+  .select("followee_id")
+  .eq("follower_id", athlete.userId);
+const following = new Set((followingRows ?? []).map((r) => r.followee_id as string));
+
+// Suggested follows: athletes from the same primary box if set, otherwise
+// most recently active across the platform.
+let suggested: typeof results = [];
+if (athlete.primaryBoxId) {
+  const { data } = await supabase
+    .from("pr_box_members")
+    .select("user_id")
+    .eq("box_id", athlete.primaryBoxId)
+    .neq("user_id", athlete.userId)
+    .limit(20);
+  const ids = (data ?? []).map((r) => r.user_id as string);
+  if (ids.length > 0) {
+    const { data: profiles } = await supabase
+      .from("pr_athletes")
+      .select("user_id, display_name, instagram_handle")
+      .in("user_id", ids);
+    suggested = ((profiles ?? []) as typeof results).filter((p) => p.display_name);
+  }
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Encontrar atletas · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <link rel="manifest" href="/pr/manifest.webmanifest" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
+      <a href="/pr/feed" class="text-xs text-navy-300 hover:text-white">← Feed</a>
+      <h1 class="font-display text-base tracking-tight">Encontrar atletas</h1>
+      <span class="w-10"></span>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4">
+      <form method="get" class="mb-5">
+        <input
+          name="q"
+          type="search"
+          value={query}
+          minlength="2"
+          maxlength="60"
+          placeholder="Nome ou @instagram..."
+          autocomplete="off"
+          class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-3 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+        />
+      </form>
+
+      {query.length >= 2 && (
+        <section class="mb-6">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300 mb-2">
+            Resultados ({results.length})
+          </div>
+          {results.length === 0 ? (
+            <div class="text-sm text-navy-300 py-6 text-center">
+              Ninguém encontrado. Avise pra criar a conta.
+            </div>
+          ) : (
+            <ul class="space-y-2">
+              {results.map((row) => (
+                <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 flex items-center justify-between gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold truncate">{row.display_name}</div>
+                    {row.instagram_handle && (
+                      <div class="text-[11px] text-navy-300 truncate">@{row.instagram_handle}</div>
+                    )}
+                  </div>
+                  {row.user_id === athlete.userId ? (
+                    <span class="text-[10px] uppercase tracking-widest text-brand-lime">VOCÊ</span>
+                  ) : (
+                    <button
+                      type="button"
+                      data-follow-btn
+                      data-user-id={row.user_id}
+                      data-following={following.has(row.user_id) ? "true" : "false"}
+                      class="text-xs rounded-lg px-3 py-1.5 font-semibold transition follow-btn"
+                    >
+                      {following.has(row.user_id) ? "Seguindo" : "Seguir"}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {suggested.length > 0 && (
+        <section class="mb-6">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300 mb-2">
+            Do seu box
+          </div>
+          <ul class="space-y-2">
+            {suggested.map((row) => (
+              <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">{row.display_name}</div>
+                  {row.instagram_handle && (
+                    <div class="text-[11px] text-navy-300 truncate">@{row.instagram_handle}</div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  data-follow-btn
+                  data-user-id={row.user_id}
+                  data-following={following.has(row.user_id) ? "true" : "false"}
+                  class="text-xs rounded-lg px-3 py-1.5 font-semibold transition follow-btn"
+                >
+                  {following.has(row.user_id) ? "Seguindo" : "Seguir"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {query.length < 2 && suggested.length === 0 && (
+        <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-6 text-sm text-navy-300 text-center">
+          Pesquisa por nome ou @instagram. <br/>
+          Quando tiver atletas no teu box, eles aparecem aqui automaticamente.
+        </div>
+      )}
+    </main>
+
+    <style is:global>
+      .follow-btn[data-following="false"] {
+        background: #D8FF2C;
+        color: #01002A;
+      }
+      .follow-btn[data-following="true"] {
+        background: transparent;
+        color: #9ca3af;
+        border: 1px solid #3a3970;
+      }
+    </style>
+
+    <script>
+      document.querySelectorAll<HTMLButtonElement>("[data-follow-btn]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const uid = btn.dataset.userId;
+          if (!uid) return;
+          const isFollowing = btn.dataset.following === "true";
+          btn.disabled = true;
+          const original = btn.textContent;
+          btn.textContent = isFollowing ? "..." : "...";
+          try {
+            const res = await fetch("/api/pr/follows", {
+              method: isFollowing ? "DELETE" : "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: uid }),
+            });
+            if (!res.ok) throw new Error("follow_failed");
+            btn.dataset.following = isFollowing ? "false" : "true";
+            btn.textContent = isFollowing ? "Seguir" : "Seguindo";
+          } catch {
+            btn.textContent = original;
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
