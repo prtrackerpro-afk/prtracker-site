@@ -14,6 +14,9 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     display_name?: string;
     instagram_handle?: string | null;
     primary_box_id?: string | null;
+    body_weight_kg?: number | null;
+    sex?: "male" | "female" | null;
+    birth_year?: number | null;
   };
   try {
     body = await request.json();
@@ -31,6 +34,22 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     return jsonError(400, "invalid_handle", "Handle do Instagram inválido.");
   }
 
+  const bw = body.body_weight_kg;
+  if (bw != null && (typeof bw !== "number" || bw < 30 || bw > 300)) {
+    return jsonError(400, "invalid_body_weight", "Peso corporal fora do intervalo aceito (30–300 kg).");
+  }
+
+  const sex = body.sex ?? null;
+  if (sex != null && sex !== "male" && sex !== "female") {
+    return jsonError(400, "invalid_sex");
+  }
+
+  const currentYear = new Date().getFullYear();
+  const birthYear = body.birth_year ?? null;
+  if (birthYear != null && (typeof birthYear !== "number" || birthYear < 1920 || birthYear > currentYear)) {
+    return jsonError(400, "invalid_birth_year");
+  }
+
   const supabase = getServerSupabase({ headers: request.headers, cookies });
   const { error } = await supabase
     .from("pr_athletes")
@@ -40,6 +59,9 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
         display_name: displayName,
         instagram_handle: handle || null,
         primary_box_id: body.primary_box_id ?? null,
+        body_weight_kg: bw ?? null,
+        sex,
+        birth_year: birthYear,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }

@@ -38,6 +38,9 @@ declare namespace App {
       email: string;
       displayName: string | null;
       primaryBoxId: string | null;
+      bodyWeightKg: number | null;
+      sex: "male" | "female" | null;
+      birthYear: number | null;
     };
   }
 }

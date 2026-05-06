@@ -6,6 +6,7 @@ import { getRecord } from "../../../lib/pr/db";
 import { exerciseLabel, productSlugForExercise, type ExerciseId } from "../../../lib/pr/exercises";
 import { configuratorQuery, splitPlates } from "../../../lib/pr/plates";
 import { renderCardSvg } from "../../../lib/pr/card-svg";
+import { tierForLift, tierLabel, tierColor, TIER_ORDER, TIER_META, type Tier } from "../../../lib/pr/strength-score";
 
 const athlete = Astro.locals.athlete!;
 const id = Astro.params.id!;
@@ -20,7 +21,8 @@ if (!record || record.user_id !== athlete.userId) {
   return Astro.redirect("/pr", 302);
 }
 
-// Previous best for this exercise (excluding this record itself)
+// Previous best for this exercise (excluding this record itself) — drives
+// both the kg delta AND the level-up detection on the strength tier.
 const { data: prev } = await supabase
   .from("pr_records")
   .select("weight_kg")
@@ -44,6 +46,37 @@ const trophyHref = `/produto/${productSlug}?${configuratorQuery(
 
 const split = splitPlates(Number(record.weight_kg));
 
+// Strength tier — only if athlete has body data.
+let currentTier: Tier | null = null;
+let previousTier: Tier | null = null;
+let isLevelUp = false;
+let strengthData: {
+  tier: Tier;
+  ratio: number;
+  percentile: number;
+  nextTier: Tier | null;
+  nextTierKg: number | null;
+} | null = null;
+
+if (athlete.bodyWeightKg && athlete.sex) {
+  const score = tierForLift(record.exercise as ExerciseId, Number(record.weight_kg), athlete.bodyWeightKg, athlete.sex);
+  currentTier = score.tier;
+  const tierToPercentile = { iniciante: 30, novato: 60, intermediario: 80, avancado: 95, elite: 99 } as const;
+  strengthData = {
+    tier: score.tier,
+    ratio: score.ratio,
+    percentile: tierToPercentile[score.tier],
+    nextTier: score.nextTier,
+    nextTierKg: score.kgToNextTier,
+  };
+
+  if (previousBest != null) {
+    const prevScore = tierForLift(record.exercise as ExerciseId, previousBest, athlete.bodyWeightKg, athlete.sex);
+    previousTier = prevScore.tier;
+    isLevelUp = TIER_META[currentTier].rank > TIER_META[previousTier].rank;
+  }
+}
+
 // Inline the same SVG that the share endpoint produces — single source of
 // truth, and it loads instantly without an extra HTTP roundtrip.
 const cardSvg = renderCardSvg({
@@ -51,7 +84,10 @@ const cardSvg = renderCardSvg({
   exerciseId: record.exercise as ExerciseId,
   weightKg: Number(record.weight_kg),
   performedAt: record.performed_at,
+  strength: strengthData,
 });
+
+const movement = exerciseLabel(record.exercise as ExerciseId);
 ---
 
 <!doctype html>
@@ -65,15 +101,15 @@ const cardSvg = renderCardSvg({
   </head>
   <body class="min-h-screen bg-navy-900 text-white font-body">
     <div class="max-w-md mx-auto px-4 py-6">
-      <div class="text-center mb-6">
+      <div class="text-center mb-4">
         <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">Novo recorde pessoal</div>
-        <h1 class="font-display text-2xl tracking-tight">{exerciseLabel(record.exercise as ExerciseId)}</h1>
+        <h1 class="font-display text-2xl tracking-tight">{movement}</h1>
       </div>
 
       {/* Inline card preview — same SVG that the share endpoint serves */}
-      <div class="card-preview rounded-2xl overflow-hidden border border-navy-700 mb-6 shadow-2xl shadow-brand-lime/10" set:html={cardSvg} />
+      <div class="card-preview rounded-2xl overflow-hidden border border-navy-700 mb-4 shadow-2xl shadow-brand-lime/10" set:html={cardSvg} />
 
-      {/* Animated count-up under the card */}
+      {/* Big animated count-up under the card */}
       <div class="text-center mb-1">
         <span
           id="count-up"
@@ -84,11 +120,42 @@ const cardSvg = renderCardSvg({
       </div>
 
       {delta != null ? (
-        <p class="text-center text-sm text-navy-300 mb-6">
+        <p class="text-center text-sm text-navy-300 mb-4">
           <span class="text-brand-lime">+{delta.toFixed(1)} kg</span> sobre seu PR anterior ({previousBest} kg)
         </p>
       ) : (
-        <p class="text-center text-sm text-navy-300 mb-6">Seu primeiro registro nesse movimento</p>
+        <p class="text-center text-sm text-navy-300 mb-4">Seu primeiro registro nesse movimento</p>
+      )}
+
+      {/* Level-up banner — only when current tier > previous tier */}
+      {isLevelUp && currentTier && (
+        <div
+          id="level-up-banner"
+          class="rounded-xl border-2 px-4 py-3 mb-4 text-center transition-all"
+          style={`border-color: ${tierColor(currentTier)}; background: ${tierColor(currentTier)}10`}
+        >
+          <div class="text-[10px] uppercase tracking-[0.3em] text-navy-300">Você evoluiu</div>
+          <div
+            class="font-display text-3xl mt-1"
+            style={`color: ${tierColor(currentTier)}`}
+          >
+            {tierLabel(currentTier).toUpperCase()}
+          </div>
+          {previousTier && (
+            <div class="text-xs text-navy-300 mt-1">
+              Antes: <span class="text-white">{tierLabel(previousTier)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* No-body-data prompt — convert later */}
+      {!strengthData && (
+        <div class="rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 mb-4 text-sm">
+          <div class="text-amber-300 font-semibold mb-1">Desbloqueie seu Strength Tier</div>
+          <div class="text-xs text-navy-300 mb-2">Adicione peso corporal e sexo no perfil pra ver onde você ranqueia.</div>
+          <a href="/pr/profile" class="text-xs text-brand-lime underline">Atualizar perfil →</a>
+        </div>
       )}
 
       <div class="space-y-3 mb-6">
@@ -136,16 +203,37 @@ const cardSvg = renderCardSvg({
       )}
     </div>
 
+    {/* Confetti canvas — fired on first paint when isLevelUp */}
+    <canvas
+      id="confetti"
+      class="pointer-events-none fixed inset-0 z-50"
+      width="0"
+      height="0"
+    ></canvas>
+
     <style>
       .card-preview svg {
         width: 100%;
         height: auto;
         display: block;
       }
+      @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(216,255,44,0.0); }
+        50% { box-shadow: 0 0 24px 4px rgba(216,255,44,0.4); }
+      }
+      .level-up-pulse { animation: pulse-glow 1.6s ease-in-out 2; }
     </style>
 
-    <script define:vars={{ recordId: record.id, weight: Number(record.weight_kg), exercise: record.exercise }}>
-      // Count-up animation on the weight number — quick easeOut over 800ms.
+    <script
+      define:vars={{
+        recordId: record.id,
+        weight: Number(record.weight_kg),
+        exercise: record.exercise,
+        isLevelUp,
+        tierColorHex: currentTier ? tierColor(currentTier) : "#D8FF2C",
+      }}
+    >
+      // === Count-up animation =========================================
       const el = document.getElementById("count-up");
       if (el) {
         const target = Number(el.dataset.target ?? 0);
@@ -161,24 +249,82 @@ const cardSvg = renderCardSvg({
         requestAnimationFrame(animate);
       }
 
-      // === Client-side SVG → PNG conversion =============================
-      // Inline SVG is rendered to a 1080×1920 PNG via canvas, on demand.
-      // Zero server deps; uses the page's already-loaded fonts (Archivo
-      // Black, Inter) so the rasterized output matches the preview.
-      // Returns a Blob ready for download or Web Share API (with `files`).
+      // === Confetti on level-up =======================================
+      // Lightweight pure-canvas confetti — no deps. Fires once when the
+      // athlete just leveled up. Particles fall from top in tier colour
+      // mixed with brand lime, fade out over ~3 seconds.
+      function fireConfetti(color) {
+        const canvas = document.getElementById("confetti");
+        if (!canvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+        const ctx = canvas.getContext("2d");
+        ctx.scale(dpr, dpr);
+
+        const colors = [color, "#D8FF2C", "#ffffff", "#43B02A", "#FFC72C"];
+        const particles = Array.from({ length: 140 }, () => ({
+          x: Math.random() * window.innerWidth,
+          y: -20 - Math.random() * window.innerHeight * 0.5,
+          vx: (Math.random() - 0.5) * 4,
+          vy: 2 + Math.random() * 4,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.2,
+          size: 6 + Math.random() * 8,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 1,
+        }));
+
+        const start = performance.now();
+        const duration = 3200;
+
+        function frame(now) {
+          const elapsed = now - start;
+          const fade = Math.max(0, 1 - elapsed / duration);
+          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          for (const p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.08; // gravity
+            p.rot += p.vrot;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.globalAlpha = fade;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.4);
+            ctx.restore();
+          }
+          if (elapsed < duration) {
+            requestAnimationFrame(frame);
+          } else {
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+
+      if (isLevelUp) {
+        // Slight delay so the count-up has a moment first.
+        setTimeout(() => {
+          fireConfetti(tierColorHex);
+          if (navigator.vibrate) navigator.vibrate([60, 40, 80]);
+          const banner = document.getElementById("level-up-banner");
+          banner?.classList.add("level-up-pulse");
+        }, 700);
+      }
+
+      // === SVG → PNG conversion (client-side, brand fonts preserved) ==
       async function svgToPngBlob() {
         const svgEl = document.querySelector(".card-preview svg");
         if (!svgEl) return null;
         const xml = new XMLSerializer().serializeToString(svgEl);
-        // Force the SVG width/height attrs to the export size — the inline
-        // version has been width:100% via CSS for layout, but for the PNG
-        // we want native 1080×1920.
         const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
         const url = URL.createObjectURL(svgBlob);
         try {
           const img = new Image();
-          // Wait for fonts to be ready so the rasterized text uses the
-          // same Archivo Black / Inter as the preview.
           if (document.fonts && document.fonts.ready) {
             await document.fonts.ready;
           }
@@ -192,8 +338,6 @@ const cardSvg = renderCardSvg({
           canvas.height = 1920;
           const ctx = canvas.getContext("2d");
           if (!ctx) return null;
-          // Safety opaque background — if fonts didn't load the dark navy
-          // bg from the SVG should still be there, but belt and suspenders.
           ctx.fillStyle = "#01002A";
           ctx.fillRect(0, 0, 1080, 1920);
           ctx.drawImage(img, 0, 0, 1080, 1920);
@@ -216,7 +360,6 @@ const cardSvg = renderCardSvg({
 
       const filename = `pr-${exercise}-${weight}kg.png`;
 
-      // Download PNG button
       const downloadBtn = document.getElementById("download-png-btn");
       downloadBtn?.addEventListener("click", async () => {
         const original = downloadBtn.textContent;
@@ -229,16 +372,12 @@ const cardSvg = renderCardSvg({
           downloadBtn.textContent = "Baixado";
           setTimeout(() => { downloadBtn.textContent = original; downloadBtn.disabled = false; }, 1200);
         } catch {
-          // Fallback to SVG download
           window.location.href = `/api/pr/card/${recordId}.svg`;
           downloadBtn.textContent = original;
           downloadBtn.disabled = false;
         }
       });
 
-      // Share button — uses Web Share API with the PNG file on mobile so
-      // Instagram / WhatsApp / Stories pick it up directly. Desktop falls
-      // back to downloading the PNG (no native share sheet for files).
       const shareBtn = document.getElementById("share-btn");
       shareBtn?.addEventListener("click", async () => {
         const text = `Novo PR de ${exercise.replace(/_/g, " ")}: ${weight} kg`;
@@ -251,20 +390,18 @@ const cardSvg = renderCardSvg({
               return;
             }
           }
-          // Fallback: download the PNG (covers desktop and older mobile)
           if (blob) {
             downloadBlob(blob, filename);
             shareBtn.textContent = "PNG salvo";
             setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
           } else {
-            // Last resort: copy public SVG URL
             const url = `${window.location.origin}/api/pr/card/${recordId}.svg`;
             await navigator.clipboard.writeText(url);
             shareBtn.textContent = "Link copiado";
             setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
           }
         } catch {
-          // user cancelled — silent
+          // user cancelled
         }
       });
     </script>

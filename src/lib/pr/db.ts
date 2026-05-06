@@ -27,10 +27,12 @@ export interface InsertPRInput {
 
 /**
  * Inserts a new PR record. Sets `is_personal_record = true` iff the weight
- * exceeds the athlete's best previous weight on this exercise.
+ * exceeds the athlete's best previous weight on this exercise. Maintains
+ * the `pr_best_lifts` denorm table so the strength score / leaderboard
+ * lookups stay O(1).
  *
- * Returns both the inserted record and the previous best (so the celebrate
- * screen can show the delta).
+ * Returns the inserted record, the previous best, and an `isPR` flag (so
+ * the celebrate screen can show the delta and trigger animations).
  */
 export async function insertPR(
   supabase: SupabaseClient,
@@ -48,13 +50,15 @@ export async function insertPR(
   const previousBestKg = prev?.weight_kg ?? null;
   const isPR = previousBestKg === null || input.weightKg > Number(previousBestKg);
 
+  const performedAt = input.performedAt ?? new Date().toISOString().slice(0, 10);
+
   const { data: inserted, error } = await supabase
     .from("pr_records")
     .insert({
       user_id: input.userId,
       exercise: input.exercise,
       weight_kg: input.weightKg,
-      performed_at: input.performedAt ?? new Date().toISOString().slice(0, 10),
+      performed_at: performedAt,
       photo_url: input.photoUrl ?? null,
       notes: input.notes ?? null,
       box_id: input.boxId ?? null,
@@ -67,7 +71,39 @@ export async function insertPR(
     throw error ?? new Error("Failed to insert PR record");
   }
 
+  // Keep pr_best_lifts in sync — only when this is a new best.
+  if (isPR) {
+    await supabase
+      .from("pr_best_lifts")
+      .upsert(
+        {
+          user_id: input.userId,
+          exercise: input.exercise,
+          weight_kg: input.weightKg,
+          performed_at: performedAt,
+          record_id: (inserted as PRRecord).id,
+        },
+        { onConflict: "user_id,exercise" }
+      );
+  }
+
   return { record: inserted as PRRecord, previousBestKg, isPR };
+}
+
+/** Returns a map of best kg per exercise for the given athlete. */
+export async function listBestLifts(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Record<string, number>> {
+  const { data } = await supabase
+    .from("pr_best_lifts")
+    .select("exercise, weight_kg")
+    .eq("user_id", userId);
+  const out: Record<string, number> = {};
+  for (const row of data ?? []) {
+    out[row.exercise as string] = Number(row.weight_kg);
+  }
+  return out;
 }
 
 export async function listOwnRecords(

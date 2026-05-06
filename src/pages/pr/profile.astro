@@ -1,0 +1,254 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import { getServerSupabase } from "../../lib/supabase/server";
+import { listBestLifts } from "../../lib/pr/db";
+import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
+import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../lib/pr/strength-score";
+
+const athlete = Astro.locals.athlete!;
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const bestLiftsRaw = await listBestLifts(supabase, athlete.userId);
+const bestLifts = bestLiftsRaw as Partial<Record<ExerciseId, number>>;
+
+const summary = summarize({
+  bodyWeightKg: athlete.bodyWeightKg,
+  sex: athlete.sex,
+  bestLifts,
+});
+
+// Sort lifts by tier rank (highest first), then by ratio
+const sortedLifts = [...summary.lifts].sort((a, b) => {
+  const r = TIER_META[b.tier].rank - TIER_META[a.tier].rank;
+  return r !== 0 ? r : b.ratio - a.ratio;
+});
+
+// Total record count
+const { count: totalRecords = 0 } = await supabase
+  .from("pr_records")
+  .select("id", { count: "exact", head: true })
+  .eq("user_id", athlete.userId);
+
+// Total PRs (distinct best-lift entries)
+const totalPRs = Object.keys(bestLifts).length;
+
+// Streak: number of consecutive months (including current) with at least 1 PR
+const { data: prDates = [] } = await supabase
+  .from("pr_records")
+  .select("performed_at")
+  .eq("user_id", athlete.userId)
+  .eq("is_personal_record", true)
+  .order("performed_at", { ascending: false });
+
+const streak = computeStreak((prDates ?? []).map((d) => d.performed_at as string));
+
+function computeStreak(dates: string[]): number {
+  if (dates.length === 0) return 0;
+  const months = new Set(dates.map((d) => d.slice(0, 7))); // YYYY-MM
+  let s = 0;
+  const cur = new Date();
+  for (let i = 0; i < 60; i++) {
+    const ym = cur.toISOString().slice(0, 7);
+    if (months.has(ym)) s++;
+    else if (i > 0) break;
+    cur.setMonth(cur.getMonth() - 1);
+  }
+  return s;
+}
+
+const overallTierName = tierLabel(summary.overallTier);
+const overallTierColor = tierColor(summary.overallTier);
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Perfil · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
+      <a href="/pr" class="text-xs text-navy-300 hover:text-white">← Meus PRs</a>
+      <a href="/api/pr/auth/logout" class="text-xs text-navy-300 hover:text-white">Sair</a>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4">
+      {/* === LIFTER CARD === */}
+      <section
+        class="rounded-2xl p-6 mb-6 relative overflow-hidden border-2"
+        style={`border-color: ${overallTierColor}; background: linear-gradient(135deg, rgba(1,0,42,0.95), rgba(10,0,80,0.95))`}
+      >
+        {/* Subtle texture */}
+        <div class="absolute inset-0 opacity-5 pointer-events-none" style={`background-image: repeating-linear-gradient(45deg, ${overallTierColor} 0, ${overallTierColor} 2px, transparent 2px, transparent 12px)`}></div>
+
+        <div class="relative">
+          <div class="flex items-start justify-between mb-4">
+            <div class="min-w-0">
+              <div class="text-[10px] uppercase tracking-[0.3em] text-navy-300">Atleta</div>
+              <h1 class="font-display text-3xl tracking-tight truncate">{athlete.displayName}</h1>
+              {athlete.bodyWeightKg && athlete.sex && (
+                <div class="text-xs text-navy-300 mt-1">
+                  {athlete.sex === "male" ? "M" : "F"} · {athlete.bodyWeightKg} kg corporal
+                  {athlete.birthYear && <span> · {new Date().getFullYear() - athlete.birthYear} anos</span>}
+                </div>
+              )}
+            </div>
+            <a href="/pr/onboarding" class="text-[10px] text-brand-lime border border-brand-lime/30 rounded px-2 py-1 hover:bg-brand-lime/10">
+              Editar
+            </a>
+          </div>
+
+          {summary.hasBodyData ? (
+            <>
+              <div class="text-center my-6">
+                <div class="text-[10px] uppercase tracking-[0.3em] text-navy-300">Strength Tier</div>
+                <div
+                  class="font-display text-5xl mt-1"
+                  style={`color: ${overallTierColor}`}
+                >
+                  {overallTierName.toUpperCase()}
+                </div>
+                <div class="text-sm text-white mt-1">
+                  Top {Math.max(1, Math.round(100 - summary.percentile))}% Brasil
+                </div>
+              </div>
+
+              {summary.powerlifting && (
+                <div class="rounded-lg bg-navy-900/50 p-3 mt-4 text-center">
+                  <div class="text-[10px] uppercase tracking-widest text-navy-300">Powerlifting Total (S+B+D)</div>
+                  <div class="font-display text-3xl tabular-nums mt-1">{Math.round(summary.powerlifting.totalKg)} <span class="text-sm text-navy-300">kg</span></div>
+                  <div class="text-xs text-navy-300 mt-1">
+                    {summary.powerlifting.ratio.toFixed(2).replace(".", ",")}× peso corporal · {tierLabel(summary.powerlifting.tier)}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div class="rounded-lg border border-amber-400/30 bg-amber-400/5 p-4 mt-2 text-center">
+              <div class="text-amber-300 font-semibold mb-1">Strength Tier bloqueado</div>
+              <div class="text-xs text-navy-300 mb-3">Adicione peso corporal e sexo no perfil pra ver onde você ranqueia.</div>
+              <a href="/pr/onboarding" class="text-xs bg-brand-lime text-navy-900 font-semibold rounded px-3 py-1.5">
+                Completar perfil
+              </a>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* === STATS GRID === */}
+      <section class="grid grid-cols-3 gap-2 mb-6">
+        <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 text-center">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">PRs</div>
+          <div class="font-display text-2xl tabular-nums">{totalPRs}</div>
+        </div>
+        <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 text-center">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">Sequência</div>
+          <div class="font-display text-2xl tabular-nums">
+            {streak}<span class="text-xs text-navy-300 font-body ml-0.5">{streak === 1 ? "mês" : "meses"}</span>
+          </div>
+        </div>
+        <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 text-center">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">Histórico</div>
+          <div class="font-display text-2xl tabular-nums">{totalRecords ?? 0}</div>
+        </div>
+      </section>
+
+      {/* === TROPHY WALL === */}
+      <section class="mb-6">
+        <div class="flex items-baseline justify-between mb-3">
+          <h2 class="text-base font-semibold tracking-tight">Sua estante</h2>
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">
+            {sortedLifts.length} {sortedLifts.length === 1 ? "movimento" : "movimentos"}
+          </div>
+        </div>
+
+        {sortedLifts.length === 0 ? (
+          <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-8 text-center">
+            <p class="text-sm text-navy-300 mb-3">Sua estante está vazia. Cada PR vira um troféu aqui.</p>
+            <a href="/pr/log" class="inline-block text-xs bg-brand-lime text-navy-900 font-semibold rounded px-3 py-1.5">
+              Registrar primeiro PR
+            </a>
+          </div>
+        ) : (
+          <ul class="grid grid-cols-2 gap-2">
+            {sortedLifts.map((lift) => {
+              const tColor = tierColor(lift.tier);
+              return (
+                <li
+                  class="rounded-xl border bg-navy-800/30 p-3 relative"
+                  style={`border-color: ${tColor}33`}
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                      <div class="text-[10px] uppercase tracking-widest" style={`color: ${tColor}`}>
+                        {tierLabel(lift.tier)}
+                      </div>
+                      <div class="font-display text-sm leading-tight mt-0.5 truncate">
+                        {exerciseLabel(lift.exerciseId)}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <div class="font-display text-2xl tabular-nums" style={`color: ${tColor}`}>
+                      {lift.weightKg}
+                      <span class="text-xs text-navy-300 font-body ml-0.5">kg</span>
+                    </div>
+                    <div class="text-[10px] text-navy-300 mt-0.5">
+                      {lift.ratio.toFixed(2).replace(".", ",")}× peso corp.
+                    </div>
+                  </div>
+
+                  {/* Progress bar to next tier */}
+                  {lift.nextTier && lift.kgToNextTier != null && lift.kgToNextTier > 0 && (
+                    <div class="mt-2">
+                      <div class="h-1 rounded-full bg-navy-900 overflow-hidden">
+                        <div
+                          class="h-full rounded-full"
+                          style={`width: ${lift.progressInTier}%; background: ${tColor}`}
+                        ></div>
+                      </div>
+                      <div class="text-[9px] text-navy-300 mt-1 uppercase tracking-wider">
+                        +{lift.kgToNextTier} kg → {tierLabel(lift.nextTier).toLowerCase()}
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      {/* === COMING SOON: Virtual Gym === */}
+      <section class="rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800/50 to-purple-900/20 p-5 mb-6 relative overflow-hidden">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">EM BREVE</div>
+        <h2 class="font-display text-xl tracking-tight mb-1">Sua academia virtual</h2>
+        <p class="text-sm text-navy-300">
+          Avatar customizável, troféus 3D montados na parede, visitas dos amigos. Cada PR aqui vira uma peça lá.
+        </p>
+        <div class="mt-3 flex gap-2">
+          <span class="text-[10px] uppercase tracking-widest bg-navy-700/50 text-navy-300 px-2 py-1 rounded">3D</span>
+          <span class="text-[10px] uppercase tracking-widest bg-navy-700/50 text-navy-300 px-2 py-1 rounded">Avatar</span>
+          <span class="text-[10px] uppercase tracking-widest bg-navy-700/50 text-navy-300 px-2 py-1 rounded">Multiplayer</span>
+        </div>
+      </section>
+    </main>
+
+    {/* Sticky add button */}
+    <a
+      href="/pr/log"
+      class="fixed bottom-6 right-6 rounded-full bg-brand-lime text-navy-900 font-semibold w-14 h-14 grid place-items-center shadow-lg shadow-brand-lime/20 hover:scale-105 transition"
+      aria-label="Registrar novo PR"
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    </a>
+  </body>
+</html>
