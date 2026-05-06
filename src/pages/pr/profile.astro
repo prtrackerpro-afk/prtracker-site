@@ -6,6 +6,7 @@ import { listBestLifts } from "../../lib/pr/db";
 import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../lib/pr/strength-score";
 import TrophyWall from "../../components/pr/TrophyWall.astro";
+import { computeAchievements } from "../../lib/pr/achievements";
 
 const athlete = Astro.locals.athlete!;
 
@@ -47,6 +48,17 @@ const { data: prDates = [] } = await supabase
   .order("performed_at", { ascending: false });
 
 const streak = computeStreak((prDates ?? []).map((d) => d.performed_at as string));
+
+// Achievements — derived on read from existing tables.
+const achievements = computeAchievements({
+  totalRecords: totalRecords ?? 0,
+  totalPRs,
+  bestLifts,
+  overallTier: summary.hasBodyData ? summary.overallTier : null,
+  liveStreakMonths: streak,
+});
+const earned = achievements.filter((a) => a.earned);
+const upcoming = achievements.filter((a) => !a.earned).slice(0, 3);
 
 function computeStreak(dates: string[]): number {
   if (dates.length === 0) return 0;
@@ -245,15 +257,66 @@ const overallTierColor = tierColor(summary.overallTier);
         )}
       </section>
 
+      {/* === ACHIEVEMENTS === */}
+      <section class="mb-6">
+        <div class="flex items-baseline justify-between mb-3">
+          <h2 class="text-base font-semibold tracking-tight">Conquistas</h2>
+          <div class="text-[10px] uppercase tracking-widest text-navy-300">
+            {earned.length} / {achievements.length}
+          </div>
+        </div>
+
+        {earned.length > 0 && (
+          <ul class="grid grid-cols-4 gap-2 mb-3">
+            {earned.map((a) => (
+              <li class="rounded-xl border border-brand-lime/30 bg-brand-lime/5 p-2 text-center">
+                <div class="text-2xl">{a.emoji}</div>
+                <div class="text-[10px] mt-0.5 font-semibold leading-tight">{a.label}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {upcoming.length > 0 && (
+          <>
+            <div class="text-[10px] uppercase tracking-widest text-navy-300 mb-2 mt-4">Próximas</div>
+            <ul class="space-y-2">
+              {upcoming.map((a) => (
+                <li class="rounded-xl border border-navy-700 bg-navy-800/30 px-3 py-2 flex items-center gap-3">
+                  <span class="text-2xl opacity-40">{a.emoji}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm font-semibold leading-tight">{a.label}</div>
+                    <div class="text-[11px] text-navy-300 leading-tight">{a.description}</div>
+                    {a.progress && (
+                      <div class="mt-1 flex items-center gap-2">
+                        <div class="flex-1 h-1 rounded-full bg-navy-900 overflow-hidden">
+                          <div
+                            class="h-full rounded-full bg-brand-lime"
+                            style={`width: ${Math.min(100, (a.progress.current / a.progress.target) * 100)}%`}
+                          ></div>
+                        </div>
+                        <div class="text-[10px] text-navy-300 tabular-nums whitespace-nowrap">
+                          {a.progress.current} / {a.progress.target} {a.progress.unit ?? ""}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
       {/* === COMING SOON: Virtual Gym === */}
       <section class="rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800/50 to-purple-900/20 p-5 mb-6 relative overflow-hidden">
         <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">EM BREVE</div>
-        <h2 class="font-display text-xl tracking-tight mb-1">Sua academia virtual</h2>
+        <h2 class="font-display text-xl tracking-tight mb-1">Academia virtual 3D</h2>
         <p class="text-sm text-navy-300">
           Avatar customizável, troféus 3D montados na parede, visitas dos amigos. Cada PR aqui vira uma peça lá.
         </p>
-        <div class="mt-3 flex gap-2">
-          <span class="text-[10px] uppercase tracking-widest bg-navy-700/50 text-navy-300 px-2 py-1 rounded">3D</span>
+        <div class="mt-3 flex gap-2 flex-wrap">
+          <span class="text-[10px] uppercase tracking-widest bg-navy-700/50 text-navy-300 px-2 py-1 rounded">3D Three.js</span>
           <span class="text-[10px] uppercase tracking-widest bg-navy-700/50 text-navy-300 px-2 py-1 rounded">Avatar</span>
           <span class="text-[10px] uppercase tracking-widest bg-navy-700/50 text-navy-300 px-2 py-1 rounded">Multiplayer</span>
         </div>
