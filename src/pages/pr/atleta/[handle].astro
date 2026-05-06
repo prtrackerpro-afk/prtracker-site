@@ -5,6 +5,7 @@ import { getAdminSupabase } from "../../../lib/supabase/server";
 import { exerciseLabel, productSlugForExercise, type ExerciseId } from "../../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../../lib/pr/strength-score";
 import { configuratorQuery } from "../../../lib/pr/plates";
+import TrophyWall from "../../../components/pr/TrophyWall.astro";
 
 // PUBLIC athlete profile, indexed by Instagram handle. No auth required —
 // this is the shareable link an athlete posts in their bio. Renders the
@@ -122,11 +123,22 @@ const pageDesc =
         )}
       </section>
 
-      {/* === TROPHY GRID === */}
+      {/* === TROPHY WALL (isometric scene, shared component) === */}
+      {sortedLifts.length > 0 && (
+        <section class="mb-6">
+          <TrophyWall
+            athleteName={profile.display_name}
+            overallTier={overallTier}
+            lifts={sortedLifts.map((l) => ({ exerciseId: l.exerciseId, weightKg: l.weightKg, tier: l.tier }))}
+          />
+        </section>
+      )}
+
+      {/* === TROPHY GRID with buy CTAs === */}
       {sortedLifts.length > 0 ? (
         <section class="mb-6">
           <div class="flex items-baseline justify-between mb-3">
-            <h2 class="text-base font-semibold tracking-tight">Estante de troféus</h2>
+            <h2 class="text-base font-semibold tracking-tight">Cada PR pode virar troféu</h2>
             <div class="text-[10px] uppercase tracking-widest text-navy-300">{sortedLifts.length}</div>
           </div>
           <ul class="grid grid-cols-2 gap-2">

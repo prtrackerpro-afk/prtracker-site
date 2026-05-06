@@ -1,0 +1,107 @@
+---
+// Mobile bottom nav for athlete-facing /pr routes. Sticky bottom, only
+// visible <md. Five tabs (Home / Feed / Log / Coach / Perfil), with the
+// Log tab as the centered FAB-style accent.
+
+interface Props {
+  active: "home" | "feed" | "log" | "coach" | "profile";
+  unreadCount?: number;
+}
+
+const { active, unreadCount = 0 } = Astro.props;
+---
+
+<nav class="bottom-nav md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-navy-700 bg-navy-900/95 backdrop-blur">
+  <ul class="grid grid-cols-5 max-w-2xl mx-auto">
+    <li>
+      <a
+        href="/pr"
+        class:list={["nav-item", { "is-active": active === "home" }]}
+        aria-label="Home"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+        <span>Home</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/pr/feed"
+        class:list={["nav-item", { "is-active": active === "feed" }]}
+        aria-label="Feed"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"/></svg>
+        <span>Feed</span>
+      </a>
+    </li>
+    <li class="relative">
+      <a
+        href="/pr/log"
+        class:list={["nav-fab", { "is-active": active === "log" }]}
+        aria-label="Registrar PR"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/pr/coach"
+        class:list={["nav-item", { "is-active": active === "coach" }]}
+        aria-label="Coach"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21v-2a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Coach</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/pr/profile"
+        class:list={["nav-item relative", { "is-active": active === "profile" }]}
+        aria-label="Perfil"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Perfil</span>
+        {unreadCount > 0 && (
+          <span class="absolute top-1 right-3 bg-brand-lime text-navy-900 text-[9px] font-bold rounded-full w-3.5 h-3.5 grid place-items-center">
+            {unreadCount > 9 ? "9" : unreadCount}
+          </span>
+        )}
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<style>
+  .bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0); }
+  .nav-item, .nav-fab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 4px;
+    color: rgba(216, 219, 230, 0.5);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: color 120ms ease;
+  }
+  .nav-item svg, .nav-fab svg { width: 20px; height: 20px; }
+  .nav-item.is-active { color: #D8FF2C; }
+  .nav-item:hover { color: #fff; }
+  .nav-fab {
+    position: relative;
+    background: #D8FF2C;
+    color: #01002A;
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    margin: -12px auto 0;
+    box-shadow: 0 4px 16px rgba(216, 255, 44, 0.35);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .nav-fab svg { width: 22px; height: 22px; }
+  .nav-fab:hover { color: #01002A; }
+</style>

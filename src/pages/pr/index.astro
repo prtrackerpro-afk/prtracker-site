@@ -7,6 +7,7 @@ import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor } from "../../lib/pr/strength-score";
 import { computeQuests, formatRemaining } from "../../lib/pr/quests";
 import PRProgressionChart from "../../components/pr/PRProgressionChart";
+import BottomNav from "../../components/pr/BottomNav.astro";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
 
@@ -246,13 +247,15 @@ const { count: unreadCount = 0 } = await supabase
       )}
     </main>
 
-    {/* Sticky add button */}
+    {/* FAB on desktop, mobile uses BottomNav center fab */}
     <a
       href="/pr/log"
-      class="fixed bottom-6 right-6 rounded-full bg-brand-lime text-navy-900 font-semibold w-14 h-14 grid place-items-center shadow-lg shadow-brand-lime/20 hover:scale-105 transition"
+      class="hidden md:grid fixed bottom-6 right-6 rounded-full bg-brand-lime text-navy-900 font-semibold w-14 h-14 place-items-center shadow-lg shadow-brand-lime/20 hover:scale-105 transition"
       aria-label="Registrar novo PR"
     >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
     </a>
+
+    <BottomNav active="home" unreadCount={Number(unreadCount ?? 0)} />
   </body>
 </html>

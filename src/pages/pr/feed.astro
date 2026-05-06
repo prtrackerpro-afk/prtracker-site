@@ -3,6 +3,7 @@ export const prerender = false;
 import "../../styles/global.css";
 import { getServerSupabase } from "../../lib/supabase/server";
 import { exerciseLabel, type ExerciseId } from "../../lib/pr/exercises";
+import BottomNav from "../../components/pr/BottomNav.astro";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
 
@@ -156,6 +157,8 @@ function fmtRelative(iso: string): string {
         </ul>
       )}
     </main>
+
+    <BottomNav active="feed" />
 
     <script>
       // === Realtime: subscribe to new PR-true records via Supabase ====
