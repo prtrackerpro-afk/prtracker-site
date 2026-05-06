@@ -1,0 +1,131 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { getConnectionStatus } from "../../lib/amazon/oauth";
+
+const url = new URL(Astro.request.url);
+const flash = {
+  amazon: url.searchParams.get("amazon"),
+  msg: url.searchParams.get("msg"),
+};
+
+const status = await getConnectionStatus().catch(() => ({
+  connected: false as const,
+}));
+
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+---
+
+<AdminLayout title="Amazon" active="amazon" user={Astro.locals.admin}>
+  <div class="px-4 md:px-8 py-6 max-w-7xl mx-auto space-y-6">
+    <header class="flex items-baseline justify-between">
+      <div>
+        <h1 class="text-2xl font-display tracking-tight">Amazon</h1>
+        <p class="text-sm text-navy-300 mt-1">
+          LWA OAuth + SP-API (em construção). Audit + correção em massa.
+        </p>
+      </div>
+    </header>
+
+    <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+      ⚠️ <strong>Scaffold parcial</strong>: LWA OAuth funciona, mas calls SP-API requerem AWS SigV4 signing ainda não implementado. Ver <code class="text-xs">docs/AMAZON_SETUP.md</code> passos 5-7.
+    </div>
+
+    {flash.amazon === "connected" && (
+      <div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+        ✅ LWA conectado. Refresh token persistido. Pra audit + sync, falta implementar AWS SigV4.
+      </div>
+    )}
+    {flash.amazon === "denied" && (
+      <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        ⚠️ Autorização negada. {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.amazon === "config_missing" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Configuração incompleta — AMAZON_SPAPI_APP_ID/LWA_CLIENT_ID/LWA_CLIENT_SECRET no Vercel.
+        {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.amazon === "token_failed" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Falha ao trocar código por token LWA.
+        {flash.msg && <><br/><code class="text-xs">{flash.msg}</code></>}
+      </div>
+    )}
+    {flash.amazon === "state_mismatch" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ State CSRF inválido — tente conectar de novo.
+      </div>
+    )}
+    {flash.amazon === "missing_params" && (
+      <div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        ❌ Amazon não retornou code/selling_partner_id/state — tente de novo.
+      </div>
+    )}
+
+    <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Status da conexão</div>
+          <div class="mt-2 flex items-center gap-2 flex-wrap">
+            {status.connected ? (
+              <>
+                <span class="inline-flex items-center rounded-full bg-green-500/20 text-green-300 px-2.5 py-1 text-xs font-medium">
+                  ● LWA Conectado
+                </span>
+                {status.sellingPartnerId && (
+                  <code class="text-xs text-navy-400">{status.sellingPartnerId}</code>
+                )}
+                {status.marketplaceId && (
+                  <span class="text-xs text-navy-400">market {status.marketplaceId}</span>
+                )}
+              </>
+            ) : (
+              <span class="inline-flex items-center rounded-full bg-navy-700 text-navy-200 px-2.5 py-1 text-xs">
+                ● Desconectado
+              </span>
+            )}
+          </div>
+          {status.connected && (
+            <div class="mt-3 text-xs text-navy-300">
+              Access expira: <span class="text-navy-100">{fmtDate(status.accessExpiresAt)}</span>
+              <span class="text-navy-500 ml-2">(refresh LWA não expira)</span>
+            </div>
+          )}
+        </div>
+        <a
+          href="/api/admin/amazon/connect"
+          class="inline-flex items-center gap-2 rounded-lg bg-brand-lime text-navy-900 px-4 py-2 text-sm font-semibold hover:bg-brand-lime/90 transition"
+        >
+          {status.connected ? "Reconectar" : "Conectar Amazon"}
+        </a>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-navy-700/50 bg-navy-800/20 p-5 text-sm text-navy-300">
+      <div class="text-xs uppercase tracking-[0.18em] text-navy-300 mb-2">Setup pendente — passos 5-7</div>
+      <ol class="list-decimal list-inside space-y-1.5">
+        <li>Felipe/Madruguinha: criar conta Amazon Seller Central BR (CNPJ PR Tracker), plano Profissional</li>
+        <li>Felipe: criar app SP-API em Seller Central → Apps & Services → Develop Apps</li>
+        <li>Felipe: anotar Application ID, LWA Client ID, LWA Client Secret</li>
+        <li>Felipe: adicionar env vars Vercel: <code class="text-xs">AMAZON_SPAPI_APP_ID</code>, <code class="text-xs">AMAZON_LWA_CLIENT_ID</code>, <code class="text-xs">AMAZON_LWA_CLIENT_SECRET</code></li>
+        <li>Felipe: criar IAM role na AWS com policy <code class="text-xs">AmazonSPAPIAccess</code></li>
+        <li>Felipe: gerar AWS Access Key ID + Secret pra IAM role, adicionar em env Vercel</li>
+        <li>Implementar AWS SigV4 signing em <code class="text-xs">lib/amazon/api.ts</code></li>
+        <li>Aplicar migration <code class="text-xs">0009_amazon_oauth.sql</code> no Supabase</li>
+        <li>Clicar "Conectar Amazon" acima e autorizar app (modo beta enquanto não aprovado)</li>
+        <li>Detalhes em <code class="text-xs">docs/AMAZON_SETUP.md</code></li>
+      </ol>
+    </section>
+  </div>
+</AdminLayout>
