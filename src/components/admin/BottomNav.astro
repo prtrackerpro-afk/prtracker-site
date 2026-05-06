@@ -9,7 +9,7 @@ import {
 } from "./icons";
 
 interface Props {
-  active: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "alerts" | "settings";
+  active: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "amazon" | "alerts" | "settings";
   alertCount?: number;
 }
 const { active, alertCount = 0 } = Astro.props;
@@ -27,11 +27,12 @@ const allItems: Array<{ id: Props["active"]; href: string; label: string; icon: 
   { id: "tiktok", href: "/admin/tiktok", label: "TikTok", icon: iconShoppingBag },
   { id: "ml", href: "/admin/ml", label: "ML", icon: iconShoppingBag },
   { id: "shopee", href: "/admin/shopee", label: "Shopee", icon: iconShoppingBag },
+  { id: "amazon", href: "/admin/amazon", label: "Amazon", icon: iconShoppingBag },
   { id: "alerts", href: "/admin/alerts", label: "Alertas", icon: iconBell },
 ];
 
 // Mostra só o marketplace ATIVO + Bling como default (esconde os outros 3).
-const marketplaceActive: Array<Props["active"]> = ["tiktok", "ml", "shopee"];
+const marketplaceActive: Array<Props["active"]> = ["tiktok", "ml", "shopee", "amazon"];
 const items = marketplaceActive.includes(active)
   ? allItems.filter((i) => i.id !== "bling" && (i.id === active || !marketplaceActive.includes(i.id)))
   : allItems.filter((i) => !marketplaceActive.includes(i.id));

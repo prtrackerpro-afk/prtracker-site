@@ -13,7 +13,7 @@ import {
 
 interface Props {
   title: string;
-  active?: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "alerts" | "settings";
+  active?: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "amazon" | "alerts" | "settings";
   user?: { email: string };
   alertCount?: number;
 }
@@ -29,6 +29,7 @@ const navItems = [
   { id: "tiktok", label: "TikTok", href: "/admin/tiktok", icon: iconShoppingBag },
   { id: "ml", label: "Mercado Livre", href: "/admin/ml", icon: iconShoppingBag },
   { id: "shopee", label: "Shopee", href: "/admin/shopee", icon: iconShoppingBag },
+  { id: "amazon", label: "Amazon", href: "/admin/amazon", icon: iconShoppingBag },
   { id: "alerts", label: "Alertas", href: "/admin/alerts", icon: iconBell },
 ] as const;
 ---
