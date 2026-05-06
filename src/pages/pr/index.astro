@@ -115,24 +115,26 @@ const { count: unreadCount = 0 } = await supabase
           </span>
         )}
       </a>
-      <div class="flex items-center gap-3 flex-shrink-0">
-        <a href="/pr/notifications" class="relative text-navy-300 hover:text-white" aria-label="Notificações">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <nav class="flex items-center gap-3 flex-shrink-0 text-xs text-navy-300">
+        <a
+          href="/pr/notifications"
+          class="relative inline-flex items-center justify-center hover:text-white"
+          aria-label={Number(unreadCount ?? 0) > 0 ? `${unreadCount} notificações` : "Notificações"}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
             <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
           </svg>
           {unreadCount && unreadCount > 0 && (
-            <span class="absolute -top-1.5 -right-1.5 bg-brand-lime text-navy-900 text-[9px] font-bold rounded-full w-4 h-4 grid place-items-center">
+            <span class="absolute -top-2 -right-2 bg-brand-lime text-navy-900 text-[9px] font-bold rounded-full min-w-4 h-4 px-1 grid place-items-center leading-none">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </a>
-        <a href="/pr/feed" class="text-xs text-navy-300 hover:text-white">Feed</a>
-        <a href="/pr/coach" class="text-xs text-navy-300 hover:text-white">Coach</a>
-        <form method="post" action="/api/pr/auth/logout">
-          <button class="text-xs text-navy-300 hover:text-white">Sair</button>
-        </form>
-      </div>
+        <a href="/pr/feed" class="hover:text-white">Feed</a>
+        <a href="/pr/coach" class="hover:text-white">Coach</a>
+        <a href="/api/pr/auth/logout" class="hover:text-white">Sair</a>
+      </nav>
     </header>
 
     <main class="max-w-2xl mx-auto px-4">

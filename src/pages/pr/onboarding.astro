@@ -1,17 +1,36 @@
 ---
 export const prerender = false;
 import "../../styles/global.css";
+import { getServerSupabase } from "../../lib/supabase/server";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
 
-// If already onboarded, skip to dashboard. Middleware also enforces this
-// but the explicit redirect avoids a flash of the form on direct visits.
-if (athlete.displayName) {
+const url = new URL(Astro.request.url);
+const next = url.searchParams.get("next") || "/pr";
+const editMode = url.searchParams.get("edit") === "1";
+
+// First-time onboarding: redirect to dashboard if já onboarded. Modo edit
+// (?edit=1) pula esse redirect pra deixar o atleta atualizar peso/sexo/IG
+// depois — chamado pelo botão "Editar" do /pr/profile.
+if (athlete.displayName && !editMode) {
   return Astro.redirect("/pr", 302);
 }
 
-const url = new URL(Astro.request.url);
-const next = url.searchParams.get("next") || "/pr";
+// Pre-fill the form em edit mode com os dados que já tem.
+let initialName = athlete.displayName ?? "";
+let initialBw: number | null = athlete.bodyWeightKg ?? null;
+let initialSex: "male" | "female" | null = athlete.sex ?? null;
+let initialBirthYear: number | null = athlete.birthYear ?? null;
+let initialHandle = "";
+if (editMode) {
+  const supabase = getServerSupabase({ headers: Astro.request.headers, cookies: Astro.cookies });
+  const { data: row } = await supabase
+    .from("pr_athletes")
+    .select("instagram_handle")
+    .eq("user_id", athlete.userId)
+    .maybeSingle();
+  initialHandle = (row?.instagram_handle as string | undefined) ?? "";
+}
 ---
 
 <!doctype html>
@@ -20,14 +39,16 @@ const next = url.searchParams.get("next") || "/pr";
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>Bem-vindo · PR Tracker</title>
+    <title>{editMode ? "Editar perfil" : "Bem-vindo"} · PR Tracker</title>
     <link rel="icon" type="image/png" href="/favicon-32.png" />
   </head>
   <body class="min-h-screen bg-navy-900 text-white font-body grid place-items-center px-4 py-8">
     <main class="w-full max-w-md">
       <div class="text-center mb-6">
         <div class="font-display text-3xl tracking-tight text-brand-lime">PR Tracker</div>
-        <div class="text-xs uppercase tracking-widest text-navy-300 mt-1">Configure seu perfil</div>
+        <div class="text-xs uppercase tracking-widest text-navy-300 mt-1">
+          {editMode ? "Editar perfil" : "Configure seu perfil"}
+        </div>
       </div>
 
       <p class="text-sm text-navy-300 text-center mb-6">
@@ -45,6 +66,7 @@ const next = url.searchParams.get("next") || "/pr";
             maxlength="60"
             autocomplete="name"
             placeholder="ex: Felipe Laier"
+            value={initialName}
             class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
           />
         </div>
@@ -53,11 +75,11 @@ const next = url.searchParams.get("next") || "/pr";
           <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Sexo <span class="text-navy-300/60">(pra calibrar o score)</span></label>
           <div class="grid grid-cols-2 gap-2">
             <label class="flex items-center justify-center rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-brand-lime has-[:checked]:bg-brand-lime/10">
-              <input type="radio" name="sex" value="male" class="sr-only" />
+              <input type="radio" name="sex" value="male" class="sr-only" checked={initialSex === "male"} />
               Masculino
             </label>
             <label class="flex items-center justify-center rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-brand-lime has-[:checked]:bg-brand-lime/10">
-              <input type="radio" name="sex" value="female" class="sr-only" />
+              <input type="radio" name="sex" value="female" class="sr-only" checked={initialSex === "female"} />
               Feminino
             </label>
           </div>
@@ -75,6 +97,7 @@ const next = url.searchParams.get("next") || "/pr";
               max="300"
               inputmode="decimal"
               placeholder="80.5"
+              value={initialBw ?? ""}
               class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
             />
           </div>
@@ -87,6 +110,7 @@ const next = url.searchParams.get("next") || "/pr";
               min="1920"
               max="2026"
               placeholder="1995"
+              value={initialBirthYear ?? ""}
               class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
             />
           </div>
@@ -103,6 +127,7 @@ const next = url.searchParams.get("next") || "/pr";
               maxlength="30"
               pattern="[a-zA-Z0-9._]+"
               placeholder="seu.handle"
+              value={initialHandle}
               class="flex-1 bg-transparent px-2 py-2.5 text-sm focus:outline-none"
             />
           </div>
@@ -113,17 +138,24 @@ const next = url.searchParams.get("next") || "/pr";
           id="submit-btn"
           class="w-full rounded-lg bg-brand-lime px-4 py-3 text-sm font-semibold text-navy-900 hover:opacity-90 transition disabled:opacity-50"
         >
-          Pronto, vamos começar
+          {editMode ? "Salvar alterações" : "Pronto, vamos começar"}
         </button>
+
+        {editMode && (
+          <a href="/pr/profile" class="block text-center text-xs text-navy-300 hover:text-white">
+            Cancelar
+          </a>
+        )}
 
         <div id="error-msg" class="text-sm text-red-400 hidden"></div>
       </form>
     </main>
 
-    <script define:vars={{ next }}>
+    <script define:vars={{ next, editMode }}>
       const form = document.getElementById("onboarding-form");
       const errorMsg = document.getElementById("error-msg");
       const submitBtn = document.getElementById("submit-btn");
+      const defaultLabel = editMode ? "Salvar alterações" : "Pronto, vamos começar";
 
       form?.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -154,15 +186,16 @@ const next = url.searchParams.get("next") || "/pr";
             errorMsg.textContent = body.message || "Erro ao salvar.";
             errorMsg.classList.remove("hidden");
             submitBtn.disabled = false;
-            submitBtn.textContent = "Pronto, vamos começar";
+            submitBtn.textContent = defaultLabel;
             return;
           }
-          window.location.href = next;
+          // Em edit mode volta pro perfil, em onboarding vai pro next padrão.
+          window.location.href = editMode ? "/pr/profile" : next;
         } catch {
           errorMsg.textContent = "Erro de conexão.";
           errorMsg.classList.remove("hidden");
           submitBtn.disabled = false;
-          submitBtn.textContent = "Pronto, vamos começar";
+          submitBtn.textContent = defaultLabel;
         }
       });
     </script>

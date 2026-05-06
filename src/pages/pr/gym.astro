@@ -85,7 +85,10 @@ function shortName(label: string): string {
     </header>
 
     <main class="max-w-4xl mx-auto px-2">
-      <div class="rounded-2xl overflow-hidden border border-navy-700 bg-navy-900 relative" style="aspect-ratio: 16/10; min-height: 480px;">
+      <!-- Container com altura concreta. iOS Safari ignora min-height
+           quando o pai tem aspect-ratio, deixando o canvas em 0×0. h-[65vh]
+           com mínimo de 420px garante que a ilha React tenha onde montar. -->
+      <div class="rounded-2xl overflow-hidden border border-navy-700 bg-navy-900 relative h-[65vh] min-h-[420px] sm:h-[70vh]">
         <VirtualGym
           client:only="react"
           athleteName={athlete.displayName ?? "Atleta"}
