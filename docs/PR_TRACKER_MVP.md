@@ -18,7 +18,7 @@ Caderno de troféus + funil pra venda física. Branch: `feat/pr-tracker-app`.
 | **Log de PR** | [src/pages/pr/log.astro](../src/pages/pr/log.astro) | Form mínimo, ≤30s. |
 | **Celebração** | [src/pages/pr/celebrate/[id].astro](../src/pages/pr/celebrate/[id].astro) | Mostra PR + delta + 2 CTAs (troféu, card). |
 | **Box leaderboard** | [src/pages/pr/box/[slug].astro](../src/pages/pr/box/[slug].astro) | Público, lê via RPC `pr_box_leaderboard`. |
-| **Card de compartilhamento** | [api/pr/card/[id].png.ts](../src/pages/api/pr/card/[id].png.ts) | **Stub SVG** (1080×1920, dark navy + lime). Substituir por Satori/Resvg pra PNG real. |
+| **Card de compartilhamento** | [api/pr/card/[id].svg.ts](../src/pages/api/pr/card/[id].svg.ts) | **SVG 1080×1920** (dark navy + lime). Story upload mobile não aceita SVG — substituir por PNG real (Satori/Resvg) em TODO #3. |
 
 ## Pré-requisitos pra subir
 
