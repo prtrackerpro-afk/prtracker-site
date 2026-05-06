@@ -109,168 +109,139 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
   const headR = 0.21; // BIGGER (era 0.165) — visível de qualquer ângulo
 
-  // === HEAD ROBLOX CLÁSSICO — cube skin + 2 olhos + sorriso ======
-  // Reference do Felipe: cubo light skin + capacete preto cobrindo
-  // top/laterais/trás + 2 olhos pretos simples + sorriso aberto.
-  // ZERO sobreposição de detalhes.
+  // === HEAD ESFÉRICO — round head + face simples + hair cap =====
+  // User explicitly: cabeça tem que ser REDONDA. Sphere skin + face
+  // plane na frente (2 olhos pretos + sorriso) + hair cap envolvente.
   const head = new THREE.Group();
+  const headSize = headR * 2.0; // diametro pro pescoco
 
-  const headSize = headR * 2.0; // cube ~0.42m
+  // Skull: esfera ligeiramente alongada vertical (formato facial)
   const skull = new THREE.Mesh(
-    new THREE.BoxGeometry(headSize, headSize, headSize),
+    new THREE.SphereGeometry(headR, 32, 24),
     skinMat
   );
+  skull.scale.set(1.0, 1.08, 1.0);
   skull.castShadow = true;
   head.add(skull);
 
-  // FACE: 2 olhos pretos + sorriso aberto. Sem mais nada.
+  // FACE simples: 2 olhos pretos + sorriso aberto branco. Aplicado
+  // como plano sutil na frente da esfera (pequeno offset).
   const faceCanvas = document.createElement("canvas");
   faceCanvas.width = 512;
   faceCanvas.height = 512;
   const fctx = faceCanvas.getContext("2d")!;
-  // Fundo na cor da pele (funde com o cubo)
-  fctx.fillStyle = prefs.skin;
-  fctx.fillRect(0, 0, 512, 512);
+  // Fundo transparente — face só os elementos, esfera skin aparece
+  fctx.clearRect(0, 0, 512, 512);
 
   // 2 OLHOS PRETOS (ovais simples)
   fctx.fillStyle = "#000000";
-  for (const cx of [180, 332]) {
+  for (const cx of [185, 327]) {
     fctx.beginPath();
-    fctx.ellipse(cx, 240, 22, 30, 0, 0, Math.PI * 2);
+    fctx.ellipse(cx, 240, 24, 32, 0, 0, Math.PI * 2);
     fctx.fill();
   }
 
-  // SORRISO ABERTO (curva preta com interior branco)
-  // Outer dark
+  // SORRISO ABERTO (curva preta com interior branco — dentes visíveis)
   fctx.fillStyle = "#000000";
   fctx.beginPath();
-  fctx.ellipse(256, 350, 80, 36, 0, 0, Math.PI * 2);
+  fctx.ellipse(256, 348, 86, 38, 0, 0, Math.PI * 2);
   fctx.fill();
-  // Inner white (dentes)
   fctx.fillStyle = "#ffffff";
   fctx.beginPath();
-  fctx.ellipse(256, 350, 70, 26, 0, 0, Math.PI * 2);
+  fctx.ellipse(256, 350, 76, 28, 0, 0, Math.PI * 2);
   fctx.fill();
-  // Lábio inferior preto cobrindo metade superior pra "abertura" só na metade inferior
-  fctx.fillStyle = prefs.skin;
-  fctx.fillRect(176, 314, 160, 28);
-  // Linha sutil no meio da boca pra separar os labios
+  // "Cobre" metade superior (faz sorriso só inferior)
+  fctx.fillStyle = "rgba(0,0,0,0)"; // mantém transparente
+  // Em vez disso, desenha uma forma sólida em transparente
+  fctx.globalCompositeOperation = "destination-out";
+  fctx.fillStyle = "#000";
+  fctx.fillRect(170, 308, 172, 32);
+  fctx.globalCompositeOperation = "source-over";
+  // Linha do meio
   fctx.fillStyle = "#000000";
-  fctx.fillRect(176, 348, 160, 3);
+  fctx.fillRect(180, 348, 152, 3);
 
   const faceTex = new THREE.CanvasTexture(faceCanvas);
   faceTex.colorSpace = THREE.SRGBColorSpace;
   const face = new THREE.Mesh(
-    new THREE.PlaneGeometry(headSize * 0.99, headSize * 0.99),
-    new THREE.MeshBasicMaterial({ map: faceTex })
+    new THREE.PlaneGeometry(headR * 1.7, headR * 1.7),
+    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
   );
-  face.position.set(0, 0, headSize / 2 + 0.001);
+  face.position.set(0, 0.005, headR * 0.92);
   head.add(face);
 
-  // === CABELO 3D Roblox-moderno — VOLUMOSO, cobre top+laterais+trás ===
-  // Definidor visual da silhueta. Cobre TUDO menos a face frontal. Hair
-  // alto + envoltório lateral + envoltório traseiro pra parecer
-  // realmente cabelo, não plaquinha no topo.
+  // === CABELO esférico envolvente sobre a cabeça redonda =========
+  // Hemisfério ligeiramente maior que o skull cobrindo top + lateral
+  // + nuca, deixando só a face na frente exposta.
   if (prefs.hairStyle !== "bald") {
     if (prefs.hairStyle === "short") {
-      // Cap top alta cobrindo tudo acima da testa
-      const capH = 0.18;
-      const hairTop = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.08, capH, headSize * 1.02),
-        hairMat
+      // Cap hemisférica sólida cobrindo top + sides + back
+      const capGeom = new THREE.SphereGeometry(
+        headR + 0.02,
+        32,
+        24,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 1.65
       );
-      hairTop.position.set(0, headSize / 2 + capH / 2 - 0.05, -0.005);
-      hairTop.castShadow = true;
-      head.add(hairTop);
-      // Franja sutil na frente acima das sobrancelhas (nao cobre olhos)
-      const fringe = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.06, 0.05, 0.04),
-        hairMat
-      );
-      fringe.position.set(0, headSize * 0.36, headSize * 0.5);
-      head.add(fringe);
-      // Lateral envolvendo (orelhas)
-      for (const sx of [-headSize / 2 - 0.01, headSize / 2 + 0.01]) {
-        const side = new THREE.Mesh(
-          new THREE.BoxGeometry(0.05, headSize * 0.55, headSize * 0.95),
-          hairMat
-        );
-        side.position.set(sx, headSize * 0.05, -0.005);
-        head.add(side);
-      }
-      // Trás cobrindo nuca
-      const back = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.02, headSize * 0.55, 0.06),
-        hairMat
-      );
-      back.position.set(0, headSize * 0.05, -headSize / 2 - 0.005);
-      head.add(back);
+      const cap = new THREE.Mesh(capGeom, hairMat);
+      cap.scale.set(1.0, 1.08, 1.0);
+      cap.position.y = -0.02;
+      cap.castShadow = true;
+      head.add(cap);
     } else if (prefs.hairStyle === "long") {
-      // Cap top alta
-      const capH = 0.2;
-      const hairTop = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.1, capH, headSize * 1.04),
-        hairMat
+      // Cap maior + cabelo longo descendo nas costas
+      const capGeom = new THREE.SphereGeometry(
+        headR + 0.025,
+        32,
+        24,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 1.55
       );
-      hairTop.position.set(0, headSize / 2 + capH / 2 - 0.05, -0.005);
-      hairTop.castShadow = true;
-      head.add(hairTop);
-      // Cabelo longo descendo até os ombros nas costas
-      const hairBack = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.05, headSize * 2.0, 0.1),
-        hairMat
-      );
-      hairBack.position.set(0, -headSize * 0.4, -headSize / 2 + 0.005);
-      hairBack.castShadow = true;
-      head.add(hairBack);
-      // Mechas envolvendo cabeça nas laterais (cobre orelhas)
-      for (const sx of [-headSize / 2 - 0.025, headSize / 2 + 0.025]) {
-        const sideMech = new THREE.Mesh(
-          new THREE.BoxGeometry(0.06, headSize * 1.3, headSize * 0.85),
-          hairMat
-        );
-        sideMech.position.set(sx, -headSize * 0.25, -headSize * 0.05);
-        sideMech.castShadow = true;
-        head.add(sideMech);
-      }
-      // Franja na frente (acima das sobrancelhas)
-      const fringe = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.06, 0.06, 0.05),
-        hairMat
-      );
-      fringe.position.set(0, headSize * 0.34, headSize * 0.5);
-      head.add(fringe);
-    } else if (prefs.hairStyle === "ponytail") {
-      // Cap top puxada pra trás
-      const capH = 0.16;
-      const hairTop = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.06, capH, headSize * 1.0),
-        hairMat
-      );
-      hairTop.position.set(0, headSize / 2 + capH / 2 - 0.05, -0.02);
-      hairTop.castShadow = true;
-      head.add(hairTop);
-      // Trás cobrindo nuca
+      const cap = new THREE.Mesh(capGeom, hairMat);
+      cap.scale.set(1.0, 1.08, 1.0);
+      cap.castShadow = true;
+      head.add(cap);
+      // Cabelo longo nas costas (capsula achatada)
       const back = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 0.9, headSize * 0.6, 0.06),
+        new THREE.CapsuleGeometry(headR * 0.95, 0.5, 6, 14),
         hairMat
       );
-      back.position.set(0, headSize * 0.05, -headSize / 2 - 0.005);
+      back.scale.set(1, 1, 0.4);
+      back.position.set(0, -headR * 0.7, -headR * 0.5);
+      back.castShadow = true;
       head.add(back);
-      // Tie ball atras
+    } else if (prefs.hairStyle === "ponytail") {
+      // Cap puxada pra trás
+      const capGeom = new THREE.SphereGeometry(
+        headR + 0.018,
+        32,
+        24,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 1.7
+      );
+      const cap = new THREE.Mesh(capGeom, hairMat);
+      cap.position.set(0, 0, -0.02);
+      head.add(cap);
+      // Tie ball atrás (esfera pequena)
       const tieBall = new THREE.Mesh(
-        new THREE.SphereGeometry(0.05, 12, 10),
+        new THREE.SphereGeometry(0.05, 14, 10),
         hairMat
       );
-      tieBall.position.set(0, headSize * 0.3, -headSize / 2 - 0.06);
+      tieBall.position.set(0, headR * 0.15, -headR * 0.92);
       head.add(tieBall);
-      // Tail descendo
+      // Tail descendo (cilindro inclinado)
       const tail = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.03, 0.45, 14),
+        new THREE.CylinderGeometry(0.055, 0.03, 0.42, 14),
         hairMat
       );
-      tail.position.set(0, 0.05, -headSize / 2 - 0.12);
-      tail.rotation.x = -0.4;
+      tail.position.set(0, -headR * 0.05, -headR * 1.1);
+      tail.rotation.x = -0.5;
       tail.castShadow = true;
       head.add(tail);
     }
@@ -1300,7 +1271,11 @@ export function buildCeilingBeams(roomW: number, roomD: number, height: number):
 // WALL LOGO — texto "PR TRACKER" gigante na parede
 // =================================================================
 
-export function buildWallLogo(width: number, accentHex: string): THREE.Mesh {
+export function buildWallLogo(
+  width: number,
+  accentHex: string,
+  subtitle?: string
+): THREE.Mesh {
   const c = document.createElement("canvas");
   c.width = 4096;
   c.height = 1024;
@@ -1310,19 +1285,19 @@ export function buildWallLogo(width: number, accentHex: string): THREE.Mesh {
   // Outline duplo
   ctx.strokeStyle = accentHex;
   ctx.lineWidth = 12;
-  ctx.font = "900 600px Archivo Black, Inter, sans-serif";
+  ctx.font = "900 540px Archivo Black, Inter, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.strokeText("PR TRACKER", 2048, 480);
+  ctx.strokeText("PR TRACKER", 2048, 440);
 
-  // Fill principal
   ctx.fillStyle = accentHex;
-  ctx.fillText("PR TRACKER", 2048, 480);
+  ctx.fillText("PR TRACKER", 2048, 440);
 
-  // Subtitle abaixo
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "500 100px Inter, sans-serif";
-  ctx.fillText("HALL OF FAME", 2048, 880);
+  if (subtitle) {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "500 90px Inter, sans-serif";
+    ctx.fillText(subtitle, 2048, 820);
+  }
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -1379,12 +1354,13 @@ export interface HallPedestalProps {
   exerciseShort: string;
   weightKg: number | null; // null = ghost pedestal (não desbloqueado)
   tierColorHex: string; // cor do tier (ou cinza se ghost)
+  tierName?: string | null; // ex: "Avançado" — opcional
   hasUnlocked: boolean;
 }
 
 export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
   const group = new THREE.Group();
-  const { exerciseLabel, exerciseShort, weightKg, tierColorHex, hasUnlocked } = props;
+  const { exerciseLabel, exerciseShort, weightKg, tierColorHex, tierName, hasUnlocked } = props;
 
   // === BASE branca off-white estilo museum ====================
   const baseW = 0.75;
@@ -1464,24 +1440,24 @@ export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
     pctx.strokeStyle = tierColorHex;
     pctx.lineWidth = 14;
     pctx.strokeRect(7, 7, 754, 498);
-    // Tag "PR" pequena
+    // Tag tier name no topo (ex: "AVANÇADO")
     pctx.fillStyle = tierColorHex;
     pctx.font = "900 50px Archivo Black, Inter, sans-serif";
     pctx.textAlign = "center";
     pctx.textBaseline = "middle";
-    pctx.fillText("PR", 384, 80);
+    pctx.fillText(tierName ? tierName.toUpperCase() : "PR", 384, 70);
     // Número GIGANTE
     pctx.fillStyle = "#01002A";
-    pctx.font = "900 280px Archivo Black, Inter, sans-serif";
-    pctx.fillText(String(Math.round(weightKg)), 384, 270);
+    pctx.font = "900 260px Archivo Black, Inter, sans-serif";
+    pctx.fillText(String(Math.round(weightKg)), 384, 260);
     // KG
     pctx.fillStyle = "#4d4d51";
-    pctx.font = "700 60px Inter, sans-serif";
-    pctx.fillText("KG", 384, 410);
+    pctx.font = "700 56px Inter, sans-serif";
+    pctx.fillText("KG", 384, 400);
     // Exercise embaixo
     pctx.fillStyle = "#01002A";
-    pctx.font = "600 38px Inter, sans-serif";
-    pctx.fillText(exerciseShort.toUpperCase(), 384, 470);
+    pctx.font = "600 36px Inter, sans-serif";
+    pctx.fillText(exerciseShort.toUpperCase(), 384, 465);
   } else {
     // Plaqueta GHOST: fundo cinza, "?" gigante
     pctx.fillStyle = "#1a1a22";
@@ -1564,6 +1540,255 @@ export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
   group.add(hitBox);
 
   return { group, ledStripe, hitBox };
+}
+
+// =================================================================
+// SKILLS BADGES — display de ginásticos / movimentos não-weight
+// (BMU, MU, HSPU, T2B, DU, Pistol — ainda em "Em breve" mas visíveis)
+// =================================================================
+
+export interface SkillSlot {
+  /** ID interno (futuro pr_skills row). */
+  id: string;
+  /** Sigla curta: "BMU", "MU", etc. */
+  short: string;
+  /** Nome cheio: "Bar Muscle-Up". */
+  label: string;
+  /** Ícone emoji ou letra pra centralizar. */
+  emoji: string;
+  /** Já desbloqueado? (V9 sempre false — em breve.) */
+  unlocked: boolean;
+}
+
+export const SKILL_SLOTS: SkillSlot[] = [
+  { id: "bmu", short: "BMU", label: "Bar Muscle-Up", emoji: "🏆", unlocked: false },
+  { id: "mu", short: "MU", label: "Ring Muscle-Up", emoji: "💍", unlocked: false },
+  { id: "hspu", short: "HSPU", label: "Handstand Push-Up", emoji: "🤸", unlocked: false },
+  { id: "t2b", short: "T2B", label: "Toes-to-Bar", emoji: "🦵", unlocked: false },
+  { id: "du", short: "DU", label: "Double-Under", emoji: "⏩", unlocked: false },
+  { id: "pistol", short: "PISTOL", label: "Pistol Squat", emoji: "🔫", unlocked: false },
+];
+
+/**
+ * Painel mural de skills badges. 6 medalhas circulares na parede.
+ * Locked = cinza com "?" / Unlocked = lime accent com check.
+ */
+export function buildSkillsBoard(accentHex: string): THREE.Group {
+  const g = new THREE.Group();
+
+  // Fundo do painel (placa preta com borda lime)
+  const boardW = 4.0;
+  const boardH = 1.8;
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(boardW, boardH, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x0a0a16, roughness: 0.7, metalness: 0.2 })
+  );
+  g.add(board);
+
+  // Borda lime
+  const borderTop = new THREE.Mesh(
+    new THREE.BoxGeometry(boardW, 0.04, 0.08),
+    new THREE.MeshBasicMaterial({ color: accentHex })
+  );
+  borderTop.position.y = boardH / 2;
+  g.add(borderTop);
+  const borderBot = borderTop.clone();
+  borderBot.position.y = -boardH / 2;
+  g.add(borderBot);
+
+  // Título "GINÁSTICOS" em cima do board
+  const titleCanvas = document.createElement("canvas");
+  titleCanvas.width = 1024;
+  titleCanvas.height = 192;
+  const tctx = titleCanvas.getContext("2d")!;
+  tctx.clearRect(0, 0, 1024, 192);
+  tctx.fillStyle = accentHex;
+  tctx.font = "900 110px Archivo Black, Inter, sans-serif";
+  tctx.textAlign = "center";
+  tctx.textBaseline = "middle";
+  tctx.fillText("GINÁSTICOS", 512, 70);
+  tctx.fillStyle = "#9ca3af";
+  tctx.font = "500 38px Inter, sans-serif";
+  tctx.fillText("Em breve · Desbloqueie cada skill", 512, 145);
+  const titleTex = new THREE.CanvasTexture(titleCanvas);
+  titleTex.colorSpace = THREE.SRGBColorSpace;
+  const title = new THREE.Mesh(
+    new THREE.PlaneGeometry(boardW * 0.92, 0.42),
+    new THREE.MeshBasicMaterial({ map: titleTex, transparent: true })
+  );
+  title.position.set(0, boardH / 2 - 0.32, 0.04);
+  g.add(title);
+
+  // 6 badges circulares (3 colunas × 2 linhas)
+  const COLS = 3;
+  const ROWS = 2;
+  for (let i = 0; i < SKILL_SLOTS.length; i++) {
+    const slot = SKILL_SLOTS[i]!;
+    const row = Math.floor(i / COLS);
+    const col = i % COLS;
+    const x = -boardW / 2 + 0.6 + col * ((boardW - 1.2) / (COLS - 1));
+    const y = 0.05 - row * 0.5;
+
+    // Disco da badge
+    const isUnlocked = slot.unlocked;
+    const badgeColor = isUnlocked ? accentHex : "#3a3a44";
+    const badge = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.18, 0.04, 24),
+      new THREE.MeshStandardMaterial({
+        color: badgeColor,
+        roughness: 0.4,
+        metalness: 0.3,
+        emissive: isUnlocked ? badgeColor : 0x000000,
+        emissiveIntensity: isUnlocked ? 0.25 : 0,
+      })
+    );
+    badge.rotation.x = Math.PI / 2;
+    badge.position.set(x, y, 0.05);
+    g.add(badge);
+
+    // Sigla no centro do disco (canvas)
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext("2d")!;
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.fillStyle = isUnlocked ? "#01002A" : "#6a6a74";
+    ctx.font = "900 70px Archivo Black, Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(slot.short, 128, 110);
+    ctx.fillStyle = isUnlocked ? "#01002A" : "#6a6a74";
+    ctx.font = "500 28px Inter, sans-serif";
+    ctx.fillText(isUnlocked ? "✓" : "?", 128, 175);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sigla = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.32, 0.32),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+    );
+    sigla.position.set(x, y, 0.08);
+    g.add(sigla);
+  }
+
+  return g;
+}
+
+// =================================================================
+// RUNNING BENCHMARKS — display de tempos de corrida
+// =================================================================
+
+export interface RunSlot {
+  distance: string; // "5K", "10K", "21K", "42K"
+  label: string;
+  bestTimeSec: number | null;
+}
+
+export const DEFAULT_RUN_SLOTS: RunSlot[] = [
+  { distance: "5K", label: "5 km", bestTimeSec: null },
+  { distance: "10K", label: "10 km", bestTimeSec: null },
+  { distance: "21K", label: "Meia maratona", bestTimeSec: null },
+  { distance: "42K", label: "Maratona", bestTimeSec: null },
+];
+
+/** Painel mural com 4 slots de tempo de corrida. */
+export function buildRunBoard(accentHex: string, slots: RunSlot[]): THREE.Group {
+  const g = new THREE.Group();
+
+  const boardW = 4.0;
+  const boardH = 1.4;
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(boardW, boardH, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x0a0a16, roughness: 0.7, metalness: 0.2 })
+  );
+  g.add(board);
+
+  // Borda lime
+  const borderL = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, boardH, 0.08),
+    new THREE.MeshBasicMaterial({ color: accentHex })
+  );
+  borderL.position.x = -boardW / 2;
+  g.add(borderL);
+  const borderR = borderL.clone();
+  borderR.position.x = boardW / 2;
+  g.add(borderR);
+
+  // Título
+  const titleCanvas = document.createElement("canvas");
+  titleCanvas.width = 1024;
+  titleCanvas.height = 192;
+  const tctx = titleCanvas.getContext("2d")!;
+  tctx.clearRect(0, 0, 1024, 192);
+  tctx.fillStyle = accentHex;
+  tctx.font = "900 100px Archivo Black, Inter, sans-serif";
+  tctx.textAlign = "center";
+  tctx.textBaseline = "middle";
+  tctx.fillText("CORRIDA", 512, 70);
+  tctx.fillStyle = "#9ca3af";
+  tctx.font = "500 32px Inter, sans-serif";
+  tctx.fillText("Em breve · Registre seus tempos", 512, 140);
+  const titleTex = new THREE.CanvasTexture(titleCanvas);
+  titleTex.colorSpace = THREE.SRGBColorSpace;
+  const title = new THREE.Mesh(
+    new THREE.PlaneGeometry(boardW * 0.92, 0.36),
+    new THREE.MeshBasicMaterial({ map: titleTex, transparent: true })
+  );
+  title.position.set(0, boardH / 2 - 0.28, 0.04);
+  g.add(title);
+
+  // 4 slots horizontais
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i]!;
+    const x = -boardW / 2 + 0.55 + i * ((boardW - 1.1) / (slots.length - 1));
+    const y = -0.15;
+
+    // Disco de distância
+    const unlocked = slot.bestTimeSec != null;
+    const color = unlocked ? accentHex : "#3a3a44";
+    const disc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 0.04, 24),
+      new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.5,
+        metalness: 0.2,
+        emissive: unlocked ? color : 0x000000,
+        emissiveIntensity: unlocked ? 0.2 : 0,
+      })
+    );
+    disc.rotation.x = Math.PI / 2;
+    disc.position.set(x, y, 0.05);
+    g.add(disc);
+
+    // Texto: distância + tempo
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext("2d")!;
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.fillStyle = unlocked ? "#01002A" : "#6a6a74";
+    ctx.font = "900 64px Archivo Black, Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(slot.distance, 128, 100);
+    ctx.font = "500 26px Inter, sans-serif";
+    if (unlocked && slot.bestTimeSec != null) {
+      const m = Math.floor(slot.bestTimeSec / 60);
+      const s = slot.bestTimeSec % 60;
+      ctx.fillText(`${m}:${String(s).padStart(2, "0")}`, 128, 175);
+    } else {
+      ctx.fillText("?", 128, 175);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const txt = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.4, 0.4),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+    );
+    txt.position.set(x, y, 0.08);
+    g.add(txt);
+  }
+
+  return g;
 }
 
 // =================================================================

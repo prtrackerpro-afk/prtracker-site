@@ -11,6 +11,9 @@ import {
   buildHallPedestal,
   buildCeilingBeams,
   buildWallLogo,
+  buildSkillsBoard,
+  buildRunBoard,
+  DEFAULT_RUN_SLOTS,
 } from "../../lib/pr/gym/builders";
 import { HALL_EXERCISES, UNLOCK_THRESHOLDS } from "../../lib/pr/gym/hall";
 import { exerciseLabel as exerciseLabelFn } from "../../lib/pr/exercises";
@@ -43,6 +46,11 @@ export interface GymTrophy {
   exerciseLabel: string;
 }
 
+interface GhostExercise {
+  id: string;
+  label: string;
+}
+
 interface Props {
   athleteName: string;
   accent: string;
@@ -55,6 +63,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
   const knobRef = useRef<HTMLDivElement>(null);
 
   const [selected, setSelected] = useState<GymTrophy | null>(null);
+  const [selectedGhost, setSelectedGhost] = useState<GhostExercise | null>(null);
   const [reelOpen, setReelOpen] = useState(false);
   const [activeReel, setActiveReel] = useState<Reel | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
@@ -75,7 +84,11 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
   activeReelRef.current = activeReel;
   const inputLockedRef = useRef(false);
   inputLockedRef.current =
-    selected !== null || reelOpen || showTutorial || customOpen;
+    selected !== null ||
+    selectedGhost !== null ||
+    reelOpen ||
+    showTutorial ||
+    customOpen;
 
   function dismissTutorial() {
     setShowTutorial(false);
@@ -224,31 +237,41 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     // === WALL LOGO gigante ATRAS dos troféus =======================
     // "PR TRACKER · HALL OF FAME" ocupando ~10m de largura na parede.
     // Domina a parede do fundo como num CrossFit box real.
-    // Logo SEMPRE em lime brand (#D8FF2C), nao na cor do tier — marca
-    // PR Tracker fixa, identidade visual.
-    const wallLogo = buildWallLogo(11, "#D8FF2C");
-    wallLogo.position.set(0, WALL_H - 1.6, -ROOM_D / 2 + 0.04);
+    // Logo wall PR TRACKER em lime brand (#D8FF2C). Subtitle com
+    // tier global do atleta (ex: "AVANÇADO" — identidade pessoal).
+    // Tier vem dos trofeus: pega o de maior rank ou usa "ATLETA" default.
+    const tierNames = trophies.map((t) => {
+      // reverse-lookup tier por cor
+      const entry = Object.values(TIER_META).find((meta) => meta.color === t.color);
+      return entry?.label ?? "Atleta";
+    });
+    const tierByRank = (name: string) =>
+      Object.values(TIER_META).find((m) => m.label === name)?.rank ?? 0;
+    const topTier = tierNames.sort((a, b) => tierByRank(b) - tierByRank(a))[0] ?? "ATLETA";
+    const headerSubtitle = topTier.toUpperCase();
+
+    const wallLogo = buildWallLogo(9, "#D8FF2C", headerSubtitle);
+    wallLogo.position.set(0, WALL_H - 2.0, -ROOM_D / 2 + 0.04);
     scene.add(wallLogo);
 
-    // Subtítulo com nome do atleta abaixo do logo
+    // Subtítulo com NOME do atleta abaixo do logo (proeminente)
     const subPlaqueCanvas = document.createElement("canvas");
-    subPlaqueCanvas.width = 1536;
-    subPlaqueCanvas.height = 192;
+    subPlaqueCanvas.width = 2048;
+    subPlaqueCanvas.height = 256;
     const sptx = subPlaqueCanvas.getContext("2d")!;
-    sptx.fillStyle = "#01002A";
-    sptx.fillRect(0, 0, 1536, 192);
+    sptx.clearRect(0, 0, 2048, 256);
     sptx.fillStyle = "#ffffff";
-    sptx.font = "700 80px Inter, sans-serif";
+    sptx.font = "900 130px Archivo Black, Inter, sans-serif";
     sptx.textAlign = "center";
     sptx.textBaseline = "middle";
-    sptx.fillText(athleteName.toUpperCase(), 768, 96);
+    sptx.fillText(athleteName.toUpperCase(), 1024, 128);
     const subTex = new THREE.CanvasTexture(subPlaqueCanvas);
     subTex.colorSpace = THREE.SRGBColorSpace;
     const subPlaque = new THREE.Mesh(
-      new THREE.PlaneGeometry(5, 0.6),
+      new THREE.PlaneGeometry(7, 0.8),
       new THREE.MeshBasicMaterial({ map: subTex, transparent: true })
     );
-    subPlaque.position.set(0, WALL_H - 3.6, -ROOM_D / 2 + 0.05);
+    subPlaque.position.set(0, WALL_H - 3.4, -ROOM_D / 2 + 0.05);
     scene.add(subPlaque);
 
     // === HALL OF FAME V7 ==========================================
@@ -310,6 +333,11 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       const exLabel = exerciseLabelFn(exId);
       const exShort = exLabel.length > 14 ? exLabel.slice(0, 12) + "…" : exLabel;
       const tierColorHex = t?.color ?? "#5a5a64";
+      // Reverse-lookup do tier name a partir da cor
+      const tierEntry = t
+        ? Object.values(TIER_META).find((m) => m.color === t.color)
+        : null;
+      const tierName = tierEntry?.label ?? null;
       const x = startX + i * SLOT_W;
 
       const ped = buildHallPedestal({
@@ -317,6 +345,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
         exerciseShort: exShort,
         weightKg: t?.weightKg ?? null,
         tierColorHex,
+        tierName,
         hasUnlocked: !!t,
       });
       ped.group.position.set(x, 0.18, -ROOM_D / 2 + 1.0);
@@ -462,6 +491,139 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     aisleLine.position.set(0, 0.005, -1);
     scene.add(aisleLine);
 
+    // === SKILLS BOARD (parede direita) ============================
+    const skillsBoard = buildSkillsBoard("#D8FF2C");
+    skillsBoard.position.set(ROOM_W / 2 - 0.04, 2.5, -3);
+    skillsBoard.rotation.y = -Math.PI / 2;
+    scene.add(skillsBoard);
+
+    // === RUN BOARD (parede direita, abaixo do skills) =============
+    const runBoard = buildRunBoard("#D8FF2C", DEFAULT_RUN_SLOTS);
+    runBoard.position.set(ROOM_W / 2 - 0.04, 1.0, 3);
+    runBoard.rotation.y = -Math.PI / 2;
+    scene.add(runBoard);
+
+    // === PROJECTOR ROOM (canto esquerdo-frente) ===================
+    // Sala dedicada de Reels: tela grande de projeção em uma "alcova"
+    // formada por 2 paredes parciais, com SOFA pra sentar e ver.
+    const projRoomZ = ROOM_D / 2 - 3.5;
+    const projRoomX = -ROOM_W / 2 + 0.5;
+
+    // Tela grande (4m × 2.25m, 16:9)
+    const projScreenCanvas = document.createElement("canvas");
+    projScreenCanvas.width = 1280;
+    projScreenCanvas.height = 720;
+    const psctx = projScreenCanvas.getContext("2d")!;
+    const projScreenTex = new THREE.CanvasTexture(projScreenCanvas);
+    projScreenTex.colorSpace = THREE.SRGBColorSpace;
+
+    const projScreenFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 2.4, 4.18),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.3, metalness: 0.5 })
+    );
+    projScreenFrame.position.set(projRoomX - 0.03, 2.4, projRoomZ);
+    scene.add(projScreenFrame);
+
+    const projScreen = new THREE.Mesh(
+      new THREE.PlaneGeometry(4, 2.25),
+      new THREE.MeshBasicMaterial({ map: projScreenTex })
+    );
+    projScreen.position.set(projRoomX - 0.005, 2.4, projRoomZ);
+    projScreen.rotation.y = Math.PI / 2;
+    projScreen.userData.kind = "projector-screen";
+    scene.add(projScreen);
+
+    // Função pra desenhar conteúdo da tela
+    function drawProjectorScreen(t: number, currentReel: Reel | null) {
+      const ctx = psctx;
+      const w = 1280;
+      const h = 720;
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "#01002A");
+      grad.addColorStop(1, "#0a0050");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+      // Sweep lime
+      const sx = ((t * 0.18) % 1) * w;
+      const lg = ctx.createLinearGradient(sx - 200, 0, sx + 200, 0);
+      lg.addColorStop(0, "rgba(216,255,44,0)");
+      lg.addColorStop(0.5, "rgba(216,255,44,0.12)");
+      lg.addColorStop(1, "rgba(216,255,44,0)");
+      ctx.fillStyle = lg;
+      ctx.fillRect(0, 0, w, h);
+
+      if (currentReel) {
+        ctx.fillStyle = "#D8FF2C";
+        ctx.font = "900 92px Archivo Black, Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(currentReel.title.toUpperCase(), w / 2, h / 2 - 60);
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "500 28px Inter, sans-serif";
+        ctx.fillText(currentReel.subtitle, w / 2, h / 2 + 8);
+        const pulse = (Math.sin(t * 3) + 1) / 2;
+        ctx.fillStyle = `rgba(216,255,44,${0.5 + pulse * 0.5})`;
+        ctx.font = "900 22px Archivo Black, Inter, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("▶ TOCANDO", 40, h - 56);
+      } else {
+        ctx.fillStyle = "#D8FF2C";
+        ctx.font = "900 110px Archivo Black, Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("PR REELS", w / 2, h / 2 - 30);
+        ctx.fillStyle = "#fff";
+        ctx.font = "700 36px Inter, sans-serif";
+        ctx.fillText("Clica na tela", w / 2, h / 2 + 50);
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "500 22px Inter, sans-serif";
+        ctx.fillText("Em breve · auto-Reel dos seus PRs", w / 2, h / 2 + 100);
+      }
+      projScreenTex.needsUpdate = true;
+    }
+
+    // Projetor pendurado no teto + cone de luz
+    const projBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.22, 0.55),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.4, metalness: 0.5 })
+    );
+    projBody.position.set(projRoomX + 1.8, WALL_H - 0.5, projRoomZ);
+    scene.add(projBody);
+    const projLens = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.09, 0.07, 14),
+      new THREE.MeshStandardMaterial({
+        color: 0xD8FF2C,
+        emissive: 0xD8FF2C,
+        emissiveIntensity: 0.5,
+      })
+    );
+    projLens.rotation.z = Math.PI / 2;
+    projLens.position.set(projRoomX + 2.05, WALL_H - 0.5, projRoomZ);
+    scene.add(projLens);
+
+    // Sofá / banco baixo em frente à tela
+    const sofaSeat = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 0.32, 0.7),
+      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.7, metalness: 0.1 })
+    );
+    sofaSeat.position.set(projRoomX + 2.6, 0.16, projRoomZ);
+    sofaSeat.castShadow = true;
+    scene.add(sofaSeat);
+    const sofaBack = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 0.5, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.7, metalness: 0.1 })
+    );
+    sofaBack.position.set(projRoomX + 2.6, 0.48, projRoomZ + 0.4);
+    scene.add(sofaBack);
+    colliders.push({ cx: projRoomX + 2.6, cz: projRoomZ, hw: 1.2, hd: 0.5 });
+
+    // Spot dim no projetor
+    const projSpot = new THREE.SpotLight(0xddc890, 0.6, 10, Math.PI / 5, 0.55, 1.4);
+    projSpot.position.set(projRoomX + 2.5, 5.5, projRoomZ);
+    projSpot.target.position.set(projRoomX + 1, 1.5, projRoomZ);
+    scene.add(projSpot);
+    scene.add(projSpot.target);
+
     // === Avatar ====================================================
     const avatarParts = buildAvatar(avatarPrefs);
     // Avatar começa LONGE do stage (entrada, z=ROOM_HALF_D - 1)
@@ -579,18 +741,26 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       ndc.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
       ndc.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster.intersectObject(trophiesGroup, true);
+      const targets: THREE.Object3D[] = [trophiesGroup, projScreen];
+      const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
       if (first) {
         let obj: THREE.Object3D | null = first.object;
-        while (obj && !obj.userData.trophy && !obj.userData.ghostExercise) {
+        while (
+          obj &&
+          !obj.userData.trophy &&
+          !obj.userData.ghostExercise &&
+          obj.userData.kind !== "projector-screen"
+        ) {
           obj = obj.parent;
         }
         if (obj?.userData.trophy) {
           setSelected(obj.userData.trophy as GymTrophy);
         } else if (obj?.userData.ghostExercise) {
-          // Ghost: leva pro form de log de PR pré-selecionado nesse exercício
-          window.location.href = `/pr/log?ex=${obj.userData.ghostExercise.id}`;
+          // Ghost: abre modal com info + CTA pra desbloquear (não redirect)
+          setSelectedGhost(obj.userData.ghostExercise as GhostExercise);
+        } else if (obj?.userData.kind === "projector-screen") {
+          setReelOpen(true);
         }
       }
     };
@@ -723,6 +893,9 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       );
       avatarSpot.target.position.copy(avatarParts.root.position);
       avatarSpot.target.position.y = 1.0;
+
+      // Atualiza tela do projetor da sala de Reels
+      drawProjectorScreen(t, activeReelRef.current);
 
       // Avatar aura (10+ trofeus) — anima glow pulsante na ring abaixo
       if (avatarAura) {
@@ -926,6 +1099,59 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
             <p className="text-[11px] text-navy-300 mt-3 text-center leading-tight">
               Configurador abre com o peso do PR já montado na barra.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Ghost trophy modal — exercício sem PR registrado */}
+      {selectedGhost && (
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 25 }}
+          className="flex items-end sm:items-center justify-center bg-black/70 p-4"
+          onClick={() => setSelectedGhost(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-navy-700 bg-navy-900 p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-navy-300">
+                  EXERCÍCIO
+                </div>
+                <div className="font-display text-xl tracking-tight truncate">
+                  {selectedGhost.label}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedGhost(null)}
+                className="text-navy-300 hover:text-white text-lg leading-none"
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="rounded-xl border border-navy-700 bg-navy-800/40 p-5 mb-4 text-center">
+              <div className="text-6xl mb-2 opacity-40">?</div>
+              <div className="text-sm text-navy-300 leading-tight">
+                Você ainda não registrou um PR de{" "}
+                <span className="text-white">{selectedGhost.label}</span>.
+              </div>
+            </div>
+            <a
+              href={`/pr/log?ex=${selectedGhost.id}`}
+              className="block w-full text-center rounded-lg bg-brand-lime text-navy-900 font-semibold px-4 py-3 hover:opacity-90 transition"
+            >
+              Desbloquear este pedestal →
+            </a>
+            <button
+              type="button"
+              onClick={() => setSelectedGhost(null)}
+              className="block w-full text-center text-xs text-navy-300 hover:text-white mt-3"
+            >
+              Voltar pro ginásio
+            </button>
           </div>
         </div>
       )}
