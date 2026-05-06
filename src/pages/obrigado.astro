@@ -62,6 +62,42 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
       if (msgEl)
         msgEl.textContent =
           "Sua compra foi processada com sucesso. Em breve você receberá um e-mail com os detalhes e o link de rastreio quando o produto for enviado.";
+      attributeTrophyIfPRConversion();
+    }
+
+    // Trophy attribution: when the checkout originated from /pr/celebrate,
+    // the BarbellConfigurator stashed the pr_records.id in sessionStorage.
+    // Stamp it on the record so we can measure PR→trophy conversion.
+    let attributionDone = false;
+    function attributeTrophyIfPRConversion() {
+      if (attributionDone) return;
+      let prId: string | null = null;
+      try {
+        prId = sessionStorage.getItem("pr-trophy-prId");
+      } catch {
+        return;
+      }
+      if (!prId || !paymentId) return;
+      attributionDone = true;
+      fetch(`/api/pr/records/${encodeURIComponent(prId)}/trophy-purchase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purchase_id: paymentId, source: "obrigado" }),
+        keepalive: true,
+      })
+        .catch(() => {
+          // Network blip — sessionStorage stays so a refresh can retry.
+        })
+        .finally(() => {
+          try {
+            sessionStorage.removeItem("pr-trophy-prId");
+          } catch {}
+        });
+    }
+
+    // Approved-on-arrival path: no polling, but we still need to attribute.
+    if (status === "approved" && paymentId) {
+      attributeTrophyIfPRConversion();
     }
 
     // Se chegamos aqui com status != approved e com um payment_id, fazemos

@@ -581,11 +581,12 @@ const CONFIG_JSON = JSON.stringify({
         for (const piece of pParam.split(";")) {
           const m = piece.match(/^([\w_]+)x(\d+)$/);
           if (!m) continue;
-          const [, plateId, pairsStr] = m;
-          if (platesById.has(plateId)) {
-            const pairs = Math.max(0, Math.min(Number(pairsStr), platesById.get(plateId)!.maxPairs));
-            state[plateId] = pairs;
-          }
+          const plateId = m[1];
+          const pairsStr = m[2];
+          if (!plateId || !pairsStr) continue;
+          const spec = platesById.get(plateId);
+          if (!spec) continue;
+          state[plateId] = Math.max(0, Math.min(Number(pairsStr), spec.maxPairs));
         }
       }
       const fromParam = params.get("from");
@@ -640,7 +641,8 @@ const CONFIG_JSON = JSON.stringify({
     // Sync select.value with any state we picked up from the URL params.
     selects.forEach((sel) => {
       const id = sel.dataset.plateId!;
-      if (state[id] > 0) sel.value = String(state[id]);
+      const pairs = state[id] ?? 0;
+      if (pairs > 0) sel.value = String(pairs);
     });
 
     // Persist the PR record id so the post-purchase flow can attribute the

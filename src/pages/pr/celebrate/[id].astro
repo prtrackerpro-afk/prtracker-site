@@ -5,6 +5,7 @@ import { getServerSupabase } from "../../../lib/supabase/server";
 import { getRecord } from "../../../lib/pr/db";
 import { exerciseLabel, productSlugForExercise, type ExerciseId } from "../../../lib/pr/exercises";
 import { configuratorQuery, splitPlates } from "../../../lib/pr/plates";
+import { renderCardSvg } from "../../../lib/pr/card-svg";
 
 const athlete = Astro.locals.athlete!;
 const id = Astro.params.id!;
@@ -37,10 +38,20 @@ const productSlug = productSlugForExercise(record.exercise as ExerciseId);
 const trophyHref = `/produto/${productSlug}?${configuratorQuery(
   Number(record.weight_kg),
   record.exercise,
-  "pr-celebrate"
+  "pr-celebrate",
+  record.id
 )}`;
 
 const split = splitPlates(Number(record.weight_kg));
+
+// Inline the same SVG that the share endpoint produces — single source of
+// truth, and it loads instantly without an extra HTTP roundtrip.
+const cardSvg = renderCardSvg({
+  athleteName: athlete.displayName ?? "Atleta",
+  exerciseId: record.exercise as ExerciseId,
+  weightKg: Number(record.weight_kg),
+  performedAt: record.performed_at,
+});
 ---
 
 <!doctype html>
@@ -52,57 +63,122 @@ const split = splitPlates(Number(record.weight_kg));
     <title>Novo PR · PR Tracker</title>
     <link rel="icon" type="image/png" href="/favicon-32.png" />
   </head>
-  <body class="min-h-screen bg-navy-900 text-white font-body grid place-items-center px-4 py-8">
-    <main class="max-w-md w-full text-center">
-      <div class="text-xs uppercase tracking-widest text-brand-lime mb-2">Novo recorde pessoal</div>
-      <h1 class="font-display text-3xl tracking-tight mb-1">{exerciseLabel(record.exercise as ExerciseId)}</h1>
-      <div class="font-display text-7xl text-brand-lime tabular-nums leading-none my-4">
-        {record.weight_kg}
-        <span class="text-2xl text-navy-300 ml-1">kg</span>
+  <body class="min-h-screen bg-navy-900 text-white font-body">
+    <div class="max-w-md mx-auto px-4 py-6">
+      <div class="text-center mb-6">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">Novo recorde pessoal</div>
+        <h1 class="font-display text-2xl tracking-tight">{exerciseLabel(record.exercise as ExerciseId)}</h1>
+      </div>
+
+      {/* Inline card preview — same SVG that the share endpoint serves */}
+      <div class="card-preview rounded-2xl overflow-hidden border border-navy-700 mb-6 shadow-2xl shadow-brand-lime/10" set:html={cardSvg} />
+
+      {/* Animated count-up under the card */}
+      <div class="text-center mb-1">
+        <span
+          id="count-up"
+          class="font-display text-6xl text-brand-lime tabular-nums leading-none"
+          data-target={record.weight_kg}
+        >0</span>
+        <span class="text-xl text-navy-300 ml-1">kg</span>
       </div>
 
       {delta != null ? (
-        <p class="text-sm text-navy-300 mb-8">
-          +{delta.toFixed(1)} kg sobre seu PR anterior ({previousBest} kg).
+        <p class="text-center text-sm text-navy-300 mb-6">
+          <span class="text-brand-lime">+{delta.toFixed(1)} kg</span> sobre seu PR anterior ({previousBest} kg)
         </p>
       ) : (
-        <p class="text-sm text-navy-300 mb-8">Seu primeiro registro nesse movimento.</p>
+        <p class="text-center text-sm text-navy-300 mb-6">Seu primeiro registro nesse movimento</p>
       )}
 
-      <div class="space-y-3">
+      <div class="space-y-3 mb-6">
         <a
           href={trophyHref}
-          class="block w-full rounded-lg bg-brand-lime px-4 py-3.5 text-sm font-semibold text-navy-900 hover:opacity-90 transition"
+          class="block w-full rounded-lg bg-brand-lime px-4 py-3.5 text-base font-semibold text-navy-900 hover:opacity-90 transition text-center"
         >
           Transforme em troféu →
         </a>
 
-        <a
-          href={`/api/pr/card/${record.id}.svg`}
-          download={`pr-${record.exercise}-${record.weight_kg}kg.svg`}
-          class="block w-full rounded-lg border border-navy-600 px-4 py-3 text-sm font-semibold hover:bg-navy-800 transition"
-        >
-          Baixar card (SVG)
-        </a>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            id="share-btn"
+            class="rounded-lg border border-navy-600 px-3 py-2.5 text-sm font-semibold hover:bg-navy-800 transition"
+          >
+            Compartilhar
+          </button>
+          <a
+            href={`/api/pr/card/${record.id}.svg`}
+            download={`pr-${record.exercise}-${record.weight_kg}kg.svg`}
+            class="rounded-lg border border-navy-600 px-3 py-2.5 text-sm font-semibold hover:bg-navy-800 transition text-center"
+          >
+            Baixar SVG
+          </a>
+        </div>
 
-        <a href="/pr" class="block text-xs text-navy-300 hover:text-white pt-2">
+        <a href="/pr" class="block text-center text-xs text-navy-300 hover:text-white pt-1">
           Voltar pros meus PRs
         </a>
       </div>
 
       {/* Helper preview: which plates would go on the bar */}
       {split.pairs.length > 0 && (
-        <div class="mt-10 pt-6 border-t border-navy-700">
-          <div class="text-[10px] uppercase tracking-widest text-navy-300 mb-2">Anilhas (cada lado)</div>
+        <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-4">
+          <div class="text-[10px] uppercase tracking-widest text-navy-300 mb-2 text-center">Anilhas (cada lado)</div>
           <div class="flex justify-center flex-wrap gap-1.5">
             {split.pairs.map((p) => (
-              <span class="text-xs rounded bg-navy-800 px-2 py-1 border border-navy-700">
+              <span class="text-xs rounded bg-navy-900 px-2 py-1 border border-navy-700">
                 {p.count}× {p.kg} kg
               </span>
             ))}
           </div>
         </div>
       )}
-    </main>
+    </div>
+
+    <style>
+      .card-preview svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+    </style>
+
+    <script define:vars={{ recordId: record.id, weight: Number(record.weight_kg), exercise: record.exercise }}>
+      // Count-up animation on the weight number — quick easeOut over 800ms.
+      const el = document.getElementById("count-up");
+      if (el) {
+        const target = Number(el.dataset.target ?? 0);
+        const duration = 800;
+        const start = performance.now();
+        const animate = (now) => {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          el.textContent = (target * eased).toFixed(target % 1 === 0 ? 0 : 1);
+          if (t < 1) requestAnimationFrame(animate);
+          else el.textContent = String(target);
+        };
+        requestAnimationFrame(animate);
+      }
+
+      // Share button — uses Web Share API on mobile (Instagram, WhatsApp,
+      // Stories, etc.). Falls back to copying the public card URL.
+      const shareBtn = document.getElementById("share-btn");
+      shareBtn?.addEventListener("click", async () => {
+        const url = `${window.location.origin}/api/pr/card/${recordId}.svg`;
+        const text = `Novo PR de ${exercise.replace(/_/g, " ")}: ${weight} kg`;
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: "PR Tracker", text, url });
+          } else {
+            await navigator.clipboard.writeText(url);
+            shareBtn.textContent = "Link copiado";
+            setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
+          }
+        } catch {
+          // user cancelled — silent
+        }
+      });
+    </script>
   </body>
 </html>
