@@ -109,184 +109,169 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
   const headR = 0.21; // BIGGER (era 0.165) — visível de qualquer ângulo
 
-  // === HEAD ROBLOX-MODERNO (cubo polido + face desenhada) =======
+  // === HEAD ROBLOX CLÁSSICO — cube skin + 2 olhos + sorriso ======
+  // Reference do Felipe: cubo light skin + capacete preto cobrindo
+  // top/laterais/trás + 2 olhos pretos simples + sorriso aberto.
+  // ZERO sobreposição de detalhes.
   const head = new THREE.Group();
 
-  // Cube head com cantos levemente suavizados (escala assimétrica)
-  const headSize = headR * 2.0; // cube de ~0.42m de lado
+  const headSize = headR * 2.0; // cube ~0.42m
   const skull = new THREE.Mesh(
-    new THREE.BoxGeometry(headSize, headSize, headSize * 0.88),
+    new THREE.BoxGeometry(headSize, headSize, headSize),
     skinMat
   );
   skull.castShadow = true;
   head.add(skull);
 
-  // FACE TEXTURE polida desenhada na frente do cubo (não plane separado)
-  // — diretamente no front face via canvas → MeshBasicMaterial
+  // FACE: 2 olhos pretos + sorriso aberto. Sem mais nada.
   const faceCanvas = document.createElement("canvas");
   faceCanvas.width = 512;
   faceCanvas.height = 512;
   const fctx = faceCanvas.getContext("2d")!;
-  // Fundo na cor da pele (pra fundir com o cubo skin)
+  // Fundo na cor da pele (funde com o cubo)
   fctx.fillStyle = prefs.skin;
   fctx.fillRect(0, 0, 512, 512);
 
-  // === Olhos cartoon polidos (estilo Roblox moderno) ===
-  // Esclera grande + íris destacada + brilho
+  // 2 OLHOS PRETOS (ovais simples)
+  fctx.fillStyle = "#000000";
   for (const cx of [180, 332]) {
-    // Esclera arredondada
-    fctx.fillStyle = "#ffffff";
     fctx.beginPath();
-    fctx.ellipse(cx, 230, 38, 46, 0, 0, Math.PI * 2);
-    fctx.fill();
-    // Borda fina escura
-    fctx.strokeStyle = "#1a1a22";
-    fctx.lineWidth = 4;
-    fctx.beginPath();
-    fctx.ellipse(cx, 230, 38, 46, 0, 0, Math.PI * 2);
-    fctx.stroke();
-    // Íris azul vibrante
-    fctx.fillStyle = "#0057B8";
-    fctx.beginPath();
-    fctx.arc(cx, 235, 22, 0, Math.PI * 2);
-    fctx.fill();
-    // Pupila
-    fctx.fillStyle = "#000";
-    fctx.beginPath();
-    fctx.arc(cx, 238, 11, 0, Math.PI * 2);
-    fctx.fill();
-    // Highlight
-    fctx.fillStyle = "#ffffff";
-    fctx.beginPath();
-    fctx.arc(cx + 6, 230, 6, 0, Math.PI * 2);
-    fctx.fill();
-    // Highlight pequeno
-    fctx.beginPath();
-    fctx.arc(cx - 8, 244, 3, 0, Math.PI * 2);
+    fctx.ellipse(cx, 240, 22, 30, 0, 0, Math.PI * 2);
     fctx.fill();
   }
 
-  // === Sobrancelhas (na cor do cabelo, expressivas) ===
-  fctx.fillStyle = prefs.hair;
+  // SORRISO ABERTO (curva preta com interior branco)
+  // Outer dark
+  fctx.fillStyle = "#000000";
   fctx.beginPath();
-  fctx.moveTo(140, 168);
-  fctx.lineTo(220, 158);
-  fctx.lineTo(220, 174);
-  fctx.lineTo(140, 184);
-  fctx.closePath();
+  fctx.ellipse(256, 350, 80, 36, 0, 0, Math.PI * 2);
   fctx.fill();
+  // Inner white (dentes)
+  fctx.fillStyle = "#ffffff";
   fctx.beginPath();
-  fctx.moveTo(292, 158);
-  fctx.lineTo(372, 168);
-  fctx.lineTo(372, 184);
-  fctx.lineTo(292, 174);
-  fctx.closePath();
+  fctx.ellipse(256, 350, 70, 26, 0, 0, Math.PI * 2);
   fctx.fill();
-
-  // === Sorriso polido (curva expressiva) ===
-  fctx.strokeStyle = "#3a1a1a";
-  fctx.lineWidth = 8;
-  fctx.lineCap = "round";
-  fctx.beginPath();
-  fctx.arc(256, 350, 60, 0.2, Math.PI - 0.2);
-  fctx.stroke();
-  // Sorriso interior (gengiva/dentes sutis)
-  fctx.fillStyle = "#fff";
-  fctx.beginPath();
-  fctx.arc(256, 350, 50, 0.25, Math.PI - 0.25);
-  fctx.fill();
-  fctx.fillStyle = "#3a1a1a";
-  fctx.beginPath();
-  fctx.arc(256, 348, 56, 0.22, Math.PI - 0.22);
-  fctx.lineTo(220, 358);
-  fctx.lineTo(292, 358);
-  fctx.closePath();
-
-  // === Bochechas pink sutis ===
-  fctx.fillStyle = "rgba(255, 130, 130, 0.35)";
-  fctx.beginPath();
-  fctx.ellipse(110, 320, 28, 18, 0, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.ellipse(402, 320, 28, 18, 0, 0, Math.PI * 2);
-  fctx.fill();
+  // Lábio inferior preto cobrindo metade superior pra "abertura" só na metade inferior
+  fctx.fillStyle = prefs.skin;
+  fctx.fillRect(176, 314, 160, 28);
+  // Linha sutil no meio da boca pra separar os labios
+  fctx.fillStyle = "#000000";
+  fctx.fillRect(176, 348, 160, 3);
 
   const faceTex = new THREE.CanvasTexture(faceCanvas);
   faceTex.colorSpace = THREE.SRGBColorSpace;
-  // Face plane afixado JUST FORA do front face do cubo
   const face = new THREE.Mesh(
     new THREE.PlaneGeometry(headSize * 0.99, headSize * 0.99),
     new THREE.MeshBasicMaterial({ map: faceTex })
   );
-  face.position.set(0, 0, headSize * 0.44 + 0.001);
+  face.position.set(0, 0, headSize / 2 + 0.001);
   head.add(face);
 
-  // === CABELO 3D fora dos olhos (Roblox-moderno) ===
-  // Estilo: bloco/cap em cima do cubo. NUNCA cobre a frente do face.
+  // === CABELO 3D Roblox-moderno — VOLUMOSO, cobre top+laterais+trás ===
+  // Definidor visual da silhueta. Cobre TUDO menos a face frontal. Hair
+  // alto + envoltório lateral + envoltório traseiro pra parecer
+  // realmente cabelo, não plaquinha no topo.
   if (prefs.hairStyle !== "bald") {
-    const hairTopH = 0.08; // altura da camada de cabelo
     if (prefs.hairStyle === "short") {
-      // Bloco no topo + leve protrusão pra trás
+      // Cap top alta cobrindo tudo acima da testa
+      const capH = 0.18;
       const hairTop = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.05, hairTopH, headSize * 0.95),
+        new THREE.BoxGeometry(headSize * 1.08, capH, headSize * 1.02),
         hairMat
       );
-      hairTop.position.set(0, headSize / 2 + hairTopH / 2 - 0.01, -0.01);
+      hairTop.position.set(0, headSize / 2 + capH / 2 - 0.05, -0.005);
+      hairTop.castShadow = true;
       head.add(hairTop);
-      // Side burns curtos (laterais finas)
-      for (const sx of [-headSize / 2, headSize / 2]) {
-        const sideBurn = new THREE.Mesh(
-          new THREE.BoxGeometry(0.02, 0.06, headSize * 0.4),
+      // Franja sutil na frente acima das sobrancelhas (nao cobre olhos)
+      const fringe = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 1.06, 0.05, 0.04),
+        hairMat
+      );
+      fringe.position.set(0, headSize * 0.36, headSize * 0.5);
+      head.add(fringe);
+      // Lateral envolvendo (orelhas)
+      for (const sx of [-headSize / 2 - 0.01, headSize / 2 + 0.01]) {
+        const side = new THREE.Mesh(
+          new THREE.BoxGeometry(0.05, headSize * 0.55, headSize * 0.95),
           hairMat
         );
-        sideBurn.position.set(sx + (sx > 0 ? 0.005 : -0.005), headSize / 2 - 0.06, -0.05);
-        head.add(sideBurn);
+        side.position.set(sx, headSize * 0.05, -0.005);
+        head.add(side);
       }
+      // Trás cobrindo nuca
+      const back = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 1.02, headSize * 0.55, 0.06),
+        hairMat
+      );
+      back.position.set(0, headSize * 0.05, -headSize / 2 - 0.005);
+      head.add(back);
     } else if (prefs.hairStyle === "long") {
-      // Top + cabelo descendo nas costas (NÃO cobre o rosto)
+      // Cap top alta
+      const capH = 0.2;
       const hairTop = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.06, hairTopH, headSize * 0.96),
+        new THREE.BoxGeometry(headSize * 1.1, capH, headSize * 1.04),
         hairMat
       );
-      hairTop.position.set(0, headSize / 2 + hairTopH / 2 - 0.01, -0.01);
+      hairTop.position.set(0, headSize / 2 + capH / 2 - 0.05, -0.005);
+      hairTop.castShadow = true;
       head.add(hairTop);
-      // Cabelo longo nas costas
+      // Cabelo longo descendo até os ombros nas costas
       const hairBack = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 0.95, headSize * 1.1, 0.08),
+        new THREE.BoxGeometry(headSize * 1.05, headSize * 2.0, 0.1),
         hairMat
       );
-      hairBack.position.set(0, -headSize * 0.1, -headSize * 0.4);
+      hairBack.position.set(0, -headSize * 0.4, -headSize / 2 + 0.005);
+      hairBack.castShadow = true;
       head.add(hairBack);
-      // Mechas nas laterais (caem do rosto, mas atrás das orelhas)
-      for (const sx of [-headSize / 2 - 0.02, headSize / 2 + 0.02]) {
+      // Mechas envolvendo cabeça nas laterais (cobre orelhas)
+      for (const sx of [-headSize / 2 - 0.025, headSize / 2 + 0.025]) {
         const sideMech = new THREE.Mesh(
-          new THREE.BoxGeometry(0.06, headSize * 0.7, 0.1),
+          new THREE.BoxGeometry(0.06, headSize * 1.3, headSize * 0.85),
           hairMat
         );
-        sideMech.position.set(sx, -headSize * 0.05, -headSize * 0.05);
+        sideMech.position.set(sx, -headSize * 0.25, -headSize * 0.05);
+        sideMech.castShadow = true;
         head.add(sideMech);
       }
+      // Franja na frente (acima das sobrancelhas)
+      const fringe = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 1.06, 0.06, 0.05),
+        hairMat
+      );
+      fringe.position.set(0, headSize * 0.34, headSize * 0.5);
+      head.add(fringe);
     } else if (prefs.hairStyle === "ponytail") {
+      // Cap top puxada pra trás
+      const capH = 0.16;
       const hairTop = new THREE.Mesh(
-        new THREE.BoxGeometry(headSize * 1.04, hairTopH, headSize * 0.94),
+        new THREE.BoxGeometry(headSize * 1.06, capH, headSize * 1.0),
         hairMat
       );
-      hairTop.position.set(0, headSize / 2 + hairTopH / 2 - 0.01, -0.01);
+      hairTop.position.set(0, headSize / 2 + capH / 2 - 0.05, -0.02);
+      hairTop.castShadow = true;
       head.add(hairTop);
-      // Tie ball
+      // Trás cobrindo nuca
+      const back = new THREE.Mesh(
+        new THREE.BoxGeometry(headSize * 0.9, headSize * 0.6, 0.06),
+        hairMat
+      );
+      back.position.set(0, headSize * 0.05, -headSize / 2 - 0.005);
+      head.add(back);
+      // Tie ball atras
       const tieBall = new THREE.Mesh(
-        new THREE.BoxGeometry(0.06, 0.06, 0.06),
+        new THREE.SphereGeometry(0.05, 12, 10),
         hairMat
       );
-      tieBall.position.set(0, headSize / 2 - 0.03, -headSize * 0.5 - 0.01);
+      tieBall.position.set(0, headSize * 0.3, -headSize / 2 - 0.06);
       head.add(tieBall);
-      // Tail (cilindro suave)
+      // Tail descendo
       const tail = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.025, 0.32, 12),
+        new THREE.CylinderGeometry(0.06, 0.03, 0.45, 14),
         hairMat
       );
-      tail.position.set(0, headSize * 0.1, -headSize * 0.6);
+      tail.position.set(0, 0.05, -headSize / 2 - 0.12);
       tail.rotation.x = -0.4;
+      tail.castShadow = true;
       head.add(tail);
     }
   }

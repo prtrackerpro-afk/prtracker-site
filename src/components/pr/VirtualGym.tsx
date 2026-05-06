@@ -113,7 +113,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     renderer.setSize(initW, initH);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0; // arena dark — exposure controlada
+    renderer.toneMappingExposure = 1.5;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
@@ -135,21 +135,20 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
 
     const accentColor = new THREE.Color(accent);
 
-    // === Lighting ARENA escura — Hall of Fame em destaque ==========
-    // Inspiração: museum hall (Palmeiras Decacampeão). Sala
-    // praticamente apagada, SPOTS individuais dramáticos sobre cada
-    // pedestal de troféu + spot dim na área de movimento do avatar +
-    // dim de apoio nos equipamentos flanqueando.
-    const hemi = new THREE.HemisphereLight(0x6f7cff, 0x080515, 0.18);
+    // === Lighting BRIGHT modern showroom + Hall em destaque =========
+    // V7 dark theatre falhou — fitness app precisa ser bright + acolhedor.
+    // Volta pra modern showroom: ambient generoso + key + fill brancos +
+    // SPOTS extras nos pedestais (track lighting MAIS forte) +
+    // follow spot accent no avatar.
+    const hemi = new THREE.HemisphereLight(0xeaf0ff, 0x1a1640, 0.95);
     scene.add(hemi);
 
-    // Soft ambient pra evitar ficar 100% preto
-    const ambient = new THREE.AmbientLight(0x4a5070, 0.22);
+    const ambient = new THREE.AmbientLight(0xc8cfe0, 0.55);
     scene.add(ambient);
 
-    // Key light direcional muito sutil (lua / iluminação de sala)
-    const keyLight = new THREE.DirectionalLight(0xb8c0e0, 0.35);
-    keyLight.position.set(0, 8, 4);
+    // Key light forte branca quente (sol)
+    const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.6);
+    keyLight.position.set(4, 10, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
     keyLight.shadow.camera.left = -12;
@@ -160,24 +159,21 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     keyLight.shadow.normalBias = 0.02;
     scene.add(keyLight);
 
-    // Spotlight grande no avatar (follow spot estilo teatro)
-    const avatarSpot = new THREE.SpotLight(0xffffff, 1.4, 18, Math.PI / 4, 0.6, 1.0);
+    // Fill cool branco-azulado oposto
+    const fillLight = new THREE.DirectionalLight(0xb8c8ff, 0.9);
+    fillLight.position.set(-5, 7, 4);
+    scene.add(fillLight);
+
+    // Rim atrás (pra silhueta do avatar e dos pedestais)
+    const rim = new THREE.DirectionalLight(0xffffff, 0.55);
+    rim.position.set(0, 5, -8);
+    scene.add(rim);
+
+    // Avatar follow spot sutil (não dominante mas highlights o avatar)
+    const avatarSpot = new THREE.SpotLight(0xffffff, 0.7, 18, Math.PI / 4, 0.6, 1.0);
     avatarSpot.position.set(0, 7, 6);
     scene.add(avatarSpot);
     scene.add(avatarSpot.target);
-
-    // Spot dim de apoio nos equipamentos laterais (flanqueando o stage)
-    const leftEqSpot = new THREE.SpotLight(0xddc890, 0.7, 14, Math.PI / 5, 0.55, 1.4);
-    leftEqSpot.position.set(-7, 6, 0);
-    leftEqSpot.target.position.set(-7, 0, -1);
-    scene.add(leftEqSpot);
-    scene.add(leftEqSpot.target);
-
-    const rightEqSpot = new THREE.SpotLight(0xddc890, 0.7, 14, Math.PI / 5, 0.55, 1.4);
-    rightEqSpot.position.set(7, 6, 0);
-    rightEqSpot.target.position.set(7, 0, -1);
-    scene.add(rightEqSpot);
-    scene.add(rightEqSpot.target);
 
     // === Sala (chão escuro + 3 paredes navy near-black) ============
     const wallMat = new THREE.MeshStandardMaterial({
@@ -228,7 +224,9 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     // === WALL LOGO gigante ATRAS dos troféus =======================
     // "PR TRACKER · HALL OF FAME" ocupando ~10m de largura na parede.
     // Domina a parede do fundo como num CrossFit box real.
-    const wallLogo = buildWallLogo(11, accent);
+    // Logo SEMPRE em lime brand (#D8FF2C), nao na cor do tier — marca
+    // PR Tracker fixa, identidade visual.
+    const wallLogo = buildWallLogo(11, "#D8FF2C");
     wallLogo.position.set(0, WALL_H - 1.6, -ROOM_D / 2 + 0.04);
     scene.add(wallLogo);
 
