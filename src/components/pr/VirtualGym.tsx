@@ -31,6 +31,10 @@ import {
   buildRowingMachine,
   buildPlyoBox,
   buildCrossFitRig,
+  buildChalkBucket,
+  buildWaterBottle,
+  buildTowel,
+  buildLiftingBelt,
   STEEL_MAT,
   type SkillBoardSlot,
   type RunSlot,
@@ -870,6 +874,28 @@ export default function VirtualGym({
     platform.rotation.y = platformPos.rot - Math.PI / 14;
     scene.add(platform);
     // Plataforma é baixa (6cm), avatar pisa em cima.
+
+    // V16.8 cycles 166-175: detalhes ambientais espalhados pelo gym
+    // Chalk bucket no canto da plataforma
+    const chalkBucket = buildChalkBucket();
+    chalkBucket.position.set(platformPos.x + 1.6, 0, platformPos.z - 1.4);
+    scene.add(chalkBucket);
+    // Garrafa d'água perto do power rack
+    const bottle1 = buildWaterBottle(0xda291c);
+    bottle1.position.set(powerRackPos.x + 0.9, 0, powerRackPos.z + 0.5);
+    scene.add(bottle1);
+    const bottle2 = buildWaterBottle(0x0057b8);
+    bottle2.position.set(powerRackPos.x - 0.9, 0, powerRackPos.z + 0.4);
+    scene.add(bottle2);
+    // Toalha pendurada perto do bench (vai usar bench position quando renderizado)
+    const towel1 = buildTowel(0xda291c);
+    towel1.position.set(powerRackPos.x + 0.7, 0.55, powerRackPos.z - 0.6);
+    scene.add(towel1);
+    // Cinto de levantamento perto do power rack
+    const belt = buildLiftingBelt();
+    belt.position.set(powerRackPos.x - 0.7, 0.35, powerRackPos.z - 0.8);
+    belt.rotation.y = 0.5;
+    scene.add(belt);
 
     // FLOOR MARKING — caminho central com track lights
     // V16.8 cycle 75: opacity 0.15 → 0.2 (mais convidativo) + tapete com gradient sim

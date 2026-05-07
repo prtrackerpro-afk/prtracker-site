@@ -48,6 +48,145 @@ export const CHROME_MAT = new THREE.MeshStandardMaterial({
   emissiveIntensity: 0.08,
 });
 
+// V16.8 cycles 166-175: detalhes ambientais (chalk, garrafas, toalhas, belt)
+export function buildChalkBucket(): THREE.Group {
+  const g = new THREE.Group();
+  // Caixa branca (bucket)
+  const bucket = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.10, 0.16, 12),
+    new THREE.MeshStandardMaterial({ color: 0xeae5d4, roughness: 0.85 })
+  );
+  bucket.position.y = 0.08;
+  bucket.castShadow = true;
+  g.add(bucket);
+  // Pó de chalk em cima (esfera achatada)
+  const chalk = new THREE.Mesh(
+    new THREE.SphereGeometry(0.10, 12, 8),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 })
+  );
+  chalk.scale.y = 0.4;
+  chalk.position.y = 0.16;
+  g.add(chalk);
+  // Banda lime no bucket
+  const band = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.121, 0.101, 0.02, 12),
+    new THREE.MeshBasicMaterial({ color: 0xd8ff2c })
+  );
+  band.position.y = 0.04;
+  g.add(band);
+  return g;
+}
+
+export function buildWaterBottle(color = 0x0057b8): THREE.Group {
+  const g = new THREE.Group();
+  // Garrafa cilíndrica
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 0.22, 12),
+    new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.3,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.85,
+    })
+  );
+  body.position.y = 0.11;
+  g.add(body);
+  // Tampa preta
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.038, 0.038, 0.025, 12),
+    new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.6 })
+  );
+  cap.position.y = 0.235;
+  g.add(cap);
+  return g;
+}
+
+export function buildTowel(color = 0xda291c): THREE.Group {
+  const g = new THREE.Group();
+  // Toalha enrolada (capsula achatada)
+  const towel = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.05, 0.18, 4, 8),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.95 })
+  );
+  towel.scale.y = 0.7;
+  towel.rotation.z = Math.PI / 2;
+  towel.position.y = 0.05;
+  g.add(towel);
+  return g;
+}
+
+export function buildLiftingBelt(): THREE.Group {
+  const g = new THREE.Group();
+  // Cinto preto curvado (torus)
+  const belt = new THREE.Mesh(
+    new THREE.TorusGeometry(0.14, 0.04, 8, 24, Math.PI * 1.6),
+    new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7 })
+  );
+  belt.rotation.x = Math.PI / 2;
+  belt.position.y = 0.04;
+  g.add(belt);
+  // Fivela metálica
+  const buckle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.05, 0.02),
+    new THREE.MeshStandardMaterial({ color: 0xc0c5cc, roughness: 0.3, metalness: 0.85 })
+  );
+  buckle.position.set(0.14, 0.04, 0);
+  g.add(buckle);
+  return g;
+}
+
+// V16.8 cycles 153-160: acabamentos premium - parafusos, soldas, brand stickers
+// Helper pra adicionar parafuso pequeno (esfera preta) em pontos de junção
+export function addScrew(parent: THREE.Object3D, x: number, y: number, z: number, size = 0.012) {
+  const screw = new THREE.Mesh(
+    new THREE.SphereGeometry(size, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0x0a0a10, roughness: 0.4, metalness: 0.7 })
+  );
+  screw.position.set(x, y, z);
+  parent.add(screw);
+}
+
+// Helper: solda raised seam (pequena box angular)
+export function addWeldSeam(parent: THREE.Object3D, x: number, y: number, z: number, len: number, axis: "x" | "z" = "x") {
+  const seam = new THREE.Mesh(
+    new THREE.BoxGeometry(axis === "x" ? len : 0.01, 0.005, axis === "z" ? len : 0.01),
+    new THREE.MeshStandardMaterial({ color: 0x6a6a76, roughness: 0.3, metalness: 0.85 })
+  );
+  seam.position.set(x, y, z);
+  parent.add(seam);
+}
+
+// Helper: brand sticker "PR TRACKER" (lime canvas) num plano pequeno
+let _brandStickerTex: THREE.CanvasTexture | null = null;
+export function addBrandSticker(parent: THREE.Object3D, x: number, y: number, z: number, w = 0.12, rotY = 0) {
+  if (!_brandStickerTex) {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 64;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#01002A";
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.strokeStyle = "#D8FF2C";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(2, 2, 252, 60);
+    ctx.fillStyle = "#D8FF2C";
+    ctx.font = "900 32px Archivo Black, Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PR TRACKER", 128, 32);
+    _brandStickerTex = new THREE.CanvasTexture(c);
+    _brandStickerTex.colorSpace = THREE.SRGBColorSpace;
+  }
+  const sticker = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, w / 4),
+    new THREE.MeshBasicMaterial({ map: _brandStickerTex, transparent: true })
+  );
+  sticker.position.set(x, y, z);
+  sticker.rotation.y = rotY;
+  parent.add(sticker);
+}
+
 // =================================================================
 // CORES IWF DE ANILHAS — para troféus realistas
 // =================================================================
@@ -851,6 +990,21 @@ export function buildPowerRack(accentHex: string): THREE.Group {
   const barbell = buildLoadedBarbell();
   barbell.position.set(0, 1.32, D / 2 - 0.04);
   g.add(barbell);
+
+  // V16.8 cycle 156: brand sticker no top crossbar
+  addBrandSticker(g, 0, H + 0.06, D / 2, 0.3);
+  // Cycle 153: parafusos visiveis nos cantos das colunas (top + bottom)
+  for (const x of [-W / 2, W / 2]) {
+    for (const z of [-D / 2, D / 2]) {
+      addScrew(g, x, 0.04, z, 0.014);     // base
+      addScrew(g, x, H - 0.04, z, 0.014); // topo
+    }
+  }
+  // Cycle 154: soldas no encontro top crossbar com colunas
+  for (const x of [-W / 2, W / 2]) {
+    addWeldSeam(g, x, H, D / 2, 0.08, "x");
+    addWeldSeam(g, x, H, -D / 2, 0.08, "x");
+  }
 
   return g;
 }
