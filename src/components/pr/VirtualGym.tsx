@@ -721,18 +721,18 @@ export default function VirtualGym({
     scene.add(sponsorsGroup);
 
     /**
-     * Helper: dado um booth com posição (x,z) e rotação rot, retorna a
-     * posição do NPC POR TRÁS do balcão (do lado oposto à face frontal).
+     * Helper: posiciona NPC AO LADO do balcão (booth-local +x, fora da
+     * largura do banner). Garante visibilidade de qualquer ângulo de
+     * câmera, independente de banner/sign occlusion.
      *
-     * Booth-local: face frontal aponta +z (banner em z=0.01).
-     * NPC fica em booth-local -z (atrás), depois rotaciona pelo rot do booth.
+     * Local offset (sideX, 0, 0) rotacionado por θ:
+     *   world.x = boothX + sideX * cos(θ)
+     *   world.z = boothZ - sideX * sin(θ)
      */
-    function npcBehindBooth(boothX: number, boothZ: number, rot: number, distance = 0.5) {
-      // Rotação Y por θ leva (0, 0, z) → (z*sin(θ), 0, z*cos(θ)).
-      // Local offset (0, 0, -distance) (atrás do banner) → world:
+    function npcBesideBooth(boothX: number, boothZ: number, rot: number, sideX = 1.3) {
       return {
-        x: boothX + (-distance) * Math.sin(rot),
-        z: boothZ + (-distance) * Math.cos(rot),
+        x: boothX + sideX * Math.cos(rot),
+        z: boothZ - sideX * Math.sin(rot),
       };
     }
 
@@ -763,9 +763,9 @@ export default function VirtualGym({
       initial: "C",
       outfit: "labcoat",
     });
-    const nutriNpcPos = npcBehindBooth(nutriPos.x, nutriPos.z, nutriPos.rot, 0.55);
+    const nutriNpcPos = npcBesideBooth(nutriPos.x, nutriPos.z, nutriPos.rot, 1.3);
     nutriNPC.group.position.set(nutriNpcPos.x, 0, nutriNpcPos.z);
-    // NPC olha PRA FORA (direção do booth front = booth.rot)
+    // NPC olha PRA FRENTE (direção do booth front = booth.rot)
     nutriNPC.group.rotation.y = nutriPos.rot;
     nutriNPC.group.userData.npcSlot = "nutri";
     nutriNPC.group.traverse((c) => {
@@ -803,7 +803,7 @@ export default function VirtualGym({
       initial: "B",
       outfit: "athletic",
     });
-    const ptNpcPos = npcBehindBooth(ptPos.x, ptPos.z, ptPos.rot, 0.55);
+    const ptNpcPos = npcBesideBooth(ptPos.x, ptPos.z, ptPos.rot, 1.3);
     ptNPC.group.position.set(ptNpcPos.x, 0, ptNpcPos.z);
     ptNPC.group.rotation.y = ptPos.rot;
     ptNPC.group.userData.npcSlot = "pt";
