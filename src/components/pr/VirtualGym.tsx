@@ -562,14 +562,17 @@ export default function VirtualGym({
 
       if (ped.ledStripe) ledStripes.push(ped.ledStripe);
 
-      // Track lighting individual: spot do teto pra cada pedestal
+      // Track lighting individual: spot do teto pra cada pedestal.
+      // V15.1: intensidade +60% (1.4→2.2) e ângulo +20% (π/9→π/7) pro
+      // troféu ficar bem destacado mesmo com mapa maior. Pedestal vazio
+      // (ghost) também ficou mais visível (0.4→0.7) pra ler o nome.
       const trackSpot = new THREE.SpotLight(
-        t ? 0xffffff : 0x556070,
-        t ? 1.4 : 0.4,
-        7,
-        Math.PI / 9,
-        0.35,
-        1.2
+        t ? 0xffffff : 0x6a7888,
+        t ? 2.2 : 0.7,
+        9,
+        Math.PI / 7,
+        0.3,
+        1.0
       );
       trackSpot.position.set(x, WALL_H - 0.4, -ROOM_D / 2 + 1.0);
       trackSpot.target.position.set(x, 0.18, -ROOM_D / 2 + 1.0);
@@ -585,13 +588,14 @@ export default function VirtualGym({
       track.position.set(x, WALL_H - 0.06, -ROOM_D / 2 + 1.0);
       scene.add(track);
 
-      // Lente da track light em cor accent emissiva
+      // Lente da track light em cor accent emissiva.
+      // V15.1: lente maior + emissive +33% pra brilho mais visível.
       const trackLens = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.04, 0.05, 0.06, 12),
+        new THREE.CylinderGeometry(0.05, 0.07, 0.07, 12),
         new THREE.MeshStandardMaterial({
-          color: t ? 0xfff2c8 : 0x556070,
-          emissive: t ? 0xfff2c8 : 0x556070,
-          emissiveIntensity: t ? 0.9 : 0.2,
+          color: t ? 0xfff2c8 : 0x6a7888,
+          emissive: t ? 0xfff2c8 : 0x6a7888,
+          emissiveIntensity: t ? 1.2 : 0.35,
         })
       );
       trackLens.position.set(x, WALL_H - 0.18, -ROOM_D / 2 + 1.0);
@@ -1278,7 +1282,8 @@ export default function VirtualGym({
     // Avatar não pode chegar mais perto do que isso da parede do fundo
     // (trophy hall deck termina em z=-ROOM_D/2 + 1.45 = -6.55).
     const SHELF_BLOCK_Z = -ROOM_D / 2 + 2.0;
-    const SPEED = 3.0;
+    // V15.1: +25% pra atravessar mapa dobrado sem ficar tedioso (3.0 → 3.75)
+    const SPEED = 3.75;
     const followOffset = new THREE.Vector3(0, 4.5, 6.5);
     const tmpV = new THREE.Vector3();
     let raf = 0;

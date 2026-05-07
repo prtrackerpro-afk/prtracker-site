@@ -11,22 +11,14 @@
 
 import type { APIRoute } from "astro";
 import { getServerSupabase } from "../../../../lib/supabase/server";
+import { OBJECT_META } from "../../../../lib/pr/gym/layout";
 
 export const prerender = false;
 
-const VALID_TYPES = new Set([
-  "trophy_hall",
-  "skills_board",
-  "run_board",
-  "streak_pillar",
-  "personal_booth",
-  "nutri_booth",
-  "empty_booth",
-  "power_rack",
-  "platform",
-  "projector_room",
-  "spawn",
-]);
+// Whitelist derivada do OBJECT_META pra nunca desincronizar com o
+// schema do client. Bug histórico: lista hardcoded com tipos antigos
+// rejeitava silenciosamente saves de equipamentos novos (V15).
+const VALID_TYPES = new Set(Object.keys(OBJECT_META));
 
 export const GET: APIRoute = async ({ request, cookies, locals }) => {
   const athlete = locals.athlete;
