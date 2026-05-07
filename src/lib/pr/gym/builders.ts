@@ -720,33 +720,110 @@ export function buildPowerRack(accentHex: string): THREE.Group {
   const W = 1.6;
   const D = 1.4;
   const H = 2.6;
+
+  // 4 colunas com furos visíveis (decals canvas) — recurso característico
+  // de power rack pra ajustar altura dos hooks/safety pins.
+  const colCanvas = document.createElement("canvas");
+  colCanvas.width = 64;
+  colCanvas.height = 512;
+  const cctx = colCanvas.getContext("2d")!;
+  cctx.fillStyle = "#2a2d3a";
+  cctx.fillRect(0, 0, 64, 512);
+  // Furos de ajuste em série
+  cctx.fillStyle = "#0a0a14";
+  for (let i = 0; i < 24; i++) {
+    cctx.beginPath();
+    cctx.arc(32, 16 + i * 20, 5, 0, Math.PI * 2);
+    cctx.fill();
+  }
+  const colTex = new THREE.CanvasTexture(colCanvas);
+  colTex.colorSpace = THREE.SRGBColorSpace;
+  colTex.wrapT = THREE.ClampToEdgeWrapping;
+  const colMat = new THREE.MeshStandardMaterial({
+    map: colTex,
+    roughness: 0.4,
+    metalness: 0.7,
+  });
   for (const x of [-W / 2, W / 2]) {
     for (const z of [-D / 2, D / 2]) {
-      const col = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 0.08), STEEL_MAT);
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.09, H, 0.09), colMat);
       col.position.set(x, H / 2, z);
       col.castShadow = true;
       g.add(col);
     }
   }
-  const topFront = new THREE.Mesh(new THREE.BoxGeometry(W + 0.08, 0.08, 0.08), STEEL_MAT);
+
+  // Travessas top + back (estrutura)
+  const topFront = new THREE.Mesh(new THREE.BoxGeometry(W + 0.1, 0.1, 0.1), STEEL_MAT);
   topFront.position.set(0, H, D / 2);
   g.add(topFront);
-  const topBack = new THREE.Mesh(new THREE.BoxGeometry(W + 0.08, 0.08, 0.08), STEEL_MAT);
+  const topBack = new THREE.Mesh(new THREE.BoxGeometry(W + 0.1, 0.1, 0.1), STEEL_MAT);
   topBack.position.set(0, H, -D / 2);
   g.add(topBack);
-  const baseFront = new THREE.Mesh(new THREE.BoxGeometry(W + 0.08, 0.05, 0.4), STEEL_MAT);
-  baseFront.position.set(0, 0.025, D / 2 + 0.16);
-  g.add(baseFront);
-  const baseBack = new THREE.Mesh(new THREE.BoxGeometry(W + 0.08, 0.05, 0.4), STEEL_MAT);
-  baseBack.position.set(0, 0.025, -D / 2 - 0.16);
-  g.add(baseBack);
+  // Pull-up bar topo (ligando top front e back, no centro)
+  const pullupBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, D, 12),
+    CHROME_MAT
+  );
+  pullupBar.rotation.x = Math.PI / 2;
+  pullupBar.position.set(0, H - 0.02, 0);
+  g.add(pullupBar);
 
-  for (const x of [-W / 2, W / 2]) {
-    const hook = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.16), accent);
-    hook.position.set(x, 1.25, D / 2 - 0.04);
-    g.add(hook);
+  // Bases (sapatas mais largas pra estabilidade)
+  const baseFront = new THREE.Mesh(new THREE.BoxGeometry(W + 0.1, 0.06, 0.4), STEEL_MAT);
+  baseFront.position.set(0, 0.03, D / 2 + 0.16);
+  g.add(baseFront);
+  const baseBack = new THREE.Mesh(new THREE.BoxGeometry(W + 0.1, 0.06, 0.4), STEEL_MAT);
+  baseBack.position.set(0, 0.03, -D / 2 - 0.16);
+  g.add(baseBack);
+  // Conexão entre as bases (perpendicular)
+  for (const sx of [-W / 2 - 0.1, W / 2 + 0.1]) {
+    const baseLink = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, D), STEEL_MAT);
+    baseLink.position.set(sx, 0.025, 0);
+    g.add(baseLink);
   }
 
+  // J-hooks lime (suportam a barbell — altura 1.25m)
+  for (const x of [-W / 2, W / 2]) {
+    const hook = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.18), accent);
+    hook.position.set(x, 1.25, D / 2 - 0.04);
+    g.add(hook);
+    // Braço do hook (barra horizontal pra segurar a barbell)
+    const hookArm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.12), accent);
+    hookArm.position.set(x, 1.34, D / 2 - 0.12);
+    g.add(hookArm);
+  }
+
+  // Pinos de segurança horizontais (safety pins — altura 0.9m)
+  for (const sz of [D / 2 - 0.05, -D / 2 + 0.05]) {
+    const pin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, W + 0.02, 10),
+      STEEL_MAT
+    );
+    pin.rotation.z = Math.PI / 2;
+    pin.position.set(0, 0.9, sz);
+    g.add(pin);
+  }
+
+  // Estante de pesos na base traseira (4 anilhas armazenadas)
+  const stockColors = [0xda291c, 0x0057b8, 0xffc72c, 0x43b02a];
+  for (let i = 0; i < 4; i++) {
+    const radius = 0.22 - i * 0.015;
+    const plate = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius, radius, 0.04, 20),
+      new THREE.MeshStandardMaterial({
+        color: stockColors[i] ?? 0x9aa3b0,
+        roughness: 0.5,
+        metalness: 0.15,
+      })
+    );
+    plate.rotation.z = Math.PI / 2;
+    plate.position.set(W / 2 - 0.04, 0.27, -D / 2 - 0.05 + i * 0.06);
+    plate.castShadow = true;
+    g.add(plate);
+  }
+
+  // Barbell carregada nos hooks
   const barbell = buildLoadedBarbell();
   barbell.position.set(0, 1.32, D / 2 - 0.04);
   g.add(barbell);
@@ -824,23 +901,96 @@ export function buildPlatform(accentHex: string): THREE.Group {
 
 export function buildBench(): THREE.Group {
   const g = new THREE.Group();
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.1, 1.2), VINYL_MAT);
-  seat.position.set(0, 0.5, 0);
+  const benchPad = new THREE.MeshStandardMaterial({
+    color: 0x7c1f1f,
+    roughness: 0.65,
+    metalness: 0.15,
+  });
+  const stitchMat = new THREE.MeshBasicMaterial({ color: 0x1a0a0a });
+
+  // Trilho central (estrutura) — agora mais robusta com 2 níveis
+  const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.48, 1.3), STEEL_MAT);
+  trunk.position.set(0, 0.24, 0);
+  g.add(trunk);
+
+  // Bases — 2 sapatas largas com pé de borracha
+  for (const z of [-0.55, 0.55]) {
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.08), STEEL_MAT);
+    foot.position.set(0, 0.03, z);
+    foot.castShadow = true;
+    g.add(foot);
+    // Pés de borracha em cada extremidade
+    for (const sx of [-0.32, 0.32]) {
+      const rubFoot = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.025, 0.08),
+        RUBBER_MAT
+      );
+      rubFoot.position.set(sx, 0.012, z);
+      g.add(rubFoot);
+    }
+  }
+
+  // Assento principal (acolchoado, com bevel sutil)
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.7), benchPad);
+  seat.position.set(0, 0.55, 0.15);
   seat.castShadow = true;
   g.add(seat);
-  const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.46, 1.2), STEEL_MAT);
-  trunk.position.set(0, 0.23, 0);
-  g.add(trunk);
-  for (const z of [-0.55, 0.55]) {
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.06), STEEL_MAT);
-    foot.position.set(0, 0.025, z);
-    g.add(foot);
+
+  // Costuras visíveis no assento (linhas pretas) — efeito vinyl
+  for (const sx of [-0.13, 0.13]) {
+    const stitch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.005, 0.122, 0.7),
+      stitchMat
+    );
+    stitch.position.set(sx, 0.55, 0.15);
+    g.add(stitch);
   }
-  for (const z of [-0.45, 0.45]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.05, 0.06), STEEL_MAT);
-    post.position.set(0.4, 0.525, z);
+
+  // Encosto inclinável (45° sutil pra mostrar que é ajustável)
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.55), benchPad);
+  back.position.set(0, 0.62, -0.32);
+  back.rotation.x = -Math.PI / 14; // levemente inclinado
+  back.castShadow = true;
+  g.add(back);
+
+  // Costura no encosto
+  for (const sx of [-0.13, 0.13]) {
+    const stitch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.005, 0.122, 0.55),
+      stitchMat
+    );
+    stitch.position.set(sx, 0.62, -0.32);
+    stitch.rotation.x = -Math.PI / 14;
+    g.add(stitch);
+  }
+
+  // Postes verticais para hooks de barbell (lado de cima da cabeça)
+  for (const z of [-0.5, 0.5]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.15, 0.06), STEEL_MAT);
+    post.position.set(0.4, 0.6, z);
+    post.castShadow = true;
     g.add(post);
+    // Furos de ajuste (decals canvas seria ideal, aqui simulamos com pequenas marcas)
+    for (let i = 0; i < 3; i++) {
+      const hole = new THREE.Mesh(
+        new THREE.SphereGeometry(0.012, 6, 4),
+        new THREE.MeshBasicMaterial({ color: 0x0a0a14 })
+      );
+      hole.position.set(0.4, 0.7 + i * 0.18, z);
+      g.add(hole);
+    }
   }
+
+  // J-hooks no topo dos postes pra apoiar barbell (visual subliminar)
+  for (const z of [-0.5, 0.5]) {
+    const hook = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.12, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x9aa3b0, roughness: 0.5, metalness: 0.6 })
+    );
+    hook.position.set(0.45, 1.1, z);
+    g.add(hook);
+  }
+
   return g;
 }
 
@@ -2050,45 +2200,109 @@ export function buildNPC(props: NPCProps): NPCParts {
   const torsoR = isF ? 0.18 : isM ? 0.22 : 0.20;
   const headR = 0.21;
 
-  // === HEAD esférico simples ===
+  // === HEAD com face desenhada em canvas (olhos + sobrancelhas + sorriso) ===
   const head = new THREE.Group();
   const skull = new THREE.Mesh(
-    new THREE.SphereGeometry(headR, 28, 22),
+    new THREE.SphereGeometry(headR, 32, 24),
     skinMat
   );
   skull.scale.set(1.0, 1.06, 1.0);
   skull.castShadow = true;
   head.add(skull);
 
-  // 2 olhos pretos pequenos
-  for (const sx of [-0.075, 0.075]) {
-    const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.024, 10, 8),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    );
-    eye.position.set(sx, 0.025, headR * 0.92);
-    head.add(eye);
-  }
+  // Face plane com canvas (sobrancelhas + olhos + sorriso) — mais expressivo
+  const faceCanvas = document.createElement("canvas");
+  faceCanvas.width = 256;
+  faceCanvas.height = 256;
+  const fctx = faceCanvas.getContext("2d")!;
+  fctx.clearRect(0, 0, 256, 256);
+  // Sobrancelhas (linhas curvas)
+  fctx.strokeStyle = hairHex;
+  fctx.lineWidth = 8;
+  fctx.lineCap = "round";
+  fctx.beginPath();
+  fctx.moveTo(80, 100);
+  fctx.quadraticCurveTo(95, 88, 115, 96);
+  fctx.stroke();
+  fctx.beginPath();
+  fctx.moveTo(141, 96);
+  fctx.quadraticCurveTo(161, 88, 176, 100);
+  fctx.stroke();
+  // Olhos (oval preto + reflexo branco)
+  fctx.fillStyle = "#0a0a14";
+  fctx.beginPath();
+  fctx.ellipse(98, 122, 12, 16, 0, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.ellipse(158, 122, 12, 16, 0, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.fillStyle = "#fff";
+  fctx.beginPath();
+  fctx.ellipse(101, 117, 4, 5, 0, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.ellipse(161, 117, 4, 5, 0, 0, Math.PI * 2);
+  fctx.fill();
+  // Sorriso aberto (curva)
+  fctx.strokeStyle = "#4a1f1f";
+  fctx.lineWidth = 6;
+  fctx.lineCap = "round";
+  fctx.beginPath();
+  fctx.moveTo(108, 175);
+  fctx.quadraticCurveTo(128, 198, 148, 175);
+  fctx.stroke();
+  // Bochechas sutis (rosa)
+  fctx.fillStyle = "rgba(218, 41, 28, 0.18)";
+  fctx.beginPath();
+  fctx.arc(75, 155, 14, 0, Math.PI * 2);
+  fctx.fill();
+  fctx.beginPath();
+  fctx.arc(181, 155, 14, 0, Math.PI * 2);
+  fctx.fill();
 
-  // Sorriso simples (torus segment)
-  const smile = new THREE.Mesh(
-    new THREE.TorusGeometry(0.045, 0.01, 6, 14, Math.PI * 0.7),
-    new THREE.MeshStandardMaterial({ color: 0x4a1f1f, roughness: 0.6 })
+  const faceTex = new THREE.CanvasTexture(faceCanvas);
+  faceTex.colorSpace = THREE.SRGBColorSpace;
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(headR * 1.7, headR * 1.7),
+    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
   );
-  smile.rotation.x = Math.PI;
-  smile.rotation.z = Math.PI / 2;
-  smile.position.set(0, -0.06, headR * 0.9);
-  head.add(smile);
+  face.position.set(0, 0, headR * 0.96);
+  head.add(face);
 
-  // Cabelo cap (hemisferio cobrindo top + nuca)
+  // Cabelo cap (hemisferio cobrindo top + nuca) com volume
   const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(headR + 0.022, 28, 22, 0, Math.PI * 2, 0, Math.PI / 1.65),
+    new THREE.SphereGeometry(headR + 0.025, 32, 24, 0, Math.PI * 2, 0, Math.PI / 1.65),
     hairMat
   );
-  cap.scale.set(1.0, 1.06, 1.0);
+  cap.scale.set(1.02, 1.08, 1.02);
   cap.position.y = -0.02;
   cap.castShadow = true;
   head.add(cap);
+
+  // Detalhe extra de cabelo lateral (mecha) — só pra female pra dar variedade
+  if (isF) {
+    for (const sx of [-1, 1]) {
+      const sideHair = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.05, 0.16, 4, 8),
+        hairMat
+      );
+      sideHair.position.set(sx * (headR + 0.01), -0.02, headR * 0.5);
+      sideHair.rotation.z = sx * 0.2;
+      sideHair.castShadow = true;
+      head.add(sideHair);
+    }
+  }
+
+  // Orelhas pequenas (visual humano)
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Mesh(
+      new THREE.SphereGeometry(0.028, 8, 6),
+      skinMat
+    );
+    ear.scale.set(0.6, 1.0, 0.5);
+    ear.position.set(sx * (headR + 0.01), 0.0, 0);
+    head.add(ear);
+  }
 
   // Pescoço
   const neck = new THREE.Mesh(
@@ -2660,59 +2874,141 @@ export function buildTreadmill(accentHex: string): THREE.Group {
     emissiveIntensity: 0.2,
   });
 
-  // Plataforma da esteira (correia)
+  // Correia texturizada (linhas perpendiculares simulando a esteira)
+  const beltCanvas = document.createElement("canvas");
+  beltCanvas.width = 128;
+  beltCanvas.height = 512;
+  const bctx = beltCanvas.getContext("2d")!;
+  bctx.fillStyle = "#0a0a14";
+  bctx.fillRect(0, 0, 128, 512);
+  // Listras horizontais (segmentos da correia)
+  bctx.fillStyle = "#1a1a26";
+  for (let i = 0; i < 40; i++) {
+    bctx.fillRect(0, i * 13, 128, 6);
+  }
+  const beltTex = new THREE.CanvasTexture(beltCanvas);
+  beltTex.colorSpace = THREE.SRGBColorSpace;
   const beltDeck = new THREE.Mesh(
     new THREE.BoxGeometry(0.7, 0.08, 1.6),
-    new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.95 })
+    new THREE.MeshStandardMaterial({ map: beltTex, roughness: 0.92 })
   );
   beltDeck.position.set(0, 0.18, 0.1);
   beltDeck.castShadow = true;
   beltDeck.receiveShadow = true;
   g.add(beltDeck);
 
-  // Lateral esquerda + direita do deck (carcaça)
+  // Cilindros nas pontas da correia (rolos da esteira — visual de máquina real)
+  for (const sz of [-0.7, 0.9]) {
+    const roller = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, 0.66, 12),
+      STEEL_MAT
+    );
+    roller.rotation.z = Math.PI / 2;
+    roller.position.set(0, 0.18, sz);
+    g.add(roller);
+  }
+
+  // Carcaça lateral
   for (const sx of [-0.42, 0.42]) {
     const side = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 1.6), baseMat);
     side.position.set(sx, 0.13, 0.1);
     side.castShadow = true;
     g.add(side);
+    // Faixa lime em cada lateral (acento visual)
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.02, 1.5),
+      accent
+    );
+    stripe.position.set(sx, 0.22, 0.1);
+    g.add(stripe);
   }
 
-  // Frente — coluna do console
+  // Coluna do console (postes em A pra mais estabilidade)
   for (const sx of [-0.32, 0.32]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.06), STEEL_MAT);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1.2, 0.07), STEEL_MAT);
     post.position.set(sx, 0.78, -0.78);
     post.castShadow = true;
     g.add(post);
   }
 
-  // Console (display)
-  const console = new THREE.Mesh(
-    new THREE.BoxGeometry(0.85, 0.32, 0.08),
+  // Console com display detalhado (canvas)
+  const consoleBody = new THREE.Mesh(
+    new THREE.BoxGeometry(0.92, 0.36, 0.1),
     baseMat
   );
-  console.position.set(0, 1.32, -0.78);
-  console.castShadow = true;
-  g.add(console);
+  consoleBody.position.set(0, 1.32, -0.78);
+  consoleBody.castShadow = true;
+  g.add(consoleBody);
 
-  // Tela do console
+  // Display canvas com info típica de esteira (km/h, tempo, distância)
+  const displayCanvas = document.createElement("canvas");
+  displayCanvas.width = 512;
+  displayCanvas.height = 192;
+  const dctx = displayCanvas.getContext("2d")!;
+  dctx.fillStyle = "#0a0a14";
+  dctx.fillRect(0, 0, 512, 192);
+  // 3 mini displays
+  dctx.fillStyle = "#1a1a26";
+  dctx.fillRect(20, 20, 150, 152);
+  dctx.fillRect(180, 20, 152, 152);
+  dctx.fillRect(342, 20, 150, 152);
+  // Labels
+  dctx.fillStyle = "#9ca3af";
+  dctx.font = "700 18px Inter, sans-serif";
+  dctx.textAlign = "center";
+  dctx.fillText("VELOCIDADE", 95, 50);
+  dctx.fillText("TEMPO", 256, 50);
+  dctx.fillText("DISTÂNCIA", 417, 50);
+  // Valores em lime
+  dctx.fillStyle = accentHex;
+  dctx.font = "900 50px Archivo Black, Inter, sans-serif";
+  dctx.fillText("12.5", 95, 110);
+  dctx.fillText("32:14", 256, 110);
+  dctx.fillText("6.7", 417, 110);
+  dctx.fillStyle = "#9ca3af";
+  dctx.font = "500 18px Inter, sans-serif";
+  dctx.fillText("KM/H", 95, 150);
+  dctx.fillText("MIN", 256, 150);
+  dctx.fillText("KM", 417, 150);
+  const displayTex = new THREE.CanvasTexture(displayCanvas);
+  displayTex.colorSpace = THREE.SRGBColorSpace;
   const screen = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.7, 0.22),
-    accent
+    new THREE.PlaneGeometry(0.78, 0.28),
+    new THREE.MeshBasicMaterial({ map: displayTex, transparent: true })
   );
-  screen.position.set(0, 1.34, -0.74);
+  screen.position.set(0, 1.32, -0.72);
   g.add(screen);
 
-  // Handlebars laterais
+  // Handlebars laterais (curvados — pegador realista)
   for (const sx of [-0.4, 0.4]) {
     const bar = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8),
+      new THREE.CylinderGeometry(0.025, 0.025, 0.5, 10),
       STEEL_MAT
     );
-    bar.position.set(sx, 1.05, -0.5);
+    bar.position.set(sx, 1.05, -0.45);
     bar.rotation.x = Math.PI / 2;
     g.add(bar);
+    // Grip rubber
+    const grip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.028, 0.18, 10),
+      RUBBER_MAT
+    );
+    grip.position.set(sx, 1.05, -0.3);
+    grip.rotation.x = Math.PI / 2;
+    g.add(grip);
   }
+
+  // Botões emergency stop / quick speed (pequenos detalhes vermelhos no console)
+  const emergencyBtn = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.02, 12),
+    new THREE.MeshStandardMaterial({
+      color: 0xda291c,
+      emissive: 0xda291c,
+      emissiveIntensity: 0.5,
+    })
+  );
+  emergencyBtn.position.set(0, 1.18, -0.74);
+  g.add(emergencyBtn);
 
   return g;
 }
@@ -2889,16 +3185,63 @@ export function buildRowingMachine(accentHex: string): THREE.Group {
   display.position.set(0, 1.15, -1.0);
   g.add(display);
 
-  // Pegador (handle) sobre a ventoinha
-  const handle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.025, 0.025, 0.36, 8),
+  // Cabo (catenária visual entre handle e ventoinha)
+  const cableMat = new THREE.MeshStandardMaterial({
+    color: 0x666870,
+    roughness: 0.6,
+    metalness: 0.3,
+  });
+  const cable = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.008, 0.008, 0.32, 6),
+    cableMat
+  );
+  cable.position.set(0, 0.4, -0.85);
+  cable.rotation.x = Math.PI / 2;
+  g.add(cable);
+
+  // Pegador (handle horizontal — efeito remo real)
+  const handleBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.42, 10),
     STEEL_MAT
   );
-  handle.position.set(0, 0.4, -0.7);
-  handle.rotation.z = Math.PI / 2;
-  g.add(handle);
+  handleBar.position.set(0, 0.4, -0.68);
+  handleBar.rotation.z = Math.PI / 2;
+  g.add(handleBar);
+  // Grips de borracha
+  for (const sx of [-0.16, 0.16]) {
+    const grip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.028, 0.08, 8),
+      RUBBER_MAT
+    );
+    grip.position.set(sx, 0.4, -0.68);
+    grip.rotation.z = Math.PI / 2;
+    g.add(grip);
+  }
 
-  // Pés (footplates)
+  // Display canvas com info de remo (split, distância, watts)
+  const rowDisplayCanvas = document.createElement("canvas");
+  rowDisplayCanvas.width = 256;
+  rowDisplayCanvas.height = 144;
+  const rdctx = rowDisplayCanvas.getContext("2d")!;
+  rdctx.fillStyle = "#01002A";
+  rdctx.fillRect(0, 0, 256, 144);
+  rdctx.fillStyle = accentHex;
+  rdctx.font = "900 60px Archivo Black, Inter, sans-serif";
+  rdctx.textAlign = "center";
+  rdctx.textBaseline = "middle";
+  rdctx.fillText("1:42", 128, 50);
+  rdctx.fillStyle = "#9ca3af";
+  rdctx.font = "700 20px Inter, sans-serif";
+  rdctx.fillText("/500m", 128, 90);
+  rdctx.fillStyle = "#fff";
+  rdctx.font = "700 24px Inter, sans-serif";
+  rdctx.fillText("245 W", 128, 120);
+  const rowDisplayTex = new THREE.CanvasTexture(rowDisplayCanvas);
+  rowDisplayTex.colorSpace = THREE.SRGBColorSpace;
+  // Substitui o display sólido pelo canvas
+  display.material = new THREE.MeshBasicMaterial({ map: rowDisplayTex });
+
+  // Footplates (pés ergonômicos)
   for (const sx of [-0.18, 0.18]) {
     const footplate = new THREE.Mesh(
       new THREE.BoxGeometry(0.16, 0.06, 0.24),
@@ -2907,7 +3250,24 @@ export function buildRowingMachine(accentHex: string): THREE.Group {
     footplate.position.set(sx, 0.3, -0.78);
     footplate.rotation.x = -Math.PI / 12;
     g.add(footplate);
+    // Strap lime no footplate (visual de pés afivelados)
+    const strap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.012, 0.05),
+      accent
+    );
+    strap.position.set(sx, 0.34, -0.74);
+    strap.rotation.x = -Math.PI / 12;
+    g.add(strap);
   }
+
+  // Faixa lime ao redor da ventoinha (visual identidade Concept2-ish)
+  const fanRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.32, 0.012, 6, 32),
+    accent
+  );
+  fanRing.rotation.y = Math.PI / 2;
+  fanRing.position.set(0, 0.4, -1.0);
+  g.add(fanRing);
 
   return g;
 }
