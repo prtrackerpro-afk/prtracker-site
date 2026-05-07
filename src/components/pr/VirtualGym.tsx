@@ -685,21 +685,20 @@ export default function VirtualGym({
       trackLens.position.set(x, WALL_H - 0.18, -ROOM_D / 2 + 1.0);
       scene.add(trackLens);
 
-      // V16.7 cycle 48: cone de luz visível do trackLens pro pedestal
-      // (efeito museum lighting com volumetric beam fake).
+      // V16.8 cycle 68: light cone MAIS SUTIL (era 0.5 raio, agora 0.25;
+      // opacity 0.08 → 0.04). Antes domínio o fundo do gym.
       if (t) {
         const lightCone = new THREE.Mesh(
-          new THREE.ConeGeometry(0.5, WALL_H - 0.5, 12, 1, true),
+          new THREE.ConeGeometry(0.25, WALL_H - 0.5, 10, 1, true),
           new THREE.MeshBasicMaterial({
             color: 0xfff2c8,
             transparent: true,
-            opacity: 0.08,
+            opacity: 0.04,
             side: THREE.DoubleSide,
             depthWrite: false,
             blending: THREE.AdditiveBlending,
           })
         );
-        // Cone aponta pra baixo (apex no topo, base no chão)
         lightCone.position.set(x, (WALL_H - 0.5) / 2 + 0.5, -ROOM_D / 2 + 1.0);
         scene.add(lightCone);
       }
