@@ -46,6 +46,11 @@ import {
 } from "../../lib/pr/gym/avatar-prefs";
 import { resolveCollisions, type AABB, AVATAR_RADIUS } from "../../lib/pr/gym/collision";
 import {
+  loadLayout,
+  DEFAULT_LAYOUT,
+  type GymObjectType,
+} from "../../lib/pr/gym/layout";
+import {
   playClick,
   playChime,
   playMystery,
@@ -216,6 +221,21 @@ export default function VirtualGym({
     const mountMaybe = mountRef.current;
     if (!mountMaybe) return;
     const mount: HTMLDivElement = mountMaybe;
+
+    // === Layout — carrega posições editáveis do localStorage ==========
+    // Cada objeto editável (power_rack, booths, boards, etc) tem sua
+    // posição x/z/rot definida em DEFAULT_LAYOUT (ver layout.ts) ou
+    // sobrescrita pelo editor 2D em /pr/gym/edit. Helper `lo(type)`
+    // retorna o objeto encontrado ou cai no default. Y permanece
+    // hardcoded por tipo (alturas têm semântica fixa).
+    const layout = loadLayout();
+    const defaultByType = new Map(
+      DEFAULT_LAYOUT.objects.map((o) => [o.type, o]),
+    );
+    const lo = (type: GymObjectType) => {
+      const found = layout.objects.find((o) => o.type === type);
+      return found ?? defaultByType.get(type) ?? { x: 0, z: 0, rot: 0 };
+    };
 
     // === Scene + renderer ==========================================
     const scene = new THREE.Scene();
@@ -575,17 +595,19 @@ export default function VirtualGym({
     scene.add(ceilingBeams);
 
     // POWER RACK lado esquerdo, em shadow (apenas com dim spot)
+    const powerRackPos = lo("power_rack");
     const powerRack = buildPowerRack(accent);
-    powerRack.position.set(-7, 0, 0);
-    powerRack.rotation.y = Math.PI / 8;
+    powerRack.position.set(powerRackPos.x, 0, powerRackPos.z);
+    powerRack.rotation.y = powerRackPos.rot + Math.PI / 8;
     scene.add(powerRack);
-    colliders.push({ cx: -7, cz: 0, hw: 1.0, hd: 1.0 });
+    colliders.push({ cx: powerRackPos.x, cz: powerRackPos.z, hw: 1.0, hd: 1.0 });
 
     // PLATAFORMA de levantamento — recua um pouco e gira menos pra
     // não ultrapassar a parede direita.
+    const platformPos = lo("platform");
     const platform = buildPlatform(accent);
-    platform.position.set(6.2, 0, -1);
-    platform.rotation.y = -Math.PI / 14;
+    platform.position.set(platformPos.x, 0, platformPos.z);
+    platform.rotation.y = platformPos.rot - Math.PI / 14;
     scene.add(platform);
     // Plataforma é baixa (6cm), avatar pisa em cima.
 
@@ -633,10 +655,11 @@ export default function VirtualGym({
       accentHex: "#43B02A",
       slotId: "nutri",
     });
-    nutriBooth.group.position.set(-4.2, 0, 4.5);
-    nutriBooth.group.rotation.y = -Math.PI / 2;
+    const nutriPos = lo("nutri_booth");
+    nutriBooth.group.position.set(nutriPos.x, 0, nutriPos.z);
+    nutriBooth.group.rotation.y = nutriPos.rot;
     sponsorsGroup.add(nutriBooth.group);
-    colliders.push({ cx: -4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
+    colliders.push({ cx: nutriPos.x, cz: nutriPos.z, hw: 0.6, hd: 1.0 });
 
     // NPC Camila ao lado do booth (atrás do balcão, idle)
     const nutriNPC = buildNPC({
@@ -647,8 +670,10 @@ export default function VirtualGym({
       gender: "female",
       initial: "C",
     });
-    nutriNPC.group.position.set(-4.2, 0, 3.7);
-    nutriNPC.group.rotation.y = Math.PI / 2; // olha pra direita (aisle)
+    // NPC fica 0.8m atrás do balcão (na direção oposta da rotação do booth).
+    // Booth com rot -π/2 (frente apontando -x) → NPC em x mesmo do booth, z = bz - 0.8.
+    nutriNPC.group.position.set(nutriPos.x, 0, nutriPos.z - 0.8);
+    nutriNPC.group.rotation.y = -nutriPos.rot; // olha pra direção oposta (pro aisle)
     nutriNPC.group.userData.npcSlot = "nutri";
     nutriNPC.group.traverse((c) => {
       c.userData.npcSlot = "nutri";
@@ -668,10 +693,11 @@ export default function VirtualGym({
       accentHex: "#D8FF2C",
       slotId: "pt",
     });
-    ptBooth.group.position.set(4.2, 0, 4.5);
-    ptBooth.group.rotation.y = Math.PI / 2;
+    const ptPos = lo("personal_booth");
+    ptBooth.group.position.set(ptPos.x, 0, ptPos.z);
+    ptBooth.group.rotation.y = ptPos.rot;
     sponsorsGroup.add(ptBooth.group);
-    colliders.push({ cx: 4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
+    colliders.push({ cx: ptPos.x, cz: ptPos.z, hw: 0.6, hd: 1.0 });
 
     // NPC Bruno ao lado do booth
     const ptNPC = buildNPC({
@@ -682,8 +708,8 @@ export default function VirtualGym({
       gender: "male",
       initial: "B",
     });
-    ptNPC.group.position.set(4.2, 0, 3.7);
-    ptNPC.group.rotation.y = -Math.PI / 2; // olha pra esquerda (aisle)
+    ptNPC.group.position.set(ptPos.x, 0, ptPos.z - 0.8);
+    ptNPC.group.rotation.y = -ptPos.rot; // olha pra direção oposta (aisle)
     ptNPC.group.userData.npcSlot = "pt";
     ptNPC.group.traverse((c) => {
       c.userData.npcSlot = "pt";
@@ -697,20 +723,23 @@ export default function VirtualGym({
       accentHex: "#D8FF2C",
       slotId: "empty",
     });
-    emptyBooth.group.position.set(-4.2, 0, 1.5);
-    emptyBooth.group.rotation.y = -Math.PI / 2;
+    const emptyPos = lo("empty_booth");
+    emptyBooth.group.position.set(emptyPos.x, 0, emptyPos.z);
+    emptyBooth.group.rotation.y = emptyPos.rot;
     sponsorsGroup.add(emptyBooth.group);
-    colliders.push({ cx: -4.2, cz: 1.5, hw: 0.6, hd: 1.0 });
+    colliders.push({ cx: emptyPos.x, cz: emptyPos.z, hw: 0.6, hd: 1.0 });
 
     // === STREAK PILLAR (Duolingo-style fogo de frequência) =========
     // Posicionado na entrada (perto do avatar) pra ser visto direto
     // ao entrar no gym. Click → modal de detalhe.
     const streakPillarParts = buildStreakPillar(streakDays);
-    streakPillarParts.group.position.set(0, 0, ROOM_D / 2 - 1.2);
+    const streakPos = lo("streak_pillar");
+    streakPillarParts.group.position.set(streakPos.x, 0, streakPos.z);
+    streakPillarParts.group.rotation.y = streakPos.rot;
     streakPillarParts.group.userData.kind = "streak-pillar";
     streakPillarParts.hitBox.userData.kind = "streak-pillar";
     scene.add(streakPillarParts.group);
-    colliders.push({ cx: 0, cz: ROOM_D / 2 - 1.2, hw: 0.7, hd: 0.7 });
+    colliders.push({ cx: streakPos.x, cz: streakPos.z, hw: 0.7, hd: 0.7 });
     const streakFlameRef = streakPillarParts.flame;
 
     // === SKILLS BOARD — angulado pro aisle central (visível andando) ===
@@ -721,9 +750,10 @@ export default function VirtualGym({
       label: s.label,
       bestReps: skillsLocal[s.id] ?? 0,
     }));
+    const skillsPos = lo("skills_board");
     const skillsBoardParts = buildSkillsBoard("#D8FF2C", skillsSlots);
-    skillsBoardParts.group.position.set(ROOM_W / 2 - 1.5, 2.0, -3.5);
-    skillsBoardParts.group.rotation.y = -Math.PI / 3;
+    skillsBoardParts.group.position.set(skillsPos.x, 2.0, skillsPos.z);
+    skillsBoardParts.group.rotation.y = skillsPos.rot;
     scene.add(skillsBoardParts.group);
 
     // Pernas do skills stand (2 colunas verticais sob o board)
@@ -732,9 +762,8 @@ export default function VirtualGym({
         new THREE.BoxGeometry(0.06, 1.2, 0.06),
         new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
       );
-      const angle = -Math.PI / 3;
-      const px = ROOM_W / 2 - 1.5 + dx * Math.cos(angle);
-      const pz = -3.5 + dx * Math.sin(angle);
+      const px = skillsPos.x + dx * Math.cos(skillsPos.rot);
+      const pz = skillsPos.z + dx * Math.sin(skillsPos.rot);
       leg.position.set(px, 0.6, pz);
       scene.add(leg);
     }
@@ -746,9 +775,10 @@ export default function VirtualGym({
       label: r.label,
       bestTimeSec: runsLocal[r.id] ?? null,
     }));
+    const runPos = lo("run_board");
     const runBoardParts = buildRunBoard("#D8FF2C", runsSlots);
-    runBoardParts.group.position.set(ROOM_W / 2 - 1.5, 2.2, 2.5);
-    runBoardParts.group.rotation.y = -Math.PI / 3;
+    runBoardParts.group.position.set(runPos.x, 2.2, runPos.z);
+    runBoardParts.group.rotation.y = runPos.rot;
     scene.add(runBoardParts.group);
 
     // Pernas do run stand
@@ -757,9 +787,8 @@ export default function VirtualGym({
         new THREE.BoxGeometry(0.06, 1.4, 0.06),
         new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
       );
-      const angle = -Math.PI / 3;
-      const px = ROOM_W / 2 - 1.5 + dx * Math.cos(angle);
-      const pz = 2.5 + dx * Math.sin(angle);
+      const px = runPos.x + dx * Math.cos(runPos.rot);
+      const pz = runPos.z + dx * Math.sin(runPos.rot);
       leg.position.set(px, 0.7, pz);
       scene.add(leg);
     }
@@ -888,7 +917,9 @@ export default function VirtualGym({
     // === Avatar ====================================================
     const avatarParts = buildAvatar(avatarPrefs);
     // Avatar começa LONGE do stage (entrada, z=ROOM_HALF_D - 1)
-    avatarParts.root.position.set(0, 0, ROOM_D / 2 - 2);
+    const spawnPos = lo("spawn");
+    avatarParts.root.position.set(spawnPos.x, 0, spawnPos.z);
+    avatarParts.root.rotation.y = spawnPos.rot;
 
     // Avatar aura (efeito 10+ troféus) — disco glow embaixo
     let avatarAura: THREE.Mesh | null = null;
