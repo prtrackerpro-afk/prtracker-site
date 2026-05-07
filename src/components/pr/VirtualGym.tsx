@@ -405,8 +405,43 @@ export default function VirtualGym({
       roughness: 0.95,
       metalness: 0.02,
     });
+    // V16.7 cycle 23: floor com textura procedural (grid sutil) pra dar
+    // sensação de escala — antes era um plano preto monolítico.
+    const floorCanvas = document.createElement("canvas");
+    floorCanvas.width = 512;
+    floorCanvas.height = 512;
+    const fctxFloor = floorCanvas.getContext("2d")!;
+    // Base
+    fctxFloor.fillStyle = "#0a0a14";
+    fctxFloor.fillRect(0, 0, 512, 512);
+    // Grid lines (1m squares — repetidas pelo wrap)
+    fctxFloor.strokeStyle = "#1a1a26";
+    fctxFloor.lineWidth = 1;
+    for (let i = 0; i <= 512; i += 64) {
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(i, 0);
+      fctxFloor.lineTo(i, 512);
+      fctxFloor.stroke();
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(0, i);
+      fctxFloor.lineTo(512, i);
+      fctxFloor.stroke();
+    }
+    // Speckle (pequenos pontos pra textura granulada)
+    for (let i = 0; i < 80; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      fctxFloor.fillStyle = `rgba(40, 40, 60, ${Math.random() * 0.3})`;
+      fctxFloor.fillRect(x, y, 2, 2);
+    }
+    const floorTex = new THREE.CanvasTexture(floorCanvas);
+    floorTex.colorSpace = THREE.SRGBColorSpace;
+    floorTex.wrapS = THREE.RepeatWrapping;
+    floorTex.wrapT = THREE.RepeatWrapping;
+    floorTex.repeat.set(8, 8); // 36x32m / 4.5m square = 8x repeats
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0a14,
+      map: floorTex,
+      color: 0x6a6a7a,
       roughness: 0.88,
       metalness: 0.1,
     });
