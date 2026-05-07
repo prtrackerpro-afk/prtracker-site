@@ -53,6 +53,42 @@ const fallbackTrophies: GymTrophy[] =
 const accent = summary.hasBodyData ? tierColor(summary.overallTier) : "#D8FF2C";
 const tierName = summary.hasBodyData ? tierLabel(summary.overallTier) : "Atleta";
 
+// === STREAK Duolingo-style: dias consecutivos com PR registrado ===
+// Buscamos as datas dos PRs do atleta e calculamos a maior sequência
+// que termina em "hoje" (ou ontem — admite 1 dia de tolerância).
+const { data: prDates = [] } = await supabase
+  .from("pr_records")
+  .select("performed_at")
+  .eq("user_id", athlete.userId)
+  .eq("is_personal_record", true)
+  .order("performed_at", { ascending: false })
+  .limit(180);
+
+function computeStreak(dates: string[]): number {
+  if (dates.length === 0) return 0;
+  // Set de datas únicas em formato YYYY-MM-DD
+  const dateSet = new Set(dates.map((d) => d.slice(0, 10)));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  // Streak conta a partir de hoje (ou ontem) pra trás
+  let cursor = new Date(today);
+  if (!dateSet.has(cursor.toISOString().slice(0, 10))) {
+    cursor = yesterday; // tolerância de 1 dia
+    if (!dateSet.has(cursor.toISOString().slice(0, 10))) return 0;
+  }
+  let count = 0;
+  while (dateSet.has(cursor.toISOString().slice(0, 10))) {
+    count++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return count;
+}
+
+const streakDays = computeStreak((prDates ?? []).map((d) => d.performed_at as string));
+
 function shortName(label: string): string {
   // Take first letter of each word, max 4 chars
   return label
@@ -94,6 +130,7 @@ function shortName(label: string): string {
           athleteName={athlete.displayName ?? "Atleta"}
           accent={accent}
           trophies={fallbackTrophies}
+          streakDays={streakDays}
         >
           {/* Fallback enquanto a ilha React hidrata. Se isso ficar visível
               por mais de 2-3s, a hidratação falhou (cheque o console). */}
