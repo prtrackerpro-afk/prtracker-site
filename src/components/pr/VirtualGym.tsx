@@ -763,7 +763,7 @@ export default function VirtualGym({
       initial: "C",
       outfit: "labcoat",
     });
-    const nutriNpcPos = npcBesideBooth(nutriPos.x, nutriPos.z, nutriPos.rot, 1.3);
+    const nutriNpcPos = npcBesideBooth(nutriPos.x, nutriPos.z, nutriPos.rot, 2.0);
     nutriNPC.group.position.set(nutriNpcPos.x, 0, nutriNpcPos.z);
     // NPC olha PRA FRENTE (direção do booth front = booth.rot)
     nutriNPC.group.rotation.y = nutriPos.rot;
@@ -812,7 +812,7 @@ export default function VirtualGym({
       initial: "B",
       outfit: "athletic",
     });
-    const ptNpcPos = npcBesideBooth(ptPos.x, ptPos.z, ptPos.rot, 1.3);
+    const ptNpcPos = npcBesideBooth(ptPos.x, ptPos.z, ptPos.rot, 2.0);
     ptNPC.group.position.set(ptNpcPos.x, 0, ptNpcPos.z);
     ptNPC.group.rotation.y = ptPos.rot;
     ptNPC.group.userData.npcSlot = "pt";
