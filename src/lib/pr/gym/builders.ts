@@ -116,6 +116,145 @@ export function buildTowel(color = 0xda291c): THREE.Group {
   return g;
 }
 
+// V16.8 cycles 213-216: cenário decorativos (WOD board, espelhos, relógio)
+export function buildWODBoard(): THREE.Group {
+  const g = new THREE.Group();
+  // Board grande (1.5×1m)
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(1.5, 1.0, 0.04),
+    new THREE.MeshStandardMaterial({ color: 0x1a3a1a, roughness: 0.85 })
+  );
+  g.add(board);
+  // Frame de madeira
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(1.55, 1.05, 0.02),
+    new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7 })
+  );
+  frame.position.z = -0.025;
+  g.add(frame);
+  // Texto WOD canvas
+  const c = document.createElement("canvas");
+  c.width = 768;
+  c.height = 512;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#1a3a1a";
+  ctx.fillRect(0, 0, 768, 512);
+  ctx.fillStyle = "#d8ff2c";
+  ctx.font = "900 60px Archivo Black, Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("WOD DO DIA", 384, 80);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "500 38px Inter, sans-serif";
+  ctx.textAlign = "left";
+  const lines = [
+    "21-15-9",
+    "Thrusters @ 43kg",
+    "Pull-ups",
+    "",
+    "Tempo cap: 8min",
+    "Score: tempo",
+  ];
+  lines.forEach((line, i) => {
+    ctx.fillText(line, 80, 170 + i * 60);
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const front = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.4, 0.9),
+    new THREE.MeshBasicMaterial({ map: tex })
+  );
+  front.position.z = 0.025;
+  g.add(front);
+  return g;
+}
+
+export function buildClock(): THREE.Group {
+  const g = new THREE.Group();
+  // Disco do relógio
+  const face = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.22, 0.04, 32),
+    new THREE.MeshStandardMaterial({ color: 0xeaeaea, roughness: 0.5 })
+  );
+  face.rotation.x = Math.PI / 2;
+  g.add(face);
+  // Borda escura
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.22, 0.02, 8, 24),
+    new THREE.MeshStandardMaterial({ color: 0x141420, roughness: 0.6, metalness: 0.4 })
+  );
+  rim.rotation.x = 0;
+  g.add(rim);
+  // Numbers + ponteiros via canvas
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#eaeaea";
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = "#01002A";
+  ctx.font = "bold 28px Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // 12 números
+  for (let i = 1; i <= 12; i++) {
+    const ang = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const x = 128 + Math.cos(ang) * 100;
+    const y = 128 + Math.sin(ang) * 100;
+    ctx.fillText(String(i), x, y);
+  }
+  // Ponteiros (estáticos em 10:10)
+  ctx.strokeStyle = "#01002A";
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  // Hour (10): ângulo -2π/12 * 2 - π/2
+  ctx.beginPath();
+  ctx.moveTo(128, 128);
+  ctx.lineTo(128 + Math.cos(-Math.PI / 2 - Math.PI / 3) * 60, 128 + Math.sin(-Math.PI / 2 - Math.PI / 3) * 60);
+  ctx.stroke();
+  // Minute (10 = 50min)
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(128, 128);
+  ctx.lineTo(128 + Math.cos(-Math.PI / 2 - Math.PI / 6) * 90, 128 + Math.sin(-Math.PI / 2 - Math.PI / 6) * 90);
+  ctx.stroke();
+  // Center pin
+  ctx.fillStyle = "#da291c";
+  ctx.beginPath();
+  ctx.arc(128, 128, 6, 0, Math.PI * 2);
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const dial = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.42, 0.42),
+    new THREE.MeshBasicMaterial({ map: tex })
+  );
+  dial.position.z = 0.022;
+  g.add(dial);
+  return g;
+}
+
+export function buildMirror(): THREE.Group {
+  const g = new THREE.Group();
+  // Espelho — vidro com leve reflectance
+  const glass = new THREE.Mesh(
+    new THREE.BoxGeometry(0.6, 2.0, 0.02),
+    new THREE.MeshStandardMaterial({
+      color: 0xc8d0e0,
+      roughness: 0.05,
+      metalness: 0.9,
+    })
+  );
+  g.add(glass);
+  // Frame escuro
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(0.66, 2.06, 0.015),
+    new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.8 })
+  );
+  frame.position.z = -0.012;
+  g.add(frame);
+  return g;
+}
+
 export function buildLiftingBelt(): THREE.Group {
   const g = new THREE.Group();
   // Cinto preto curvado (torus)
