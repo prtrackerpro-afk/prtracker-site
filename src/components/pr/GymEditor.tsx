@@ -7,6 +7,8 @@ import {
   addObject,
   removeObject,
   generateObjectId,
+  applyPreset,
+  PRESETS,
   DEFAULT_LAYOUT,
   OBJECT_META,
   GYM_BOUNDS,
@@ -207,6 +209,21 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
     setSavedAt(Date.now());
   }
 
+  function handleApplyPreset(presetId: string) {
+    const preset = PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    if (
+      !confirm(
+        `Aplicar preset "${preset.label}"?\n\n${preset.description}\n\nSeu layout atual será substituído.`,
+      )
+    )
+      return;
+    const fresh = applyPreset(presetId);
+    setLayout(fresh);
+    setSelected(null);
+    setSavedAt(Date.now());
+  }
+
   return (
     <div className="space-y-3">
       {/* Toolbar topo */}
@@ -255,6 +272,27 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
 
       {/* Paleta de tipos — adicionar novos objetos */}
       <AddPalette layout={layout} onAdd={addNewObject} />
+
+      {/* Presets pré-definidos */}
+      <div className="rounded-2xl border border-navy-700 bg-navy-800/30 p-3">
+        <div className="text-[10px] uppercase tracking-[0.3em] text-navy-300 mb-2">
+          Aplicar preset
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          {PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => handleApplyPreset(p.id)}
+              className="text-left px-3 py-2 rounded-lg border border-navy-600 hover:border-brand-lime hover:bg-brand-lime/5 transition"
+              title={p.description}
+            >
+              <div className="text-xs font-semibold text-navy-100">{p.label}</div>
+              <div className="text-[10px] text-navy-400 truncate">{p.description}</div>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Canvas SVG */}
       <div className="rounded-2xl overflow-hidden border border-navy-700 bg-navy-900 p-2 select-none touch-none">

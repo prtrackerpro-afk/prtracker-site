@@ -305,3 +305,91 @@ export const GYM_BOUNDS = {
 export function snapCoord(v: number, step: number = 0.5): number {
   return Math.round(v / step) * step;
 }
+
+// =================================================================
+// PRESETS — layouts pré-definidos por estilo de atleta
+// =================================================================
+//
+// Atleta clica "Powerlifting Heavy" / "CrossFit Box" / "Minimalista"
+// e o gym é reorganizado de uma vez. DEFAULT_LAYOUT continua sendo
+// o "Padrão" (recommended pra iniciantes — uma de cada coisa).
+
+export interface LayoutPreset {
+  id: string;
+  label: string;
+  description: string;
+  layout: GymLayout;
+}
+
+export const PRESETS: LayoutPreset[] = [
+  {
+    id: "default",
+    label: "Padrão",
+    description: "Layout balanceado pra qualquer atleta",
+    layout: DEFAULT_LAYOUT,
+  },
+  {
+    id: "powerlifting",
+    label: "Powerlifting Heavy",
+    description: "Foco no big 3 — 2 power racks + plataforma central, sem booths",
+    layout: {
+      version: 1,
+      objects: [
+        { id: "trophy_hall_main", type: "trophy_hall", x: 0, z: -7.0, rot: 0 },
+        { id: "skills_board_main", type: "skills_board", x: 7.5, z: 4.5, rot: -Math.PI / 3 },
+        { id: "run_board_main", type: "run_board", x: -7.5, z: 4.5, rot: Math.PI / 3 },
+        { id: "streak_pillar_main", type: "streak_pillar", x: 0, z: 6.8, rot: 0 },
+        { id: "power_rack_left", type: "power_rack", x: -5.5, z: 0, rot: Math.PI / 6 },
+        { id: "power_rack_right", type: "power_rack", x: 5.5, z: 0, rot: -Math.PI / 6 },
+        { id: "platform_center", type: "platform", x: 0, z: -1.5, rot: 0 },
+        { id: "platform_back", type: "platform", x: 0, z: 2.5, rot: 0 },
+        { id: "spawn", type: "spawn", x: 0, z: 6.0, rot: 0 },
+      ],
+    },
+  },
+  {
+    id: "crossfit",
+    label: "CrossFit Box",
+    description: "Skills no centro, plataforma pra met-cons, booths comerciais",
+    layout: {
+      version: 1,
+      objects: [
+        { id: "trophy_hall_main", type: "trophy_hall", x: 0, z: -7.0, rot: 0 },
+        { id: "skills_board_main", type: "skills_board", x: 0, z: -3.5, rot: 0 },
+        { id: "run_board_main", type: "run_board", x: -7.5, z: -3.0, rot: Math.PI / 3 },
+        { id: "streak_pillar_main", type: "streak_pillar", x: 0, z: 6.8, rot: 0 },
+        { id: "personal_booth_main", type: "personal_booth", x: 5.5, z: 5.5, rot: Math.PI / 2 },
+        { id: "nutri_booth_main", type: "nutri_booth", x: -5.5, z: 5.5, rot: -Math.PI / 2 },
+        { id: "empty_booth_a", type: "empty_booth", x: 5.5, z: 2.5, rot: Math.PI / 2 },
+        { id: "empty_booth_b", type: "empty_booth", x: -5.5, z: 2.5, rot: -Math.PI / 2 },
+        { id: "power_rack_main", type: "power_rack", x: -7.0, z: 0, rot: Math.PI / 8 },
+        { id: "platform_main", type: "platform", x: 6.0, z: -1.0, rot: -Math.PI / 14 },
+        { id: "spawn", type: "spawn", x: 0, z: 6.0, rot: 0 },
+      ],
+    },
+  },
+  {
+    id: "minimal",
+    label: "Minimalista",
+    description: "Só troféus + streak. Foco total na conquista",
+    layout: {
+      version: 1,
+      objects: [
+        { id: "trophy_hall_main", type: "trophy_hall", x: 0, z: -7.0, rot: 0 },
+        { id: "streak_pillar_main", type: "streak_pillar", x: 0, z: 6.8, rot: 0 },
+        { id: "spawn", type: "spawn", x: 0, z: 4.0, rot: 0 },
+      ],
+    },
+  },
+];
+
+/**
+ * Aplica um preset (substitui layout atual no localStorage).
+ * Retorna o novo layout.
+ */
+export function applyPreset(presetId: string): GymLayout {
+  const preset = PRESETS.find((p) => p.id === presetId);
+  if (!preset) return DEFAULT_LAYOUT;
+  saveLayout(preset.layout);
+  return preset.layout;
+}
