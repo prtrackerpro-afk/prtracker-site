@@ -35,6 +35,9 @@ import {
   buildWaterBottle,
   buildTowel,
   buildLiftingBelt,
+  buildWODBoard,
+  buildClock,
+  buildMirror,
   STEEL_MAT,
   type SkillBoardSlot,
   type RunSlot,
@@ -896,6 +899,39 @@ export default function VirtualGym({
     belt.position.set(powerRackPos.x - 0.7, 0.35, powerRackPos.z - 0.8);
     belt.rotation.y = 0.5;
     scene.add(belt);
+
+    // V16.8 cycles 213-216: WOD board + relógio + espelhos na parede esquerda
+    const wodBoard = buildWODBoard();
+    wodBoard.position.set(-ROOM_W / 2 + 0.06, 2.0, ROOM_D / 4);
+    wodBoard.rotation.y = Math.PI / 2;
+    scene.add(wodBoard);
+
+    // Relógio (3 unidades — 1 em cada parede principal)
+    const clock1 = buildClock();
+    clock1.position.set(0, 5.0, -ROOM_D / 2 + 0.06);
+    scene.add(clock1);
+    const clock2 = buildClock();
+    clock2.position.set(-ROOM_W / 2 + 0.06, 5.0, -ROOM_D / 4);
+    clock2.rotation.y = Math.PI / 2;
+    scene.add(clock2);
+    const clock3 = buildClock();
+    clock3.position.set(ROOM_W / 2 - 0.06, 5.0, -ROOM_D / 4);
+    clock3.rotation.y = -Math.PI / 2;
+    scene.add(clock3);
+
+    // Espelhos full-length (4 unidades — parede esquerda + direita)
+    for (let i = 0; i < 2; i++) {
+      const ml = buildMirror();
+      ml.position.set(-ROOM_W / 2 + 0.06, 1.2, -ROOM_D / 4 + i * 1.4);
+      ml.rotation.y = Math.PI / 2;
+      scene.add(ml);
+    }
+    for (let i = 0; i < 2; i++) {
+      const mr = buildMirror();
+      mr.position.set(ROOM_W / 2 - 0.06, 1.2, ROOM_D / 6 + i * 1.4);
+      mr.rotation.y = -Math.PI / 2;
+      scene.add(mr);
+    }
 
     // FLOOR MARKING — caminho central com track lights
     // V16.8 cycle 75: opacity 0.15 → 0.2 (mais convidativo) + tapete com gradient sim
