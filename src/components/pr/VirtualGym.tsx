@@ -14,6 +14,7 @@ import {
   buildSkillsBoard,
   buildRunBoard,
   DEFAULT_RUN_SLOTS,
+  buildSponsorBooth,
 } from "../../lib/pr/gym/builders";
 import { HALL_EXERCISES, UNLOCK_THRESHOLDS } from "../../lib/pr/gym/hall";
 import { exerciseLabel as exerciseLabelFn } from "../../lib/pr/exercises";
@@ -51,6 +52,16 @@ interface GhostExercise {
   label: string;
 }
 
+interface SponsorSlot {
+  id: string;
+  title: string;
+  professional: {
+    name: string;
+    specialty: string;
+    avatarColor: string;
+  } | null;
+}
+
 interface Props {
   athleteName: string;
   accent: string;
@@ -64,6 +75,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
 
   const [selected, setSelected] = useState<GymTrophy | null>(null);
   const [selectedGhost, setSelectedGhost] = useState<GhostExercise | null>(null);
+  const [selectedSponsor, setSelectedSponsor] = useState<SponsorSlot | null>(null);
   const [reelOpen, setReelOpen] = useState(false);
   const [activeReel, setActiveReel] = useState<Reel | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
@@ -86,6 +98,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
   inputLockedRef.current =
     selected !== null ||
     selectedGhost !== null ||
+    selectedSponsor !== null ||
     reelOpen ||
     showTutorial ||
     customOpen;
@@ -458,10 +471,11 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     scene.add(powerRack);
     colliders.push({ cx: -7, cz: 0, hw: 1.0, hd: 1.0 });
 
-    // PLATAFORMA de levantamento lado direito, em shadow
+    // PLATAFORMA de levantamento — recua um pouco e gira menos pra
+    // não ultrapassar a parede direita.
     const platform = buildPlatform(accent);
-    platform.position.set(7, 0, 0);
-    platform.rotation.y = -Math.PI / 8;
+    platform.position.set(6.2, 0, -1);
+    platform.rotation.y = -Math.PI / 14;
     scene.add(platform);
     // Plataforma é baixa (6cm), avatar pisa em cima.
 
@@ -491,17 +505,95 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     aisleLine.position.set(0, 0.005, -1);
     scene.add(aisleLine);
 
-    // === SKILLS BOARD (parede direita) ============================
+    // === SPONSOR BOOTHS (entrada) ==================================
+    // 3 kiosks comerciais perto da entrada — Nutricionista + Personal
+    // Trainer + slot vago "ANUNCIE AQUI". Slot pago (R$ 99/mês) onde
+    // profissionais fitness podem aparecer pros atletas. Click abre
+    // modal com bio + CTA WhatsApp.
+    const sponsorsGroup = new THREE.Group();
+    scene.add(sponsorsGroup);
+
+    const nutriBooth = buildSponsorBooth({
+      title: "NUTRICIONISTA",
+      professional: {
+        name: "Camila",
+        specialty: "Nutrição esportiva · CRN/RS",
+        avatarColor: "#43B02A", // verde food
+      },
+      accentHex: "#43B02A",
+      slotId: "nutri",
+    });
+    nutriBooth.group.position.set(-4.2, 0, 4.5);
+    nutriBooth.group.rotation.y = -Math.PI / 2; // banner vira pro aisle (+x)
+    sponsorsGroup.add(nutriBooth.group);
+    colliders.push({ cx: -4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
+
+    const ptBooth = buildSponsorBooth({
+      title: "PERSONAL TRAINER",
+      professional: {
+        name: "Bruno",
+        specialty: "Powerlifting · CREF 12345-G",
+        avatarColor: "#DA291C", // vermelho strength
+      },
+      accentHex: "#D8FF2C",
+      slotId: "pt",
+    });
+    ptBooth.group.position.set(4.2, 0, 4.5);
+    ptBooth.group.rotation.y = Math.PI / 2; // banner vira pro aisle (-x)
+    sponsorsGroup.add(ptBooth.group);
+    colliders.push({ cx: 4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
+
+    const emptyBooth = buildSponsorBooth({
+      title: "ANUNCIE AQUI",
+      professional: null,
+      accentHex: "#D8FF2C",
+      slotId: "empty",
+    });
+    emptyBooth.group.position.set(-4.2, 0, 1.5);
+    emptyBooth.group.rotation.y = -Math.PI / 2;
+    sponsorsGroup.add(emptyBooth.group);
+    colliders.push({ cx: -4.2, cz: 1.5, hw: 0.6, hd: 1.0 });
+
+    // === SKILLS BOARD — angulado pro aisle central (visível andando) ===
+    // Em vez de plano contra a parede, board fica em "stand" inclinado
+    // pra dentro, captado naturalmente pela camera follow.
     const skillsBoard = buildSkillsBoard("#D8FF2C");
-    skillsBoard.position.set(ROOM_W / 2 - 0.04, 2.5, -3);
-    skillsBoard.rotation.y = -Math.PI / 2;
+    skillsBoard.position.set(ROOM_W / 2 - 1.5, 2.0, -3.5);
+    skillsBoard.rotation.y = -Math.PI / 3; // ~-60° face o aisle
     scene.add(skillsBoard);
 
-    // === RUN BOARD (parede direita, abaixo do skills) =============
+    // Pernas do skills stand (2 colunas verticais sob o board)
+    for (const dx of [-1.6, 1.6]) {
+      const leg = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 1.2, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
+      );
+      // Posição relativa rotacionada
+      const angle = -Math.PI / 3;
+      const px = ROOM_W / 2 - 1.5 + dx * Math.cos(angle);
+      const pz = -3.5 + dx * Math.sin(angle);
+      leg.position.set(px, 0.6, pz);
+      scene.add(leg);
+    }
+
+    // === RUN BOARD — também angulado pro aisle ====================
     const runBoard = buildRunBoard("#D8FF2C", DEFAULT_RUN_SLOTS);
-    runBoard.position.set(ROOM_W / 2 - 0.04, 1.0, 3);
-    runBoard.rotation.y = -Math.PI / 2;
+    runBoard.position.set(ROOM_W / 2 - 1.5, 2.0, 2.5);
+    runBoard.rotation.y = -Math.PI / 3;
     scene.add(runBoard);
+
+    // Pernas do run stand
+    for (const dx of [-1.6, 1.6]) {
+      const leg = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 1.4, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
+      );
+      const angle = -Math.PI / 3;
+      const px = ROOM_W / 2 - 1.5 + dx * Math.cos(angle);
+      const pz = 2.5 + dx * Math.sin(angle);
+      leg.position.set(px, 0.7, pz);
+      scene.add(leg);
+    }
 
     // === PROJECTOR ROOM (canto esquerdo-frente) ===================
     // Sala dedicada de Reels: tela grande de projeção em uma "alcova"
@@ -741,7 +833,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       ndc.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
       ndc.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
-      const targets: THREE.Object3D[] = [trophiesGroup, projScreen];
+      const targets: THREE.Object3D[] = [trophiesGroup, projScreen, sponsorsGroup];
       const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
       if (first) {
@@ -750,6 +842,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
           obj &&
           !obj.userData.trophy &&
           !obj.userData.ghostExercise &&
+          !obj.userData.sponsorSlot &&
           obj.userData.kind !== "projector-screen"
         ) {
           obj = obj.parent;
@@ -757,8 +850,9 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
         if (obj?.userData.trophy) {
           setSelected(obj.userData.trophy as GymTrophy);
         } else if (obj?.userData.ghostExercise) {
-          // Ghost: abre modal com info + CTA pra desbloquear (não redirect)
           setSelectedGhost(obj.userData.ghostExercise as GhostExercise);
+        } else if (obj?.userData.sponsorSlot) {
+          setSelectedSponsor(obj.userData.sponsorSlot as SponsorSlot);
         } else if (obj?.userData.kind === "projector-screen") {
           setReelOpen(true);
         }
@@ -1152,6 +1246,122 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
             >
               Voltar pro ginásio
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sponsor booth modal — Nutricionista / PT / Slot vago */}
+      {selectedSponsor && (
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 28 }}
+          className="flex items-end sm:items-center justify-center bg-black/75 p-4"
+          onClick={() => setSelectedSponsor(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-brand-lime/40 bg-navy-900 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-navy-700">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-brand-lime">
+                  {selectedSponsor.professional ? "PROFISSIONAL FITNESS" : "SLOT DISPONÍVEL"}
+                </div>
+                <div className="font-display text-lg tracking-tight">{selectedSponsor.title}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSponsor(null)}
+                className="text-navy-300 hover:text-white text-lg leading-none"
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+
+            {selectedSponsor.professional ? (
+              <div className="p-5">
+                <div className="flex items-center gap-4 mb-4">
+                  <div
+                    className="w-20 h-20 rounded-full grid place-items-center font-display text-3xl flex-shrink-0"
+                    style={{
+                      background: selectedSponsor.professional.avatarColor,
+                      color: "#01002A",
+                    }}
+                  >
+                    {selectedSponsor.professional.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-display text-xl tracking-tight">
+                      {selectedSponsor.professional.name}
+                    </div>
+                    <div className="text-xs text-navy-300">
+                      {selectedSponsor.professional.specialty}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-navy-300 mb-4 leading-relaxed">
+                  Atendimento online pra atletas BR. Treino e nutrição ajustados pro
+                  seu PR e meta. Conversa direto pelo WhatsApp.
+                </p>
+                <a
+                  href="https://wa.me/5551982061914"
+                  target="_blank"
+                  rel="noopener"
+                  className="block w-full text-center rounded-lg bg-brand-lime text-navy-900 font-semibold px-4 py-3 hover:opacity-90 transition mb-2"
+                >
+                  💬 Falar no WhatsApp
+                </a>
+                <a
+                  href="https://instagram.com/pr.tracker"
+                  target="_blank"
+                  rel="noopener"
+                  className="block w-full text-center rounded-lg border border-navy-600 text-white font-semibold px-4 py-2.5 hover:bg-navy-800 transition text-sm"
+                >
+                  📷 Ver Instagram
+                </a>
+                <p className="text-[10px] text-navy-300 text-center mt-3">
+                  Slot patrocinado · PR Tracker valida CREF / CRN antes de aprovar
+                </p>
+              </div>
+            ) : (
+              <div className="p-5">
+                <div className="rounded-xl bg-brand-lime/10 border border-brand-lime/30 p-4 mb-4 text-center">
+                  <div className="text-3xl mb-2">📣</div>
+                  <div className="font-display text-2xl tracking-tight text-brand-lime mb-1">
+                    R$ 99/mês
+                  </div>
+                  <div className="text-xs text-navy-300">
+                    Apareça no gym virtual de atletas BR
+                  </div>
+                </div>
+                <p className="text-sm text-navy-300 mb-4 leading-relaxed">
+                  É nutricionista, personal trainer, fisio ou coach? Coloque seu
+                  perfil em destaque dentro do ginásio virtual de cada atleta PR
+                  Tracker. Quando alguém clica, vai direto pro seu WhatsApp.
+                </p>
+                <ul className="text-xs text-navy-300 space-y-2 mb-5">
+                  <li>✓ Foto + nome + especialidade no booth</li>
+                  <li>✓ Botão direto pro seu WhatsApp + Instagram</li>
+                  <li>✓ Validamos seu CREF / CRN antes</li>
+                  <li>✓ Cancela quando quiser</li>
+                </ul>
+                <a
+                  href="https://wa.me/5551982061914?text=Quero%20anunciar%20no%20PR%20Tracker"
+                  target="_blank"
+                  rel="noopener"
+                  className="block w-full text-center rounded-lg bg-brand-lime text-navy-900 font-semibold px-4 py-3 hover:opacity-90 transition"
+                >
+                  Quero anunciar →
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSponsor(null)}
+                  className="block w-full text-center text-xs text-navy-300 hover:text-white mt-3"
+                >
+                  Voltar pro ginásio
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

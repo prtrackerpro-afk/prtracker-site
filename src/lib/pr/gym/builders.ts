@@ -1792,6 +1792,170 @@ export function buildRunBoard(accentHex: string, slots: RunSlot[]): THREE.Group 
 }
 
 // =================================================================
+// SPONSOR BOOTH — kiosk comercial pra Nutricionista / PT / etc
+// Slot pago de monetização: profissional anuncia serviços online
+// dentro do gym virtual do atleta. Click abre modal com bio + CTA.
+// =================================================================
+
+export interface SponsorBoothProps {
+  title: string; // ex: "NUTRICIONISTA"
+  professional: {
+    name: string;
+    specialty: string;
+    avatarColor: string; // cor do bloco-avatar (placeholder até foto real)
+  } | null; // null = slot vago "ANUNCIE AQUI"
+  /** Cor do header do booth. */
+  accentHex: string;
+  /** ID do slot pra raycast/click. */
+  slotId: string;
+}
+
+export interface SponsorBoothParts {
+  group: THREE.Group;
+  hitBox: THREE.Mesh;
+}
+
+export function buildSponsorBooth(props: SponsorBoothProps): SponsorBoothParts {
+  const g = new THREE.Group();
+  const { title, professional, accentHex, slotId } = props;
+  const isEmpty = professional == null;
+
+  // === BASE / counter ===
+  const baseW = 1.8;
+  const baseH = 1.0;
+  const baseD = 0.6;
+  const baseColor = isEmpty ? 0x1a1a26 : 0x14111e;
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW, baseH, baseD),
+    new THREE.MeshStandardMaterial({
+      color: baseColor,
+      roughness: 0.55,
+      metalness: 0.3,
+    })
+  );
+  base.position.y = baseH / 2;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  g.add(base);
+
+  // Faixa de acento na frente da base
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW, 0.04, 0.05),
+    new THREE.MeshBasicMaterial({ color: accentHex })
+  );
+  stripe.position.set(0, baseH - 0.04, baseD / 2);
+  g.add(stripe);
+
+  // === BANNER no topo (header com título + foto + nome) ===
+  const bannerW = 1.7;
+  const bannerH = 1.6;
+  const bannerY = baseH + bannerH / 2 + 0.1;
+
+  // Posts (2 verticais segurando o banner)
+  for (const sx of [-bannerW / 2 - 0.05, bannerW / 2 + 0.05]) {
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, baseH + bannerH + 0.2, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.55 })
+    );
+    post.position.set(sx, (baseH + bannerH + 0.2) / 2, 0);
+    g.add(post);
+  }
+
+  // Banner canvas
+  const bnrCanvas = document.createElement("canvas");
+  bnrCanvas.width = 1024;
+  bnrCanvas.height = 1024;
+  const bctx = bnrCanvas.getContext("2d")!;
+  // Fundo
+  bctx.fillStyle = isEmpty ? "#0a0a16" : "#0a0a16";
+  bctx.fillRect(0, 0, 1024, 1024);
+  // Borda
+  bctx.strokeStyle = accentHex;
+  bctx.lineWidth = 12;
+  if (isEmpty) {
+    bctx.setLineDash([18, 12]);
+  }
+  bctx.strokeRect(8, 8, 1008, 1008);
+  bctx.setLineDash([]);
+
+  // Header bar (color)
+  bctx.fillStyle = accentHex;
+  bctx.fillRect(20, 20, 984, 130);
+  bctx.fillStyle = "#01002A";
+  bctx.font = "900 70px Archivo Black, Inter, sans-serif";
+  bctx.textAlign = "center";
+  bctx.textBaseline = "middle";
+  bctx.fillText(title, 512, 85);
+
+  if (isEmpty) {
+    // Slot vago: "ANUNCIE AQUI" + descrição
+    bctx.fillStyle = "#9ca3af";
+    bctx.font = "900 100px Archivo Black, Inter, sans-serif";
+    bctx.fillText("ANUNCIE", 512, 400);
+    bctx.fillText("AQUI", 512, 510);
+    bctx.fillStyle = "#ffffff";
+    bctx.font = "500 32px Inter, sans-serif";
+    bctx.fillText("Profissional fitness?", 512, 660);
+    bctx.fillText("Apareça pra atletas BR", 512, 700);
+    bctx.fillStyle = accentHex;
+    bctx.font = "900 36px Archivo Black, Inter, sans-serif";
+    bctx.fillText("R$ 99/MÊS", 512, 800);
+    bctx.fillStyle = "#ffffff";
+    bctx.font = "500 28px Inter, sans-serif";
+    bctx.fillText("→ TOQUE AQUI", 512, 870);
+  } else {
+    // Avatar circular placeholder
+    bctx.fillStyle = professional!.avatarColor;
+    bctx.beginPath();
+    bctx.arc(512, 380, 130, 0, Math.PI * 2);
+    bctx.fill();
+    // Inicial do nome no centro
+    bctx.fillStyle = "#ffffff";
+    bctx.font = "900 140px Archivo Black, Inter, sans-serif";
+    bctx.fillText(
+      professional!.name.charAt(0).toUpperCase(),
+      512,
+      400
+    );
+    // Nome
+    bctx.fillStyle = "#ffffff";
+    bctx.font = "900 56px Archivo Black, Inter, sans-serif";
+    bctx.fillText(professional!.name.toUpperCase(), 512, 580);
+    // Specialty
+    bctx.fillStyle = "#9ca3af";
+    bctx.font = "500 32px Inter, sans-serif";
+    bctx.fillText(professional!.specialty, 512, 640);
+    // CTA
+    bctx.fillStyle = accentHex;
+    bctx.font = "900 44px Archivo Black, Inter, sans-serif";
+    bctx.fillText("FALAR AGORA", 512, 770);
+    bctx.fillStyle = "#ffffff";
+    bctx.font = "500 26px Inter, sans-serif";
+    bctx.fillText("→ WhatsApp / Instagram", 512, 830);
+  }
+
+  const bnrTex = new THREE.CanvasTexture(bnrCanvas);
+  bnrTex.colorSpace = THREE.SRGBColorSpace;
+  const banner = new THREE.Mesh(
+    new THREE.PlaneGeometry(bannerW, bannerH),
+    new THREE.MeshBasicMaterial({ map: bnrTex })
+  );
+  banner.position.set(0, bannerY, 0.01);
+  g.add(banner);
+
+  // Hit-box pro raycast (todo o booth)
+  const hitBox = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW + 0.2, baseH + bannerH + 0.4, baseD + 0.2),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitBox.position.y = (baseH + bannerH + 0.4) / 2;
+  hitBox.userData.sponsorSlot = { id: slotId, title, professional };
+  g.add(hitBox);
+
+  return { group: g, hitBox };
+}
+
+// =================================================================
 // SQUAT RACK — versão compacta pra acoplar com plataforma
 // =================================================================
 
