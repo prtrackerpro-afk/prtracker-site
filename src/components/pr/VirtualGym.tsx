@@ -77,7 +77,7 @@ import {
   setMuted,
 } from "../../lib/pr/gym/audio";
 import { ParticleBurst, CameraShake } from "../../lib/pr/gym/fx";
-import { getProsByType, getFeaturedPro, type Pro, type ProType } from "../../lib/pr/gym/pros";
+import { getProsByType, type ProType } from "../../lib/pr/gym/pros";
 import {
   levelFromXp,
   xpToNextLevel,
@@ -1189,6 +1189,9 @@ export default function VirtualGym({
       downX = ev.clientX;
       downY = ev.clientY;
     };
+    // Reused vectors/colors pra raycast handler — evita alocar a cada click.
+    const tmpWorldPos = new THREE.Vector3();
+    const tmpColor = new THREE.Color();
     const onCanvasUp = (ev: PointerEvent) => {
       if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 8) return;
       const r = renderer.domElement.getBoundingClientRect();
@@ -1224,19 +1227,19 @@ export default function VirtualGym({
           // JUICE: chime + particle burst lime + camera shake leve
           playChime();
           const trophy = obj.userData.trophy as GymTrophy;
-          const worldPos = new THREE.Vector3();
-          obj.getWorldPosition(worldPos);
-          worldPos.y += 0.6;
-          particleBurst.burst(worldPos, 35, new THREE.Color(trophy.color), 1.2);
+          obj.getWorldPosition(tmpWorldPos);
+          tmpWorldPos.y += 0.6;
+          tmpColor.set(trophy.color);
+          particleBurst.burst(tmpWorldPos, 35, tmpColor, 1.2);
           cameraShake.trigger(0.06, 0.18);
           setSelected(trophy);
         } else if (obj?.userData.ghostExercise) {
           // JUICE: mystery sound + particles roxos sutis
           playMystery();
-          const worldPos = new THREE.Vector3();
-          obj.getWorldPosition(worldPos);
-          worldPos.y += 0.5;
-          particleBurst.burst(worldPos, 18, new THREE.Color(0x6b3aff), 0.7);
+          obj.getWorldPosition(tmpWorldPos);
+          tmpWorldPos.y += 0.5;
+          tmpColor.set(0x6b3aff);
+          particleBurst.burst(tmpWorldPos, 18, tmpColor, 0.7);
           setSelectedGhost(obj.userData.ghostExercise as GhostExercise);
         } else if (obj?.userData.sponsorSlot || obj?.userData.npcSlot) {
           // JUICE: bell sound
@@ -1259,10 +1262,10 @@ export default function VirtualGym({
         } else if (obj?.userData.kind === "streak-pillar") {
           // JUICE: whoosh + chama particles laranja
           playWhoosh();
-          const worldPos = new THREE.Vector3();
-          obj.getWorldPosition(worldPos);
-          worldPos.y += 1.6;
-          particleBurst.burst(worldPos, 60, new THREE.Color(0xff6020), 1.5);
+          obj.getWorldPosition(tmpWorldPos);
+          tmpWorldPos.y += 1.6;
+          tmpColor.set(0xff6020);
+          particleBurst.burst(tmpWorldPos, 60, tmpColor, 1.5);
           cameraShake.trigger(0.04, 0.15);
         } else if (obj?.userData.kind === "skills-board") {
           playClick();
@@ -1465,6 +1468,9 @@ export default function VirtualGym({
         joy.removeEventListener("pointerup", onJoyUp);
         joy.removeEventListener("pointercancel", onJoyUp);
       }
+      // Audio: para o ambient hum + dispose canvas textures (vazavam VRAM)
+      stopAmbient();
+      projScreenTex.dispose();
       controls.dispose();
       particleBurst.dispose();
       scene.traverse((obj) => {
@@ -1479,6 +1485,10 @@ export default function VirtualGym({
         mount.removeChild(renderer.domElement);
       }
     };
+  // Deps: rebuild da cena quando atleta/troféus/avatar mudam.
+  // skillsLocal/runsLocal incluídos pq o board 3D mostra os valores atuais —
+  // sem eles, salvar uma skill no modal não atualizaria o painel até reload.
+  // Trade-off conhecido: rebuild custoso, mas raro (1-2x por sessão).
   }, [athleteName, accent, trophies, avatarPrefs, skillsLocal, runsLocal, streakDays]);
 
   // === Modal CTA — deep-link to BarbellConfigurator =================

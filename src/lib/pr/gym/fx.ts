@@ -70,8 +70,10 @@ export class ParticleBurst {
 
   /** Spawn um burst de N partículas a partir de origin. */
   burst(origin: THREE.Vector3, count: number, color: THREE.Color, intensity: number = 1) {
+    // Itera por índice direto pra evitar indexOf O(n) em loop (era O(n²) acumulado).
     let spawned = 0;
-    for (const p of this.particles) {
+    for (let i = 0; i < this.particles.length && spawned < count; i++) {
+      const p = this.particles[i]!;
       if (p.alive) continue;
       p.alive = true;
       p.life = 1.0;
@@ -86,12 +88,10 @@ export class ParticleBurst {
         Math.sin(phi) * Math.sin(theta) * speed
       );
       p.size = 0.05 + Math.random() * 0.08;
-      const idx = this.particles.indexOf(p);
-      this.colors[idx * 3] = color.r;
-      this.colors[idx * 3 + 1] = color.g;
-      this.colors[idx * 3 + 2] = color.b;
+      this.colors[i * 3] = color.r;
+      this.colors[i * 3 + 1] = color.g;
+      this.colors[i * 3 + 2] = color.b;
       spawned++;
-      if (spawned >= count) break;
     }
     this.geometry.attributes.color!.needsUpdate = true;
   }

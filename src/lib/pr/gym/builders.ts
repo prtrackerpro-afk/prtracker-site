@@ -944,36 +944,6 @@ export function buildPlyoBox(size: number): THREE.Group {
   return g;
 }
 
-export function buildBanner(accentHex: string): THREE.Mesh {
-  const c = document.createElement("canvas");
-  c.width = 2048;
-  c.height = 512;
-  const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#01002A";
-  ctx.fillRect(0, 0, 2048, 512);
-  ctx.fillStyle = accentHex;
-  ctx.fillRect(0, 0, 24, 512);
-  ctx.fillRect(2024, 0, 24, 512);
-  ctx.fillStyle = "#9ca3af";
-  ctx.font = "700 96px Inter, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("VOCÊ NÃO LEMBRA SÓ", 1024, 180);
-  ctx.fillStyle = accentHex;
-  ctx.font = "900 168px Archivo Black, Inter, sans-serif";
-  ctx.fillText("DO NÚMERO.", 1024, 340);
-  ctx.fillStyle = "#9ca3af";
-  ctx.font = "500 36px Inter, sans-serif";
-  ctx.fillText("PR TRACKER", 1024, 450);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const banner = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.0, 1.0),
-    new THREE.MeshBasicMaterial({ map: tex })
-  );
-  return banner;
-}
-
 // =================================================================
 // CROSSFIT RIG — estrutura central alta com rings, ropes, pull-up bars
 // =================================================================
@@ -1192,53 +1162,6 @@ export function buildPlateTree(): THREE.Group {
   return g;
 }
 
-// =================================================================
-// WALL PLATES — anilhas decorativas penduradas em parede
-// =================================================================
-
-export function buildWallPlates(rows: number = 2, perRow: number = 6): THREE.Group {
-  const g = new THREE.Group();
-  const colors = [0xda291c, 0x0057b8, 0xffc72c, 0x43b02a];
-  const ROW_GAP = 0.55;
-  const COL_GAP = 0.5;
-
-  for (let r = 0; r < rows; r++) {
-    for (let i = 0; i < perRow; i++) {
-      const colorHex = colors[(i + r) % colors.length] ?? 0x9ca3af;
-      const radius = 0.18;
-      const plate = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius, radius, 0.04, 24),
-        new THREE.MeshStandardMaterial({
-          color: colorHex,
-          roughness: 0.4,
-          metalness: 0.2,
-        })
-      );
-      plate.rotation.z = Math.PI / 2;
-      plate.position.set(
-        -((perRow - 1) / 2) * COL_GAP + i * COL_GAP,
-        r * ROW_GAP,
-        0
-      );
-      plate.castShadow = true;
-      g.add(plate);
-
-      // Pino de aço suportando cada anilha
-      const peg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.02, 0.06, 8),
-        STEEL_MAT
-      );
-      peg.rotation.z = Math.PI / 2;
-      peg.position.set(
-        -((perRow - 1) / 2) * COL_GAP + i * COL_GAP - 0.02,
-        r * ROW_GAP,
-        0
-      );
-      g.add(peg);
-    }
-  }
-  return g;
-}
 
 // =================================================================
 // CEILING BEAMS — vigas de aço industriais visíveis
@@ -1314,31 +1237,6 @@ export function buildWallLogo(
     new THREE.MeshBasicMaterial({ map: tex, transparent: true })
   );
   return logo;
-}
-
-// =================================================================
-// LIFTING PLATFORM (com rack opcional acoplado)
-// =================================================================
-
-export function buildPlatformWithRack(accentHex: string): THREE.Group {
-  const g = new THREE.Group();
-  // Plataforma menor (3m × 2m) pra caber 2 lado a lado
-  const accentRubber = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(accentHex),
-    roughness: 0.85,
-    metalness: 0.05,
-  });
-  const center = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.06, 2.4), WOOD_MAT);
-  center.position.y = 0.03;
-  center.receiveShadow = true;
-  g.add(center);
-  for (const x of [-1.1, 1.1]) {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 2.4), accentRubber);
-    side.position.set(x, 0.03, 0);
-    side.receiveShadow = true;
-    g.add(side);
-  }
-  return g;
 }
 
 // =================================================================
