@@ -856,34 +856,117 @@ export function buildPowerRack(accentHex: string): THREE.Group {
 }
 
 function buildLoadedBarbell(): THREE.Group {
+  // V16.8 cycles 106-107: plates com texture canvas (hub central + 6 furos +
+  // gravacao "PR TRACKER") + cores IWF exatas + raios proporcionais reais
+  // (45cm bumper plate = radius 0.225). Antes plates pareciam plastico fake.
   const g = new THREE.Group();
   const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 12), CHROME_MAT);
   bar.rotation.z = Math.PI / 2;
   g.add(bar);
+  // V16.8 cycle 115: spinning sleeves com knurling (collar interna + externa)
   for (const side of [-1, 1]) {
     const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4, 16), STEEL_MAT);
     sleeve.rotation.z = Math.PI / 2;
     sleeve.position.set(side * 0.95, 0, 0);
     g.add(sleeve);
+    // Collar interna (anel maior) — separa knurled grip da sleeve
+    const innerCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.058, 0.058, 0.025, 16),
+      STEEL_MAT
+    );
+    innerCollar.rotation.z = Math.PI / 2;
+    innerCollar.position.set(side * 0.76, 0, 0);
+    g.add(innerCollar);
   }
+
+  // V16.8 cycle 116: cores IWF exatas Pantone match
   const plates = [
-    { color: 0xda291c, radius: 0.22 },
-    { color: 0x0057b8, radius: 0.2 },
-    { color: 0xffc72c, radius: 0.18 },
-    { color: 0x43b02a, radius: 0.16 },
+    { color: 0xda291c, radius: 0.225, label: "25" }, // Pantone 485 C
+    { color: 0x0057b8, radius: 0.225, label: "20" }, // Pantone 2935 C
+    { color: 0xffc72c, radius: 0.225, label: "15" }, // Pantone 123 C
+    { color: 0x43b02a, radius: 0.225, label: "10" }, // Pantone 361 C
   ];
+
+  // V16.8 cycle 117-118: plate texture com hub central (6 furos) + brand
+  function plateTexture(colorHex: number, label: string): THREE.CanvasTexture {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext("2d")!;
+    const hexStr = "#" + colorHex.toString(16).padStart(6, "0");
+    // Plate face cor solida
+    ctx.fillStyle = hexStr;
+    ctx.fillRect(0, 0, 512, 512);
+    // Hub central (circulo cinza interno)
+    ctx.fillStyle = "#1a1a26";
+    ctx.beginPath();
+    ctx.arc(256, 256, 90, 0, Math.PI * 2);
+    ctx.fill();
+    // 6 furos circulares no hub
+    ctx.fillStyle = "#0a0a14";
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2;
+      const fx = 256 + Math.cos(ang) * 60;
+      const fy = 256 + Math.sin(ang) * 60;
+      ctx.beginPath();
+      ctx.arc(fx, fy, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Bore central (furo da barra)
+    ctx.fillStyle = "#000000";
+    ctx.beginPath();
+    ctx.arc(256, 256, 28, 0, Math.PI * 2);
+    ctx.fill();
+    // Numero do peso GIGANTE
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 130px Archivo Black, Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, 256, 410);
+    // "KG" embaixo do numero
+    ctx.font = "bold 36px Inter, sans-serif";
+    ctx.fillText("KG", 256, 470);
+    // Brand "PR TRACKER" curvada em arco
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 22px Inter, sans-serif";
+    ctx.save();
+    ctx.translate(256, 256);
+    ctx.rotate(-Math.PI / 2);
+    const brand = "PR TRACKER";
+    const radius = 180;
+    for (let i = 0; i < brand.length; i++) {
+      const a = (i - brand.length / 2) * 0.13;
+      ctx.save();
+      ctx.rotate(a);
+      ctx.fillText(brand[i], 0, -radius);
+      ctx.restore();
+    }
+    ctx.restore();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
   for (const side of [-1, 1]) {
     plates.forEach((p, i) => {
-      const mat = new THREE.MeshStandardMaterial({
-        color: p.color,
-        roughness: 0.5,
-        metalness: 0.15,
+      const tex = plateTexture(p.color, p.label);
+      // Material faces (frente/trás): canvas com gravacao
+      const faceMat = new THREE.MeshStandardMaterial({
+        map: tex,
+        roughness: 0.55,
+        metalness: 0.1,
         emissive: p.color,
-        emissiveIntensity: 0.18,
+        emissiveIntensity: 0.12,
+      });
+      // Material edge (lateral cilindro): cor solida
+      const edgeMat = new THREE.MeshStandardMaterial({
+        color: p.color,
+        roughness: 0.85, // borracha
+        metalness: 0,
       });
       const plate = new THREE.Mesh(
-        new THREE.CylinderGeometry(p.radius, p.radius, 0.05, 24),
-        mat
+        new THREE.CylinderGeometry(p.radius, p.radius, 0.05, 32),
+        [edgeMat, faceMat, faceMat]
       );
       plate.rotation.z = Math.PI / 2;
       plate.position.set(side * (0.78 + i * 0.06), 0, 0);
@@ -939,10 +1022,12 @@ export function buildBench(): THREE.Group {
   });
   const stitchMat = new THREE.MeshBasicMaterial({ color: 0x1a0a0a });
 
-  const BENCH_LEN = 1.4; // comprimento total do banco
-  const PAD_W = 0.34;
-  const PAD_H = 0.12;
-  const SEAT_Y = 0.5; // altura do topo do estofado
+  // V16.8 cycle 108: proporcoes ajustadas pra bench press IPF (era 1.4×0.34×0.12,
+  // assento 0.5m). Agora width 0.30m + height 0.10m + assento 0.45m (Eleiko Bench).
+  const BENCH_LEN = 1.3;
+  const PAD_W = 0.30;
+  const PAD_H = 0.10;
+  const SEAT_Y = 0.45;
 
   // === ESTOFADO HORIZONTAL (peça única — bench press é PLANO) ===
   const seat = new THREE.Mesh(
