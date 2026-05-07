@@ -307,7 +307,9 @@ export default function VirtualGym({
     // === Scene + renderer ==========================================
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#01002A");
-    scene.fog = new THREE.Fog("#01002A", 16, 32);
+    // V16.7 cycle 42: fog ajustada pro mapa dobrado (era 16-32, agora 25-50)
+    // Antes objetos do fundo desapareciam por estar dentro do raio fog.
+    scene.fog = new THREE.Fog("#01002A", 25, 55);
 
     const rect0 = mount.getBoundingClientRect();
     const initW = Math.max(1, mount.clientWidth || rect0.width || 800);
@@ -1882,12 +1884,12 @@ export default function VirtualGym({
       <div
         ref={joystickRef}
         style={{ position: "absolute", bottom: 16, left: 16, zIndex: 10, touchAction: "none" }}
-        className="w-24 h-24 rounded-full border-2 border-white/30 bg-navy-900/60 select-none"
+        className="w-28 h-28 rounded-full border-2 border-brand-lime/40 bg-navy-900/80 select-none shadow-lg shadow-brand-lime/10"
         aria-label="Joystick"
       >
         <div
           ref={knobRef}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-brand-lime/80 shadow-lg shadow-brand-lime/30 pointer-events-none transition-transform duration-75"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-brand-lime shadow-lg shadow-brand-lime/40 pointer-events-none transition-transform duration-75"
         />
       </div>
 
