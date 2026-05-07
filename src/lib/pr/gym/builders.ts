@@ -982,27 +982,91 @@ function buildLoadedBarbell(): THREE.Group {
 }
 
 export function buildPlatform(accentHex: string): THREE.Group {
+  // V16.8 cycles 112-114: deadlift platform com madeira clara central +
+  // borracha texturizada lateral (ranhuras visiveis) + chalk dust sutil.
+  // Dimensoes spec real: 1.2m madeira × 1.6m borracha cada lado, 3m comprimento
   const g = new THREE.Group();
   const accentRubber = new THREE.MeshStandardMaterial({
     color: new THREE.Color(accentHex),
-    roughness: 0.85,
-    metalness: 0.05,
+    roughness: 0.92,
+    metalness: 0,
   });
+  // V16.8 cycle 113: ranhuras na borracha texturizada (canvas)
+  const rubberCanvas = document.createElement("canvas");
+  rubberCanvas.width = 256;
+  rubberCanvas.height = 256;
+  const rctx = rubberCanvas.getContext("2d")!;
+  rctx.fillStyle = "#0a0a14";
+  rctx.fillRect(0, 0, 256, 256);
+  // Ranhuras diagonais (anti-slip)
+  rctx.strokeStyle = "#1a1a26";
+  rctx.lineWidth = 2;
+  for (let i = -256; i < 512; i += 12) {
+    rctx.beginPath();
+    rctx.moveTo(i, 0);
+    rctx.lineTo(i + 256, 256);
+    rctx.stroke();
+  }
+  const rubberTex = new THREE.CanvasTexture(rubberCanvas);
+  rubberTex.colorSpace = THREE.SRGBColorSpace;
+  rubberTex.wrapS = THREE.RepeatWrapping;
+  rubberTex.wrapT = THREE.RepeatWrapping;
+  rubberTex.repeat.set(3, 6);
+  const sideRubberMat = new THREE.MeshStandardMaterial({
+    map: rubberTex,
+    roughness: 0.92,
+    metalness: 0,
+  });
+
   const center = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 3.0), WOOD_MAT);
   center.position.y = 0.03;
   center.receiveShadow = true;
   g.add(center);
   for (const x of [-1.4, 1.4]) {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 3.0), accentRubber);
+    const side = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 3.0), sideRubberMat);
     side.position.set(x, 0.03, 0);
     side.receiveShadow = true;
     g.add(side);
   }
+  // Faixa lime de demarcacao (cycle 112: era preta, agora accent)
   for (const x of [-0.6, 0.6]) {
-    const line = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.062, 3.0), RUBBER_MAT);
+    const line = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.062, 3.0), accentRubber);
     line.position.set(x, 0.031, 0);
     g.add(line);
   }
+  // V16.8 cycle 167: chalk dust no centro (mancha branca sutil)
+  const chalkCanvas = document.createElement("canvas");
+  chalkCanvas.width = 256;
+  chalkCanvas.height = 256;
+  const cctx = chalkCanvas.getContext("2d")!;
+  cctx.clearRect(0, 0, 256, 256);
+  // Mancha de chalk radial gradient
+  const grad = cctx.createRadialGradient(128, 128, 10, 128, 128, 100);
+  grad.addColorStop(0, "rgba(255,255,255,0.55)");
+  grad.addColorStop(0.4, "rgba(240,240,255,0.25)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  cctx.fillStyle = grad;
+  cctx.fillRect(0, 0, 256, 256);
+  // Speckle sutil
+  for (let i = 0; i < 30; i++) {
+    const x = 60 + Math.random() * 136;
+    const y = 60 + Math.random() * 136;
+    cctx.fillStyle = `rgba(255,255,255,${0.1 + Math.random() * 0.3})`;
+    cctx.fillRect(x, y, 2, 2);
+  }
+  const chalkTex = new THREE.CanvasTexture(chalkCanvas);
+  chalkTex.colorSpace = THREE.SRGBColorSpace;
+  const chalkPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.9, 0.6),
+    new THREE.MeshBasicMaterial({
+      map: chalkTex,
+      transparent: true,
+      depthWrite: false,
+    })
+  );
+  chalkPlane.rotation.x = -Math.PI / 2;
+  chalkPlane.position.set(0, 0.062, 0.4);
+  g.add(chalkPlane);
   return g;
 }
 
