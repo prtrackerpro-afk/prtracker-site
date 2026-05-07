@@ -1169,12 +1169,14 @@ export default function VirtualGym({
     projRoomGroup.add(beamSpot);
 
     // Sofá virado pra tela (long-side perpendicular ao eixo da tela).
-    // sofa faces -x, so sitter looks at the screen (which is at -x).
-    // sofaSeat: width along Z (2.2m), depth along X (0.7m).
+    // V16.7 cycle 40: cor mais quente (vinho escuro vs navy preto) + emissive
+    // sutil pra parecer estofado de couro premium em vez de bloco preto.
     const sofaMat = new THREE.MeshStandardMaterial({
-      color: 0x14111e,
-      roughness: 0.7,
-      metalness: 0.1,
+      color: 0x3a1a1f,
+      roughness: 0.5,
+      metalness: 0.2,
+      emissive: 0x2a0a14,
+      emissiveIntensity: 0.15,
     });
     const sofaSeat = new THREE.Mesh(
       new THREE.BoxGeometry(0.7, 0.32, 2.2),
@@ -1193,24 +1195,29 @@ export default function VirtualGym({
     sofaBack.castShadow = true;
     projRoomGroup.add(sofaBack);
 
-    // Almofadas pra dar peso visual
+    // Almofadas com mesma cor quente
     for (const dz of [-0.7, 0, 0.7]) {
       const cushion = new THREE.Mesh(
         new THREE.BoxGeometry(0.6, 0.2, 0.6),
-        new THREE.MeshStandardMaterial({ color: 0x1a1620, roughness: 0.85 })
+        new THREE.MeshStandardMaterial({
+          color: 0x4a1f24,
+          roughness: 0.7,
+          emissive: 0x2a0a14,
+          emissiveIntensity: 0.1,
+        })
       );
       cushion.position.set(1.5, 0.42, dz);
       cushion.castShadow = true;
       projRoomGroup.add(cushion);
     }
 
-    // Tapete sob o sofá (rug definindo a área de cinema)
+    // Tapete sob o sofá — cor mais cinema (red-brown carpet)
     const rug = new THREE.Mesh(
       new THREE.PlaneGeometry(3.5, 3.0),
       new THREE.MeshBasicMaterial({
-        color: 0x14111e,
+        color: 0x5a1f2a,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.65,
       })
     );
     rug.rotation.x = -Math.PI / 2;
