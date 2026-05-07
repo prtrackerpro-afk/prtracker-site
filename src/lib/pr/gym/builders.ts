@@ -2291,118 +2291,89 @@ export function buildNPC(props: NPCProps): NPCParts {
   const torsoR = isF ? 0.18 : isM ? 0.22 : 0.20;
   const headR = 0.21;
 
-  // === HEAD com face desenhada em canvas (olhos + sobrancelhas + sorriso) ===
+  // === HEAD — geometria pura, sem canvas (canvas estava falhando em runtime) ===
+  // Estrutura: skull esférico + 2 olhos (esferas pretas) + boca (box) +
+  // cabelo (hemisfério). Tudo geometria nativa Three.js — robusto.
   const head = new THREE.Group();
+
+  // Skull (esfera skin)
   const skull = new THREE.Mesh(
-    new THREE.SphereGeometry(headR, 32, 24),
+    new THREE.SphereGeometry(headR, 24, 18),
     skinMat
   );
   skull.scale.set(1.0, 1.06, 1.0);
   skull.castShadow = true;
   head.add(skull);
 
-  // Face plane com canvas (sobrancelhas + olhos + sorriso) — mais expressivo
-  const faceCanvas = document.createElement("canvas");
-  faceCanvas.width = 256;
-  faceCanvas.height = 256;
-  const fctx = faceCanvas.getContext("2d")!;
-  fctx.clearRect(0, 0, 256, 256);
-  // Sobrancelhas (linhas curvas)
-  fctx.strokeStyle = hairHex;
-  fctx.lineWidth = 8;
-  fctx.lineCap = "round";
-  fctx.beginPath();
-  fctx.moveTo(80, 100);
-  fctx.quadraticCurveTo(95, 88, 115, 96);
-  fctx.stroke();
-  fctx.beginPath();
-  fctx.moveTo(141, 96);
-  fctx.quadraticCurveTo(161, 88, 176, 100);
-  fctx.stroke();
-  // Olhos (oval preto + reflexo branco)
-  fctx.fillStyle = "#0a0a14";
-  fctx.beginPath();
-  fctx.ellipse(98, 122, 12, 16, 0, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.ellipse(158, 122, 12, 16, 0, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.fillStyle = "#fff";
-  fctx.beginPath();
-  fctx.ellipse(101, 117, 4, 5, 0, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.ellipse(161, 117, 4, 5, 0, 0, Math.PI * 2);
-  fctx.fill();
-  // Sorriso aberto (curva)
-  fctx.strokeStyle = "#4a1f1f";
-  fctx.lineWidth = 6;
-  fctx.lineCap = "round";
-  fctx.beginPath();
-  fctx.moveTo(108, 175);
-  fctx.quadraticCurveTo(128, 198, 148, 175);
-  fctx.stroke();
-  // Bochechas sutis (rosa)
-  fctx.fillStyle = "rgba(218, 41, 28, 0.18)";
-  fctx.beginPath();
-  fctx.arc(75, 155, 14, 0, Math.PI * 2);
-  fctx.fill();
-  fctx.beginPath();
-  fctx.arc(181, 155, 14, 0, Math.PI * 2);
-  fctx.fill();
+  // Olhos — 2 esferas pretas pequenas no front (z+)
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0a0a14 });
+  for (const sx of [-0.07, 0.07]) {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.024, 10, 8),
+      eyeMat
+    );
+    eye.position.set(sx, 0.03, headR * 0.92);
+    head.add(eye);
+    // Reflexo branco (esfera ainda menor offset)
+    const sparkle = new THREE.Mesh(
+      new THREE.SphereGeometry(0.008, 6, 5),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    sparkle.position.set(sx + 0.005, 0.04, headR * 0.95);
+    head.add(sparkle);
+  }
 
-  const faceTex = new THREE.CanvasTexture(faceCanvas);
-  faceTex.colorSpace = THREE.SRGBColorSpace;
-  const face = new THREE.Mesh(
-    new THREE.PlaneGeometry(headR * 1.7, headR * 1.7),
-    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+  // Boca — box horizontal vermelho-escuro
+  const mouth = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.012, 0.005),
+    new THREE.MeshBasicMaterial({ color: 0x4a1f1f })
   );
-  face.position.set(0, 0, headR * 0.96);
-  head.add(face);
+  mouth.position.set(0, -0.07, headR * 0.94);
+  head.add(mouth);
 
-  // Cabelo cap (hemisferio cobrindo top + nuca) com volume
-  const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(headR + 0.025, 32, 24, 0, Math.PI * 2, 0, Math.PI / 1.65),
+  // Cabelo — hemisfério cobrindo o topo do skull
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(headR + 0.02, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.8),
     hairMat
   );
-  cap.scale.set(1.02, 1.08, 1.02);
-  cap.position.y = -0.02;
-  cap.castShadow = true;
-  head.add(cap);
+  hair.position.y = -0.01;
+  hair.castShadow = true;
+  head.add(hair);
 
-  // Detalhe extra de cabelo lateral (mecha) — só pra female pra dar variedade
+  // Female: mecha lateral
   if (isF) {
     for (const sx of [-1, 1]) {
       const sideHair = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.05, 0.16, 4, 8),
+        new THREE.CapsuleGeometry(0.045, 0.14, 4, 6),
         hairMat
       );
-      sideHair.position.set(sx * (headR + 0.01), -0.02, headR * 0.5);
-      sideHair.rotation.z = sx * 0.2;
-      sideHair.castShadow = true;
+      sideHair.position.set(sx * (headR + 0.005), -0.05, headR * 0.4);
+      sideHair.rotation.z = sx * 0.15;
       head.add(sideHair);
     }
   }
 
-  // Orelhas pequenas (visual humano)
+  // Orelhas
   for (const sx of [-1, 1]) {
     const ear = new THREE.Mesh(
       new THREE.SphereGeometry(0.028, 8, 6),
       skinMat
     );
-    ear.scale.set(0.6, 1.0, 0.5);
-    ear.position.set(sx * (headR + 0.01), 0.0, 0);
+    ear.scale.set(0.5, 0.9, 0.4);
+    ear.position.set(sx * headR, 0, 0);
     head.add(ear);
   }
 
-  // Pescoço
+  // Pescoço (cilindro skin que conecta cabeça ao torso)
   const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.085, 0.09, 12),
+    new THREE.CylinderGeometry(0.065, 0.08, 0.12, 12),
     skinMat
   );
   neck.position.y = -headR - 0.02;
+  neck.castShadow = true;
   head.add(neck);
 
+  // Posição da cabeça — y=1.95 acima do torso (que vai até y=1.65)
   head.position.y = 1.95;
   root.add(head);
 
