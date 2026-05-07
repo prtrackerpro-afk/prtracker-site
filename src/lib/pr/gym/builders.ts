@@ -856,34 +856,117 @@ export function buildPowerRack(accentHex: string): THREE.Group {
 }
 
 function buildLoadedBarbell(): THREE.Group {
+  // V16.8 cycles 106-107: plates com texture canvas (hub central + 6 furos +
+  // gravacao "PR TRACKER") + cores IWF exatas + raios proporcionais reais
+  // (45cm bumper plate = radius 0.225). Antes plates pareciam plastico fake.
   const g = new THREE.Group();
   const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 12), CHROME_MAT);
   bar.rotation.z = Math.PI / 2;
   g.add(bar);
+  // V16.8 cycle 115: spinning sleeves com knurling (collar interna + externa)
   for (const side of [-1, 1]) {
     const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4, 16), STEEL_MAT);
     sleeve.rotation.z = Math.PI / 2;
     sleeve.position.set(side * 0.95, 0, 0);
     g.add(sleeve);
+    // Collar interna (anel maior) — separa knurled grip da sleeve
+    const innerCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.058, 0.058, 0.025, 16),
+      STEEL_MAT
+    );
+    innerCollar.rotation.z = Math.PI / 2;
+    innerCollar.position.set(side * 0.76, 0, 0);
+    g.add(innerCollar);
   }
+
+  // V16.8 cycle 116: cores IWF exatas Pantone match
   const plates = [
-    { color: 0xda291c, radius: 0.22 },
-    { color: 0x0057b8, radius: 0.2 },
-    { color: 0xffc72c, radius: 0.18 },
-    { color: 0x43b02a, radius: 0.16 },
+    { color: 0xda291c, radius: 0.225, label: "25" }, // Pantone 485 C
+    { color: 0x0057b8, radius: 0.225, label: "20" }, // Pantone 2935 C
+    { color: 0xffc72c, radius: 0.225, label: "15" }, // Pantone 123 C
+    { color: 0x43b02a, radius: 0.225, label: "10" }, // Pantone 361 C
   ];
+
+  // V16.8 cycle 117-118: plate texture com hub central (6 furos) + brand
+  function plateTexture(colorHex: number, label: string): THREE.CanvasTexture {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext("2d")!;
+    const hexStr = "#" + colorHex.toString(16).padStart(6, "0");
+    // Plate face cor solida
+    ctx.fillStyle = hexStr;
+    ctx.fillRect(0, 0, 512, 512);
+    // Hub central (circulo cinza interno)
+    ctx.fillStyle = "#1a1a26";
+    ctx.beginPath();
+    ctx.arc(256, 256, 90, 0, Math.PI * 2);
+    ctx.fill();
+    // 6 furos circulares no hub
+    ctx.fillStyle = "#0a0a14";
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2;
+      const fx = 256 + Math.cos(ang) * 60;
+      const fy = 256 + Math.sin(ang) * 60;
+      ctx.beginPath();
+      ctx.arc(fx, fy, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Bore central (furo da barra)
+    ctx.fillStyle = "#000000";
+    ctx.beginPath();
+    ctx.arc(256, 256, 28, 0, Math.PI * 2);
+    ctx.fill();
+    // Numero do peso GIGANTE
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 130px Archivo Black, Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, 256, 410);
+    // "KG" embaixo do numero
+    ctx.font = "bold 36px Inter, sans-serif";
+    ctx.fillText("KG", 256, 470);
+    // Brand "PR TRACKER" curvada em arco
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 22px Inter, sans-serif";
+    ctx.save();
+    ctx.translate(256, 256);
+    ctx.rotate(-Math.PI / 2);
+    const brand = "PR TRACKER";
+    const radius = 180;
+    for (let i = 0; i < brand.length; i++) {
+      const a = (i - brand.length / 2) * 0.13;
+      ctx.save();
+      ctx.rotate(a);
+      ctx.fillText(brand[i], 0, -radius);
+      ctx.restore();
+    }
+    ctx.restore();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
   for (const side of [-1, 1]) {
     plates.forEach((p, i) => {
-      const mat = new THREE.MeshStandardMaterial({
-        color: p.color,
-        roughness: 0.5,
-        metalness: 0.15,
+      const tex = plateTexture(p.color, p.label);
+      // Material faces (frente/trás): canvas com gravacao
+      const faceMat = new THREE.MeshStandardMaterial({
+        map: tex,
+        roughness: 0.55,
+        metalness: 0.1,
         emissive: p.color,
-        emissiveIntensity: 0.18,
+        emissiveIntensity: 0.12,
+      });
+      // Material edge (lateral cilindro): cor solida
+      const edgeMat = new THREE.MeshStandardMaterial({
+        color: p.color,
+        roughness: 0.85, // borracha
+        metalness: 0,
       });
       const plate = new THREE.Mesh(
-        new THREE.CylinderGeometry(p.radius, p.radius, 0.05, 24),
-        mat
+        new THREE.CylinderGeometry(p.radius, p.radius, 0.05, 32),
+        [edgeMat, faceMat, faceMat]
       );
       plate.rotation.z = Math.PI / 2;
       plate.position.set(side * (0.78 + i * 0.06), 0, 0);
@@ -899,27 +982,91 @@ function buildLoadedBarbell(): THREE.Group {
 }
 
 export function buildPlatform(accentHex: string): THREE.Group {
+  // V16.8 cycles 112-114: deadlift platform com madeira clara central +
+  // borracha texturizada lateral (ranhuras visiveis) + chalk dust sutil.
+  // Dimensoes spec real: 1.2m madeira × 1.6m borracha cada lado, 3m comprimento
   const g = new THREE.Group();
   const accentRubber = new THREE.MeshStandardMaterial({
     color: new THREE.Color(accentHex),
-    roughness: 0.85,
-    metalness: 0.05,
+    roughness: 0.92,
+    metalness: 0,
   });
+  // V16.8 cycle 113: ranhuras na borracha texturizada (canvas)
+  const rubberCanvas = document.createElement("canvas");
+  rubberCanvas.width = 256;
+  rubberCanvas.height = 256;
+  const rctx = rubberCanvas.getContext("2d")!;
+  rctx.fillStyle = "#0a0a14";
+  rctx.fillRect(0, 0, 256, 256);
+  // Ranhuras diagonais (anti-slip)
+  rctx.strokeStyle = "#1a1a26";
+  rctx.lineWidth = 2;
+  for (let i = -256; i < 512; i += 12) {
+    rctx.beginPath();
+    rctx.moveTo(i, 0);
+    rctx.lineTo(i + 256, 256);
+    rctx.stroke();
+  }
+  const rubberTex = new THREE.CanvasTexture(rubberCanvas);
+  rubberTex.colorSpace = THREE.SRGBColorSpace;
+  rubberTex.wrapS = THREE.RepeatWrapping;
+  rubberTex.wrapT = THREE.RepeatWrapping;
+  rubberTex.repeat.set(3, 6);
+  const sideRubberMat = new THREE.MeshStandardMaterial({
+    map: rubberTex,
+    roughness: 0.92,
+    metalness: 0,
+  });
+
   const center = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 3.0), WOOD_MAT);
   center.position.y = 0.03;
   center.receiveShadow = true;
   g.add(center);
   for (const x of [-1.4, 1.4]) {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 3.0), accentRubber);
+    const side = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 3.0), sideRubberMat);
     side.position.set(x, 0.03, 0);
     side.receiveShadow = true;
     g.add(side);
   }
+  // Faixa lime de demarcacao (cycle 112: era preta, agora accent)
   for (const x of [-0.6, 0.6]) {
-    const line = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.062, 3.0), RUBBER_MAT);
+    const line = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.062, 3.0), accentRubber);
     line.position.set(x, 0.031, 0);
     g.add(line);
   }
+  // V16.8 cycle 167: chalk dust no centro (mancha branca sutil)
+  const chalkCanvas = document.createElement("canvas");
+  chalkCanvas.width = 256;
+  chalkCanvas.height = 256;
+  const cctx = chalkCanvas.getContext("2d")!;
+  cctx.clearRect(0, 0, 256, 256);
+  // Mancha de chalk radial gradient
+  const grad = cctx.createRadialGradient(128, 128, 10, 128, 128, 100);
+  grad.addColorStop(0, "rgba(255,255,255,0.55)");
+  grad.addColorStop(0.4, "rgba(240,240,255,0.25)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  cctx.fillStyle = grad;
+  cctx.fillRect(0, 0, 256, 256);
+  // Speckle sutil
+  for (let i = 0; i < 30; i++) {
+    const x = 60 + Math.random() * 136;
+    const y = 60 + Math.random() * 136;
+    cctx.fillStyle = `rgba(255,255,255,${0.1 + Math.random() * 0.3})`;
+    cctx.fillRect(x, y, 2, 2);
+  }
+  const chalkTex = new THREE.CanvasTexture(chalkCanvas);
+  chalkTex.colorSpace = THREE.SRGBColorSpace;
+  const chalkPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.9, 0.6),
+    new THREE.MeshBasicMaterial({
+      map: chalkTex,
+      transparent: true,
+      depthWrite: false,
+    })
+  );
+  chalkPlane.rotation.x = -Math.PI / 2;
+  chalkPlane.position.set(0, 0.062, 0.4);
+  g.add(chalkPlane);
   return g;
 }
 
@@ -939,10 +1086,12 @@ export function buildBench(): THREE.Group {
   });
   const stitchMat = new THREE.MeshBasicMaterial({ color: 0x1a0a0a });
 
-  const BENCH_LEN = 1.4; // comprimento total do banco
-  const PAD_W = 0.34;
-  const PAD_H = 0.12;
-  const SEAT_Y = 0.5; // altura do topo do estofado
+  // V16.8 cycle 108: proporcoes ajustadas pra bench press IPF (era 1.4×0.34×0.12,
+  // assento 0.5m). Agora width 0.30m + height 0.10m + assento 0.45m (Eleiko Bench).
+  const BENCH_LEN = 1.3;
+  const PAD_W = 0.30;
+  const PAD_H = 0.10;
+  const SEAT_Y = 0.45;
 
   // === ESTOFADO HORIZONTAL (peça única — bench press é PLANO) ===
   const seat = new THREE.Mesh(
@@ -3487,8 +3636,9 @@ export function buildTreadmill(accentHex: string): THREE.Group {
   }
   const beltTex = new THREE.CanvasTexture(beltCanvas);
   beltTex.colorSpace = THREE.SRGBColorSpace;
+  // V16.8 cycle 125: belt 0.7 → 0.55m (real treadmill spec). Comprimento mantido.
   const beltDeck = new THREE.Mesh(
-    new THREE.BoxGeometry(0.7, 0.08, 1.6),
+    new THREE.BoxGeometry(0.55, 0.08, 1.6),
     new THREE.MeshStandardMaterial({ map: beltTex, roughness: 0.92 })
   );
   beltDeck.position.set(0, 0.18, 0.1);
@@ -3499,7 +3649,7 @@ export function buildTreadmill(accentHex: string): THREE.Group {
   // Cilindros nas pontas da correia (rolos da esteira — visual de máquina real)
   for (const sz of [-0.7, 0.9]) {
     const roller = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.05, 0.66, 12),
+      new THREE.CylinderGeometry(0.05, 0.05, 0.55, 12),
       STEEL_MAT
     );
     roller.rotation.z = Math.PI / 2;
@@ -3507,8 +3657,8 @@ export function buildTreadmill(accentHex: string): THREE.Group {
     g.add(roller);
   }
 
-  // Carcaça lateral
-  for (const sx of [-0.42, 0.42]) {
+  // Carcaça lateral — match width nova belt
+  for (const sx of [-0.34, 0.34]) {
     const side = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 1.6), baseMat);
     side.position.set(sx, 0.13, 0.1);
     side.castShadow = true;
