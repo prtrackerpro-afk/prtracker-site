@@ -48,6 +48,57 @@ export const CHROME_MAT = new THREE.MeshStandardMaterial({
   emissiveIntensity: 0.08,
 });
 
+// V16.8 cycles 153-160: acabamentos premium - parafusos, soldas, brand stickers
+// Helper pra adicionar parafuso pequeno (esfera preta) em pontos de junção
+export function addScrew(parent: THREE.Object3D, x: number, y: number, z: number, size = 0.012) {
+  const screw = new THREE.Mesh(
+    new THREE.SphereGeometry(size, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0x0a0a10, roughness: 0.4, metalness: 0.7 })
+  );
+  screw.position.set(x, y, z);
+  parent.add(screw);
+}
+
+// Helper: solda raised seam (pequena box angular)
+export function addWeldSeam(parent: THREE.Object3D, x: number, y: number, z: number, len: number, axis: "x" | "z" = "x") {
+  const seam = new THREE.Mesh(
+    new THREE.BoxGeometry(axis === "x" ? len : 0.01, 0.005, axis === "z" ? len : 0.01),
+    new THREE.MeshStandardMaterial({ color: 0x6a6a76, roughness: 0.3, metalness: 0.85 })
+  );
+  seam.position.set(x, y, z);
+  parent.add(seam);
+}
+
+// Helper: brand sticker "PR TRACKER" (lime canvas) num plano pequeno
+let _brandStickerTex: THREE.CanvasTexture | null = null;
+export function addBrandSticker(parent: THREE.Object3D, x: number, y: number, z: number, w = 0.12, rotY = 0) {
+  if (!_brandStickerTex) {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 64;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#01002A";
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.strokeStyle = "#D8FF2C";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(2, 2, 252, 60);
+    ctx.fillStyle = "#D8FF2C";
+    ctx.font = "900 32px Archivo Black, Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PR TRACKER", 128, 32);
+    _brandStickerTex = new THREE.CanvasTexture(c);
+    _brandStickerTex.colorSpace = THREE.SRGBColorSpace;
+  }
+  const sticker = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, w / 4),
+    new THREE.MeshBasicMaterial({ map: _brandStickerTex, transparent: true })
+  );
+  sticker.position.set(x, y, z);
+  sticker.rotation.y = rotY;
+  parent.add(sticker);
+}
+
 // =================================================================
 // CORES IWF DE ANILHAS — para troféus realistas
 // =================================================================
@@ -851,6 +902,21 @@ export function buildPowerRack(accentHex: string): THREE.Group {
   const barbell = buildLoadedBarbell();
   barbell.position.set(0, 1.32, D / 2 - 0.04);
   g.add(barbell);
+
+  // V16.8 cycle 156: brand sticker no top crossbar
+  addBrandSticker(g, 0, H + 0.06, D / 2, 0.3);
+  // Cycle 153: parafusos visiveis nos cantos das colunas (top + bottom)
+  for (const x of [-W / 2, W / 2]) {
+    for (const z of [-D / 2, D / 2]) {
+      addScrew(g, x, 0.04, z, 0.014);     // base
+      addScrew(g, x, H - 0.04, z, 0.014); // topo
+    }
+  }
+  // Cycle 154: soldas no encontro top crossbar com colunas
+  for (const x of [-W / 2, W / 2]) {
+    addWeldSeam(g, x, H, D / 2, 0.08, "x");
+    addWeldSeam(g, x, H, -D / 2, 0.08, "x");
+  }
 
   return g;
 }
