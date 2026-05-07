@@ -927,20 +927,94 @@ export function buildKettlebell(scale: number): THREE.Group {
 
 export function buildPlyoBox(size: number): THREE.Group {
   const g = new THREE.Group();
-  const box = new THREE.Mesh(
-    new THREE.BoxGeometry(size * 1.2, size, size * 1.2),
-    new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.85, metalness: 0.05 })
-  );
-  box.position.y = size / 2;
+  const W = size * 1.2;
+  const H = size;
+  const D = size * 1.2;
+
+  // Madeira escura
+  const woodMat = new THREE.MeshStandardMaterial({
+    color: 0x2a1f1a,
+    roughness: 0.9,
+    metalness: 0.05,
+  });
+
+  // Corpo
+  const box = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), woodMat);
+  box.position.y = H / 2;
   box.castShadow = true;
   box.receiveShadow = true;
   g.add(box);
+
+  // Edges em madeira clara (visual de quinas reforçadas)
   const edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(box.geometry),
-    new THREE.LineBasicMaterial({ color: 0x4d4d51 })
+    new THREE.LineBasicMaterial({ color: 0x6a4a2a })
   );
-  edges.position.y = size / 2;
+  edges.position.y = H / 2;
   g.add(edges);
+
+  // Topo texturizado (textura de plywood)
+  const topCanvas = document.createElement("canvas");
+  topCanvas.width = 256;
+  topCanvas.height = 256;
+  const tctx = topCanvas.getContext("2d")!;
+  tctx.fillStyle = "#2a1f1a";
+  tctx.fillRect(0, 0, 256, 256);
+  tctx.strokeStyle = "#3a2a1f";
+  tctx.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    tctx.beginPath();
+    tctx.moveTo(0, i * 32);
+    tctx.lineTo(256, i * 32 + 8);
+    tctx.stroke();
+  }
+  tctx.strokeStyle = "#6a4a2a";
+  tctx.lineWidth = 6;
+  tctx.strokeRect(3, 3, 250, 250);
+  const topTex = new THREE.CanvasTexture(topCanvas);
+  topTex.colorSpace = THREE.SRGBColorSpace;
+  const topFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(W * 0.99, D * 0.99),
+    new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.85 })
+  );
+  topFace.rotation.x = -Math.PI / 2;
+  topFace.position.y = H + 0.001;
+  g.add(topFace);
+
+  // Frente com número da altura em cm + listras horizontais (efeito plywood)
+  const frontCanvas = document.createElement("canvas");
+  frontCanvas.width = 256;
+  frontCanvas.height = 256;
+  const fctx = frontCanvas.getContext("2d")!;
+  for (let i = 0; i < 12; i++) {
+    fctx.fillStyle = i % 2 === 0 ? "#2a1f1a" : "#332419";
+    fctx.fillRect(0, i * 22, 256, 22);
+  }
+  fctx.strokeStyle = "#D8FF2C";
+  fctx.lineWidth = 3;
+  fctx.strokeRect(8, 8, 240, 240);
+  const cm = Math.round(size * 100);
+  fctx.fillStyle = "#D8FF2C";
+  fctx.font = "900 110px Archivo Black, Inter, sans-serif";
+  fctx.textAlign = "center";
+  fctx.textBaseline = "middle";
+  fctx.fillText(String(cm), 128, 110);
+  fctx.fillStyle = "#9a8a6a";
+  fctx.font = "700 28px Inter, sans-serif";
+  fctx.fillText("CM", 128, 180);
+  const frontTex = new THREE.CanvasTexture(frontCanvas);
+  frontTex.colorSpace = THREE.SRGBColorSpace;
+  const frontMat = new THREE.MeshStandardMaterial({ map: frontTex, roughness: 0.85 });
+  const frontFace = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.95, H * 0.95), frontMat);
+  frontFace.position.set(0, H / 2, D / 2 + 0.001);
+  g.add(frontFace);
+
+  // Traseira espelhada
+  const backFace = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.95, H * 0.95), frontMat);
+  backFace.position.set(0, H / 2, -D / 2 - 0.001);
+  backFace.rotation.y = Math.PI;
+  g.add(backFace);
+
   return g;
 }
 
@@ -1170,31 +1244,91 @@ export function buildPlateTree(): THREE.Group {
 export function buildCeilingBeams(roomW: number, roomD: number, height: number): THREE.Group {
   const g = new THREE.Group();
   const beamMat = new THREE.MeshStandardMaterial({
-    color: 0x14141a,
-    roughness: 0.7,
-    metalness: 0.3,
+    color: 0x1a1a22,
+    roughness: 0.55,
+    metalness: 0.5,
+  });
+  const rivetMat = new THREE.MeshStandardMaterial({
+    color: 0x3a3a46,
+    roughness: 0.4,
+    metalness: 0.7,
   });
 
-  // 4 vigas longitudinais
+  /**
+   * Cria uma viga com perfil I-beam (top flange + web + bottom flange).
+   * "axis" define o eixo da viga (X = longitudinal, Z = transversal).
+   */
+  function makeIBeam(length: number, axis: "x" | "z"): THREE.Group {
+    const beam = new THREE.Group();
+    const flangeW = 0.16; // largura da flange
+    const flangeH = 0.04; // espessura da flange
+    const webH = 0.16; // altura do web (alma da viga)
+    const webW = 0.04; // espessura do web
+
+    // Top flange
+    const top = new THREE.Mesh(
+      axis === "x"
+        ? new THREE.BoxGeometry(length, flangeH, flangeW)
+        : new THREE.BoxGeometry(flangeW, flangeH, length),
+      beamMat
+    );
+    top.position.y = webH / 2 + flangeH / 2;
+    beam.add(top);
+
+    // Bottom flange
+    const bot = new THREE.Mesh(
+      axis === "x"
+        ? new THREE.BoxGeometry(length, flangeH, flangeW)
+        : new THREE.BoxGeometry(flangeW, flangeH, length),
+      beamMat
+    );
+    bot.position.y = -webH / 2 - flangeH / 2;
+    beam.add(bot);
+
+    // Web (alma central)
+    const web = new THREE.Mesh(
+      axis === "x"
+        ? new THREE.BoxGeometry(length, webH, webW)
+        : new THREE.BoxGeometry(webW, webH, length),
+      beamMat
+    );
+    beam.add(web);
+
+    // Rivets (pequenos pontos espalhados ao longo da flange superior)
+    const rivetCount = Math.max(3, Math.floor(length / 1.5));
+    for (let i = 0; i < rivetCount; i++) {
+      const t = (i + 0.5) / rivetCount;
+      const offset = -length / 2 + t * length;
+      const rivet = new THREE.Mesh(
+        new THREE.SphereGeometry(0.018, 6, 4),
+        rivetMat
+      );
+      if (axis === "x") {
+        rivet.position.set(offset, webH / 2 + flangeH + 0.02, 0);
+      } else {
+        rivet.position.set(0, webH / 2 + flangeH + 0.02, offset);
+      }
+      beam.add(rivet);
+    }
+
+    return beam;
+  }
+
+  // Vigas longitudinais (eixo X — span pela largura da sala)
   for (let i = 0; i < 5; i++) {
     const z = -roomD / 2 + (i / 4) * roomD;
-    const beam = new THREE.Mesh(
-      new THREE.BoxGeometry(roomW, 0.18, 0.12),
-      beamMat
-    );
-    beam.position.set(0, height - 0.1, z);
+    const beam = makeIBeam(roomW, "x");
+    beam.position.set(0, height - 0.18, z);
     g.add(beam);
   }
-  // Travessas perpendiculares
+  // Travessas (eixo Z — span pela profundidade)
   for (let i = 0; i < 5; i++) {
     const x = -roomW / 2 + (i / 4) * roomW;
-    const beam = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.12, roomD),
-      beamMat
-    );
+    const beam = makeIBeam(roomD, "z");
     beam.position.set(x, height - 0.05, 0);
     g.add(beam);
   }
+
   return g;
 }
 
@@ -1654,25 +1788,81 @@ export function buildRunBoard(accentHex: string, slots: RunSlot[]): RunBoardPart
   borderR.position.x = boardW / 2;
   g.add(borderR);
 
-  // Título — GIGANTE + neon glow
+  // Título com ícone de corredor SVG-like canvas + neon glow
   const titleCanvas = document.createElement("canvas");
   titleCanvas.width = 2048;
   titleCanvas.height = 384;
   const tctx = titleCanvas.getContext("2d")!;
   tctx.clearRect(0, 0, 2048, 384);
+
+  // Ícone de corredor à esquerda do título
+  // (figura simplificada feita com paths — corpo em movimento)
+  function drawRunner(ctx: CanvasRenderingContext2D, cx: number, cy: number, scale: number, color: string) {
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 14 * scale;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    // Cabeça
+    ctx.beginPath();
+    ctx.arc(cx, cy - 90 * scale, 30 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    // Tronco (inclinado pra frente)
+    ctx.beginPath();
+    ctx.moveTo(cx - 15 * scale, cy - 60 * scale);
+    ctx.lineTo(cx + 25 * scale, cy + 40 * scale);
+    ctx.stroke();
+    // Braço atrás (dobrado)
+    ctx.beginPath();
+    ctx.moveTo(cx - 10 * scale, cy - 30 * scale);
+    ctx.lineTo(cx - 60 * scale, cy);
+    ctx.lineTo(cx - 35 * scale, cy + 30 * scale);
+    ctx.stroke();
+    // Braço frente (dobrado)
+    ctx.beginPath();
+    ctx.moveTo(cx + 5 * scale, cy - 30 * scale);
+    ctx.lineTo(cx + 60 * scale, cy + 10 * scale);
+    ctx.lineTo(cx + 50 * scale, cy + 50 * scale);
+    ctx.stroke();
+    // Perna trás (estendida)
+    ctx.beginPath();
+    ctx.moveTo(cx + 25 * scale, cy + 40 * scale);
+    ctx.lineTo(cx - 30 * scale, cy + 90 * scale);
+    ctx.lineTo(cx - 60 * scale, cy + 100 * scale);
+    ctx.stroke();
+    // Perna frente (dobrada, no ar)
+    ctx.beginPath();
+    ctx.moveTo(cx + 25 * scale, cy + 40 * scale);
+    ctx.lineTo(cx + 70 * scale, cy + 50 * scale);
+    ctx.lineTo(cx + 60 * scale, cy + 110 * scale);
+    ctx.stroke();
+    // Linhas de movimento atrás
+    ctx.lineWidth = 6 * scale;
+    ctx.strokeStyle = color + "88";
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 100 * scale - i * 20 * scale, cy - 30 * scale + i * 30 * scale);
+      ctx.lineTo(cx - 70 * scale - i * 20 * scale, cy - 30 * scale + i * 30 * scale);
+      ctx.stroke();
+    }
+  }
+  drawRunner(tctx, 380, 150, 1.2, accentHex);
+
+  // Texto "CORRIDA" com glow
   for (let glow = 0; glow < 3; glow++) {
     tctx.shadowColor = accentHex;
     tctx.shadowBlur = 30 - glow * 10;
     tctx.fillStyle = accentHex;
-    tctx.font = "900 220px Archivo Black, Inter, sans-serif";
-    tctx.textAlign = "center";
+    tctx.font = "900 200px Archivo Black, Inter, sans-serif";
+    tctx.textAlign = "left";
     tctx.textBaseline = "middle";
-    tctx.fillText("CORRIDA", 1024, 130);
+    tctx.fillText("CORRIDA", 540, 130);
   }
   tctx.shadowBlur = 0;
   tctx.fillStyle = "#9ca3af";
-  tctx.font = "500 56px Inter, sans-serif";
-  tctx.fillText("Recordes Pessoais", 1024, 280);
+  tctx.font = "500 50px Inter, sans-serif";
+  tctx.fillText("Recordes Pessoais", 540, 250);
+
   const titleTex = new THREE.CanvasTexture(titleCanvas);
   titleTex.colorSpace = THREE.SRGBColorSpace;
   const title = new THREE.Mesh(
@@ -2190,31 +2380,91 @@ export function buildSponsorBooth(props: SponsorBoothProps): SponsorBoothParts {
   const g = new THREE.Group();
   const { title, professional, accentHex, slotId } = props;
   const isEmpty = professional == null;
+  const accentColor = new THREE.Color(accentHex);
 
-  // === BASE / counter ===
+  // === PISO do booth (tapete delimitando a área) ===
+  const floorW = 2.4;
+  const floorD = 1.6;
+  const boothFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(floorW, floorD),
+    new THREE.MeshBasicMaterial({
+      color: accentColor,
+      transparent: true,
+      opacity: 0.12,
+    })
+  );
+  boothFloor.rotation.x = -Math.PI / 2;
+  boothFloor.position.set(0, 0.01, 0);
+  g.add(boothFloor);
+
+  // Borda lime do tapete (linha demarcatória)
+  const boothBorder = new THREE.Mesh(
+    new THREE.RingGeometry(0.92, 0.96, 4, 1, Math.PI / 4),
+    new THREE.MeshBasicMaterial({ color: accentColor, side: THREE.DoubleSide })
+  );
+  // RingGeometry com 4 segmentos vira quadrado, mas precisamos retângulo —
+  // usamos 4 boxes finas pra demarcar
+  for (const dz of [-floorD / 2, floorD / 2]) {
+    const edge = new THREE.Mesh(
+      new THREE.BoxGeometry(floorW, 0.02, 0.04),
+      new THREE.MeshBasicMaterial({ color: accentColor })
+    );
+    edge.position.set(0, 0.02, dz);
+    g.add(edge);
+  }
+  for (const dx of [-floorW / 2, floorW / 2]) {
+    const edge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.02, floorD),
+      new THREE.MeshBasicMaterial({ color: accentColor })
+    );
+    edge.position.set(dx, 0.02, 0);
+    g.add(edge);
+  }
+  // Descarta o ring helper
+  boothBorder.geometry.dispose();
+  boothBorder.material.dispose();
+
+  // === BASE / counter (com profundidade e tampo separado) ===
   const baseW = 1.8;
   const baseH = 1.0;
   const baseD = 0.6;
   const baseColor = isEmpty ? 0x1a1a26 : 0x14111e;
+  // Carcaça do balcão
   const base = new THREE.Mesh(
-    new THREE.BoxGeometry(baseW, baseH, baseD),
+    new THREE.BoxGeometry(baseW, baseH * 0.92, baseD * 0.95),
     new THREE.MeshStandardMaterial({
       color: baseColor,
       roughness: 0.55,
       metalness: 0.3,
     })
   );
-  base.position.y = baseH / 2;
+  base.position.set(0, (baseH * 0.92) / 2, 0);
   base.castShadow = true;
   base.receiveShadow = true;
   g.add(base);
-
-  // Faixa de acento na frente da base
-  const stripe = new THREE.Mesh(
-    new THREE.BoxGeometry(baseW, 0.04, 0.05),
-    new THREE.MeshBasicMaterial({ color: accentHex })
+  // Tampo (pedra/laminado sobre o balcão — overhang nas laterais)
+  const counterTop = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW + 0.08, 0.05, baseD + 0.06),
+    new THREE.MeshStandardMaterial({
+      color: 0x2a2a36,
+      roughness: 0.3,
+      metalness: 0.5,
+    })
   );
-  stripe.position.set(0, baseH - 0.04, baseD / 2);
+  counterTop.position.set(0, baseH * 0.92 + 0.025, 0);
+  counterTop.castShadow = true;
+  g.add(counterTop);
+
+  // Faixa de acento horizontal na frente
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(baseW, 0.06, 0.04),
+    new THREE.MeshStandardMaterial({
+      color: accentColor,
+      emissive: accentColor,
+      emissiveIntensity: 0.6,
+    })
+  );
+  stripe.position.set(0, baseH - 0.18, baseD / 2);
   g.add(stripe);
 
   // === BANNER no topo (header com título + foto + nome) ===
@@ -2222,15 +2472,35 @@ export function buildSponsorBooth(props: SponsorBoothProps): SponsorBoothParts {
   const bannerH = 1.6;
   const bannerY = baseH + bannerH / 2 + 0.1;
 
-  // Posts (2 verticais segurando o banner)
+  // Posts (2 verticais segurando o banner) — agora com base alargada (sapata)
   for (const sx of [-bannerW / 2 - 0.05, bannerW / 2 + 0.05]) {
     const post = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, baseH + bannerH + 0.2, 0.05),
-      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.55 })
+      new THREE.BoxGeometry(0.06, baseH + bannerH + 0.2, 0.06),
+      STEEL_MAT
     );
-    post.position.set(sx, (baseH + bannerH + 0.2) / 2, 0);
+    post.position.set(sx, (baseH + bannerH + 0.2) / 2, -0.05);
+    post.castShadow = true;
     g.add(post);
+    // Sapata embutida no piso
+    const foot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.04, 0.16),
+      STEEL_MAT
+    );
+    foot.position.set(sx, 0.02, -0.05);
+    g.add(foot);
   }
+
+  // === LED strip emissivo na borda superior do banner (neon) ===
+  const ledTop = new THREE.Mesh(
+    new THREE.BoxGeometry(bannerW + 0.04, 0.04, 0.04),
+    new THREE.MeshStandardMaterial({
+      color: accentColor,
+      emissive: accentColor,
+      emissiveIntensity: 1.2,
+    })
+  );
+  ledTop.position.set(0, bannerY + bannerH / 2 + 0.05, 0.06);
+  g.add(ledTop);
 
   // Banner canvas
   const bnrCanvas = document.createElement("canvas");
@@ -2647,80 +2917,187 @@ export function buildCableMachine(accentHex: string): THREE.Group {
   const g = new THREE.Group();
   const accent = new THREE.MeshStandardMaterial({
     color: new THREE.Color(accentHex),
-    roughness: 0.5,
-    metalness: 0.4,
-  });
-  const stackMat = new THREE.MeshStandardMaterial({
-    color: 0x141420,
     roughness: 0.4,
+    metalness: 0.5,
+    emissive: new THREE.Color(accentHex),
+    emissiveIntensity: 0.15,
+  });
+  const stackPlateMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a26,
+    roughness: 0.35,
     metalness: 0.7,
   });
+  const stackHousingMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0a14,
+    roughness: 0.45,
+    metalness: 0.5,
+  });
+  const cableMat = new THREE.MeshStandardMaterial({
+    color: 0x666870,
+    roughness: 0.6,
+    metalness: 0.3,
+  });
 
-  const W = 1.6;
-  const H = 2.4;
+  const W = 2.2;
+  const H = 2.6;
+  const STACK_W = 0.4;
+  const STACK_D = 0.45;
+  const STACK_H = 1.5;
 
-  // 2 colunas verticais (laterais)
+  // Base unificada conectando as 2 estações
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(W + 0.4, 0.12, STACK_D + 0.3),
+    new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.6, metalness: 0.5 })
+  );
+  base.position.set(0, 0.06, -STACK_D / 2);
+  base.receiveShadow = true;
+  base.castShadow = true;
+  g.add(base);
+
+  // Faixa lime na frente da base (visual identidade)
+  const baseStripe = new THREE.Mesh(
+    new THREE.BoxGeometry(W + 0.4, 0.04, 0.06),
+    accent
+  );
+  baseStripe.position.set(0, 0.13, 0.02);
+  g.add(baseStripe);
+
   for (const sx of [-W / 2, W / 2]) {
+    // Coluna vertical principal (atrás do stack)
     const col = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, H, 0.16),
+      new THREE.BoxGeometry(0.14, H, 0.18),
       STEEL_MAT
     );
-    col.position.set(sx, H / 2, 0);
+    col.position.set(sx, H / 2, -STACK_D - 0.05);
     col.castShadow = true;
     g.add(col);
 
-    // Stack de pesos (carcaça vertical)
-    const stack = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 1.4, 0.36),
-      stackMat
+    // === STACK DE PESOS — visualmente reconhecível ===
+    // Carcaça externa (caixa que encerra o stack) — apenas frente + 2 laterais
+    // pra deixar as plaquetas visíveis (tipo máquina real onde olha pelo vidro)
+    // Lateral esquerda
+    const housingL = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, STACK_H, STACK_D),
+      stackHousingMat
     );
-    stack.position.set(sx, 0.7, -0.18);
-    stack.castShadow = true;
-    g.add(stack);
+    housingL.position.set(sx - STACK_W / 2 - 0.02, STACK_H / 2 + 0.15, -STACK_D / 2);
+    housingL.castShadow = true;
+    g.add(housingL);
+    // Lateral direita
+    const housingR = housingL.clone();
+    housingR.position.x = sx + STACK_W / 2 + 0.02;
+    g.add(housingR);
+    // Topo (tampa do stack)
+    const housingTop = new THREE.Mesh(
+      new THREE.BoxGeometry(STACK_W + 0.08, 0.04, STACK_D),
+      stackHousingMat
+    );
+    housingTop.position.set(sx, STACK_H + 0.17, -STACK_D / 2);
+    g.add(housingTop);
+    // Fundo (parede traseira do stack)
+    const housingBack = new THREE.Mesh(
+      new THREE.BoxGeometry(STACK_W + 0.08, STACK_H, 0.04),
+      stackHousingMat
+    );
+    housingBack.position.set(sx, STACK_H / 2 + 0.15, -STACK_D - 0.02);
+    g.add(housingBack);
 
-    // Pino lime (selector pin)
+    // === PLAQUETAS DE PESO empilhadas (10 plaquetas visíveis) ===
+    // Cada plaqueta com pequeno gap entre elas (efeito metal empilhado)
+    const PLATE_COUNT = 10;
+    const plateH = (STACK_H - 0.15) / PLATE_COUNT;
+    for (let i = 0; i < PLATE_COUNT; i++) {
+      const plate = new THREE.Mesh(
+        new THREE.BoxGeometry(STACK_W * 0.92, plateH * 0.85, STACK_D * 0.85),
+        stackPlateMat
+      );
+      plate.position.set(
+        sx,
+        0.18 + i * plateH + plateH / 2,
+        -STACK_D / 2
+      );
+      g.add(plate);
+      // Linha lateral mais clara em cada plaqueta (detalhe metal usinado)
+      const plateLine = new THREE.Mesh(
+        new THREE.BoxGeometry(STACK_W * 0.94, 0.012, 0.012),
+        new THREE.MeshStandardMaterial({ color: 0x4a4a56, roughness: 0.3, metalness: 0.8 })
+      );
+      plateLine.position.set(sx, 0.18 + i * plateH + plateH * 0.42, -0.04);
+      g.add(plateLine);
+    }
+
+    // Pino seletor lime (mais grosso e visível, indica peso selecionado)
     const pin = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.04, 0.1),
+      new THREE.CylinderGeometry(0.025, 0.025, 0.16, 10),
       accent
     );
-    pin.position.set(sx, 0.55, -0.05);
+    pin.rotation.z = Math.PI / 2;
+    pin.position.set(sx, 0.55, -0.04);
     g.add(pin);
-
-    // Polia alta
-    const pulleyTop = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.08, 0.08, 12),
-      STEEL_MAT
+    // Cabeça T do pino (pra dar pra ver de longe)
+    const pinHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 10, 8),
+      accent
     );
-    pulleyTop.rotation.x = Math.PI / 2;
-    pulleyTop.position.set(sx, H - 0.2, 0.12);
-    g.add(pulleyTop);
-  }
+    pinHead.position.set(sx, 0.55, 0.05);
+    g.add(pinHead);
 
-  // Travessa superior
-  const topBar = new THREE.Mesh(
-    new THREE.BoxGeometry(W + 0.16, 0.08, 0.12),
-    STEEL_MAT
-  );
-  topBar.position.set(0, H, 0);
-  g.add(topBar);
+    // === HASTE GUIA central do stack (steel rod que as plaquetas deslizam) ===
+    const guideRod = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, STACK_H, 8),
+      CHROME_MAT
+    );
+    guideRod.position.set(sx, STACK_H / 2 + 0.15, -STACK_D / 2);
+    g.add(guideRod);
 
-  // Cabo simulado (linha fina vertical de cada lado)
-  for (const sx of [-W / 2 + 0.08, W / 2 - 0.08]) {
+    // === POLIA TOP (cilindro horizontal com sulco pro cabo) ===
+    const pulleyHousing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.18, 0.16),
+      stackHousingMat
+    );
+    pulleyHousing.position.set(sx, H - 0.18, 0.12);
+    pulleyHousing.castShadow = true;
+    g.add(pulleyHousing);
+    const pulley = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.07, 0.04, 16),
+      CHROME_MAT
+    );
+    pulley.rotation.x = Math.PI / 2;
+    pulley.position.set(sx, H - 0.18, 0.18);
+    g.add(pulley);
+    // Sulco interno da polia (anel mais escuro)
+    const pulleyGroove = new THREE.Mesh(
+      new THREE.TorusGeometry(0.05, 0.012, 8, 16),
+      stackHousingMat
+    );
+    pulleyGroove.rotation.x = Math.PI / 2;
+    pulleyGroove.position.set(sx, H - 0.18, 0.18);
+    g.add(pulleyGroove);
+
+    // === CABO (cylinder vertical conectando polia ao handle) ===
     const cable = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 1.4, 0.012),
-      new THREE.MeshStandardMaterial({ color: 0x0a0a14 })
+      new THREE.CylinderGeometry(0.008, 0.008, 1.5, 8),
+      cableMat
     );
-    cable.position.set(sx, 1.1, 0.16);
+    cable.position.set(sx, H / 2, 0.18);
     g.add(cable);
 
-    // Handle pendurado
-    const handle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.025, 0.025, 0.18, 8),
-      STEEL_MAT
+    // === HANDLE (pegador retangular) ===
+    const handleBar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, 0.22, 10),
+      CHROME_MAT
     );
-    handle.position.set(sx, 0.4, 0.16);
-    handle.rotation.z = Math.PI / 2;
-    g.add(handle);
+    handleBar.rotation.z = Math.PI / 2;
+    handleBar.position.set(sx, 1.4, 0.18);
+    handleBar.castShadow = true;
+    g.add(handleBar);
+    // Anel conector entre cabo e handle
+    const handleRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.022, 0.006, 8, 16),
+      CHROME_MAT
+    );
+    handleRing.position.set(sx, 1.5, 0.18);
+    g.add(handleRing);
   }
 
   return g;
