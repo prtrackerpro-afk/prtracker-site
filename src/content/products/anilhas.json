@@ -28,7 +28,7 @@
   "faq": [
     { "question": "Elas servem em qualquer PR Tracker Set?", "answer": "Sim. Todas as anilhas têm o mesmo diâmetro (42 mm) e encaixam na barra padrão de todos os nossos sets." },
     { "question": "Posso comprar só 1 anilha?", "answer": "A venda é sempre em pares para manter a simetria da barra. O configurador acima só permite números pares." },
-    { "question": "Quanto tempo leva para receber?", "answer": "Produção sob demanda: 5-10 dias úteis + prazo dos Correios. Enviamos para todo o Brasil com rastreio." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Pronta entrega: despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." },
     { "question": "Posso escolher cores diferentes do padrão olímpico?", "answer": "Não. Mantemos o padrão olímpico IWF em todas as peças para garantir consistência com o catálogo." }
   ],
   "configurator": { "enabled": true, "isAnilhasOnly": true, "hasExerciseSelector": false },

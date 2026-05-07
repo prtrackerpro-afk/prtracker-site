@@ -25,7 +25,7 @@
     { "question": "Como funciona a escolha do exercício?", "answer": "No configurador acima você seleciona um entre 20 exercícios (Back Squat, Snatch, Clean & Jerk, e muito mais). O nome do exercício acompanha seu pedido." },
     { "question": "Tem gravação do peso ou da data do PR?", "answer": "Não. O troféu representa o PR através da configuração da barra e do exercício escolhido — sem gravação de peso ou data." },
     { "question": "Posso comprar só anilhas extras depois?", "answer": "Sim. Se você bater um PR maior, é só comprar as Anilhas Avulsas pelo mesmo preço e atualizar seu troféu." },
-    { "question": "Quanto tempo leva para receber?", "answer": "Produção sob demanda: 5-10 dias úteis + prazo dos Correios. Enviamos para todo o Brasil com rastreio." }
+    { "question": "Quanto tempo leva para receber?", "answer": "Pronta entrega: despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." }
   ],
   "configurator": { "enabled": true, "isAnilhasOnly": false, "hasExerciseSelector": true },
   "featured": true,

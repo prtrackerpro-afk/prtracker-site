@@ -24,7 +24,7 @@
   "faq": [
     { "question": "Como funciona a personalização?", "answer": "Escolha quantas anilhas de cada peso você quer na barra. O configurador acima monta a barra em tempo real e calcula o peso e o preço total." },
     { "question": "Posso comprar só anilhas extras depois?", "answer": "Sim. Se você bater um PR maior, é só comprar as Anilhas Avulsas pelo mesmo preço e atualizar seu troféu." },
-    { "question": "Quanto tempo leva para receber?", "answer": "Produção sob demanda: 5-10 dias úteis + prazo dos Correios. Enviamos para todo o Brasil com rastreio." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Pronta entrega: despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." },
     { "question": "Tem garantia?", "answer": "Sim. Garantia contra defeitos de fabricação. Em caso de problema, fale com a gente pelo WhatsApp (51) 98206-1914." }
   ],
   "configurator": { "enabled": true, "isAnilhasOnly": false, "hasExerciseSelector": false },
