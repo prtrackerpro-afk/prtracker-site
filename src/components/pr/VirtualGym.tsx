@@ -1624,6 +1624,13 @@ export default function VirtualGym({
         npc.body.rotation.y = Math.sin(t * 0.7 + npc.phase) * 0.08;
       }
 
+      // V16.7 cycle 29: billboard tags — sempre face camera
+      sponsorsGroup.traverse((obj) => {
+        if (obj.userData.isBillboard) {
+          obj.lookAt(camera.position);
+        }
+      });
+
       // Anima chama do streak pillar (flicker + scale pulse)
       const flameScale = 1 + Math.sin(t * 8) * 0.08 + Math.sin(t * 13) * 0.04;
       streakFlameRef.scale.set(flameScale, flameScale * 1.1, flameScale);
