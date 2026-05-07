@@ -86,17 +86,18 @@ Tecido respirável de alta durabilidade. Lavar em água fria, do avesso, secar n
 - **Cartão de crédito** — em até **6× sem juros**.
 - Processado via Mercado Pago.
 
-# Prazo de produção e entrega
+# Prazo de despacho e entrega
 
-- Produção sob demanda: **5 a 10 dias úteis** após a confirmação do pagamento.
+- **Pronta entrega**: produtos despachados em **até 2 dias úteis** após a confirmação do pagamento (temos estoque).
 - Envio para todo o Brasil com rastreio: 3 a 10 dias úteis adicionais (depende da região e modalidade — PAC ou SEDEX, calculado no checkout via Melhor Envio com base no CEP).
+- Prazo total típico: 5 a 12 dias úteis.
 - O custo do frete só aparece depois que o cliente preenche o CEP no checkout.
 
 # Política de troca e devolução
 
 - **Camisetas**: 7 dias após o recebimento (CDC, Art. 49) para troca por tamanho ou desistência. Peça precisa estar sem uso, sem lavar, etiqueta intacta. Cliente arca com o frete de retorno.
-- **Sets e anilhas**: produzidos sob medida com a configuração escolhida — só aceita devolução em caso de **defeito de fabricação**. O direito de arrependimento NÃO se aplica a produtos personalizados após o início da produção.
-- **Trocar configuração** (anilhas, exercício do My PR Set): só ANTES do início da produção. Falar pelo WhatsApp logo após a compra.
+- **Sets e anilhas**: 7 dias após o recebimento para devolução (CDC, Art. 49) — produto sem uso, embalagem original, cliente arca com frete de retorno. Defeito de fabricação: troca ou reembolso, conforme escolha do cliente.
+- **Trocar configuração** (anilhas, exercício do My PR Set): só ANTES do despacho. Falar pelo WhatsApp logo após a compra (despacho em até 2 dias úteis).
 - **Defeito de fabricação**: garantia de 90 dias. Enviar fotos pelo WhatsApp. Resolvemos com troca ou reembolso.
 - Página completa: [/politicas/troca-e-devolucao](/politicas/troca-e-devolucao)
 
