@@ -87,9 +87,9 @@ function fmtRelative(iso: string): string {
   <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
     <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
       <a href="/pr" class="text-xs text-navy-300 hover:text-white">← Meus PRs</a>
-      <h1 class="font-display text-base tracking-tight flex items-center gap-2">
+      <h1 class="font-display text-xl tracking-tight flex items-center gap-2 text-brand-lime">
         Feed
-        <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-navy-700" title="conexão realtime"></span>
+        <span id="live-dot" class="inline-block w-2 h-2 rounded-full bg-navy-700" title="conexão realtime"></span>
       </h1>
       <a href="/pr/atletas" class="text-xs text-brand-lime hover:underline">+ Seguir</a>
     </header>
@@ -225,7 +225,7 @@ function fmtRelative(iso: string): string {
                   return (
                     <button
                       type="button"
-                      class="text-sm rounded-full border border-navy-600 bg-navy-900/50 px-2.5 py-1 hover:bg-navy-800 transition flex items-center gap-1"
+                      class="text-base rounded-full border border-navy-600 bg-navy-900/50 px-3 py-1.5 hover:bg-navy-800 hover:border-brand-lime/40 transition flex items-center gap-1.5"
                       data-react-btn
                       data-emoji={emoji}
                     >
