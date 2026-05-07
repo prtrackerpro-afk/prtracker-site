@@ -3007,7 +3007,7 @@ export function buildSponsorBooth(
   sctx.strokeStyle = accentHex;
   sctx.lineWidth = 10;
   sctx.strokeRect(8, 8, 1008, 368);
-  // Texto com glow neon
+  // Texto com glow neon — auto-fit fontSize pra textos longos não cortarem
   const signText =
     theme === "nutri"
       ? "NUTRI"
@@ -3016,11 +3016,18 @@ export function buildSponsorBooth(
       : isEmpty
       ? "ANUNCIE"
       : "PARCEIRO";
+  // Cycle 5: ajusta tamanho da fonte pra caber em 950px (canvas 1024 com margem)
+  let signFontSize = 220;
+  sctx.font = `900 ${signFontSize}px Archivo Black, Inter, sans-serif`;
+  while (sctx.measureText(signText).width > 950 && signFontSize > 60) {
+    signFontSize -= 10;
+    sctx.font = `900 ${signFontSize}px Archivo Black, Inter, sans-serif`;
+  }
   for (let glow = 0; glow < 3; glow++) {
     sctx.shadowColor = accentHex;
     sctx.shadowBlur = 40 - glow * 12;
     sctx.fillStyle = accentHex;
-    sctx.font = "900 220px Archivo Black, Inter, sans-serif";
+    sctx.font = `900 ${signFontSize}px Archivo Black, Inter, sans-serif`;
     sctx.textAlign = "center";
     sctx.textBaseline = "middle";
     sctx.fillText(signText, 512, 192);
