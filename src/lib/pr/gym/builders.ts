@@ -2435,11 +2435,15 @@ export function buildNPC(props: NPCProps): NPCParts {
     tagTex.colorSpace = THREE.SRGBColorSpace;
     const tag = new THREE.Mesh(
       new THREE.PlaneGeometry(1.0, 0.18),
-      new THREE.MeshBasicMaterial({ map: tagTex, transparent: true })
+      new THREE.MeshBasicMaterial({
+        map: tagTex,
+        transparent: true,
+        depthTest: false, // sempre visível, não occlui
+      })
     );
-    tag.position.y = 2.7; // bem acima da cabeça
-    // Billboard via renderer (ou rotacionar pela camera). Pra simplicidade
-    // deixo orientado pra +z (player se aproxima de +z direction)
+    tag.renderOrder = 999; // renderiza por último (no topo)
+    tag.position.y = 2.7;
+    tag.userData.isBillboard = true; // marker pra animation loop fazer face-camera
     root.add(tag);
   }
 
