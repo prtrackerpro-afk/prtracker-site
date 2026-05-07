@@ -56,7 +56,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     (pathname === "/pr" || pathname.startsWith("/pr/")) &&
     !pathname.startsWith("/pr/login") &&
     !pathname.startsWith("/pr/auth/") &&
-    !pathname.startsWith("/pr/test-npc") && // DEBUG public, remover depois
     !isPublicBoxLeaderboard &&
     !isPublicBoxEmbed &&
     !isPublicAthleteProfile;
