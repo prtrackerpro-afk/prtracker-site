@@ -704,10 +704,17 @@ export default function VirtualGym({
       }
     });
 
-    // Track rail no teto conectando todas as luminárias (visual industrial)
+    // Track rail no teto conectando todas as luminárias
+    // V16.8 cycle 93: cor mais clara + emissive sutil
     const trackRail = new THREE.Mesh(
       new THREE.BoxGeometry(fameDeckW + 0.4, 0.04, 0.06),
-      new THREE.MeshStandardMaterial({ color: 0x222232, roughness: 0.4, metalness: 0.7 })
+      new THREE.MeshStandardMaterial({
+        color: 0x3a3a4a,
+        roughness: 0.4,
+        metalness: 0.7,
+        emissive: 0x1a1a26,
+        emissiveIntensity: 0.2,
+      })
     );
     trackRail.position.set(0, WALL_H - 0.02, -ROOM_D / 2 + 1.0);
     scene.add(trackRail);

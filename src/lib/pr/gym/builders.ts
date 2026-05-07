@@ -280,57 +280,9 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   neck.position.y = -headSize / 2 - 0.04;
   head.add(neck);
 
-  // CABELO conforme estilo (3D real, não cap chato)
-  if (prefs.hairStyle !== "bald") {
-    if (prefs.hairStyle === "short") {
-      // Cap esférica fina cobrindo topo + atrás
-      const capGeom = new THREE.SphereGeometry(headR + 0.012, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.9);
-      const cap = new THREE.Mesh(capGeom, hairMat);
-      cap.position.y = 0.005;
-      head.add(cap);
-      // Pequena franja na frente
-      const fringe = new THREE.Mesh(
-        new THREE.BoxGeometry(headR * 1.6, 0.04, 0.06),
-        hairMat
-      );
-      fringe.position.set(0, headR * 0.55, headR * 0.85);
-      head.add(fringe);
-    } else if (prefs.hairStyle === "long") {
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(headR + 0.014, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.7),
-        hairMat
-      );
-      cap.position.y = 0;
-      head.add(cap);
-      // Cabelo longo nas costas (capsula achatada)
-      const back = new THREE.Mesh(
-        new THREE.CapsuleGeometry(headR * 0.85, 0.4, 6, 12),
-        hairMat
-      );
-      back.scale.set(1, 1, 0.4);
-      back.position.set(0, -0.15, -headR * 0.45);
-      head.add(back);
-    } else if (prefs.hairStyle === "ponytail") {
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(headR + 0.012, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.9),
-        hairMat
-      );
-      head.add(cap);
-      const tieBall = new THREE.Mesh(
-        new THREE.SphereGeometry(0.04, 12, 10),
-        hairMat
-      );
-      tieBall.position.set(0, 0.02, -headR * 0.95);
-      head.add(tieBall);
-      const tail = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.025, 0.32, 10),
-        hairMat
-      );
-      tail.position.set(0, -0.12, -headR * 1.0);
-      tail.rotation.x = -0.45;
-      head.add(tail);
-    }
-  }
+  // V16.8 cycle 94: REMOVIDO bloco duplicado de cabelo (era um segundo
+  // pass com π/1.7 e π/1.9 — caps maiores stacking por cima do primeiro
+  // bloco em π/2.1/π/2.2/π/2.5). Causava o cabelo cobrir os olhos.
 
   // Cabeça posicionada em y=1.88 absoluto (centro do crânio)
   head.position.y = 2.0; // cycle 74: ajustado pra cabeça 0.26
