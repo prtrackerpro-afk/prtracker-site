@@ -2310,10 +2310,10 @@ export function buildNPC(props: NPCProps): NPCParts {
   const isF = gender === "female";
   const isM = gender === "male";
   const torsoR = isF ? 0.18 : isM ? 0.22 : 0.20;
-  // V16.3: head 35% MAIOR (0.21 → 0.28) pra ser visível mesmo de longe.
-  // Bug recorrente: cabeça invisível atrás de booth banner. Cabeça maior
-  // + halo emissive embaixo garante "não tem como não ver".
-  const headR = 0.28;
+  // V16.4 CYCLE 3: head BASKETBALL (0.5m radius). Se não aparecer assim,
+  // é bug de scene graph (NPC group nunca sendo adicionado à cena, ou
+  // posição Y zerada em algum lugar). Esse tamanho NÃO PODE ser ignorado.
+  const headR = 0.5;
 
   // === HEAD — geometria pura + halo emissive marker ===
   const head = new THREE.Group();
