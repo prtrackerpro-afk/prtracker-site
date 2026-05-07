@@ -718,6 +718,26 @@ export default function VirtualGym({
     const sponsorsGroup = new THREE.Group();
     scene.add(sponsorsGroup);
 
+    /**
+     * Helper: dado um booth com posição (x,z) e rotação rot, retorna a
+     * posição do NPC POR TRÁS do balcão (do lado oposto à face frontal).
+     *
+     * Booth-local: face frontal aponta +z (banner em z=0.01).
+     * NPC fica em booth-local -z (atrás), depois rotaciona pelo rot do booth.
+     */
+    function npcBehindBooth(boothX: number, boothZ: number, rot: number, distance = 0.5) {
+      // Local offset (0, 0, -distance) rotacionado por rot:
+      const localZ = -distance;
+      const wx = -localZ * Math.sin(rot);
+      const wz = -localZ * Math.cos(rot);
+      // Wait, rotation around Y by angle θ takes (0, 0, z) to (z*sin(θ), 0, z*cos(θ)).
+      // For local (0, 0, -distance) → (-distance*sin(rot), 0, -distance*cos(rot))
+      return {
+        x: boothX + (-distance) * Math.sin(rot),
+        z: boothZ + (-distance) * Math.cos(rot),
+      };
+    }
+
     const nutriBooth = buildSponsorBooth({
       title: "NUTRICIONISTA",
       professional: {
@@ -727,6 +747,7 @@ export default function VirtualGym({
       },
       accentHex: "#43B02A",
       slotId: "nutri",
+      theme: "nutri",
     });
     const nutriPos = lo("nutri_booth");
     nutriBooth.group.position.set(nutriPos.x, 0, nutriPos.z);
@@ -734,7 +755,7 @@ export default function VirtualGym({
     sponsorsGroup.add(nutriBooth.group);
     colliders.push({ cx: nutriPos.x, cz: nutriPos.z, hw: 0.6, hd: 1.0 });
 
-    // NPC Camila ao lado do booth (atrás do balcão, idle)
+    // NPC Camila atrás do balcão, virada pra customer (mesma direção do booth)
     const nutriNPC = buildNPC({
       skinHex: "#e0b18a",
       hairHex: "#5e3a1f",
@@ -742,11 +763,12 @@ export default function VirtualGym({
       shortsHex: "#1e1b50",
       gender: "female",
       initial: "C",
+      outfit: "labcoat",
     });
-    // NPC fica 0.8m atrás do balcão (na direção oposta da rotação do booth).
-    // Booth com rot -π/2 (frente apontando -x) → NPC em x mesmo do booth, z = bz - 0.8.
-    nutriNPC.group.position.set(nutriPos.x, 0, nutriPos.z - 0.8);
-    nutriNPC.group.rotation.y = -nutriPos.rot; // olha pra direção oposta (pro aisle)
+    const nutriNpcPos = npcBehindBooth(nutriPos.x, nutriPos.z, nutriPos.rot, 0.55);
+    nutriNPC.group.position.set(nutriNpcPos.x, 0, nutriNpcPos.z);
+    // NPC olha PRA FORA (direção do booth front = booth.rot)
+    nutriNPC.group.rotation.y = nutriPos.rot;
     nutriNPC.group.userData.npcSlot = "nutri";
     nutriNPC.group.traverse((c) => {
       c.userData.npcSlot = "nutri";
@@ -765,6 +787,7 @@ export default function VirtualGym({
       },
       accentHex: "#D8FF2C",
       slotId: "pt",
+      theme: "personal",
     });
     const ptPos = lo("personal_booth");
     ptBooth.group.position.set(ptPos.x, 0, ptPos.z);
@@ -772,17 +795,19 @@ export default function VirtualGym({
     sponsorsGroup.add(ptBooth.group);
     colliders.push({ cx: ptPos.x, cz: ptPos.z, hw: 0.6, hd: 1.0 });
 
-    // NPC Bruno ao lado do booth
+    // NPC Bruno atrás do balcão
     const ptNPC = buildNPC({
       skinHex: "#c08a5e",
       hairHex: "#1a1410",
-      topHex: "#D8FF2C",
+      topHex: "#1a1a3a", // muscle tank dark navy
       shortsHex: "#111111",
       gender: "male",
       initial: "B",
+      outfit: "athletic",
     });
-    ptNPC.group.position.set(ptPos.x, 0, ptPos.z - 0.8);
-    ptNPC.group.rotation.y = -ptPos.rot; // olha pra direção oposta (aisle)
+    const ptNpcPos = npcBehindBooth(ptPos.x, ptPos.z, ptPos.rot, 0.55);
+    ptNPC.group.position.set(ptNpcPos.x, 0, ptNpcPos.z);
+    ptNPC.group.rotation.y = ptPos.rot;
     ptNPC.group.userData.npcSlot = "pt";
     ptNPC.group.traverse((c) => {
       c.userData.npcSlot = "pt";
@@ -957,39 +982,99 @@ export default function VirtualGym({
       projScreenTex.needsUpdate = true;
     }
 
-    // Projetor pendurado entre tela e sofá (apontando pra tela em -x)
+    // Projetor pendurado entre tela e sofá. Tela está em x=-2.5 (parede),
+    // sofá está em x=+1.5. Projetor fica a ~x=0 apontando pra tela (-x).
+    const PROJ_X = 0.2;
+    const PROJ_Y = WALL_H - 0.7;
     const projBody = new THREE.Mesh(
       new THREE.BoxGeometry(0.55, 0.22, 0.4),
       new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.4, metalness: 0.5 })
     );
-    projBody.position.set(0, WALL_H - 0.7, 0);
+    projBody.position.set(PROJ_X, PROJ_Y, 0);
     projRoomGroup.add(projBody);
+
+    // Suporte do teto (haste vertical do teto até o projetor)
+    const projMount = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.02, 0.6, 8),
+      STEEL_MAT
+    );
+    projMount.position.set(PROJ_X, WALL_H - 0.4, 0);
+    projRoomGroup.add(projMount);
+
+    // Lente apontando pra -x (pra tela)
     const projLens = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.07, 0.09, 0.07, 14),
+      new THREE.CylinderGeometry(0.09, 0.07, 0.08, 16),
       new THREE.MeshStandardMaterial({
-        color: 0xD8FF2C,
-        emissive: 0xD8FF2C,
-        emissiveIntensity: 0.5,
+        color: 0xfff5e0,
+        emissive: 0xfff5e0,
+        emissiveIntensity: 1.0,
       })
     );
     projLens.rotation.z = Math.PI / 2;
-    projLens.position.set(-0.3, WALL_H - 0.7, 0);
+    projLens.position.set(PROJ_X - 0.3, PROJ_Y, 0);
     projRoomGroup.add(projLens);
 
-    // Cone de luz emissivo do projetor pra tela (visual feedback)
+    // === FEIXE DE LUZ — cone emissivo do projetor até a tela ===
+    // Distância projetor → tela: PROJ_X - (-2.5) = 2.7m. Tela tem 4×2.25m.
+    // Cone com ápice na lente, base no plano da tela.
+    // ConeGeometry: ápice em +y, base em -y. Após rotation.z = -π/2, ápice → +x.
+    // Mas queremos ápice em -x (na lente, projetando pra +x... NÃO, projetor
+    // aponta pra -x onde está a tela). Então rotation.z = π/2 → ápice em -x.
+    const beamLength = PROJ_X - 0.3 - (-2.5); // ~2.7m
     const projBeam = new THREE.Mesh(
-      new THREE.ConeGeometry(0.6, 2.5, 12, 1, true),
+      new THREE.ConeGeometry(1.1, beamLength, 24, 1, true),
       new THREE.MeshBasicMaterial({
         color: 0xfff5e0,
         transparent: true,
-        opacity: 0.06,
+        opacity: 0.18,
         side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
       })
     );
-    // Cone com ponta no projetor, base na tela
+    // ConeGeometry default: ápice em +y, base em -y, height ao longo de y.
+    // Rotacionar +π/2 em z faz +y virar -x (eixo X negativo).
+    // Resultado: ápice em -x (na tela?), base em +x (no projetor)... INVERTIDO.
+    // Queremos ápice no PROJETOR (lente em x=-0.1) e base na TELA (x=-2.5).
+    // Rotação z = -π/2 faz +y virar +x; ainda errado.
+    // Solução: rotacionar -π/2 e depois posicionar a base no centro do cone.
+    // Mais simples: rotacionar +π/2 (ápice em -x) e mover o centro pra que
+    // ápice fique no projetor.
     projBeam.rotation.z = Math.PI / 2;
-    projBeam.position.set(-1.4, WALL_H - 0.7, 0);
+    // Após rotação, cone se estende ao longo de eixo X com ápice em -x e base em +x.
+    // Centro do cone está no meio. Pra ápice ficar em PROJ_X - 0.35 (na lente),
+    // centro precisa estar em PROJ_X - 0.35 - beamLength/2.
+    // ESPERA — ápice em -x significa: cone aponta pra +x. Não é o que queremos.
+    // Inverter: rotation z = -π/2 → ápice em +x, base em -x. Sim! Cone apontando -x.
+    projBeam.rotation.z = -Math.PI / 2;
+    // Centro: pra ápice em PROJ_X - 0.35, centro em (PROJ_X - 0.35) - beamLength/2.
+    projBeam.position.set(PROJ_X - 0.35 - beamLength / 2, PROJ_Y, 0);
     projRoomGroup.add(projBeam);
+
+    // Camada interior do feixe (mais brilhante, mais estreita) — efeito halo
+    const projBeamInner = new THREE.Mesh(
+      new THREE.ConeGeometry(0.5, beamLength * 0.9, 16, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff5e0,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    projBeamInner.rotation.z = -Math.PI / 2;
+    projBeamInner.position.set(PROJ_X - 0.35 - (beamLength * 0.9) / 2, PROJ_Y, 0);
+    projRoomGroup.add(projBeamInner);
+
+    // Spotlight real iluminando a área entre projetor e tela
+    const beamSpot = new THREE.SpotLight(0xfff5e0, 0.8, 4, Math.PI / 7, 0.4, 1.0);
+    beamSpot.position.set(PROJ_X - 0.3, PROJ_Y, 0);
+    const beamSpotTarget = new THREE.Object3D();
+    beamSpotTarget.position.set(-2.5, PROJ_Y - 0.4, 0);
+    projRoomGroup.add(beamSpotTarget);
+    beamSpot.target = beamSpotTarget;
+    projRoomGroup.add(beamSpot);
 
     // Sofá virado pra tela (long-side perpendicular ao eixo da tela).
     // sofa faces -x, so sitter looks at the screen (which is at -x).
