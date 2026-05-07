@@ -3636,8 +3636,9 @@ export function buildTreadmill(accentHex: string): THREE.Group {
   }
   const beltTex = new THREE.CanvasTexture(beltCanvas);
   beltTex.colorSpace = THREE.SRGBColorSpace;
+  // V16.8 cycle 125: belt 0.7 → 0.55m (real treadmill spec). Comprimento mantido.
   const beltDeck = new THREE.Mesh(
-    new THREE.BoxGeometry(0.7, 0.08, 1.6),
+    new THREE.BoxGeometry(0.55, 0.08, 1.6),
     new THREE.MeshStandardMaterial({ map: beltTex, roughness: 0.92 })
   );
   beltDeck.position.set(0, 0.18, 0.1);
@@ -3648,7 +3649,7 @@ export function buildTreadmill(accentHex: string): THREE.Group {
   // Cilindros nas pontas da correia (rolos da esteira — visual de máquina real)
   for (const sz of [-0.7, 0.9]) {
     const roller = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.05, 0.66, 12),
+      new THREE.CylinderGeometry(0.05, 0.05, 0.55, 12),
       STEEL_MAT
     );
     roller.rotation.z = Math.PI / 2;
@@ -3656,8 +3657,8 @@ export function buildTreadmill(accentHex: string): THREE.Group {
     g.add(roller);
   }
 
-  // Carcaça lateral
-  for (const sx of [-0.42, 0.42]) {
+  // Carcaça lateral — match width nova belt
+  for (const sx of [-0.34, 0.34]) {
     const side = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 1.6), baseMat);
     side.position.set(sx, 0.13, 0.1);
     side.castShadow = true;
