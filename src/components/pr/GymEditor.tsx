@@ -4,12 +4,16 @@ import {
   saveLayout,
   resetLayout,
   updateObject,
+  addObject,
+  removeObject,
+  generateObjectId,
   DEFAULT_LAYOUT,
   OBJECT_META,
   GYM_BOUNDS,
   snapCoord,
   type GymLayout,
   type GymObject,
+  type GymObjectType,
 } from "../../lib/pr/gym/layout";
 
 /**
@@ -87,18 +91,53 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
     setSavedAt(Date.now());
   }
 
-  /** Tecla R rotaciona selecionado (Shift+R = anti-horário). */
+  /** Adiciona novo objeto do tipo informado no centro (0,0). */
+  function addNewObject(type: GymObjectType) {
+    const id = generateObjectId(type);
+    const newObj: GymObject = { id, type, x: 0, z: 0, rot: 0 };
+    const updated = addObject(layout, newObj);
+    setLayout(updated);
+    saveLayout(updated);
+    setSelected(id);
+    setSavedAt(Date.now());
+  }
+
+  /** Remove objeto (só se for deletable). */
+  function deleteSelected() {
+    if (!selected) return;
+    const obj = layout.objects.find((o) => o.id === selected);
+    if (!obj) return;
+    const meta = OBJECT_META[obj.type];
+    if (!meta.deletable) {
+      // Sem confirm — só ignora silencioso (botão estará disabled de qualquer jeito)
+      return;
+    }
+    if (!confirm(`Remover "${meta.label}"?`)) return;
+    const updated = removeObject(layout, selected);
+    setLayout(updated);
+    saveLayout(updated);
+    setSelected(null);
+    setSavedAt(Date.now());
+  }
+
+  /** Tecla R rotaciona selecionado, Delete remove, Esc deseleciona. */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!selected) return;
       // Ignora se está num input
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (!selected) {
+        if (e.key === "Escape") setSelected(null);
+        return;
+      }
       if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         rotateSelected(e.shiftKey ? -1 : 1);
       } else if (e.key === "Escape") {
         setSelected(null);
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        deleteSelected();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -209,9 +248,13 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
         <SelectedPanel
           obj={layout.objects.find((o) => o.id === selected)!}
           onRotate={(dir) => rotateSelected(dir)}
+          onDelete={deleteSelected}
           onDeselect={() => setSelected(null)}
         />
       )}
+
+      {/* Paleta de tipos — adicionar novos objetos */}
+      <AddPalette layout={layout} onAdd={addNewObject} />
 
       {/* Canvas SVG */}
       <div className="rounded-2xl overflow-hidden border border-navy-700 bg-navy-900 p-2 select-none touch-none">
@@ -363,16 +406,17 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
 }
 
 /**
- * Painel flutuante mostrando objeto selecionado + ações de rotação.
- * Aparece logo acima do canvas SVG.
+ * Painel flutuante mostrando objeto selecionado + ações de rotação/delete.
  */
 function SelectedPanel({
   obj,
   onRotate,
+  onDelete,
   onDeselect,
 }: {
   obj: GymObject;
   onRotate: (dir: 1 | -1) => void;
+  onDelete: () => void;
   onDeselect: () => void;
 }) {
   const meta = OBJECT_META[obj.type];
@@ -406,6 +450,24 @@ function SelectedPanel({
         >
           ↻ +45°
         </button>
+        {meta.deletable ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-xs border border-navy-600 text-navy-200 rounded px-2 py-1 hover:border-red-500 hover:text-red-300"
+            aria-label="Remover"
+            title="Delete pra remover"
+          >
+            🗑️
+          </button>
+        ) : (
+          <span
+            className="text-[10px] text-navy-400 px-1.5"
+            title="Esse objeto é obrigatório no gym"
+          >
+            🔒
+          </span>
+        )}
         <button
           type="button"
           onClick={onDeselect}
@@ -414,6 +476,55 @@ function SelectedPanel({
         >
           ✕
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Paleta horizontal pra adicionar novos objetos. Mostra só os tipos
+ * que permitem múltiplas instâncias (multiple: true) e disable se já
+ * tem o singleton no layout.
+ */
+function AddPalette({
+  layout,
+  onAdd,
+}: {
+  layout: GymLayout;
+  onAdd: (type: GymObjectType) => void;
+}) {
+  const types = (Object.keys(OBJECT_META) as GymObjectType[]).filter((t) => {
+    const meta = OBJECT_META[t];
+    if (meta.multiple) return true;
+    // Singleton: só mostra se ainda NÃO existe no layout
+    return !layout.objects.some((o) => o.type === t);
+  });
+  if (types.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-navy-700 bg-navy-800/30 p-3">
+      <div className="text-[10px] uppercase tracking-[0.3em] text-navy-300 mb-2">
+        Adicionar objeto
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {types.map((t) => {
+          const meta = OBJECT_META[t];
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onAdd(t)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-navy-600 hover:border-brand-lime hover:bg-brand-lime/10 transition text-xs"
+              style={{ borderLeftColor: meta.color, borderLeftWidth: 3 }}
+              title={`Adicionar ${meta.label} no centro`}
+            >
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-sm"
+                style={{ background: meta.color }}
+              />
+              <span className="text-navy-100">+ {meta.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
