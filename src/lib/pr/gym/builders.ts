@@ -363,8 +363,9 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
 
   const shirtTex = new THREE.CanvasTexture(shirtCanvas);
   shirtTex.colorSpace = THREE.SRGBColorSpace;
+  // V16.7 cycle 36: shirt 50% maior (1.6 → 2.4) pra logo visível à distância
   const shirt = new THREE.Mesh(
-    new THREE.PlaneGeometry(torsoTopR * 1.6, torsoH * 0.7),
+    new THREE.PlaneGeometry(torsoTopR * 2.4, torsoH * 0.85),
     new THREE.MeshBasicMaterial({ map: shirtTex, transparent: true })
   );
   shirt.position.set(0, torsoY + 0.03, torsoTopR + 0.005);
@@ -2750,13 +2751,13 @@ export function buildStreakPillar(streakDays: number): StreakPillarParts {
   numPanel.position.set(0, 0.85, 0.61);
   g.add(numPanel);
 
-  // === CHAMA 3D em cima — V16.7 cycle 14: 50% maior + emissive halo ===
+  // === CHAMA 3D em cima — cycle 37: AINDA maior pra visibilidade ===
   const flame = new THREE.Group();
   flame.position.set(0, 1.65, 0);
 
-  // Layer 1: chama externa (laranja transparente) — bem maior
+  // Layer 1: chama externa (laranja transparente)
   const f1 = new THREE.Mesh(
-    new THREE.ConeGeometry(0.48, 1.05, 14),
+    new THREE.ConeGeometry(0.6, 1.4, 14),
     new THREE.MeshBasicMaterial({
       color: 0xff6020,
       transparent: true,
@@ -2764,12 +2765,12 @@ export function buildStreakPillar(streakDays: number): StreakPillarParts {
       blending: THREE.AdditiveBlending,
     })
   );
-  f1.position.y = 0.52;
+  f1.position.y = 0.7;
   flame.add(f1);
 
   // Layer 2: chama média (amarela)
   const f2 = new THREE.Mesh(
-    new THREE.ConeGeometry(0.32, 0.82, 14),
+    new THREE.ConeGeometry(0.4, 1.1, 14),
     new THREE.MeshBasicMaterial({
       color: 0xffaa30,
       transparent: true,
@@ -2777,17 +2778,17 @@ export function buildStreakPillar(streakDays: number): StreakPillarParts {
       blending: THREE.AdditiveBlending,
     })
   );
-  f2.position.y = 0.5;
+  f2.position.y = 0.65;
   flame.add(f2);
 
   // Layer 3: núcleo (amarelo claro brilhante)
   const f3 = new THREE.Mesh(
-    new THREE.ConeGeometry(0.18, 0.6, 14),
+    new THREE.ConeGeometry(0.22, 0.8, 14),
     new THREE.MeshBasicMaterial({
       color: 0xffe080,
     })
   );
-  f3.position.y = 0.46;
+  f3.position.y = 0.6;
   flame.add(f3);
 
   // Halo emissive embaixo da chama (efeito calor irradiando)
