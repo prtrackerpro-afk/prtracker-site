@@ -3,26 +3,10 @@
 // "visitar o gym do amigo" (V3 do tentpole #2 do PR_TRACKER_VISION.md),
 // migrar pra coluna pr_athletes.avatar_prefs (JSONB).
 
-const STORAGE_KEY = "pr_gym_avatar_v3"; // v3 adicionou bodyType
+const STORAGE_KEY = "pr_gym_avatar_v2";
 
 export type Gender = "fluid" | "male" | "female";
 export type HairStyle = "short" | "long" | "ponytail" | "bald";
-
-/**
- * Tipos de corpo disponíveis. Cada um afeta proporções do avatar
- * (largura ombro, peito, barriga, perna, altura) em buildAvatar.
- *
- * Curva de progresso: skinny → normal → athletic → strong → giant.
- * gordo/obeso são variações de volume sem músculo definido.
- */
-export type BodyType =
-  | "skinny" // magro, baixa massa
-  | "normal" // estrutura média
-  | "athletic" // atlético, definido
-  | "strong" // forte, marombeiro
-  | "giant" // gigante, halterofilista pesado
-  | "chubby" // gordo, forma arredondada com algum tônus
-  | "obese"; // obeso, volume grande sem definição
 
 export interface AvatarPrefs {
   gender: Gender;
@@ -35,51 +19,7 @@ export interface AvatarPrefs {
   top: string;
   /** Cor do shorts. */
   shorts: string;
-  /** Tipo de corpo — afeta proporções na construção do avatar. */
-  bodyType: BodyType;
 }
-
-export const BODY_TYPES: Array<{ id: BodyType; label: string; emoji: string }> = [
-  { id: "skinny", label: "Magro", emoji: "🦴" },
-  { id: "normal", label: "Normal", emoji: "🙂" },
-  { id: "athletic", label: "Atlético", emoji: "💪" },
-  { id: "strong", label: "Forte", emoji: "🔥" },
-  { id: "giant", label: "Gigante", emoji: "🦍" },
-  { id: "chubby", label: "Gordo", emoji: "🍔" },
-  { id: "obese", label: "Obeso", emoji: "🐻" },
-];
-
-/**
- * Proporções por bodyType. Multiplicadores aplicados sobre a base
- * "normal" no buildAvatar. Mantém altura constante (avatar não muda
- * de altura), só varia largura/profundidade.
- */
-export interface BodyProportions {
-  /** Multiplicador da largura do peito/ombros. */
-  chestWidth: number;
-  /** Multiplicador da profundidade do peito (frente-trás). */
-  chestDepth: number;
-  /** Multiplicador da largura da barriga (abaixo do peito). */
-  bellyWidth: number;
-  /** Multiplicador da profundidade da barriga. */
-  bellyDepth: number;
-  /** Multiplicador da largura dos braços. */
-  armWidth: number;
-  /** Multiplicador da largura das pernas. */
-  legWidth: number;
-  /** Cintura (entre peito e barriga) — interpolação visual. */
-  hasWaist: boolean;
-}
-
-export const BODY_PROPORTIONS: Record<BodyType, BodyProportions> = {
-  skinny:   { chestWidth: 0.78, chestDepth: 0.78, bellyWidth: 0.74, bellyDepth: 0.74, armWidth: 0.72, legWidth: 0.78, hasWaist: true },
-  normal:   { chestWidth: 1.00, chestDepth: 1.00, bellyWidth: 1.00, bellyDepth: 1.00, armWidth: 1.00, legWidth: 1.00, hasWaist: true },
-  athletic: { chestWidth: 1.12, chestDepth: 1.05, bellyWidth: 0.88, bellyDepth: 0.88, armWidth: 1.18, legWidth: 1.10, hasWaist: true },
-  strong:   { chestWidth: 1.28, chestDepth: 1.18, bellyWidth: 0.96, bellyDepth: 0.96, armWidth: 1.40, legWidth: 1.22, hasWaist: true },
-  giant:    { chestWidth: 1.50, chestDepth: 1.35, bellyWidth: 1.20, bellyDepth: 1.18, armWidth: 1.62, legWidth: 1.42, hasWaist: false },
-  chubby:   { chestWidth: 1.18, chestDepth: 1.20, bellyWidth: 1.45, bellyDepth: 1.50, armWidth: 1.18, legWidth: 1.22, hasWaist: false },
-  obese:    { chestWidth: 1.42, chestDepth: 1.42, bellyWidth: 1.85, bellyDepth: 1.95, armWidth: 1.40, legWidth: 1.50, hasWaist: false },
-};
 
 export const SKIN_TONES = [
   "#f5d7be", // Pálido
@@ -121,7 +61,6 @@ export const DEFAULT_PREFS: AvatarPrefs = {
   hairStyle: "short",
   top: TOP_COLORS[0] ?? "#D8FF2C",
   shorts: SHORTS_COLORS[0] ?? "#1e1b50",
-  bodyType: "athletic",
 };
 
 export function loadAvatarPrefs(): AvatarPrefs {
