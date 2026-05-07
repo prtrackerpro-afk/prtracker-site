@@ -674,17 +674,35 @@ export default function VirtualGym({
       scene.add(track);
 
       // Lente da track light em cor accent emissiva.
-      // V15.1: lente maior + emissive +33% pra brilho mais visível.
       const trackLens = new THREE.Mesh(
         new THREE.CylinderGeometry(0.05, 0.07, 0.07, 12),
         new THREE.MeshStandardMaterial({
           color: t ? 0xfff2c8 : 0x6a7888,
           emissive: t ? 0xfff2c8 : 0x6a7888,
-          emissiveIntensity: t ? 1.2 : 0.35,
+          emissiveIntensity: t ? 1.5 : 0.35,
         })
       );
       trackLens.position.set(x, WALL_H - 0.18, -ROOM_D / 2 + 1.0);
       scene.add(trackLens);
+
+      // V16.7 cycle 48: cone de luz visível do trackLens pro pedestal
+      // (efeito museum lighting com volumetric beam fake).
+      if (t) {
+        const lightCone = new THREE.Mesh(
+          new THREE.ConeGeometry(0.5, WALL_H - 0.5, 12, 1, true),
+          new THREE.MeshBasicMaterial({
+            color: 0xfff2c8,
+            transparent: true,
+            opacity: 0.08,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+          })
+        );
+        // Cone aponta pra baixo (apex no topo, base no chão)
+        lightCone.position.set(x, (WALL_H - 0.5) / 2 + 0.5, -ROOM_D / 2 + 1.0);
+        scene.add(lightCone);
+      }
     });
 
     // Track rail no teto conectando todas as luminárias (visual industrial)
