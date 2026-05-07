@@ -15,8 +15,6 @@ import {
   buildRunBoard,
   buildSponsorBooth,
   buildNPC,
-  buildPersonalNPC,
-  buildNutriNPC,
   buildStreakPillar,
   type SkillBoardSlot,
   type RunSlot,
@@ -42,7 +40,6 @@ import {
   HAIR_COLORS,
   TOP_COLORS,
   SHORTS_COLORS,
-  BODY_TYPES,
   type AvatarPrefs,
   type Gender,
   type HairStyle,
@@ -641,8 +638,15 @@ export default function VirtualGym({
     sponsorsGroup.add(nutriBooth.group);
     colliders.push({ cx: -4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
 
-    // NPC Camila — galega bonita com óculos (lab coat branco, cabelo loiro longo)
-    const nutriNPC = buildNutriNPC();
+    // NPC Camila ao lado do booth (atrás do balcão, idle)
+    const nutriNPC = buildNPC({
+      skinHex: "#e0b18a",
+      hairHex: "#5e3a1f",
+      topHex: "#43B02A",
+      shortsHex: "#1e1b50",
+      gender: "female",
+      initial: "C",
+    });
     nutriNPC.group.position.set(-4.2, 0, 3.7);
     nutriNPC.group.rotation.y = Math.PI / 2; // olha pra direita (aisle)
     nutriNPC.group.userData.npcSlot = "nutri";
@@ -669,9 +673,15 @@ export default function VirtualGym({
     sponsorsGroup.add(ptBooth.group);
     colliders.push({ cx: 4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
 
-    // NPC Bruno — Personal Trainer marombeiro (peito largo, bíceps grandes,
-    // cabelo rapado, prancheta na mão direita)
-    const ptNPC = buildPersonalNPC();
+    // NPC Bruno ao lado do booth
+    const ptNPC = buildNPC({
+      skinHex: "#c08a5e",
+      hairHex: "#1a1410",
+      topHex: "#D8FF2C",
+      shortsHex: "#111111",
+      gender: "male",
+      initial: "B",
+    });
     ptNPC.group.position.set(4.2, 0, 3.7);
     ptNPC.group.rotation.y = -Math.PI / 2; // olha pra esquerda (aisle)
     ptNPC.group.userData.npcSlot = "pt";
@@ -711,14 +721,9 @@ export default function VirtualGym({
       label: s.label,
       bestReps: skillsLocal[s.id] ?? 0,
     }));
-    // Skills + Run boards movidos pra parede ESQUERDA pra não bloquear
-    // visualmente os pedestais de troféu na parede do fundo (linha de
-    // visada da câmera passava pelas pernas dos boards quando estavam
-    // na direita). Felipe reportou: "ginásticos ficou na frente de um
-    // dos troféus" — fix é separar os hemisférios da sala.
     const skillsBoardParts = buildSkillsBoard("#D8FF2C", skillsSlots);
-    skillsBoardParts.group.position.set(-ROOM_W / 2 + 1.5, 2.0, -3.5);
-    skillsBoardParts.group.rotation.y = Math.PI / 3;
+    skillsBoardParts.group.position.set(ROOM_W / 2 - 1.5, 2.0, -3.5);
+    skillsBoardParts.group.rotation.y = -Math.PI / 3;
     scene.add(skillsBoardParts.group);
 
     // Pernas do skills stand (2 colunas verticais sob o board)
@@ -727,14 +732,14 @@ export default function VirtualGym({
         new THREE.BoxGeometry(0.06, 1.2, 0.06),
         new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
       );
-      const angle = Math.PI / 3;
-      const px = -ROOM_W / 2 + 1.5 + dx * Math.cos(angle);
+      const angle = -Math.PI / 3;
+      const px = ROOM_W / 2 - 1.5 + dx * Math.cos(angle);
       const pz = -3.5 + dx * Math.sin(angle);
       leg.position.set(px, 0.6, pz);
       scene.add(leg);
     }
 
-    // === RUN BOARD — parede esquerda, mais à frente =================
+    // === RUN BOARD — também angulado pro aisle ====================
     const runsSlots: RunSlot[] = RUN_CATALOG.map((r) => ({
       id: r.id,
       distance: r.short,
@@ -742,8 +747,8 @@ export default function VirtualGym({
       bestTimeSec: runsLocal[r.id] ?? null,
     }));
     const runBoardParts = buildRunBoard("#D8FF2C", runsSlots);
-    runBoardParts.group.position.set(-ROOM_W / 2 + 1.5, 2.2, -1.0);
-    runBoardParts.group.rotation.y = Math.PI / 3;
+    runBoardParts.group.position.set(ROOM_W / 2 - 1.5, 2.2, 2.5);
+    runBoardParts.group.rotation.y = -Math.PI / 3;
     scene.add(runBoardParts.group);
 
     // Pernas do run stand
@@ -752,9 +757,9 @@ export default function VirtualGym({
         new THREE.BoxGeometry(0.06, 1.4, 0.06),
         new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
       );
-      const angle = Math.PI / 3;
-      const px = -ROOM_W / 2 + 1.5 + dx * Math.cos(angle);
-      const pz = -1.0 + dx * Math.sin(angle);
+      const angle = -Math.PI / 3;
+      const px = ROOM_W / 2 - 1.5 + dx * Math.cos(angle);
+      const pz = 2.5 + dx * Math.sin(angle);
       leg.position.set(px, 0.7, pz);
       scene.add(leg);
     }
@@ -1937,10 +1942,10 @@ export default function VirtualGym({
             </div>
 
             <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-              {/* Gênero (afeta proporções base) */}
+              {/* Gênero (afeta proporções) */}
               <div>
                 <div className="text-[10px] uppercase tracking-widest text-navy-300 mb-2">
-                  Gênero
+                  Tipo de corpo
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {(["fluid", "male", "female"] as Gender[]).map((g) => (
@@ -1955,30 +1960,6 @@ export default function VirtualGym({
                       }`}
                     >
                       {g === "fluid" ? "Fluid" : g === "male" ? "Masc" : "Fem"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tipo de corpo — afeta volume/musculatura */}
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-navy-300 mb-2">
-                  Tipo físico
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {BODY_TYPES.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => applyPrefs({ ...avatarPrefs, bodyType: b.id })}
-                      className={`rounded-lg border px-1 py-2 text-[10px] transition flex flex-col items-center gap-0.5 ${
-                        avatarPrefs.bodyType === b.id
-                          ? "border-brand-lime bg-brand-lime/10 text-brand-lime"
-                          : "border-navy-600 text-navy-300 hover:border-navy-500"
-                      }`}
-                    >
-                      <span className="text-base leading-none">{b.emoji}</span>
-                      <span>{b.label}</span>
                     </button>
                   ))}
                 </div>
