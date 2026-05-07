@@ -89,6 +89,28 @@ function computeStreak(dates: string[]): number {
 
 const streakDays = computeStreak((prDates ?? []).map((d) => d.performed_at as string));
 
+// === Skills (ginásticos) — fetch best reps por skill ===
+const { data: skillRows = [] } = await supabase
+  .from("pr_skills")
+  .select("skill_id, best_reps")
+  .eq("user_id", athlete.userId);
+
+const skills: Record<string, number> = {};
+for (const row of skillRows ?? []) {
+  skills[row.skill_id as string] = Number(row.best_reps);
+}
+
+// === Runs — fetch best time por distância ===
+const { data: runRows = [] } = await supabase
+  .from("pr_runs")
+  .select("distance, best_time_sec")
+  .eq("user_id", athlete.userId);
+
+const runs: Record<string, number> = {};
+for (const row of runRows ?? []) {
+  runs[row.distance as string] = Number(row.best_time_sec);
+}
+
 function shortName(label: string): string {
   // Take first letter of each word, max 4 chars
   return label
@@ -131,6 +153,8 @@ function shortName(label: string): string {
           accent={accent}
           trophies={fallbackTrophies}
           streakDays={streakDays}
+          skills={skills}
+          runs={runs}
         >
           {/* Fallback enquanto a ilha React hidrata. Se isso ficar visível
               por mais de 2-3s, a hidratação falhou (cheque o console). */}

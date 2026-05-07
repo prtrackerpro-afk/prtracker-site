@@ -13,11 +13,23 @@ import {
   buildWallLogo,
   buildSkillsBoard,
   buildRunBoard,
-  DEFAULT_RUN_SLOTS,
   buildSponsorBooth,
   buildNPC,
   buildStreakPillar,
+  type SkillBoardSlot,
+  type RunSlot,
 } from "../../lib/pr/gym/builders";
+import {
+  SKILL_CATALOG,
+  SKILL_TIER_META,
+  RUN_CATALOG,
+  tierForReps,
+  nextTierGoal,
+  formatRunTime,
+  parseRunTime,
+  type SkillId,
+  type RunDistance,
+} from "../../lib/pr/gym/skills";
 import { HALL_EXERCISES, UNLOCK_THRESHOLDS } from "../../lib/pr/gym/hall";
 import { exerciseLabel as exerciseLabelFn } from "../../lib/pr/exercises";
 import { TIER_META } from "../../lib/pr/strength-score";
@@ -81,9 +93,20 @@ interface Props {
   trophies: GymTrophy[];
   /** Dias consecutivos com PR/atividade (Duolingo-style). Default 0. */
   streakDays?: number;
+  /** Skills do atleta — Map skill_id → reps. Default empty. */
+  skills?: Partial<Record<SkillId, number>>;
+  /** Run records — Map distance → seconds. Default empty. */
+  runs?: Partial<Record<RunDistance, number>>;
 }
 
-export default function VirtualGym({ athleteName, accent, trophies, streakDays = 0 }: Props) {
+export default function VirtualGym({
+  athleteName,
+  accent,
+  trophies,
+  streakDays = 0,
+  skills = {},
+  runs = {},
+}: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
@@ -92,6 +115,10 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
   const [selectedGhost, setSelectedGhost] = useState<GhostExercise | null>(null);
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorSlot | null>(null);
   const [selectedProType, setSelectedProType] = useState<ProType | null>(null);
+  const [skillsModalOpen, setSkillsModalOpen] = useState(false);
+  const [runsModalOpen, setRunsModalOpen] = useState(false);
+  const [skillsLocal, setSkillsLocal] = useState<Partial<Record<SkillId, number>>>(skills);
+  const [runsLocal, setRunsLocal] = useState<Partial<Record<RunDistance, number>>>(runs);
   const [audioMuted, setAudioMuted] = useState(false);
   const [reelOpen, setReelOpen] = useState(false);
   const [activeReel, setActiveReel] = useState<Reel | null>(null);
@@ -117,6 +144,8 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
     selectedGhost !== null ||
     selectedSponsor !== null ||
     selectedProType !== null ||
+    skillsModalOpen ||
+    runsModalOpen ||
     reelOpen ||
     showTutorial ||
     customOpen;
@@ -133,6 +162,54 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
   function applyPrefs(next: AvatarPrefs) {
     setAvatarPrefs(next);
     saveAvatarPrefs(next);
+  }
+
+  async function saveSkill(skillId: SkillId, reps: number) {
+    // Optimistic local update — só substitui se for melhor
+    const current = skillsLocal[skillId] ?? 0;
+    if (reps <= current) return;
+    setSkillsLocal((prev) => ({ ...prev, [skillId]: reps }));
+    try {
+      const res = await fetch("/api/pr/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skill_id: skillId, reps }),
+      });
+      if (!res.ok) {
+        // Reverte se falhou
+        setSkillsLocal((prev) => ({ ...prev, [skillId]: current }));
+      }
+    } catch {
+      setSkillsLocal((prev) => ({ ...prev, [skillId]: current }));
+    }
+  }
+
+  async function saveRun(distance: RunDistance, timeSec: number) {
+    const current = runsLocal[distance];
+    if (current != null && timeSec >= current) return;
+    setRunsLocal((prev) => ({ ...prev, [distance]: timeSec }));
+    try {
+      const res = await fetch("/api/pr/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ distance, time_sec: timeSec }),
+      });
+      if (!res.ok) {
+        setRunsLocal((prev) => {
+          const next = { ...prev };
+          if (current == null) delete next[distance];
+          else next[distance] = current;
+          return next;
+        });
+      }
+    } catch {
+      setRunsLocal((prev) => {
+        const next = { ...prev };
+        if (current == null) delete next[distance];
+        else next[distance] = current;
+        return next;
+      });
+    }
   }
 
   useEffect(() => {
@@ -637,12 +714,17 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
     const streakFlameRef = streakPillarParts.flame;
 
     // === SKILLS BOARD — angulado pro aisle central (visível andando) ===
-    // Em vez de plano contra a parede, board fica em "stand" inclinado
-    // pra dentro, captado naturalmente pela camera follow.
-    const skillsBoard = buildSkillsBoard("#D8FF2C");
-    skillsBoard.position.set(ROOM_W / 2 - 1.5, 2.0, -3.5);
-    skillsBoard.rotation.y = -Math.PI / 3; // ~-60° face o aisle
-    scene.add(skillsBoard);
+    // Cada skill mostra reps + tier badge (Bronze/Prata/Ouro/Diamante).
+    const skillsSlots: SkillBoardSlot[] = SKILL_CATALOG.map((s) => ({
+      id: s.id,
+      short: s.short,
+      label: s.label,
+      bestReps: skillsLocal[s.id] ?? 0,
+    }));
+    const skillsBoardParts = buildSkillsBoard("#D8FF2C", skillsSlots);
+    skillsBoardParts.group.position.set(ROOM_W / 2 - 1.5, 2.0, -3.5);
+    skillsBoardParts.group.rotation.y = -Math.PI / 3;
+    scene.add(skillsBoardParts.group);
 
     // Pernas do skills stand (2 colunas verticais sob o board)
     for (const dx of [-1.6, 1.6]) {
@@ -650,7 +732,6 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
         new THREE.BoxGeometry(0.06, 1.2, 0.06),
         new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.6, metalness: 0.4 })
       );
-      // Posição relativa rotacionada
       const angle = -Math.PI / 3;
       const px = ROOM_W / 2 - 1.5 + dx * Math.cos(angle);
       const pz = -3.5 + dx * Math.sin(angle);
@@ -659,10 +740,16 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
     }
 
     // === RUN BOARD — também angulado pro aisle ====================
-    const runBoard = buildRunBoard("#D8FF2C", DEFAULT_RUN_SLOTS);
-    runBoard.position.set(ROOM_W / 2 - 1.5, 2.0, 2.5);
-    runBoard.rotation.y = -Math.PI / 3;
-    scene.add(runBoard);
+    const runsSlots: RunSlot[] = RUN_CATALOG.map((r) => ({
+      id: r.id,
+      distance: r.short,
+      label: r.label,
+      bestTimeSec: runsLocal[r.id] ?? null,
+    }));
+    const runBoardParts = buildRunBoard("#D8FF2C", runsSlots);
+    runBoardParts.group.position.set(ROOM_W / 2 - 1.5, 2.2, 2.5);
+    runBoardParts.group.rotation.y = -Math.PI / 3;
+    scene.add(runBoardParts.group);
 
     // Pernas do run stand
     for (const dx of [-1.6, 1.6]) {
@@ -920,6 +1007,8 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
         projScreen,
         sponsorsGroup,
         streakPillarParts.hitBox,
+        skillsBoardParts.hitBox,
+        runBoardParts.hitBox,
       ];
       const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
@@ -932,7 +1021,9 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
           !obj.userData.sponsorSlot &&
           !obj.userData.npcSlot &&
           obj.userData.kind !== "projector-screen" &&
-          obj.userData.kind !== "streak-pillar"
+          obj.userData.kind !== "streak-pillar" &&
+          obj.userData.kind !== "skills-board" &&
+          obj.userData.kind !== "run-board"
         ) {
           obj = obj.parent;
         }
@@ -980,6 +1071,12 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
           worldPos.y += 1.6;
           particleBurst.burst(worldPos, 60, new THREE.Color(0xff6020), 1.5);
           cameraShake.trigger(0.04, 0.15);
+        } else if (obj?.userData.kind === "skills-board") {
+          playClick();
+          setSkillsModalOpen(true);
+        } else if (obj?.userData.kind === "run-board") {
+          playClick();
+          setRunsModalOpen(true);
         }
       }
     };
@@ -1188,7 +1285,7 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
         mount.removeChild(renderer.domElement);
       }
     };
-  }, [athleteName, accent, trophies, avatarPrefs]);
+  }, [athleteName, accent, trophies, avatarPrefs, skillsLocal, runsLocal, streakDays]);
 
   // === Modal CTA — deep-link to BarbellConfigurator =================
   const buyHref = selected
@@ -1937,7 +2034,345 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
           </div>
         </div>
       )}
+
+      {/* Skills (ginásticos) modal — input reps por skill */}
+      {skillsModalOpen && (
+        <SkillsModal
+          skills={skillsLocal}
+          onClose={() => setSkillsModalOpen(false)}
+          onSave={saveSkill}
+        />
+      )}
+
+      {/* Run records modal — input tempo por distância */}
+      {runsModalOpen && (
+        <RunsModal
+          runs={runsLocal}
+          onClose={() => setRunsModalOpen(false)}
+          onSave={saveRun}
+        />
+      )}
     </>
+  );
+}
+
+// =================================================================
+// SkillsModal — registra reps consecutivos por skill (BMU/MU/HSPU/...)
+// =================================================================
+
+interface SkillsModalProps {
+  skills: Partial<Record<SkillId, number>>;
+  onClose: () => void;
+  onSave: (skillId: SkillId, reps: number) => Promise<void>;
+}
+
+function SkillsModal({ skills, onClose, onSave }: SkillsModalProps) {
+  const [editing, setEditing] = useState<SkillId | null>(null);
+  const [draftReps, setDraftReps] = useState("");
+
+  function startEdit(skillId: SkillId) {
+    setEditing(skillId);
+    setDraftReps(String(skills[skillId] ?? ""));
+  }
+
+  async function commitEdit() {
+    if (!editing) return;
+    const n = Math.floor(Number(draftReps));
+    if (Number.isFinite(n) && n >= 0) {
+      await onSave(editing, n);
+    }
+    setEditing(null);
+    setDraftReps("");
+  }
+
+  return (
+    <div
+      style={{ position: "absolute", inset: 0, zIndex: 28 }}
+      className="flex items-end sm:items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border border-brand-lime/40 bg-navy-900 shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-navy-700">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-brand-lime">
+              GINÁSTICOS
+            </div>
+            <div className="font-display text-lg tracking-tight">
+              Quantos consecutivos?
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-navy-300 hover:text-white text-lg leading-none"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-3">
+          <p className="text-[11px] text-navy-300 px-2 mb-3 leading-tight">
+            Tier sobe com reps consecutivos: <b className="text-brand-lime">3</b>{" "}
+            Bronze · <b className="text-brand-lime">5</b> Prata ·{" "}
+            <b className="text-brand-lime">10</b> Ouro ·{" "}
+            <b className="text-brand-lime">20</b> Diamante.
+          </p>
+          <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {SKILL_CATALOG.map((s) => {
+              const reps = skills[s.id] ?? 0;
+              const tier = tierForReps(reps);
+              const meta = SKILL_TIER_META[tier];
+              const goal = nextTierGoal(reps);
+              const isEdit = editing === s.id;
+              return (
+                <li
+                  key={s.id}
+                  className="rounded-xl border border-navy-700 bg-navy-800/40 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-12 h-12 rounded-full grid place-items-center font-display text-sm flex-shrink-0 border-2"
+                      style={{
+                        background: meta.color,
+                        color: meta.textColor,
+                        borderColor: tier === "locked" ? "transparent" : "#D8FF2C",
+                      }}
+                    >
+                      {s.short}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm truncate">{s.label}</div>
+                      <div className="text-[11px] text-navy-300">
+                        {reps > 0 ? (
+                          <>
+                            <span className="text-white font-bold tabular-nums">{reps}</span> reps ·{" "}
+                            <span style={{ color: meta.color }}>{meta.label}</span>
+                          </>
+                        ) : (
+                          <span className="opacity-60">Bloqueado</span>
+                        )}
+                      </div>
+                      {goal && (
+                        <div className="text-[10px] text-brand-lime mt-0.5">
+                          +{goal.repsToGo} pra {SKILL_TIER_META[goal.tier].label}
+                        </div>
+                      )}
+                    </div>
+                    {!isEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(s.id)}
+                        className="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5 hover:opacity-90 transition flex-shrink-0"
+                      >
+                        {reps > 0 ? "Atualizar" : "Registrar"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {isEdit && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        max="5000"
+                        value={draftReps}
+                        onChange={(e) => setDraftReps(e.target.value)}
+                        autoFocus
+                        placeholder="reps consecutivos"
+                        className="flex-1 rounded-lg bg-navy-900 border border-navy-600 text-white px-3 py-2 text-sm focus:border-brand-lime focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={commitEdit}
+                        className="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-2 hover:opacity-90 transition"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditing(null);
+                          setDraftReps("");
+                        }}
+                        className="text-xs text-navy-300 hover:text-white px-2"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =================================================================
+// RunsModal — registra tempo por distância (5K/10K/21K/42K)
+// =================================================================
+
+interface RunsModalProps {
+  runs: Partial<Record<RunDistance, number>>;
+  onClose: () => void;
+  onSave: (distance: RunDistance, timeSec: number) => Promise<void>;
+}
+
+function RunsModal({ runs, onClose, onSave }: RunsModalProps) {
+  const [editing, setEditing] = useState<RunDistance | null>(null);
+  const [draftTime, setDraftTime] = useState("");
+  const [parseError, setParseError] = useState(false);
+
+  function startEdit(distance: RunDistance) {
+    setEditing(distance);
+    const cur = runs[distance];
+    setDraftTime(cur ? formatRunTime(cur) : "");
+    setParseError(false);
+  }
+
+  async function commitEdit() {
+    if (!editing) return;
+    const sec = parseRunTime(draftTime);
+    if (sec == null) {
+      setParseError(true);
+      return;
+    }
+    await onSave(editing, sec);
+    setEditing(null);
+    setDraftTime("");
+    setParseError(false);
+  }
+
+  return (
+    <div
+      style={{ position: "absolute", inset: 0, zIndex: 28 }}
+      className="flex items-end sm:items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border border-brand-lime/40 bg-navy-900 shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-navy-700">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-brand-lime">
+              MEUS RPs · CORRIDA
+            </div>
+            <div className="font-display text-lg tracking-tight">
+              Seus melhores tempos
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-navy-300 hover:text-white text-lg leading-none"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-3">
+          <p className="text-[11px] text-navy-300 px-2 mb-3 leading-tight">
+            Formato: <b className="text-brand-lime">MM:SS</b> ou{" "}
+            <b className="text-brand-lime">HH:MM:SS</b>. Salvamos só se for mais
+            rápido que seu PR atual.
+          </p>
+          <ul className="space-y-2">
+            {RUN_CATALOG.map((r) => {
+              const sec = runs[r.id];
+              const isEdit = editing === r.id;
+              return (
+                <li
+                  key={r.id}
+                  className="rounded-xl border border-navy-700 bg-navy-800/40 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-14 h-14 rounded-lg grid place-items-center font-display text-base flex-shrink-0"
+                      style={{
+                        background: sec != null ? "#D8FF2C" : "#2d2d3a",
+                        color: sec != null ? "#01002A" : "#9ca3af",
+                      }}
+                    >
+                      {r.short}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm truncate">{r.label}</div>
+                      <div className="text-[13px] tabular-nums">
+                        {sec != null ? (
+                          <span className="text-white font-bold">
+                            {formatRunTime(sec)}
+                          </span>
+                        ) : (
+                          <span className="text-navy-300 opacity-60">— : — : —</span>
+                        )}
+                      </div>
+                    </div>
+                    {!isEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(r.id)}
+                        className="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5 hover:opacity-90 transition flex-shrink-0"
+                      >
+                        {sec != null ? "Atualizar" : "Registrar"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {isEdit && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={draftTime}
+                          onChange={(e) => {
+                            setDraftTime(e.target.value);
+                            setParseError(false);
+                          }}
+                          autoFocus
+                          placeholder={r.id === "5k" ? "22:30" : r.id === "42k" ? "04:15:00" : "48:12"}
+                          className={`flex-1 rounded-lg bg-navy-900 border text-white px-3 py-2 text-sm tabular-nums focus:outline-none ${
+                            parseError ? "border-red-500" : "border-navy-600 focus:border-brand-lime"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={commitEdit}
+                          className="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-2 hover:opacity-90 transition"
+                        >
+                          Salvar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditing(null);
+                            setDraftTime("");
+                            setParseError(false);
+                          }}
+                          className="text-xs text-navy-300 hover:text-white px-2"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {parseError && (
+                        <p className="text-[10px] text-red-400 mt-1">
+                          Formato inválido. Use MM:SS ou HH:MM:SS.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
   );
 }
 

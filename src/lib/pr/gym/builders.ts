@@ -1,6 +1,14 @@
 import * as THREE from "three";
 import { splitPlates, BAR_KG } from "../plates";
 import type { AvatarPrefs } from "./avatar-prefs";
+import {
+  SKILL_TIER_META,
+  tierForReps,
+  formatRunTime,
+  type SkillId,
+  type SkillTier,
+  type RunDistance,
+} from "./skills";
 
 // =================================================================
 // MATERIAIS COMPARTILHADOS
@@ -1544,36 +1552,28 @@ export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
 
 // =================================================================
 // SKILLS BADGES — display de ginásticos / movimentos não-weight
-// (BMU, MU, HSPU, T2B, DU, Pistol — ainda em "Em breve" mas visíveis)
+// (BMU, MU, HSPU, T2B, DU, Pistol com tiers Bronze/Prata/Ouro/Diamante)
 // =================================================================
 
-export interface SkillSlot {
-  /** ID interno (futuro pr_skills row). */
-  id: string;
-  /** Sigla curta: "BMU", "MU", etc. */
+export interface SkillBoardSlot {
+  id: SkillId;
   short: string;
-  /** Nome cheio: "Bar Muscle-Up". */
   label: string;
-  /** Ícone emoji ou letra pra centralizar. */
-  emoji: string;
-  /** Já desbloqueado? (V9 sempre false — em breve.) */
-  unlocked: boolean;
+  /** Reps consecutivos atuais. 0 = locked. */
+  bestReps: number;
 }
 
-export const SKILL_SLOTS: SkillSlot[] = [
-  { id: "bmu", short: "BMU", label: "Bar Muscle-Up", emoji: "🏆", unlocked: false },
-  { id: "mu", short: "MU", label: "Ring Muscle-Up", emoji: "💍", unlocked: false },
-  { id: "hspu", short: "HSPU", label: "Handstand Push-Up", emoji: "🤸", unlocked: false },
-  { id: "t2b", short: "T2B", label: "Toes-to-Bar", emoji: "🦵", unlocked: false },
-  { id: "du", short: "DU", label: "Double-Under", emoji: "⏩", unlocked: false },
-  { id: "pistol", short: "PISTOL", label: "Pistol Squat", emoji: "🔫", unlocked: false },
-];
+export interface SkillsBoardParts {
+  group: THREE.Group;
+  /** Plane invisível pra raycast — abre modal de input. */
+  hitBox: THREE.Mesh;
+}
 
 /**
  * Painel mural de skills badges. 6 medalhas circulares na parede.
- * Locked = cinza com "?" / Unlocked = lime accent com check.
+ * Cada badge mostra: sigla + reps + tier (locked/unlocked/bronze/silver/gold/diamond).
  */
-export function buildSkillsBoard(accentHex: string): THREE.Group {
+export function buildSkillsBoard(accentHex: string, slots: SkillBoardSlot[]): SkillsBoardParts {
   const g = new THREE.Group();
 
   // Fundo do painel (placa preta com borda lime)
@@ -1614,8 +1614,8 @@ export function buildSkillsBoard(accentHex: string): THREE.Group {
   }
   tctx.shadowBlur = 0;
   tctx.fillStyle = "#9ca3af";
-  tctx.font = "500 60px Inter, sans-serif";
-  tctx.fillText("Em breve · Desbloqueie cada skill", 1024, 280);
+  tctx.font = "500 56px Inter, sans-serif";
+  tctx.fillText("Toque pra registrar · Bronze · Prata · Ouro · Diamante", 1024, 280);
   const titleTex = new THREE.CanvasTexture(titleCanvas);
   titleTex.colorSpace = THREE.SRGBColorSpace;
   const title = new THREE.Mesh(
@@ -1627,45 +1627,62 @@ export function buildSkillsBoard(accentHex: string): THREE.Group {
 
   // 6 badges circulares (3 colunas × 2 linhas)
   const COLS = 3;
-  const ROWS = 2;
-  for (let i = 0; i < SKILL_SLOTS.length; i++) {
-    const slot = SKILL_SLOTS[i]!;
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i]!;
     const row = Math.floor(i / COLS);
     const col = i % COLS;
     const x = -boardW / 2 + 0.6 + col * ((boardW - 1.2) / (COLS - 1));
     const y = 0.05 - row * 0.5;
 
-    // Disco da badge
-    const isUnlocked = slot.unlocked;
-    const badgeColor = isUnlocked ? accentHex : "#3a3a44";
+    const tier: SkillTier = tierForReps(slot.bestReps);
+    const meta = SKILL_TIER_META[tier];
+    const isUnlocked = tier !== "locked";
+
+    // Disco da badge — cor do tier
     const badge = new THREE.Mesh(
       new THREE.CylinderGeometry(0.18, 0.18, 0.04, 24),
       new THREE.MeshStandardMaterial({
-        color: badgeColor,
-        roughness: 0.4,
-        metalness: 0.3,
-        emissive: isUnlocked ? badgeColor : 0x000000,
-        emissiveIntensity: isUnlocked ? 0.25 : 0,
+        color: meta.color,
+        roughness: 0.35,
+        metalness: 0.55,
+        emissive: meta.color,
+        emissiveIntensity: isUnlocked ? 0.4 : 0,
       })
     );
     badge.rotation.x = Math.PI / 2;
     badge.position.set(x, y, 0.05);
     g.add(badge);
 
-    // Sigla no centro do disco (canvas)
+    // Anel externo lime (highlight pra quem tem tier > unlocked)
+    if (isUnlocked && tier !== "unlocked") {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.2, 0.012, 12, 36),
+        new THREE.MeshBasicMaterial({ color: accentHex })
+      );
+      ring.position.set(x, y, 0.06);
+      g.add(ring);
+    }
+
+    // Sigla + reps + tier label no centro do disco (canvas)
     const c = document.createElement("canvas");
     c.width = 256;
     c.height = 256;
     const ctx = c.getContext("2d")!;
     ctx.clearRect(0, 0, 256, 256);
-    ctx.fillStyle = isUnlocked ? "#01002A" : "#6a6a74";
-    ctx.font = "900 70px Archivo Black, Inter, sans-serif";
+    ctx.fillStyle = meta.textColor;
+    ctx.font = "900 60px Archivo Black, Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(slot.short, 128, 110);
-    ctx.fillStyle = isUnlocked ? "#01002A" : "#6a6a74";
-    ctx.font = "500 28px Inter, sans-serif";
-    ctx.fillText(isUnlocked ? "✓" : "?", 128, 175);
+    ctx.fillText(slot.short, 128, 92);
+    if (isUnlocked) {
+      ctx.font = "900 40px Archivo Black, Inter, sans-serif";
+      ctx.fillText(String(slot.bestReps), 128, 150);
+      ctx.font = "700 22px Inter, sans-serif";
+      ctx.fillText(meta.label.toUpperCase(), 128, 190);
+    } else {
+      ctx.font = "900 50px Inter, sans-serif";
+      ctx.fillText("?", 128, 165);
+    }
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     const sigla = new THREE.Mesh(
@@ -1676,32 +1693,52 @@ export function buildSkillsBoard(accentHex: string): THREE.Group {
     g.add(sigla);
   }
 
-  return g;
+  // Hit box invisível pra raycast (board inteiro abre modal)
+  const hitBox = new THREE.Mesh(
+    new THREE.BoxGeometry(boardW, boardH, 0.2),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitBox.position.set(0, 0, 0.05);
+  hitBox.userData.kind = "skills-board";
+  g.add(hitBox);
+
+  return { group: g, hitBox };
 }
 
 // =================================================================
-// RUNNING BENCHMARKS — display de tempos de corrida
+// RUNNING BENCHMARKS — display de tempos de corrida (5K/10K/21K/42K)
+// Estilo "MEUS RPs" (placa preta + accent lime)
 // =================================================================
 
 export interface RunSlot {
-  distance: string; // "5K", "10K", "21K", "42K"
+  /** ID interno: "5k" | "10k" | "21k" | "42k". */
+  id: RunDistance;
+  /** Sigla pra display: "5KM" / "10KM" / etc. */
+  distance: string;
+  /** Nome cheio: "5 km", "Meia maratona". */
   label: string;
+  /** Melhor tempo em segundos. Null = locked. */
   bestTimeSec: number | null;
 }
 
 export const DEFAULT_RUN_SLOTS: RunSlot[] = [
-  { distance: "5K", label: "5 km", bestTimeSec: null },
-  { distance: "10K", label: "10 km", bestTimeSec: null },
-  { distance: "21K", label: "Meia maratona", bestTimeSec: null },
-  { distance: "42K", label: "Maratona", bestTimeSec: null },
+  { id: "5k", distance: "5KM", label: "5 km", bestTimeSec: null },
+  { id: "10k", distance: "10KM", label: "10 km", bestTimeSec: null },
+  { id: "21k", distance: "21KM", label: "Meia maratona", bestTimeSec: null },
+  { id: "42k", distance: "42KM", label: "Maratona", bestTimeSec: null },
 ];
 
+export interface RunBoardParts {
+  group: THREE.Group;
+  hitBox: THREE.Mesh;
+}
+
 /** Painel mural com 4 slots de tempo de corrida. */
-export function buildRunBoard(accentHex: string, slots: RunSlot[]): THREE.Group {
+export function buildRunBoard(accentHex: string, slots: RunSlot[]): RunBoardParts {
   const g = new THREE.Group();
 
   const boardW = 4.0;
-  const boardH = 1.4;
+  const boardH = 2.6;
   const board = new THREE.Mesh(
     new THREE.BoxGeometry(boardW, boardH, 0.06),
     new THREE.MeshStandardMaterial({ color: 0x0a0a16, roughness: 0.7, metalness: 0.2 })
@@ -1736,8 +1773,8 @@ export function buildRunBoard(accentHex: string, slots: RunSlot[]): THREE.Group 
   }
   tctx.shadowBlur = 0;
   tctx.fillStyle = "#9ca3af";
-  tctx.font = "500 60px Inter, sans-serif";
-  tctx.fillText("Em breve · Registre seus tempos", 1024, 280);
+  tctx.font = "500 56px Inter, sans-serif";
+  tctx.fillText("Toque pra registrar seu tempo", 1024, 280);
   const titleTex = new THREE.CanvasTexture(titleCanvas);
   titleTex.colorSpace = THREE.SRGBColorSpace;
   const title = new THREE.Mesh(
@@ -1747,59 +1784,127 @@ export function buildRunBoard(accentHex: string, slots: RunSlot[]): THREE.Group 
   title.position.set(0, boardH / 2 - 0.4, 0.04);
   g.add(title);
 
-  // 4 slots horizontais
+  // Painel "MEUS RPs" inspirado no produto físico — 4 linhas com pílulas
+  // de distância à esquerda e tempo à direita, separadas por linha lime.
+  const rowsTop = 0.55; // primeira linha começa abaixo do título
+  const rowH = 0.42;
   for (let i = 0; i < slots.length; i++) {
     const slot = slots[i]!;
-    const x = -boardW / 2 + 0.55 + i * ((boardW - 1.1) / (slots.length - 1));
-    const y = -0.15;
-
-    // Disco de distância
     const unlocked = slot.bestTimeSec != null;
-    const color = unlocked ? accentHex : "#3a3a44";
-    const disc = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.22, 0.22, 0.04, 24),
+    const x = 0;
+    const y = rowsTop - i * rowH;
+
+    // Linha background com sutil border
+    const rowBg = new THREE.Mesh(
+      new THREE.BoxGeometry(boardW * 0.9, rowH * 0.9, 0.02),
       new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.5,
-        metalness: 0.2,
-        emissive: unlocked ? color : 0x000000,
-        emissiveIntensity: unlocked ? 0.2 : 0,
+        color: 0x14111e,
+        roughness: 0.7,
+        metalness: 0.15,
       })
     );
-    disc.rotation.x = Math.PI / 2;
-    disc.position.set(x, y, 0.05);
-    g.add(disc);
+    rowBg.position.set(x, y, 0.04);
+    g.add(rowBg);
 
-    // Texto: distância + tempo
-    const c = document.createElement("canvas");
-    c.width = 256;
-    c.height = 256;
-    const ctx = c.getContext("2d")!;
-    ctx.clearRect(0, 0, 256, 256);
-    ctx.fillStyle = unlocked ? "#01002A" : "#6a6a74";
-    ctx.font = "900 64px Archivo Black, Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(slot.distance, 128, 100);
-    ctx.font = "500 26px Inter, sans-serif";
-    if (unlocked && slot.bestTimeSec != null) {
-      const m = Math.floor(slot.bestTimeSec / 60);
-      const s = slot.bestTimeSec % 60;
-      ctx.fillText(`${m}:${String(s).padStart(2, "0")}`, 128, 175);
-    } else {
-      ctx.fillText("?", 128, 175);
-    }
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const txt = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.4, 0.4),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+    // Pílula da distância (esquerda) — caixa lime claro/cinza
+    const pillW = 1.3;
+    const pillBg = new THREE.Mesh(
+      new THREE.BoxGeometry(pillW, rowH * 0.7, 0.04),
+      new THREE.MeshStandardMaterial({
+        color: unlocked ? accentHex : 0x2d2d3a,
+        roughness: 0.4,
+        metalness: 0.4,
+        emissive: unlocked ? accentHex : 0x000000,
+        emissiveIntensity: unlocked ? 0.3 : 0,
+      })
     );
-    txt.position.set(x, y, 0.08);
-    g.add(txt);
+    pillBg.position.set(-boardW * 0.45 + pillW / 2 + 0.05, y, 0.07);
+    g.add(pillBg);
+
+    // Texto distância no centro da pílula
+    const cD = document.createElement("canvas");
+    cD.width = 384;
+    cD.height = 128;
+    const ctxD = cD.getContext("2d")!;
+    ctxD.clearRect(0, 0, 384, 128);
+    ctxD.fillStyle = unlocked ? "#01002A" : "#9ca3af";
+    ctxD.font = "900 84px Archivo Black, Inter, sans-serif";
+    ctxD.textAlign = "center";
+    ctxD.textBaseline = "middle";
+    ctxD.fillText(slot.distance, 192, 64);
+    const texD = new THREE.CanvasTexture(cD);
+    texD.colorSpace = THREE.SRGBColorSpace;
+    const distTxt = new THREE.Mesh(
+      new THREE.PlaneGeometry(pillW, rowH * 0.7),
+      new THREE.MeshBasicMaterial({ map: texD, transparent: true })
+    );
+    distTxt.position.set(pillBg.position.x, y, 0.1);
+    g.add(distTxt);
+
+    // Pílula tempo (direita) — borda lime se unlocked
+    const timeW = 1.7;
+    const timeBg = new THREE.Mesh(
+      new THREE.BoxGeometry(timeW, rowH * 0.7, 0.04),
+      new THREE.MeshStandardMaterial({
+        color: 0x0a0a16,
+        roughness: 0.6,
+        metalness: 0.2,
+      })
+    );
+    timeBg.position.set(boardW * 0.45 - timeW / 2 - 0.05, y, 0.07);
+    g.add(timeBg);
+
+    // Borda lime fina ao redor (só pra unlocked)
+    if (unlocked) {
+      const borderTop = new THREE.Mesh(
+        new THREE.BoxGeometry(timeW, 0.02, 0.05),
+        new THREE.MeshBasicMaterial({ color: accentHex })
+      );
+      borderTop.position.set(timeBg.position.x, y + rowH * 0.34, 0.1);
+      g.add(borderTop);
+      const borderBot = borderTop.clone();
+      borderBot.position.y = y - rowH * 0.34;
+      g.add(borderBot);
+    }
+
+    // Texto tempo
+    const cT = document.createElement("canvas");
+    cT.width = 512;
+    cT.height = 128;
+    const ctxT = cT.getContext("2d")!;
+    ctxT.clearRect(0, 0, 512, 128);
+    ctxT.textAlign = "center";
+    ctxT.textBaseline = "middle";
+    if (unlocked && slot.bestTimeSec != null) {
+      ctxT.fillStyle = "#ffffff";
+      ctxT.font = "900 70px Archivo Black, Inter, sans-serif";
+      ctxT.fillText(formatRunTime(slot.bestTimeSec), 256, 64);
+    } else {
+      // Cadeado pra locked
+      ctxT.fillStyle = "#6a6a74";
+      ctxT.font = "900 64px Inter, sans-serif";
+      ctxT.fillText("🔒", 256, 64);
+    }
+    const texT = new THREE.CanvasTexture(cT);
+    texT.colorSpace = THREE.SRGBColorSpace;
+    const timeTxt = new THREE.Mesh(
+      new THREE.PlaneGeometry(timeW, rowH * 0.7),
+      new THREE.MeshBasicMaterial({ map: texT, transparent: true })
+    );
+    timeTxt.position.set(timeBg.position.x, y, 0.1);
+    g.add(timeTxt);
   }
 
-  return g;
+  // Hit box pra raycast (board inteiro abre modal)
+  const hitBox = new THREE.Mesh(
+    new THREE.BoxGeometry(boardW, boardH, 0.2),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitBox.position.set(0, 0, 0.05);
+  hitBox.userData.kind = "run-board";
+  g.add(hitBox);
+
+  return { group: g, hitBox };
 }
 
 // =================================================================
