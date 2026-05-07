@@ -123,7 +123,8 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   const torsoBotR = isF ? 0.18 : isM ? 0.20 : 0.19;
   const hipR = isF ? 0.22 : isM ? 0.20 : 0.21;
   const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
-  const headR = 0.21; // BIGGER (era 0.165) — visível de qualquer ângulo
+  // V16.8 cycle 73: avatar head 0.21 → 0.26 pra match com NPCs (consistência)
+  const headR = 0.26;
 
   // === HEAD ESFÉRICO — round head + face simples + hair cap =====
   // User explicitly: cabeça tem que ser REDONDA. Sphere skin + face
@@ -332,7 +333,7 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   }
 
   // Cabeça posicionada em y=1.88 absoluto (centro do crânio)
-  head.position.y = 1.95; // ajustado pra cabeça maior (headR=0.21)
+  head.position.y = 2.0; // cycle 74: ajustado pra cabeça 0.26
   root.add(head);
 
   // === TORSO + CAMISA "PR TRACKER" =============================

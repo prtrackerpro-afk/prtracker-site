@@ -777,14 +777,14 @@ export default function VirtualGym({
     scene.add(platform);
     // Plataforma é baixa (6cm), avatar pisa em cima.
 
-    // FLOOR MARKING — caminho central com track lights (lime mais visível)
-    // V16.7 cycle 11: opacity 0.06 → 0.15 + 2 linhas laterais marcando o aisle
+    // FLOOR MARKING — caminho central com track lights
+    // V16.8 cycle 75: opacity 0.15 → 0.2 (mais convidativo) + tapete com gradient sim
     const aisle = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.2, ROOM_D - 3),
+      new THREE.PlaneGeometry(2.4, ROOM_D - 3),
       new THREE.MeshBasicMaterial({
         color: accentColor,
         transparent: true,
-        opacity: 0.15,
+        opacity: 0.2,
       })
     );
     aisle.rotation.x = -Math.PI / 2;
