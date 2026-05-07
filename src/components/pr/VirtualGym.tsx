@@ -400,8 +400,10 @@ export default function VirtualGym({
     scene.add(avatarSpot.target);
 
     // === Sala (chão escuro + 3 paredes navy near-black) ============
+    // V16.7 cycle 24: paredes com cor LEVEMENTE mais clara (0x0a0a18 → 0x12121e)
+    // pra dar contraste com objetos escuros à frente. Ainda fica navy.
     const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0a18,
+      color: 0x12121e,
       roughness: 0.95,
       metalness: 0.02,
     });
