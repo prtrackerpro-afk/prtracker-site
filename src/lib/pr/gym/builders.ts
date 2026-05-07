@@ -2323,30 +2323,32 @@ export function buildNPC(props: NPCProps): NPCParts {
   skull.castShadow = true;
   head.add(skull);
 
-  // Olhos — 2 esferas pretas pequenas no front (z+)
+  // Olhos — escalados proporcional ao headR pra parecer naturais com head maior
+  const eyeR = headR * 0.11; // raio do olho
+  const eyeOffsetX = headR * 0.33; // distância horizontal do centro
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0a0a14 });
-  for (const sx of [-0.07, 0.07]) {
+  for (const sx of [-eyeOffsetX, eyeOffsetX]) {
     const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.024, 10, 8),
+      new THREE.SphereGeometry(eyeR, 10, 8),
       eyeMat
     );
-    eye.position.set(sx, 0.03, headR * 0.92);
+    eye.position.set(sx, headR * 0.14, headR * 0.92);
     head.add(eye);
-    // Reflexo branco (esfera ainda menor offset)
+    // Reflexo branco
     const sparkle = new THREE.Mesh(
-      new THREE.SphereGeometry(0.008, 6, 5),
+      new THREE.SphereGeometry(eyeR * 0.35, 6, 5),
       new THREE.MeshBasicMaterial({ color: 0xffffff })
     );
-    sparkle.position.set(sx + 0.005, 0.04, headR * 0.95);
+    sparkle.position.set(sx + eyeR * 0.3, headR * 0.18, headR * 0.95);
     head.add(sparkle);
   }
 
-  // Boca — box horizontal vermelho-escuro
+  // Boca — escalada também
   const mouth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.012, 0.005),
+    new THREE.BoxGeometry(headR * 0.38, headR * 0.06, 0.005),
     new THREE.MeshBasicMaterial({ color: 0x4a1f1f })
   );
-  mouth.position.set(0, -0.07, headR * 0.94);
+  mouth.position.set(0, -headR * 0.33, headR * 0.94);
   head.add(mouth);
 
   // Cabelo — hemisfério cobrindo o topo do skull
@@ -2371,28 +2373,28 @@ export function buildNPC(props: NPCProps): NPCParts {
     }
   }
 
-  // Orelhas
+  // Orelhas — escaladas proporcional
   for (const sx of [-1, 1]) {
     const ear = new THREE.Mesh(
-      new THREE.SphereGeometry(0.028, 8, 6),
+      new THREE.SphereGeometry(headR * 0.13, 8, 6),
       skinMat
     );
     ear.scale.set(0.5, 0.9, 0.4);
-    ear.position.set(sx * headR, 0, 0);
+    ear.position.set(sx * headR, headR * 0.05, 0);
     head.add(ear);
   }
 
-  // Pescoço (cilindro skin que conecta cabeça ao torso)
+  // Pescoço — escalado pro head maior, mais robusto
   const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.065, 0.08, 0.12, 12),
+    new THREE.CylinderGeometry(headR * 0.32, headR * 0.4, 0.14, 12),
     skinMat
   );
-  neck.position.y = -headR - 0.02;
+  neck.position.y = -headR - 0.04;
   neck.castShadow = true;
   head.add(neck);
 
-  // Posição da cabeça — y=1.95 acima do torso (que vai até y=1.65)
-  head.position.y = 1.95;
+  // Posição da cabeça — y=2.05 acima do torso (head maior precisa mais alto)
+  head.position.y = 2.05;
   root.add(head);
 
   // === TORSO + INITIAL ===
