@@ -1790,14 +1790,16 @@ export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
   group.add(plaque);
 
   // === MINI-BARBELL com plate split em cima do pedestal ==========
+  // V16.8 cycle 87: showStand com cor mais quente (gold accent) + emissive
   if (hasUnlocked && weightKg != null) {
-    // Topo "show stand" — pequena placa metálica onde a barbell descansa
     const showStand = new THREE.Mesh(
       new THREE.BoxGeometry(baseW * 0.92, 0.04, baseD * 0.92),
       new THREE.MeshStandardMaterial({
-        color: 0x2a2540,
-        roughness: 0.4,
-        metalness: 0.6,
+        color: 0x4a4250,
+        roughness: 0.3,
+        metalness: 0.7,
+        emissive: 0x2a2540,
+        emissiveIntensity: 0.2,
       })
     );
     showStand.position.y = baseH + 0.045;
