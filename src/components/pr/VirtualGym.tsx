@@ -1839,7 +1839,7 @@ export default function VirtualGym({
           return (
             <a
               href={`/pr/log?ex=${nextGhost}`}
-              className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-white/20 px-3 py-1.5 hover:border-brand-lime/40 transition"
+              className="flex items-center gap-2 rounded-full bg-navy-900/90 border-2 border-white/30 px-3.5 py-2 hover:border-brand-lime/60 hover:bg-brand-lime/10 transition shadow-md"
               onClick={() => playClick()}
             >
               <span className="text-[10px] uppercase tracking-widest text-navy-300 leading-none">
@@ -1862,7 +1862,7 @@ export default function VirtualGym({
             setMuted(newMuted);
             if (!newMuted) playClick();
           }}
-          className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-white/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-navy-300 hover:text-white transition"
+          className="flex items-center gap-2 rounded-full bg-navy-900/90 border-2 border-white/30 px-3.5 py-2 text-[10px] uppercase tracking-widest text-navy-300 hover:text-white hover:border-white/50 transition shadow-md"
           aria-label={audioMuted ? "Ativar som" : "Mute"}
         >
           <span className="text-base leading-none">{audioMuted ? "🔇" : "🔊"}</span>
