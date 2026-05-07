@@ -14,10 +14,14 @@ import {
 // MATERIAIS COMPARTILHADOS
 // =================================================================
 
+// V16.8 cycle 72: steel um pouco mais claro + emissive sutil pra estrutura
+// não ficar invisivel em zonas de pouca luz.
 export const STEEL_MAT = new THREE.MeshStandardMaterial({
-  color: 0x2a2d3a,
+  color: 0x4a4d5a,
   roughness: 0.4,
-  metalness: 0.75,
+  metalness: 0.8,
+  emissive: 0x1a1a26,
+  emissiveIntensity: 0.15,
 });
 export const RUBBER_MAT = new THREE.MeshStandardMaterial({
   color: 0x0a0a14,
@@ -34,10 +38,14 @@ export const VINYL_MAT = new THREE.MeshStandardMaterial({
   roughness: 0.4,
   metalness: 0.1,
 });
+// V16.8 cycle 71: chrome MAIS BRILHANTE + emissive sutil pra cintilar mesmo
+// em zonas pouco iluminadas. Era 0.22 roughness — agora 0.12 (mais espelhado).
 export const CHROME_MAT = new THREE.MeshStandardMaterial({
-  color: 0xc0c5cc,
-  roughness: 0.22,
-  metalness: 0.92,
+  color: 0xdfe2e8,
+  roughness: 0.12,
+  metalness: 0.95,
+  emissive: 0x6a6a76,
+  emissiveIntensity: 0.08,
 });
 
 // =================================================================
@@ -513,9 +521,11 @@ function buildArm(skinMat: THREE.Material, topMat: THREE.Material): THREE.Group 
   lower.position.y = -0.5;
   lower.castShadow = true;
   g.add(lower);
-  // Mão (esfera)
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), skinMat);
+  // Mão — capsule achatada pra parecer punho (cycle 70)
+  const hand = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.04, 6, 8), skinMat);
+  hand.scale.set(1.0, 1.0, 1.4);
   hand.position.y = -0.66;
+  hand.castShadow = true;
   g.add(hand);
   return g;
 }
@@ -2697,12 +2707,14 @@ export function buildNPC(props: NPCProps): NPCParts {
     lower.position.y = -0.16;
     forearm.add(lower);
 
-    // Mão fechada (esfera)
+    // Mão — capsule achatada (parece punho mais que bola)
     const hand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.07, 10, 8),
+      new THREE.CapsuleGeometry(0.06, 0.05, 6, 8),
       skinMat
     );
+    hand.scale.set(1.0, 1.0, 1.4); // achata em z (frente-trás)
     hand.position.y = -0.34;
+    hand.castShadow = true;
     forearm.add(hand);
 
     root.add(arm);
