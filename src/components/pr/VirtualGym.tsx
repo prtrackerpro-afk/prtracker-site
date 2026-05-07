@@ -614,8 +614,11 @@ export default function VirtualGym({
     const topTier = tierNames.sort((a, b) => tierByRank(b) - tierByRank(a))[0] ?? "ATLETA";
     const headerSubtitle = topTier.toUpperCase();
 
-    const wallLogo = buildWallLogo(9, "#D8FF2C", headerSubtitle);
-    wallLogo.position.set(0, WALL_H - 2.0, -ROOM_D / 2 + 0.04);
+    // V16.8 cycle 101: logo MENOR (era 9 de largura → 7) + posicionado
+    // mais baixo (WALL_H - 3.2 → centro 4.3) pra não passar do trim/track
+    // rail no teto e ficar inteiramente visível na parede.
+    const wallLogo = buildWallLogo(7, "#D8FF2C", headerSubtitle);
+    wallLogo.position.set(0, WALL_H - 3.2, -ROOM_D / 2 + 0.04);
     scene.add(wallLogo);
 
     // Subtítulo com NOME do atleta abaixo do logo (proeminente)
@@ -635,7 +638,8 @@ export default function VirtualGym({
       new THREE.PlaneGeometry(7, 0.8),
       new THREE.MeshBasicMaterial({ map: subTex, transparent: true })
     );
-    subPlaque.position.set(0, WALL_H - 3.4, -ROOM_D / 2 + 0.05);
+    // V16.8 cycle 101: subPlaque também desce (logo desceu 1.2)
+    subPlaque.position.set(0, WALL_H - 5.2, -ROOM_D / 2 + 0.05);
     scene.add(subPlaque);
 
     // === HALL OF FAME V7 ==========================================

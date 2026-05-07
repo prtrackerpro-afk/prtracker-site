@@ -180,11 +180,19 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
 
   const faceTex = new THREE.CanvasTexture(faceCanvas);
   faceTex.colorSpace = THREE.SRGBColorSpace;
+  // V16.8 cycle 100: face plane FORA da superfície do skull (era headR*0.92,
+  // dentro da esfera — depth test escondia atrás do skull). Agora headR*1.005
+  // + polygonOffset pra garantir render por cima.
   const face = new THREE.Mesh(
     new THREE.PlaneGeometry(headR * 1.7, headR * 1.7),
-    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+    new THREE.MeshBasicMaterial({
+      map: faceTex,
+      transparent: true,
+      depthTest: false,
+    })
   );
-  face.position.set(0, 0.005, headR * 0.92);
+  face.position.set(0, 0.005, headR * 1.005);
+  face.renderOrder = 5;
   head.add(face);
 
   // === CABELO esférico envolvente sobre a cabeça redonda =========
