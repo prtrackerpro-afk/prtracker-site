@@ -1,4 +1,7 @@
-import React, { useMemo, useState } from "react";
+// Namespace import garante React no escopo runtime pro JSX clássico.
+// Ver comentário em GymEditor.tsx pro contexto completo.
+import * as React from "react";
+const { useMemo, useState } = React;
 import {
   LineChart,
   Line,

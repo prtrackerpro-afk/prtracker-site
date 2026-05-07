@@ -1,4 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+// Namespace import garante React no escopo runtime pro JSX clássico
+// (React.createElement). Default import era removido pelo linter como
+// "unused" mesmo sendo necessário em runtime — namespace sempre fica.
+import * as React from "react";
+const { useState, useEffect, useRef } = React;
 import {
   loadLayout,
   saveLayout,
