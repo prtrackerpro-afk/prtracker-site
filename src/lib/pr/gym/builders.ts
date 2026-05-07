@@ -899,6 +899,13 @@ export function buildPlatform(accentHex: string): THREE.Group {
   return g;
 }
 
+/**
+ * Banco de supino REAL: bench horizontal flat + 2 postes verticais
+ * de cada lado da cabeça segurando uma barbell carregada com anilhas.
+ *
+ * Eixo Z = comprimento do banco (atleta deita ao longo de Z, cabeça
+ * em -Z, pés em +Z). Postes ficam em -Z (lado da cabeça).
+ */
 export function buildBench(): THREE.Group {
   const g = new THREE.Group();
   const benchPad = new THREE.MeshStandardMaterial({
@@ -908,21 +915,58 @@ export function buildBench(): THREE.Group {
   });
   const stitchMat = new THREE.MeshBasicMaterial({ color: 0x1a0a0a });
 
-  // Trilho central (estrutura) — agora mais robusta com 2 níveis
-  const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.48, 1.3), STEEL_MAT);
-  trunk.position.set(0, 0.24, 0);
-  g.add(trunk);
+  const BENCH_LEN = 1.4; // comprimento total do banco
+  const PAD_W = 0.34;
+  const PAD_H = 0.12;
+  const SEAT_Y = 0.5; // altura do topo do estofado
 
-  // Bases — 2 sapatas largas com pé de borracha
-  for (const z of [-0.55, 0.55]) {
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.08), STEEL_MAT);
+  // === ESTOFADO HORIZONTAL (peça única — bench press é PLANO) ===
+  const seat = new THREE.Mesh(
+    new THREE.BoxGeometry(PAD_W, PAD_H, BENCH_LEN),
+    benchPad
+  );
+  seat.position.set(0, SEAT_Y - PAD_H / 2, 0);
+  seat.castShadow = true;
+  g.add(seat);
+
+  // Costuras visíveis correndo ao longo do banco (linhas pretas vinyl)
+  for (const sx of [-0.13, 0.13]) {
+    const stitch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.005, PAD_H + 0.005, BENCH_LEN - 0.04),
+      stitchMat
+    );
+    stitch.position.set(sx, SEAT_Y - PAD_H / 2, 0);
+    g.add(stitch);
+  }
+  // Costura horizontal central
+  const stitchCenter = new THREE.Mesh(
+    new THREE.BoxGeometry(PAD_W - 0.04, 0.005, 0.005),
+    stitchMat
+  );
+  stitchCenter.position.set(0, SEAT_Y, 0);
+  g.add(stitchCenter);
+
+  // === ESTRUTURA DE AÇO (frame em Z, cobrindo toda a extensão) ===
+  const frameRail = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.06, BENCH_LEN),
+    STEEL_MAT
+  );
+  frameRail.position.set(0, SEAT_Y - PAD_H - 0.03, 0);
+  g.add(frameRail);
+
+  // === SAPATAS — pés do banco (lados oposto: cabeça e pés) ===
+  for (const z of [-BENCH_LEN / 2 + 0.1, BENCH_LEN / 2 - 0.1]) {
+    const foot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.06, 0.08),
+      STEEL_MAT
+    );
     foot.position.set(0, 0.03, z);
     foot.castShadow = true;
     g.add(foot);
-    // Pés de borracha em cada extremidade
+    // Pés de borracha
     for (const sx of [-0.32, 0.32]) {
       const rubFoot = new THREE.Mesh(
-        new THREE.BoxGeometry(0.06, 0.025, 0.08),
+        new THREE.BoxGeometry(0.08, 0.025, 0.08),
         RUBBER_MAT
       );
       rubFoot.position.set(sx, 0.012, z);
@@ -930,65 +974,105 @@ export function buildBench(): THREE.Group {
     }
   }
 
-  // Assento principal (acolchoado, com bevel sutil)
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.7), benchPad);
-  seat.position.set(0, 0.55, 0.15);
-  seat.castShadow = true;
-  g.add(seat);
-
-  // Costuras visíveis no assento (linhas pretas) — efeito vinyl
-  for (const sx of [-0.13, 0.13]) {
-    const stitch = new THREE.Mesh(
-      new THREE.BoxGeometry(0.005, 0.122, 0.7),
-      stitchMat
+  // Coluna diagonal conectando o frame às sapatas (visual triângulo de apoio)
+  for (const sz of [-BENCH_LEN / 2 + 0.1, BENCH_LEN / 2 - 0.1]) {
+    const diag = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.4, 0.05),
+      STEEL_MAT
     );
-    stitch.position.set(sx, 0.55, 0.15);
-    g.add(stitch);
+    diag.position.set(0, 0.22, sz);
+    g.add(diag);
   }
 
-  // Encosto inclinável (45° sutil pra mostrar que é ajustável)
-  const back = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.55), benchPad);
-  back.position.set(0, 0.62, -0.32);
-  back.rotation.x = -Math.PI / 14; // levemente inclinado
-  back.castShadow = true;
-  g.add(back);
-
-  // Costura no encosto
-  for (const sx of [-0.13, 0.13]) {
-    const stitch = new THREE.Mesh(
-      new THREE.BoxGeometry(0.005, 0.122, 0.55),
-      stitchMat
+  // === POSTES VERTICAIS PRA BARBELL — só no LADO DA CABEÇA (-Z) ===
+  // 2 postes laterais altos com J-hooks segurando barbell carregada
+  const POST_X = 0.36;
+  const POST_H = 1.05;
+  const POST_Z = -BENCH_LEN / 2 - 0.1; // logo atrás da cabeça do atleta
+  for (const sx of [-POST_X, POST_X]) {
+    // Poste vertical
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, POST_H, 0.06),
+      STEEL_MAT
     );
-    stitch.position.set(sx, 0.62, -0.32);
-    stitch.rotation.x = -Math.PI / 14;
-    g.add(stitch);
-  }
-
-  // Postes verticais para hooks de barbell (lado de cima da cabeça)
-  for (const z of [-0.5, 0.5]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.15, 0.06), STEEL_MAT);
-    post.position.set(0.4, 0.6, z);
+    post.position.set(sx, POST_H / 2, POST_Z);
     post.castShadow = true;
     g.add(post);
-    // Furos de ajuste (decals canvas seria ideal, aqui simulamos com pequenas marcas)
-    for (let i = 0; i < 3; i++) {
-      const hole = new THREE.Mesh(
-        new THREE.SphereGeometry(0.012, 6, 4),
-        new THREE.MeshBasicMaterial({ color: 0x0a0a14 })
-      );
-      hole.position.set(0.4, 0.7 + i * 0.18, z);
-      g.add(hole);
-    }
+    // Sapata dos postes (bem larga, conectada à sapata da cabeça)
+    const postFoot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.05, 0.18),
+      STEEL_MAT
+    );
+    postFoot.position.set(sx, 0.025, POST_Z + 0.05);
+    g.add(postFoot);
+    // J-hook no topo (suporte da barbell — formato em U virado)
+    const hookBack = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.18, 0.05),
+      STEEL_MAT
+    );
+    hookBack.position.set(sx, POST_H - 0.04, POST_Z);
+    g.add(hookBack);
+    const hookSeat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.04, 0.16),
+      STEEL_MAT
+    );
+    hookSeat.position.set(sx, POST_H - 0.13, POST_Z + 0.06);
+    g.add(hookSeat);
   }
 
-  // J-hooks no topo dos postes pra apoiar barbell (visual subliminar)
-  for (const z of [-0.5, 0.5]) {
-    const hook = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, 0.12, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0x9aa3b0, roughness: 0.5, metalness: 0.6 })
+  // === BARBELL CARREGADA APOIADA NOS J-HOOKS ===
+  // Barra horizontal cromada cruzando os 2 postes
+  const BAR_Y = POST_H - 0.11;
+  const bar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, 2.2, 14),
+    CHROME_MAT
+  );
+  bar.rotation.z = Math.PI / 2;
+  bar.position.set(0, BAR_Y, POST_Z + 0.06);
+  bar.castShadow = true;
+  g.add(bar);
+
+  // Sleeves (parte mais grossa da barra onde anilhas vão)
+  for (const side of [-1, 1]) {
+    const sleeve = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, 0.4, 14),
+      STEEL_MAT
     );
-    hook.position.set(0.45, 1.1, z);
-    g.add(hook);
+    sleeve.rotation.z = Math.PI / 2;
+    sleeve.position.set(side * 0.95, BAR_Y, POST_Z + 0.06);
+    g.add(sleeve);
+  }
+
+  // Anilhas IWF nos sleeves (vermelha 25kg + azul 20kg de cada lado)
+  const platesPerSide = [
+    { color: 0xda291c, radius: 0.22, offset: 0.78 }, // 25kg
+    { color: 0x0057b8, radius: 0.2, offset: 0.86 }, // 20kg
+  ];
+  for (const side of [-1, 1]) {
+    for (const p of platesPerSide) {
+      const plate = new THREE.Mesh(
+        new THREE.CylinderGeometry(p.radius, p.radius, 0.05, 24),
+        new THREE.MeshStandardMaterial({
+          color: p.color,
+          roughness: 0.5,
+          metalness: 0.15,
+          emissive: p.color,
+          emissiveIntensity: 0.08,
+        })
+      );
+      plate.rotation.z = Math.PI / 2;
+      plate.position.set(side * p.offset, BAR_Y, POST_Z + 0.06);
+      plate.castShadow = true;
+      g.add(plate);
+    }
+    // Clamp na ponta
+    const clamp = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12),
+      STEEL_MAT
+    );
+    clamp.rotation.z = Math.PI / 2;
+    clamp.position.set(side * 1.06, BAR_Y, POST_Z + 0.06);
+    g.add(clamp);
   }
 
   return g;
@@ -2168,11 +2252,18 @@ export interface NPCProps {
   gender: "male" | "female" | "fluid";
   /** Inicial pra mostrar no peito (ex: "C", "B"). */
   initial: string;
+  /**
+   * Outfit profissional opcional — adiciona elementos visuais característicos:
+   *   "labcoat" → jaleco branco aberto sobre o top (Nutricionista)
+   *   "athletic" → muscle tank com listras + apito (Personal Trainer)
+   *   undefined → neutro (sem outfit extra)
+   */
+  outfit?: "labcoat" | "athletic";
 }
 
 export function buildNPC(props: NPCProps): NPCParts {
   const root = new THREE.Group();
-  const { skinHex, hairHex, topHex, shortsHex, gender, initial } = props;
+  const { skinHex, hairHex, topHex, shortsHex, gender, initial, outfit } = props;
 
   const skinMat = new THREE.MeshStandardMaterial({
     color: skinHex,
@@ -2356,6 +2447,110 @@ export function buildNPC(props: NPCProps): NPCParts {
   );
   hip.position.y = 1.0;
   body.add(hip);
+
+  // === OUTFIT EXTRA — jaleco (nutri) ou muscle tank (personal) ===
+  if (outfit === "labcoat") {
+    // Jaleco branco aberto — 2 panos laterais sobre o top + colar verde-claro
+    const coatMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.85,
+    });
+    const collarMat = new THREE.MeshStandardMaterial({
+      color: 0x43B02A,
+      roughness: 0.7,
+    });
+    // 2 abas frontais (lapelas) — caixas finas verticais nas laterais frontais
+    for (const sx of [-0.13, 0.13]) {
+      const lapel = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 0.62, 0.04),
+        coatMat
+      );
+      lapel.position.set(sx, 1.36, torsoR + 0.005);
+      lapel.castShadow = true;
+      body.add(lapel);
+    }
+    // Lateral esquerda + direita (forro)
+    for (const sx of [-1, 1]) {
+      const side = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.55, 0.36),
+        coatMat
+      );
+      side.position.set(sx * (torsoR + 0.02), 1.38, 0);
+      side.castShadow = true;
+      body.add(side);
+    }
+    // Colar verde
+    const collar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, 0.05, 0.2),
+      collarMat
+    );
+    collar.position.set(0, 1.66, torsoR * 0.6);
+    body.add(collar);
+    // Bolso esquerdo do jaleco com caneta verde (detalhe)
+    const pocket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.07, 0.005),
+      new THREE.MeshStandardMaterial({ color: 0xeaeaea, roughness: 0.85 })
+    );
+    pocket.position.set(-0.13, 1.22, torsoR + 0.018);
+    body.add(pocket);
+    const pen = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, 0.05, 0.014),
+      new THREE.MeshStandardMaterial({ color: 0x43B02A })
+    );
+    pen.position.set(-0.13, 1.245, torsoR + 0.025);
+    body.add(pen);
+  } else if (outfit === "athletic") {
+    // Muscle tank — top mais curto + listras laterais lime + cordão de apito
+    const limeStripe = new THREE.MeshStandardMaterial({
+      color: 0xD8FF2C,
+      roughness: 0.4,
+      metalness: 0.2,
+      emissive: 0xD8FF2C,
+      emissiveIntensity: 0.15,
+    });
+    // 2 listras laterais verticais sobre o top
+    for (const sx of [-1, 1]) {
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.55, 0.02),
+        limeStripe
+      );
+      stripe.position.set(sx * (torsoR - 0.02), 1.38, torsoR);
+      body.add(stripe);
+    }
+    // Logo PT no peito (texto canvas)
+    const ptCanvas = document.createElement("canvas");
+    ptCanvas.width = 256;
+    ptCanvas.height = 256;
+    const pctx = ptCanvas.getContext("2d")!;
+    pctx.clearRect(0, 0, 256, 256);
+    pctx.fillStyle = "#D8FF2C";
+    pctx.font = "900 130px Archivo Black, Inter, sans-serif";
+    pctx.textAlign = "center";
+    pctx.textBaseline = "middle";
+    pctx.fillText("PT", 128, 134);
+    const ptTex = new THREE.CanvasTexture(ptCanvas);
+    ptTex.colorSpace = THREE.SRGBColorSpace;
+    const ptBadge = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.16, 0.16),
+      new THREE.MeshBasicMaterial({ map: ptTex, transparent: true })
+    );
+    ptBadge.position.set(0.05, 1.55, torsoR + 0.006);
+    body.add(ptBadge);
+    // Apito (cilindro lime no peito esquerdo)
+    const whistleString = new THREE.Mesh(
+      new THREE.BoxGeometry(0.005, 0.3, 0.005),
+      new THREE.MeshStandardMaterial({ color: 0x141414 })
+    );
+    whistleString.position.set(-0.06, 1.5, torsoR + 0.01);
+    whistleString.rotation.z = 0.15;
+    body.add(whistleString);
+    const whistle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.04, 0.025),
+      new THREE.MeshStandardMaterial({ color: 0xc0c5cc, metalness: 0.7, roughness: 0.3 })
+    );
+    whistle.position.set(-0.1, 1.36, torsoR + 0.02);
+    body.add(whistle);
+  }
 
   root.add(body);
 
@@ -2590,9 +2785,19 @@ export interface SponsorBoothParts {
   hitBox: THREE.Mesh;
 }
 
-export function buildSponsorBooth(props: SponsorBoothProps): SponsorBoothParts {
+/**
+ * Theme do booth — adiciona props característicos no balcão:
+ *   "nutri"   → comidas saudáveis (maçã, banana, garrafa d'água) + placa "NUTRI"
+ *   "personal" → anilha de peso + cronômetro + placa "PERSONAL"
+ *   undefined → balcão limpo
+ */
+type BoothTheme = "nutri" | "personal";
+
+export function buildSponsorBooth(
+  props: SponsorBoothProps & { theme?: BoothTheme }
+): SponsorBoothParts {
   const g = new THREE.Group();
-  const { title, professional, accentHex, slotId } = props;
+  const { title, professional, accentHex, slotId, theme } = props;
   const isEmpty = professional == null;
   const accentColor = new THREE.Color(accentHex);
 
@@ -2682,9 +2887,12 @@ export function buildSponsorBooth(props: SponsorBoothProps): SponsorBoothParts {
   g.add(stripe);
 
   // === BANNER no topo (header com título + foto + nome) ===
+  // V16.1: banner mais BAIXO (1.0 em vez de 1.6) — antes ocluía a cabeça
+  // do NPC quando renderizado atrás do booth. Sign grande agora vai
+  // ACIMA do banner pra ainda dar identidade vertical.
   const bannerW = 1.7;
-  const bannerH = 1.6;
-  const bannerY = baseH + bannerH / 2 + 0.1;
+  const bannerH = 1.0;
+  const bannerY = baseH + bannerH / 2 + 0.6;
 
   // Posts (2 verticais segurando o banner) — agora com base alargada (sapata)
   for (const sx of [-bannerW / 2 - 0.05, bannerW / 2 + 0.05]) {
@@ -2797,6 +3005,241 @@ export function buildSponsorBooth(props: SponsorBoothProps): SponsorBoothParts {
   );
   banner.position.set(0, bannerY, 0.01);
   g.add(banner);
+
+  // === SIGN GIGANTE no topo da estrutura (NUTRI / PERSONAL / ANUNCIE) ===
+  // Painel vertical alto bem destacado, neon glow effect.
+  const signCanvas = document.createElement("canvas");
+  signCanvas.width = 1024;
+  signCanvas.height = 384;
+  const sctx = signCanvas.getContext("2d")!;
+  sctx.fillStyle = "#0a0a16";
+  sctx.fillRect(0, 0, 1024, 384);
+  // Borda lime
+  sctx.strokeStyle = accentHex;
+  sctx.lineWidth = 10;
+  sctx.strokeRect(8, 8, 1008, 368);
+  // Texto com glow neon
+  const signText =
+    theme === "nutri"
+      ? "NUTRI"
+      : theme === "personal"
+      ? "PERSONAL"
+      : isEmpty
+      ? "ANUNCIE"
+      : "PARCEIRO";
+  for (let glow = 0; glow < 3; glow++) {
+    sctx.shadowColor = accentHex;
+    sctx.shadowBlur = 40 - glow * 12;
+    sctx.fillStyle = accentHex;
+    sctx.font = "900 220px Archivo Black, Inter, sans-serif";
+    sctx.textAlign = "center";
+    sctx.textBaseline = "middle";
+    sctx.fillText(signText, 512, 192);
+  }
+  sctx.shadowBlur = 0;
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  signTex.colorSpace = THREE.SRGBColorSpace;
+  const signMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.0, 0.75),
+    new THREE.MeshBasicMaterial({ map: signTex, transparent: true })
+  );
+  const signY = baseH + bannerH + 1.0;
+  signMesh.position.set(0, signY, 0.02);
+  g.add(signMesh);
+  // Borda do sign em emissive (efeito letreiro)
+  const signBorderTop = new THREE.Mesh(
+    new THREE.BoxGeometry(2.05, 0.04, 0.05),
+    new THREE.MeshStandardMaterial({
+      color: accentColor,
+      emissive: accentColor,
+      emissiveIntensity: 1.5,
+    })
+  );
+  signBorderTop.position.set(0, signY + 0.4, 0.04);
+  g.add(signBorderTop);
+  const signBorderBot = signBorderTop.clone();
+  signBorderBot.position.y = signY - 0.4;
+  g.add(signBorderBot);
+
+  // === PROPS NO BALCÃO (theme-specific) ===
+  const counterTopY = baseH * 0.92 + 0.05; // y do tampo do balcão
+  if (theme === "nutri") {
+    // === Comidas saudáveis no balcão ===
+    // Maçã vermelha (cilindro + folha)
+    const apple = new THREE.Mesh(
+      new THREE.SphereGeometry(0.07, 12, 10),
+      new THREE.MeshStandardMaterial({ color: 0xda291c, roughness: 0.5, metalness: 0.05 })
+    );
+    apple.scale.set(1.0, 0.95, 1.0);
+    apple.position.set(-0.55, counterTopY + 0.07, 0.05);
+    apple.castShadow = true;
+    g.add(apple);
+    // Folha verde da maçã
+    const appleLeaf = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.005, 0.03),
+      new THREE.MeshStandardMaterial({ color: 0x43B02A })
+    );
+    appleLeaf.position.set(-0.55, counterTopY + 0.13, 0.05);
+    appleLeaf.rotation.z = 0.3;
+    g.add(appleLeaf);
+    // Cabinho da maçã
+    const appleStem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.005, 0.005, 0.025, 6),
+      new THREE.MeshStandardMaterial({ color: 0x4a3a1f })
+    );
+    appleStem.position.set(-0.55, counterTopY + 0.135, 0.05);
+    g.add(appleStem);
+
+    // Banana (cilindro curvo simulado por caixas)
+    const bananaMat = new THREE.MeshStandardMaterial({ color: 0xFFC72C, roughness: 0.6 });
+    for (let i = 0; i < 4; i++) {
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.04), bananaMat);
+      // Curva sutil de banana (Y descendo nos extremos)
+      const t = i / 3;
+      const curve = -Math.sin(t * Math.PI) * 0.015;
+      seg.position.set(-0.3 + i * 0.04, counterTopY + 0.04 - curve, 0.05);
+      seg.castShadow = true;
+      g.add(seg);
+    }
+
+    // Garrafa d'água (cilindro alto azul translúcido + tampa)
+    const bottleBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.045, 0.22, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0x80c0ff,
+        transparent: true,
+        opacity: 0.5,
+        roughness: 0.2,
+        metalness: 0.1,
+      })
+    );
+    bottleBody.position.set(0.1, counterTopY + 0.11, 0.05);
+    bottleBody.castShadow = true;
+    g.add(bottleBody);
+    const bottleCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, 0.03, 10),
+      new THREE.MeshStandardMaterial({ color: 0x0057B8 })
+    );
+    bottleCap.position.set(0.1, counterTopY + 0.235, 0.05);
+    g.add(bottleCap);
+    // Label da garrafa (faixa lime)
+    const bottleLabel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.082, 0.06, 0.001),
+      new THREE.MeshBasicMaterial({ color: accentColor })
+    );
+    bottleLabel.position.set(0.1, counterTopY + 0.1, 0.094);
+    g.add(bottleLabel);
+
+    // Tablet/prancheta com plano alimentar (canvas)
+    const tabletBg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, 0.02, 0.22),
+      new THREE.MeshStandardMaterial({ color: 0xeaeaea, roughness: 0.5 })
+    );
+    tabletBg.position.set(0.45, counterTopY + 0.02, 0.05);
+    g.add(tabletBg);
+    // Linhas escritas (papel com plano)
+    for (let i = 0; i < 4; i++) {
+      const line = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.001, 0.005),
+        new THREE.MeshBasicMaterial({ color: 0x5a5a64 })
+      );
+      line.position.set(0.45, counterTopY + 0.031, -0.04 + i * 0.04);
+      g.add(line);
+    }
+    // Logo lime do plano
+    const tabletLogo = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.001, 0.04),
+      new THREE.MeshBasicMaterial({ color: accentColor })
+    );
+    tabletLogo.position.set(0.55, counterTopY + 0.031, 0.07);
+    g.add(tabletLogo);
+  } else if (theme === "personal") {
+    // === Equipamento de personal no balcão ===
+    // Anilha 10kg verde no balcão (deitada)
+    const platMat = new THREE.MeshStandardMaterial({
+      color: 0x43B02A,
+      roughness: 0.5,
+      metalness: 0.15,
+      emissive: 0x43B02A,
+      emissiveIntensity: 0.05,
+    });
+    const plate = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.16, 0.16, 0.03, 24),
+      platMat
+    );
+    plate.position.set(-0.55, counterTopY + 0.015, 0.0);
+    plate.castShadow = true;
+    g.add(plate);
+    // "10" texto na anilha
+    const plateLabel = document.createElement("canvas");
+    plateLabel.width = 128;
+    plateLabel.height = 128;
+    const plctx = plateLabel.getContext("2d")!;
+    plctx.fillStyle = "#01002A";
+    plctx.font = "900 70px Archivo Black, Inter, sans-serif";
+    plctx.textAlign = "center";
+    plctx.textBaseline = "middle";
+    plctx.fillText("10", 64, 64);
+    const plateTex = new THREE.CanvasTexture(plateLabel);
+    plateTex.colorSpace = THREE.SRGBColorSpace;
+    const plateText = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.18, 0.18),
+      new THREE.MeshBasicMaterial({ map: plateTex, transparent: true })
+    );
+    plateText.rotation.x = -Math.PI / 2;
+    plateText.position.set(-0.55, counterTopY + 0.032, 0.0);
+    g.add(plateText);
+
+    // Cronômetro digital (caixa preta com display lime)
+    const timer = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.06, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.5 })
+    );
+    timer.position.set(0.0, counterTopY + 0.03, 0.0);
+    timer.castShadow = true;
+    g.add(timer);
+    // Display do timer (canvas)
+    const timerCanvas = document.createElement("canvas");
+    timerCanvas.width = 256;
+    timerCanvas.height = 96;
+    const tmctx = timerCanvas.getContext("2d")!;
+    tmctx.fillStyle = "#0a0a14";
+    tmctx.fillRect(0, 0, 256, 96);
+    tmctx.fillStyle = accentHex;
+    tmctx.font = "900 70px Archivo Black, Inter, sans-serif";
+    tmctx.textAlign = "center";
+    tmctx.textBaseline = "middle";
+    tmctx.fillText("01:42", 128, 48);
+    const timerTex = new THREE.CanvasTexture(timerCanvas);
+    timerTex.colorSpace = THREE.SRGBColorSpace;
+    const timerScreen = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.13, 0.05),
+      new THREE.MeshBasicMaterial({ map: timerTex })
+    );
+    timerScreen.position.set(0.0, counterTopY + 0.03, 0.052);
+    g.add(timerScreen);
+
+    // Resistance band enrolada (toroide laranja)
+    const band = new THREE.Mesh(
+      new THREE.TorusGeometry(0.08, 0.012, 8, 18),
+      new THREE.MeshStandardMaterial({ color: 0xff6020, roughness: 0.7 })
+    );
+    band.rotation.x = Math.PI / 2;
+    band.position.set(0.4, counterTopY + 0.02, 0.05);
+    g.add(band);
+    const band2 = band.clone();
+    band2.position.y = counterTopY + 0.04;
+    band2.rotation.z = 0.3;
+    g.add(band2);
+
+    // Apito branco no balcão
+    const whistle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.025, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0xc0c5cc, metalness: 0.7, roughness: 0.3 })
+    );
+    whistle.position.set(0.6, counterTopY + 0.015, 0.05);
+    g.add(whistle);
+  }
 
   // Hit-box pro raycast (todo o booth)
   const hitBox = new THREE.Mesh(
