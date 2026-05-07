@@ -687,31 +687,34 @@ export default function VirtualGym({
     scene.add(platform);
     // Plataforma é baixa (6cm), avatar pisa em cima.
 
-    // FLOOR MARKING — caminho central convidativo (lane lime sutil)
+    // FLOOR MARKING — caminho central com track lights (lime mais visível)
+    // V16.7 cycle 11: opacity 0.06 → 0.15 + 2 linhas laterais marcando o aisle
     const aisle = new THREE.Mesh(
       new THREE.PlaneGeometry(2.2, ROOM_D - 3),
       new THREE.MeshBasicMaterial({
         color: accentColor,
         transparent: true,
-        opacity: 0.06,
+        opacity: 0.15,
       })
     );
     aisle.rotation.x = -Math.PI / 2;
     aisle.position.set(0, 0.003, -1);
     scene.add(aisle);
 
-    // Linha fina lime no centro do aisle
-    const aisleLine = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.05, ROOM_D - 3),
-      new THREE.MeshBasicMaterial({
-        color: accentColor,
-        transparent: true,
-        opacity: 0.4,
-      })
-    );
-    aisleLine.rotation.x = -Math.PI / 2;
-    aisleLine.position.set(0, 0.005, -1);
-    scene.add(aisleLine);
+    // Linha central + 2 laterais marcando os limites do aisle
+    for (const lx of [-1.1, 0, 1.1]) {
+      const aisleLine = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.06, ROOM_D - 3),
+        new THREE.MeshBasicMaterial({
+          color: accentColor,
+          transparent: true,
+          opacity: lx === 0 ? 0.6 : 0.7,
+        })
+      );
+      aisleLine.rotation.x = -Math.PI / 2;
+      aisleLine.position.set(lx, 0.005, -1);
+      scene.add(aisleLine);
+    }
 
     // === SPONSOR BOOTHS (entrada) ==================================
     // 3 kiosks comerciais perto da entrada — Nutricionista + Personal
@@ -1527,10 +1530,13 @@ export default function VirtualGym({
       // Atualiza tela do projetor da sala de Reels
       drawProjectorScreen(t, activeReelRef.current);
 
-      // Anima NPCs (idle bob na cabeça + leve sway)
+      // V16.7 cycle 12: NPC anim mais visível — bob 4x maior + sway 2x
+      // Bug: head.position.y absoluto era 2.05, somando 0.025 dá pouco efeito.
+      // Agora bob de 0.1 (10cm vai pra cima/baixo) + tilt da cabeça.
       for (const npc of npcAnimRefs) {
-        npc.head.position.y = Math.sin(t * 1.4 + npc.phase) * 0.025;
-        npc.body.rotation.y = Math.sin(t * 0.7 + npc.phase) * 0.04;
+        npc.head.position.y = 2.05 + Math.sin(t * 1.4 + npc.phase) * 0.08;
+        npc.head.rotation.z = Math.sin(t * 0.9 + npc.phase) * 0.05;
+        npc.body.rotation.y = Math.sin(t * 0.7 + npc.phase) * 0.08;
       }
 
       // Anima chama do streak pillar (flicker + scale pulse)
