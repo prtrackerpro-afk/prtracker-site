@@ -128,6 +128,12 @@ interface Props {
   initialLayout?: GymLayout | null;
   /** XP total acumulado do atleta. */
   xpTotal?: number;
+  /**
+   * Visit mode (V16): quando true, atleta está visitando ginásio de outro.
+   * Desabilita modais de edição (skills/runs save), customização de avatar,
+   * editor link. Mostra header "VISITANDO".
+   */
+  visitMode?: boolean;
 }
 
 export default function VirtualGym({
@@ -139,6 +145,7 @@ export default function VirtualGym({
   runs = {},
   initialLayout = null,
   xpTotal = 0,
+  visitMode = false,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
@@ -219,6 +226,7 @@ export default function VirtualGym({
   }
 
   async function saveSkill(skillId: SkillId, reps: number) {
+    if (visitMode) return; // visita não escreve nada
     // Optimistic local update — só substitui se for melhor
     const current = skillsLocal[skillId] ?? 0;
     if (reps <= current) return;
@@ -239,6 +247,7 @@ export default function VirtualGym({
   }
 
   async function saveRun(distance: RunDistance, timeSec: number) {
+    if (visitMode) return; // visita não escreve nada
     const current = runsLocal[distance];
     if (current != null && timeSec >= current) return;
     setRunsLocal((prev) => ({ ...prev, [distance]: timeSec }));
@@ -1269,10 +1278,10 @@ export default function VirtualGym({
           cameraShake.trigger(0.04, 0.15);
         } else if (obj?.userData.kind === "skills-board") {
           playClick();
-          setSkillsModalOpen(true);
+          if (!visitMode) setSkillsModalOpen(true);
         } else if (obj?.userData.kind === "run-board") {
           playClick();
-          setRunsModalOpen(true);
+          if (!visitMode) setRunsModalOpen(true);
         }
       }
     };
@@ -1642,14 +1651,16 @@ export default function VirtualGym({
         >
           🎬 Reels
         </button>
-        <button
-          type="button"
-          onClick={() => setCustomOpen(true)}
-          className="text-[10px] uppercase tracking-widest font-display rounded-full border border-white/30 bg-navy-900/80 text-white px-3 py-1.5 hover:border-brand-lime hover:text-brand-lime transition"
-          aria-label="Customizar avatar"
-        >
-          👤 Avatar
-        </button>
+        {!visitMode && (
+          <button
+            type="button"
+            onClick={() => setCustomOpen(true)}
+            className="text-[10px] uppercase tracking-widest font-display rounded-full border border-white/30 bg-navy-900/80 text-white px-3 py-1.5 hover:border-brand-lime hover:text-brand-lime transition"
+            aria-label="Customizar avatar"
+          >
+            👤 Avatar
+          </button>
+        )}
       </div>
 
       {/* Joystick */}

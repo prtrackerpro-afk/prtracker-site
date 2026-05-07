@@ -19,6 +19,20 @@ const { data: feed = [] } = await supabase.rpc("pr_friend_feed", {
   p_before_iso: null,
 });
 
+// V16: Gym Rats — frequência de treino dos amigos nos últimos 7 dias.
+const { data: gymRats = [] } = await supabase.rpc("pr_friends_workout_frequency", {
+  p_days: 7,
+});
+
+interface GymRatRow {
+  user_id: string;
+  display_name: string | null;
+  instagram_handle: string | null;
+  workout_days: number;
+  last_workout_date: string;
+}
+const ratRows = (gymRats ?? []) as GymRatRow[];
+
 interface FeedRow {
   record_id: string;
   user_id: string;
@@ -89,6 +103,64 @@ function fmtRelative(iso: string): string {
     </div>
 
     <main class="max-w-2xl mx-auto px-4">
+      {/* V16: Gym Rats — frequência semanal dos amigos */}
+      {ratRows.length > 0 && (
+        <section class="mb-4 rounded-2xl border border-orange-500/40 bg-orange-500/5 p-3">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <div class="text-[10px] uppercase tracking-[0.3em] text-orange-300">
+                🔥 GYM RATS
+              </div>
+              <div class="text-xs text-navy-300">
+                Amigos com mais treinos essa semana
+              </div>
+            </div>
+            <span class="text-[10px] text-navy-400">7 dias</span>
+          </div>
+          <ul class="space-y-1.5">
+            {ratRows.slice(0, 5).map((rat, i) => {
+              const isHot = rat.workout_days >= 5;
+              const isWarm = rat.workout_days >= 3;
+              const fireColor = isHot ? "#ff44aa" : isWarm ? "#ff8030" : "#ffa050";
+              return (
+                <li
+                  class="flex items-center gap-2.5 rounded-lg bg-navy-900/40 border border-navy-700 px-3 py-2"
+                  style={i === 0 ? `border-color: ${fireColor}66; background: ${fireColor}10` : ""}
+                >
+                  <span class="text-base flex-shrink-0">
+                    {i === 0 ? "👑" : i + 1 + "."}
+                  </span>
+                  <a
+                    href={rat.instagram_handle ? `/pr/gym/${rat.instagram_handle}` : "#"}
+                    class="flex-1 min-w-0 hover:text-brand-lime transition"
+                  >
+                    <div class="text-sm font-semibold truncate">
+                      {rat.display_name ?? "Atleta"}
+                    </div>
+                    {rat.instagram_handle && (
+                      <div class="text-[10px] text-navy-300 truncate">
+                        @{rat.instagram_handle}
+                      </div>
+                    )}
+                  </a>
+                  <div class="text-right flex-shrink-0">
+                    <div
+                      class="font-display text-base tabular-nums leading-none"
+                      style={`color: ${fireColor}`}
+                    >
+                      {rat.workout_days}
+                    </div>
+                    <div class="text-[9px] uppercase tracking-widest text-navy-300 leading-none mt-0.5">
+                      {rat.workout_days === 1 ? "dia" : "dias"}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {rows.length === 0 ? (
         <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-8 text-center">
           <div class="text-3xl mb-2">👀</div>
@@ -105,14 +177,27 @@ function fmtRelative(iso: string): string {
             <li class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4">
               <div class="flex items-baseline justify-between gap-2 mb-2">
                 <div class="min-w-0">
-                  <div class="font-semibold truncate">
-                    {row.display_name ?? "Atleta"}
-                    {row.user_id === athlete.userId && (
-                      <span class="text-[10px] text-brand-lime ml-1.5">VOCÊ</span>
-                    )}
-                  </div>
-                  {row.instagram_handle && (
-                    <div class="text-[11px] text-navy-300 truncate">@{row.instagram_handle}</div>
+                  {row.instagram_handle && row.user_id !== athlete.userId ? (
+                    <a
+                      href={`/pr/gym/${row.instagram_handle}`}
+                      class="block hover:text-brand-lime transition"
+                      title="Visitar ginásio"
+                    >
+                      <div class="font-semibold truncate">{row.display_name ?? "Atleta"}</div>
+                      <div class="text-[11px] text-navy-300 truncate">@{row.instagram_handle}</div>
+                    </a>
+                  ) : (
+                    <>
+                      <div class="font-semibold truncate">
+                        {row.display_name ?? "Atleta"}
+                        {row.user_id === athlete.userId && (
+                          <span class="text-[10px] text-brand-lime ml-1.5">VOCÊ</span>
+                        )}
+                      </div>
+                      {row.instagram_handle && (
+                        <div class="text-[11px] text-navy-300 truncate">@{row.instagram_handle}</div>
+                      )}
+                    </>
                   )}
                 </div>
                 <div class="text-[10px] text-navy-300 flex-shrink-0">{fmtRelative(row.created_at)}</div>
