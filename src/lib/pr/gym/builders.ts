@@ -185,20 +185,29 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
     // V16.8 cycle 64: hair caps mais CURTOS (não cobrem olhos) + posição
     // mais alta. Antes π/1.65 (109°) cobria abaixo da linha dos olhos.
     if (prefs.hairStyle === "short") {
+      // Cap mais robusto + franja na frente (sem cobrir olhos)
       const capGeom = new THREE.SphereGeometry(
-        headR + 0.02,
+        headR + 0.025,
         32,
         24,
         0,
         Math.PI * 2,
         0,
-        Math.PI / 2.4 // ~75° (era 109°)
+        Math.PI / 2.1 // ~85° — cobre top + sides + back (sem cair na face)
       );
       const cap = new THREE.Mesh(capGeom, hairMat);
       cap.scale.set(1.0, 1.08, 1.0);
-      cap.position.y = 0.04;
+      cap.position.y = 0.02;
       cap.castShadow = true;
       head.add(cap);
+      // Franja sutil na frente da testa
+      const fringe = new THREE.Mesh(
+        new THREE.BoxGeometry(headR * 1.4, headR * 0.2, headR * 0.5),
+        hairMat
+      );
+      fringe.position.set(0, headR * 0.55, headR * 0.6);
+      fringe.rotation.x = -0.15;
+      head.add(fringe);
     } else if (prefs.hairStyle === "long") {
       const capGeom = new THREE.SphereGeometry(
         headR + 0.025,
