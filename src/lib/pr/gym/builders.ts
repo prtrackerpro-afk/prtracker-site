@@ -2268,11 +2268,13 @@ export interface NPCProps {
    *   undefined → neutro (sem outfit extra)
    */
   outfit?: "labcoat" | "athletic";
+  /** Name tag flutuante acima da cabeça (ex: "CAMILA · NUTRI"). */
+  nameTag?: string;
 }
 
 export function buildNPC(props: NPCProps): NPCParts {
   const root = new THREE.Group();
-  const { skinHex, hairHex, topHex, shortsHex, gender, initial, outfit } = props;
+  const { skinHex, hairHex, topHex, shortsHex, gender, initial, outfit, nameTag } = props;
 
   // V16.3: emissive AGRESSIVO (era 0.35, agora 0.7) pra cabeça ficar
   // visível mesmo em zona escura. Trade-off: NPC parece "fluorescente"
@@ -2405,6 +2407,41 @@ export function buildNPC(props: NPCProps): NPCParts {
   // Posição da cabeça — y=2.05 acima do torso (head maior precisa mais alto)
   head.position.y = 2.05;
   root.add(head);
+
+  // V16.7 cycle 28: name tag flutuante acima da cabeça (canvas)
+  if (nameTag) {
+    const tagCanvas = document.createElement("canvas");
+    tagCanvas.width = 512;
+    tagCanvas.height = 96;
+    const tctx = tagCanvas.getContext("2d")!;
+    tctx.clearRect(0, 0, 512, 96);
+    // Fundo arredondado escuro
+    tctx.fillStyle = "rgba(1,0,42,0.85)";
+    tctx.beginPath();
+    tctx.roundRect(6, 6, 500, 84, 18);
+    tctx.fill();
+    tctx.strokeStyle = "#D8FF2C";
+    tctx.lineWidth = 3;
+    tctx.beginPath();
+    tctx.roundRect(6, 6, 500, 84, 18);
+    tctx.stroke();
+    // Texto
+    tctx.fillStyle = "#D8FF2C";
+    tctx.font = "900 44px Archivo Black, Inter, sans-serif";
+    tctx.textAlign = "center";
+    tctx.textBaseline = "middle";
+    tctx.fillText(nameTag.toUpperCase(), 256, 50);
+    const tagTex = new THREE.CanvasTexture(tagCanvas);
+    tagTex.colorSpace = THREE.SRGBColorSpace;
+    const tag = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.0, 0.18),
+      new THREE.MeshBasicMaterial({ map: tagTex, transparent: true })
+    );
+    tag.position.y = 2.7; // bem acima da cabeça
+    // Billboard via renderer (ou rotacionar pela camera). Pra simplicidade
+    // deixo orientado pra +z (player se aproxima de +z direction)
+    root.add(tag);
+  }
 
   // === TORSO + INITIAL ===
   const body = new THREE.Group();
