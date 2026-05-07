@@ -185,7 +185,6 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
     // V16.8 cycle 64: hair caps mais CURTOS (não cobrem olhos) + posição
     // mais alta. Antes π/1.65 (109°) cobria abaixo da linha dos olhos.
     if (prefs.hairStyle === "short") {
-      // Cap mais robusto + franja na frente (sem cobrir olhos)
       const capGeom = new THREE.SphereGeometry(
         headR + 0.025,
         32,
