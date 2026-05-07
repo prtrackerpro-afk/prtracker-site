@@ -1286,31 +1286,104 @@ export function buildDumbbellRack(): THREE.Group {
 }
 
 function buildDumbbell(headRadius: number): THREE.Group {
+  // V16.8 cycles 138-139: hex dumbbell com knurling no handle (textura
+  // canvas) + cabecas hex visiveis com cor ferro fosco. Handle mais curto
+  // (0.32 → 0.26) pra match com hex dumbbell real (~12 polegadas).
   const g = new THREE.Group();
+  // Knurling texture pro handle
+  const knurlCanvas = document.createElement("canvas");
+  knurlCanvas.width = 64;
+  knurlCanvas.height = 64;
+  const kctx = knurlCanvas.getContext("2d")!;
+  kctx.fillStyle = "#444";
+  kctx.fillRect(0, 0, 64, 64);
+  kctx.strokeStyle = "#222";
+  kctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    kctx.beginPath();
+    kctx.moveTo(i * 6, 0);
+    kctx.lineTo(i * 6 + 32, 64);
+    kctx.stroke();
+    kctx.beginPath();
+    kctx.moveTo(i * 6 + 32, 0);
+    kctx.lineTo(i * 6, 64);
+    kctx.stroke();
+  }
+  const knurlTex = new THREE.CanvasTexture(knurlCanvas);
+  knurlTex.colorSpace = THREE.SRGBColorSpace;
+  knurlTex.wrapS = THREE.RepeatWrapping;
+  knurlTex.repeat.set(8, 1);
+  const handleMat = new THREE.MeshStandardMaterial({
+    map: knurlTex,
+    roughness: 0.55,
+    metalness: 0.65,
+  });
   const handle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.018, 0.32, 8),
-    CHROME_MAT
+    new THREE.CylinderGeometry(0.018, 0.018, 0.26, 10),
+    handleMat
   );
   handle.rotation.z = Math.PI / 2;
   g.add(handle);
+  // Hex heads (ferro fosco escuro com knurling sutil)
+  const headMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a1f,
+    roughness: 0.65,
+    metalness: 0.55,
+  });
   for (const side of [-1, 1]) {
     const head = new THREE.Mesh(
       new THREE.CylinderGeometry(headRadius, headRadius, 0.13, 6),
-      RUBBER_MAT
+      headMat
     );
     head.rotation.z = Math.PI / 2;
-    head.position.set(side * 0.18, 0, 0);
+    head.position.set(side * 0.15, 0, 0);
     head.castShadow = true;
     g.add(head);
+    // Brand "PR" pequena na face
+    const brandCanvas = document.createElement("canvas");
+    brandCanvas.width = 128;
+    brandCanvas.height = 128;
+    const bctx = brandCanvas.getContext("2d")!;
+    bctx.clearRect(0, 0, 128, 128);
+    bctx.fillStyle = "#D8FF2C";
+    bctx.font = "900 36px Archivo Black, Inter, sans-serif";
+    bctx.textAlign = "center";
+    bctx.textBaseline = "middle";
+    bctx.fillText("PR", 64, 64);
+    const brandTex = new THREE.CanvasTexture(brandCanvas);
+    brandTex.colorSpace = THREE.SRGBColorSpace;
+    const brand = new THREE.Mesh(
+      new THREE.PlaneGeometry(headRadius * 1.4, headRadius * 1.4),
+      new THREE.MeshBasicMaterial({ map: brandTex, transparent: true })
+    );
+    brand.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+    brand.position.set(side * (0.15 + 0.07), 0, 0);
+    g.add(brand);
   }
   return g;
 }
 
 export function buildKettlebell(scale: number): THREE.Group {
+  // V16.8 cycles 136-137: KB com cor competition (mapeada por scale aproximado)
+  // 8kg=rosa, 12kg=azul, 16kg=amarelo, 20kg=roxo, 24kg=verde, 32kg=vermelho
   const g = new THREE.Group();
+  // Aproximacao da cor IKFF competition por tamanho
+  let color = 0x141420;
+  if (scale < 0.13) color = 0xff66aa;       // 8kg pink
+  else if (scale < 0.16) color = 0x0057b8;  // 12kg blue
+  else if (scale < 0.19) color = 0xffc72c;  // 16kg yellow
+  else if (scale < 0.22) color = 0x6a3da3;  // 20kg purple
+  else if (scale < 0.25) color = 0x43b02a;  // 24kg green
+  else color = 0xda291c;                     // 32kg+ red
   const body = new THREE.Mesh(
     new THREE.SphereGeometry(scale, 16, 12),
-    new THREE.MeshStandardMaterial({ color: 0x141420, roughness: 0.5, metalness: 0.4 })
+    new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.55,
+      metalness: 0.25,
+      emissive: color,
+      emissiveIntensity: 0.08,
+    })
   );
   body.position.y = scale;
   body.castShadow = true;
