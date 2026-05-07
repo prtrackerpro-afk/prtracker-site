@@ -69,6 +69,43 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
     setLayout(loadLayout());
   }, []);
 
+  /** Rotação em snap de 45° (π/4). dir=+1 horário, -1 anti-horário. */
+  function rotateSelected(dir: 1 | -1 = 1) {
+    if (!selected) return;
+    const obj = layout.objects.find((o) => o.id === selected);
+    if (!obj) return;
+    const STEP = Math.PI / 4;
+    let next = obj.rot + dir * STEP;
+    // Normaliza pra [-π, π]
+    while (next > Math.PI) next -= 2 * Math.PI;
+    while (next < -Math.PI) next += 2 * Math.PI;
+    // Snap pra múltiplo exato de 45°
+    next = Math.round(next / STEP) * STEP;
+    const updated = updateObject(layout, selected, { rot: next });
+    setLayout(updated);
+    saveLayout(updated);
+    setSavedAt(Date.now());
+  }
+
+  /** Tecla R rotaciona selecionado (Shift+R = anti-horário). */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!selected) return;
+      // Ignora se está num input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        rotateSelected(e.shiftKey ? -1 : 1);
+      } else if (e.key === "Escape") {
+        setSelected(null);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, layout]);
+
   /** Converte um pointer event pra coordenadas do gym (metros). */
   function pointerToGym(e: React.PointerEvent | PointerEvent): { x: number; z: number } {
     const svg = svgRef.current;
@@ -159,10 +196,22 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
         </div>
       </div>
 
-      {/* Aviso V2 */}
+      {/* Aviso + atalhos */}
       <div className="rounded-lg border border-brand-lime/30 bg-brand-lime/5 p-3 text-xs text-brand-lime/90">
-        🎯 Arrasta os objetos pra reorganizar o ginásio. Snap de 50cm. Salva automático.
+        🎯 Arrasta pra reposicionar (snap 50cm). Selecionado:
+        {" "}<kbd className="px-1 py-0.5 rounded bg-navy-900 border border-navy-600 font-mono">R</kbd> gira 45°,
+        {" "}<kbd className="px-1 py-0.5 rounded bg-navy-900 border border-navy-600 font-mono">Shift+R</kbd> anti-horário,
+        {" "}<kbd className="px-1 py-0.5 rounded bg-navy-900 border border-navy-600 font-mono">Esc</kbd> deseleciona.
       </div>
+
+      {/* Painel do objeto selecionado */}
+      {selected && (
+        <SelectedPanel
+          obj={layout.objects.find((o) => o.id === selected)!}
+          onRotate={(dir) => rotateSelected(dir)}
+          onDeselect={() => setSelected(null)}
+        />
+      )}
 
       {/* Canvas SVG */}
       <div className="rounded-2xl overflow-hidden border border-navy-700 bg-navy-900 p-2 select-none touch-none">
@@ -308,6 +357,63 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Painel flutuante mostrando objeto selecionado + ações de rotação.
+ * Aparece logo acima do canvas SVG.
+ */
+function SelectedPanel({
+  obj,
+  onRotate,
+  onDeselect,
+}: {
+  obj: GymObject;
+  onRotate: (dir: 1 | -1) => void;
+  onDeselect: () => void;
+}) {
+  const meta = OBJECT_META[obj.type];
+  const rotDeg = Math.round((obj.rot * 180) / Math.PI);
+  return (
+    <div className="rounded-lg border border-brand-lime/40 bg-brand-lime/10 p-3 flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex items-center gap-2 text-xs">
+        <span
+          className="inline-block w-3 h-3 rounded-sm"
+          style={{ background: meta.color }}
+        />
+        <span className="font-semibold text-brand-lime">{meta.label}</span>
+        <span className="text-navy-300">
+          x={obj.x.toFixed(1)}m · z={obj.z.toFixed(1)}m · {rotDeg}°
+        </span>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onRotate(-1)}
+          className="text-xs border border-navy-600 text-navy-200 rounded px-2 py-1 hover:border-brand-lime hover:text-brand-lime"
+          aria-label="Girar anti-horário"
+        >
+          ↺ -45°
+        </button>
+        <button
+          type="button"
+          onClick={() => onRotate(1)}
+          className="text-xs border border-navy-600 text-navy-200 rounded px-2 py-1 hover:border-brand-lime hover:text-brand-lime"
+          aria-label="Girar horário"
+        >
+          ↻ +45°
+        </button>
+        <button
+          type="button"
+          onClick={onDeselect}
+          className="text-xs text-navy-400 hover:text-white px-2"
+          aria-label="Deselecionar"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
