@@ -2075,7 +2075,7 @@ export default function VirtualGym({
           onClick={() => setSelectedProType(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-brand-lime/40 bg-navy-900 shadow-2xl overflow-hidden"
+            className="w-full max-w-lg rounded-2xl border-2 border-brand-lime/50 bg-navy-900 shadow-2xl shadow-brand-lime/15 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-navy-700">
@@ -2422,7 +2422,7 @@ export default function VirtualGym({
           onClick={() => setCustomOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-brand-lime/30 bg-navy-900 shadow-2xl overflow-hidden"
+            className="w-full max-w-md rounded-2xl border-2 border-brand-lime/40 bg-navy-900 shadow-2xl shadow-brand-lime/10 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-navy-700">
@@ -2593,7 +2593,7 @@ function XpBreakdownModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-fuchsia-500/40 bg-navy-900 shadow-2xl overflow-hidden"
+        className="w-full max-w-md rounded-2xl border-2 border-fuchsia-500/50 bg-navy-900 shadow-2xl shadow-fuchsia-500/15 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-navy-700">
@@ -2759,7 +2759,7 @@ function SkillsModal({ skills, onClose, onSave }: SkillsModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl border border-brand-lime/40 bg-navy-900 shadow-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-2xl border-2 border-brand-lime/50 bg-navy-900 shadow-2xl shadow-brand-lime/15 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-navy-700">
@@ -2922,7 +2922,7 @@ function RunsModal({ runs, onClose, onSave }: RunsModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl border border-brand-lime/40 bg-navy-900 shadow-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-2xl border-2 border-brand-lime/50 bg-navy-900 shadow-2xl shadow-brand-lime/15 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-navy-700">
