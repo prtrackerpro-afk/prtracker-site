@@ -23,7 +23,8 @@ const today = new Date().toISOString().slice(0, 10);
     </header>
 
     <main class="max-w-md mx-auto px-4">
-      <h1 class="text-2xl font-semibold tracking-tight mb-1">Registrar PR</h1>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">NOVO RECORDE</div>
+      <h1 class="font-display text-3xl tracking-tight mb-2 text-white">Registrar PR</h1>
       <p class="text-sm text-navy-300 mb-6">
         Logue só o que importa — não é diário de treino.
       </p>
@@ -86,9 +87,9 @@ const today = new Date().toISOString().slice(0, 10);
         <button
           type="submit"
           id="submit-btn"
-          class="w-full rounded-lg bg-brand-lime px-4 py-3 text-sm font-semibold text-navy-900 hover:opacity-90 transition disabled:opacity-50"
+          class="w-full rounded-lg bg-brand-lime px-4 py-4 text-base font-display font-bold text-navy-900 hover:opacity-90 hover:scale-[1.02] transition disabled:opacity-50 shadow-lg shadow-brand-lime/30"
         >
-          Salvar PR
+          🏆 Salvar PR
         </button>
 
         <div id="error-msg" class="text-sm text-red-400 hidden"></div>
