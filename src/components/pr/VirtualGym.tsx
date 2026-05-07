@@ -1526,9 +1526,15 @@ export default function VirtualGym({
       // V16.7 cycle 25: anima dust particles — descem lentamente + sway
       const dustPosArr = dustGeometry.attributes.position!.array as Float32Array;
       for (let i = 0; i < dustCount; i++) {
-        dustPosArr[i * 3] += dustVelocities[i * 3]! * dt * (1 + Math.sin(t * 0.3 + i) * 0.3);
-        dustPosArr[i * 3 + 1] += dustVelocities[i * 3 + 1]! * dt;
-        dustPosArr[i * 3 + 2] += dustVelocities[i * 3 + 2]! * dt;
+        const vx = dustVelocities[i * 3] ?? 0;
+        const vy = dustVelocities[i * 3 + 1] ?? -0.04;
+        const vz = dustVelocities[i * 3 + 2] ?? 0;
+        const px = dustPosArr[i * 3] ?? 0;
+        const py = dustPosArr[i * 3 + 1] ?? 0;
+        const pz = dustPosArr[i * 3 + 2] ?? 0;
+        dustPosArr[i * 3] = px + vx * dt * (1 + Math.sin(t * 0.3 + i) * 0.3);
+        dustPosArr[i * 3 + 1] = py + vy * dt;
+        dustPosArr[i * 3 + 2] = pz + vz * dt;
         // Reset quando cair abaixo do chão
         if (dustPosArr[i * 3 + 1]! < 0.2) {
           dustPosArr[i * 3 + 1] = 6.5;
