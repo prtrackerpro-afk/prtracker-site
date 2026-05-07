@@ -1774,7 +1774,7 @@ export function buildRunBoard(accentHex: string, slots: RunSlot[]): RunBoardPart
   tctx.shadowBlur = 0;
   tctx.fillStyle = "#9ca3af";
   tctx.font = "500 56px Inter, sans-serif";
-  tctx.fillText("Toque pra registrar seu tempo", 1024, 280);
+  tctx.fillText("Recordes Pessoais", 1024, 280);
   const titleTex = new THREE.CanvasTexture(titleCanvas);
   titleTex.colorSpace = THREE.SRGBColorSpace;
   const title = new THREE.Mesh(
@@ -2466,6 +2466,364 @@ export function buildSquatRack(accentHex: string): THREE.Group {
   const barbell = buildLoadedBarbell();
   barbell.position.set(0, 1.65, 0.05);
   g.add(barbell);
+
+  return g;
+}
+
+// =================================================================
+// V15 — equipamentos extras pra editor: treadmill, assault bike,
+// rowing machine, cable machine. Geometria simplificada mas
+// reconhecível à distância.
+// =================================================================
+
+/** Esteira ergométrica — base larga + console vertical na frente. */
+export function buildTreadmill(accentHex: string): THREE.Group {
+  const g = new THREE.Group();
+  const baseMat = new THREE.MeshStandardMaterial({
+    color: 0x14111e,
+    roughness: 0.7,
+    metalness: 0.3,
+  });
+  const accent = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(accentHex),
+    roughness: 0.5,
+    metalness: 0.4,
+    emissive: new THREE.Color(accentHex),
+    emissiveIntensity: 0.2,
+  });
+
+  // Plataforma da esteira (correia)
+  const beltDeck = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.08, 1.6),
+    new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.95 })
+  );
+  beltDeck.position.set(0, 0.18, 0.1);
+  beltDeck.castShadow = true;
+  beltDeck.receiveShadow = true;
+  g.add(beltDeck);
+
+  // Lateral esquerda + direita do deck (carcaça)
+  for (const sx of [-0.42, 0.42]) {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 1.6), baseMat);
+    side.position.set(sx, 0.13, 0.1);
+    side.castShadow = true;
+    g.add(side);
+  }
+
+  // Frente — coluna do console
+  for (const sx of [-0.32, 0.32]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.06), STEEL_MAT);
+    post.position.set(sx, 0.78, -0.78);
+    post.castShadow = true;
+    g.add(post);
+  }
+
+  // Console (display)
+  const console = new THREE.Mesh(
+    new THREE.BoxGeometry(0.85, 0.32, 0.08),
+    baseMat
+  );
+  console.position.set(0, 1.32, -0.78);
+  console.castShadow = true;
+  g.add(console);
+
+  // Tela do console
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.7, 0.22),
+    accent
+  );
+  screen.position.set(0, 1.34, -0.74);
+  g.add(screen);
+
+  // Handlebars laterais
+  for (const sx of [-0.4, 0.4]) {
+    const bar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8),
+      STEEL_MAT
+    );
+    bar.position.set(sx, 1.05, -0.5);
+    bar.rotation.x = Math.PI / 2;
+    g.add(bar);
+  }
+
+  return g;
+}
+
+/** Assault bike — bicicleta com ventoinha grande na frente. */
+export function buildAssaultBike(accentHex: string): THREE.Group {
+  const g = new THREE.Group();
+  const accent = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(accentHex),
+    roughness: 0.5,
+    metalness: 0.4,
+  });
+
+  // Quadro da bike (X)
+  const frameLow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 0.1, 1.0),
+    STEEL_MAT
+  );
+  frameLow.position.set(0, 0.45, 0);
+  frameLow.castShadow = true;
+  g.add(frameLow);
+
+  // Banco
+  const seatPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.5, 0.06),
+    STEEL_MAT
+  );
+  seatPost.position.set(0, 0.7, 0.4);
+  g.add(seatPost);
+  const seat = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.06, 0.34),
+    VINYL_MAT
+  );
+  seat.position.set(0, 0.95, 0.4);
+  seat.castShadow = true;
+  g.add(seat);
+
+  // Pedais
+  for (const sx of [-0.18, 0.18]) {
+    const crank = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.18, 0.04),
+      STEEL_MAT
+    );
+    crank.position.set(sx, 0.3, 0.1);
+    g.add(crank);
+    const pedal = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.04, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.85 })
+    );
+    pedal.position.set(sx, 0.22, 0.1);
+    g.add(pedal);
+  }
+
+  // Coluna da ventoinha
+  const fanPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 1.1, 0.1),
+    STEEL_MAT
+  );
+  fanPost.position.set(0, 0.55, -0.3);
+  g.add(fanPost);
+
+  // Ventoinha (grande)
+  const fanRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.42, 0.04, 8, 32),
+    STEEL_MAT
+  );
+  fanRing.position.set(0, 0.95, -0.42);
+  fanRing.rotation.y = Math.PI / 2;
+  g.add(fanRing);
+  // Pás (4 cruzadas)
+  for (let i = 0; i < 4; i++) {
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 0.06, 0.04),
+      accent
+    );
+    blade.rotation.x = (i * Math.PI) / 4;
+    blade.position.set(0, 0.95, -0.42);
+    g.add(blade);
+  }
+  // Hub central
+  const hub = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 12, 8),
+    accent
+  );
+  hub.position.set(0, 0.95, -0.42);
+  g.add(hub);
+
+  // Handlebars
+  for (const dir of [-1, 1]) {
+    const arm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.06, 0.06),
+      STEEL_MAT
+    );
+    arm.position.set(dir * 0.2, 1.1, -0.15);
+    arm.rotation.y = dir * 0.4;
+    g.add(arm);
+  }
+
+  return g;
+}
+
+/** Rowing machine (Concept2-style). */
+export function buildRowingMachine(accentHex: string): THREE.Group {
+  const g = new THREE.Group();
+  const accent = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(accentHex),
+    roughness: 0.5,
+    metalness: 0.4,
+  });
+  const baseMat = new THREE.MeshStandardMaterial({
+    color: 0x14111e,
+    roughness: 0.7,
+    metalness: 0.3,
+  });
+
+  // Trilho longo (rail) — eixo Z, longo
+  const rail = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.06, 1.8),
+    STEEL_MAT
+  );
+  rail.position.set(0, 0.35, 0);
+  rail.castShadow = true;
+  g.add(rail);
+
+  // Pés / base
+  for (const z of [-0.85, 0.85]) {
+    const foot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.06, 0.1),
+      baseMat
+    );
+    foot.position.set(0, 0.03, z);
+    foot.castShadow = true;
+    g.add(foot);
+  }
+
+  // Coluna lateral baixa do rail
+  const lowerSupport = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.32, 0.06),
+    STEEL_MAT
+  );
+  lowerSupport.position.set(0, 0.16, 0.7);
+  g.add(lowerSupport);
+
+  // Banco deslizante
+  const seat = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.08, 0.28),
+    VINYL_MAT
+  );
+  seat.position.set(0, 0.42, 0.0);
+  seat.castShadow = true;
+  g.add(seat);
+
+  // Estrutura da ventoinha (frente — z negativo)
+  const fanHousing = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.32, 0.32, 0.18, 16),
+    baseMat
+  );
+  fanHousing.rotation.z = Math.PI / 2;
+  fanHousing.position.set(0, 0.4, -1.0);
+  fanHousing.castShadow = true;
+  g.add(fanHousing);
+
+  // Display em cima da ventoinha
+  const displayPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.7, 0.06),
+    STEEL_MAT
+  );
+  displayPost.position.set(0, 0.75, -1.0);
+  g.add(displayPost);
+  const display = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.18, 0.06),
+    accent
+  );
+  display.position.set(0, 1.15, -1.0);
+  g.add(display);
+
+  // Pegador (handle) sobre a ventoinha
+  const handle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.36, 8),
+    STEEL_MAT
+  );
+  handle.position.set(0, 0.4, -0.7);
+  handle.rotation.z = Math.PI / 2;
+  g.add(handle);
+
+  // Pés (footplates)
+  for (const sx of [-0.18, 0.18]) {
+    const footplate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.06, 0.24),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.85 })
+    );
+    footplate.position.set(sx, 0.3, -0.78);
+    footplate.rotation.x = -Math.PI / 12;
+    g.add(footplate);
+  }
+
+  return g;
+}
+
+/** Cable machine (estação dupla, polia alta + baixa). */
+export function buildCableMachine(accentHex: string): THREE.Group {
+  const g = new THREE.Group();
+  const accent = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(accentHex),
+    roughness: 0.5,
+    metalness: 0.4,
+  });
+  const stackMat = new THREE.MeshStandardMaterial({
+    color: 0x141420,
+    roughness: 0.4,
+    metalness: 0.7,
+  });
+
+  const W = 1.6;
+  const H = 2.4;
+
+  // 2 colunas verticais (laterais)
+  for (const sx of [-W / 2, W / 2]) {
+    const col = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, H, 0.16),
+      STEEL_MAT
+    );
+    col.position.set(sx, H / 2, 0);
+    col.castShadow = true;
+    g.add(col);
+
+    // Stack de pesos (carcaça vertical)
+    const stack = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 1.4, 0.36),
+      stackMat
+    );
+    stack.position.set(sx, 0.7, -0.18);
+    stack.castShadow = true;
+    g.add(stack);
+
+    // Pino lime (selector pin)
+    const pin = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.04, 0.1),
+      accent
+    );
+    pin.position.set(sx, 0.55, -0.05);
+    g.add(pin);
+
+    // Polia alta
+    const pulleyTop = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 0.08, 12),
+      STEEL_MAT
+    );
+    pulleyTop.rotation.x = Math.PI / 2;
+    pulleyTop.position.set(sx, H - 0.2, 0.12);
+    g.add(pulleyTop);
+  }
+
+  // Travessa superior
+  const topBar = new THREE.Mesh(
+    new THREE.BoxGeometry(W + 0.16, 0.08, 0.12),
+    STEEL_MAT
+  );
+  topBar.position.set(0, H, 0);
+  g.add(topBar);
+
+  // Cabo simulado (linha fina vertical de cada lado)
+  for (const sx of [-W / 2 + 0.08, W / 2 - 0.08]) {
+    const cable = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, 1.4, 0.012),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14 })
+    );
+    cable.position.set(sx, 1.1, 0.16);
+    g.add(cable);
+
+    // Handle pendurado
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, 0.18, 8),
+      STEEL_MAT
+    );
+    handle.position.set(sx, 0.4, 0.16);
+    handle.rotation.z = Math.PI / 2;
+    g.add(handle);
+  }
 
   return g;
 }

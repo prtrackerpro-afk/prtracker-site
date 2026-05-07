@@ -10,7 +10,7 @@
  * - z: ↑↓ no top-down (negativo = fundo, positivo = entrada)
  * - rot: rotação no eixo Y em radianos
  *
- * O gym tem ROOM_W=18, ROOM_D=16. Bounds: x ∈ [-9,+9], z ∈ [-8,+8].
+ * V15: O gym dobrou — agora ROOM_W=36, ROOM_D=32. Bounds: x ∈ [-18,+18], z ∈ [-16,+16].
  *
  * V1: localStorage (`pr_gym_layout_v1`). Migração futura: coluna
  * `pr_athletes.gym_layout` JSONB pra sincronizar entre devices e
@@ -22,6 +22,9 @@ const STORAGE_KEY = "pr_gym_layout_v1";
 /**
  * Tipos de objetos editáveis no gym. Estruturais (paredes, chão,
  * teto, lights) NÃO entram aqui — são fixos.
+ *
+ * V15 expandiu a paleta com equipamentos clássicos de academia +
+ * CrossFit (bench, dumbbells, halters, esteira, assault bike, etc).
  */
 export type GymObjectType =
   | "trophy_hall"     // 11 pedestais Hall of Fame (auto-distribuídos)
@@ -32,8 +35,21 @@ export type GymObjectType =
   | "nutri_booth"     // Booth Nutricionista + NPC galega
   | "empty_booth"     // "Anuncie aqui" (placeholder pra novos parceiros)
   | "power_rack"      // Power rack com barbell
+  | "squat_rack"      // Squat rack (mais simples que power rack)
   | "platform"        // Plataforma de levantamento
   | "projector_room"  // Tela + projetor + sofá pros Reels
+  // === V15 — Equipamentos clássicos de academia ===
+  | "bench"           // Banco de supino
+  | "dumbbell_rack"   // Rack de halteres (3 níveis)
+  | "kettlebell"      // Kettlebell solto
+  | "plate_tree"      // Árvore de anilhas
+  | "cable_machine"   // Máquina de cabos / polia
+  | "treadmill"       // Esteira ergométrica
+  | "assault_bike"    // Assault bike (ventoinha)
+  | "rowing_machine"  // Remo (Concept2-style)
+  // === V15 — CrossFit ===
+  | "plyo_box"        // Caixa de CrossFit (box jump)
+  | "crossfit_rig"    // Rig de CrossFit (estrutura modular)
   | "spawn";          // Posição inicial do avatar
 
 export interface GymObject {
@@ -68,29 +84,45 @@ export const DEFAULT_LAYOUT: GymLayout = {
   version: 1,
   objects: [
     // === HALL OF FAME (parede do fundo, 11 pedestais auto-distribuídos) ===
-    { id: "trophy_hall_main", type: "trophy_hall", x: 0, z: -7.0, rot: 0 },
+    // Trophy hall renderiza com largura fixa 16m em VirtualGym (não escala com ROOM_W).
+    { id: "trophy_hall_main", type: "trophy_hall", x: 0, z: -15, rot: 0 },
 
-    // === PAINÉIS (parede direita, angulados pro centro) ===
-    { id: "skills_board_main", type: "skills_board", x: 7.5, z: -3.5, rot: -Math.PI / 3 },
-    { id: "run_board_main", type: "run_board", x: 7.5, z: 2.5, rot: -Math.PI / 3 },
+    // === PAINÉIS — flat contra a parede direita, face apontando -x (pro centro) ===
+    { id: "skills_board_main", type: "skills_board", x: 17, z: -7, rot: -Math.PI / 2 },
+    { id: "run_board_main", type: "run_board", x: 17, z: 5, rot: -Math.PI / 2 },
 
-    // === STREAK PILLAR (entrada, centralizado) ===
-    { id: "streak_pillar_main", type: "streak_pillar", x: 0, z: 6.8, rot: 0 },
+    // === STREAK PILLAR (entrada, centralizado, próximo da parede de entrada) ===
+    { id: "streak_pillar_main", type: "streak_pillar", x: 0, z: 14, rot: 0 },
 
     // === BOOTHS DE PARCEIROS (laterais do aisle central) ===
-    { id: "nutri_booth_main", type: "nutri_booth", x: -4.2, z: 4.5, rot: -Math.PI / 2 },
-    { id: "personal_booth_main", type: "personal_booth", x: 4.2, z: 4.5, rot: Math.PI / 2 },
-    { id: "empty_booth_1", type: "empty_booth", x: -4.2, z: 1.5, rot: -Math.PI / 2 },
+    { id: "nutri_booth_main", type: "nutri_booth", x: -8, z: 9, rot: -Math.PI / 2 },
+    { id: "personal_booth_main", type: "personal_booth", x: 8, z: 9, rot: Math.PI / 2 },
+    { id: "empty_booth_1", type: "empty_booth", x: -8, z: 4, rot: -Math.PI / 2 },
 
     // === EQUIPAMENTOS DE TREINO ===
-    { id: "power_rack_main", type: "power_rack", x: -7.0, z: 0, rot: 0 },
-    { id: "platform_main", type: "platform", x: 6.2, z: -1.0, rot: 0 },
+    { id: "power_rack_main", type: "power_rack", x: -14, z: 0, rot: 0 },
+    { id: "platform_main", type: "platform", x: 13, z: -3, rot: 0 },
+    { id: "bench_main", type: "bench", x: -10, z: -5, rot: 0 },
+    { id: "dumbbell_rack_main", type: "dumbbell_rack", x: -14, z: -8, rot: 0 },
+    { id: "plate_tree_main", type: "plate_tree", x: 13, z: 2, rot: 0 },
 
-    // === SALA DE PROJEÇÃO (canto frontal-esquerdo) ===
-    { id: "projector_room_main", type: "projector_room", x: -7.5, z: 4.5, rot: 0 },
+    // === CARDIO (lado esquerdo-frente) ===
+    { id: "treadmill_1", type: "treadmill", x: 12, z: -10, rot: 0 },
+    { id: "treadmill_2", type: "treadmill", x: 14, z: -10, rot: 0 },
+    { id: "assault_bike_main", type: "assault_bike", x: 16, z: -10, rot: 0 },
+    { id: "rowing_machine_main", type: "rowing_machine", x: 16, z: 10, rot: 0 },
 
-    // === SPAWN DO AVATAR ===
-    { id: "spawn", type: "spawn", x: 0, z: 6.0, rot: 0 },
+    // === CROSSFIT ===
+    { id: "plyo_box_1", type: "plyo_box", x: -2, z: -10, rot: 0 },
+    { id: "plyo_box_2", type: "plyo_box", x: -1, z: -10, rot: 0 },
+    { id: "kettlebell_1", type: "kettlebell", x: 1, z: -10, rot: 0 },
+    { id: "kettlebell_2", type: "kettlebell", x: 1.5, z: -10, rot: 0 },
+
+    // === SALA DE PROJEÇÃO (canto esquerdo-frente — sofá virado pra tela) ===
+    { id: "projector_room_main", type: "projector_room", x: -13, z: 11, rot: 0 },
+
+    // === SPAWN DO AVATAR (entrada centralizada) ===
+    { id: "spawn", type: "spawn", x: 0, z: 13, rot: 0 },
   ],
 };
 
@@ -178,6 +210,14 @@ export const OBJECT_META: Record<GymObjectType, GymObjectMeta> = {
     multiple: true,
     deletable: true,
   },
+  squat_rack: {
+    label: "Squat Rack",
+    color: "#a0a3ad",
+    footprintW: 1.6,
+    footprintD: 1.0,
+    multiple: true,
+    deletable: true,
+  },
   platform: {
     label: "Plataforma",
     color: "#6a3a1f",
@@ -192,6 +232,88 @@ export const OBJECT_META: Record<GymObjectType, GymObjectMeta> = {
     footprintW: 4.0,
     footprintD: 3.0,
     multiple: false,
+    deletable: true,
+  },
+  // === V15 — Equipamentos clássicos ===
+  bench: {
+    label: "Banco supino",
+    color: "#7c1f1f",
+    footprintW: 0.7,
+    footprintD: 1.4,
+    multiple: true,
+    deletable: true,
+  },
+  dumbbell_rack: {
+    label: "Halteres",
+    color: "#5a4a3a",
+    footprintW: 3.0,
+    footprintD: 0.8,
+    multiple: true,
+    deletable: true,
+  },
+  kettlebell: {
+    label: "Kettlebell",
+    color: "#1a1a24",
+    footprintW: 0.5,
+    footprintD: 0.5,
+    multiple: true,
+    deletable: true,
+  },
+  plate_tree: {
+    label: "Anilhas",
+    color: "#DA291C",
+    footprintW: 0.8,
+    footprintD: 0.8,
+    multiple: true,
+    deletable: true,
+  },
+  cable_machine: {
+    label: "Polia",
+    color: "#3a3a4a",
+    footprintW: 1.8,
+    footprintD: 1.2,
+    multiple: true,
+    deletable: true,
+  },
+  treadmill: {
+    label: "Esteira",
+    color: "#2a3a5a",
+    footprintW: 1.0,
+    footprintD: 2.0,
+    multiple: true,
+    deletable: true,
+  },
+  assault_bike: {
+    label: "Assault Bike",
+    color: "#7a4a1a",
+    footprintW: 0.8,
+    footprintD: 1.4,
+    multiple: true,
+    deletable: true,
+  },
+  rowing_machine: {
+    label: "Remo",
+    color: "#1a4a3a",
+    footprintW: 0.8,
+    footprintD: 2.4,
+    multiple: true,
+    deletable: true,
+  },
+  // === V15 — CrossFit ===
+  plyo_box: {
+    label: "Caixa CrossFit",
+    color: "#0f0f1a",
+    footprintW: 0.7,
+    footprintD: 0.7,
+    multiple: true,
+    deletable: true,
+  },
+  crossfit_rig: {
+    label: "Rig CrossFit",
+    color: "#1a1a3a",
+    footprintW: 4.0,
+    footprintD: 2.0,
+    multiple: true,
     deletable: true,
   },
   spawn: {
@@ -291,12 +413,16 @@ export function generateObjectId(type: GymObjectType): string {
 
 /**
  * Bounds do gym (metros). Validar posições antes de aceitar drag.
+ *
+ * V15: dobramos o tamanho (de 18×16 pra 36×32) pra caber bench,
+ * dumbbells, esteiras, assault bike, etc. Layouts antigos continuam
+ * válidos (posições dentro do bound antigo cabem no novo).
  */
 export const GYM_BOUNDS = {
-  minX: -9,
-  maxX: 9,
-  minZ: -8,
-  maxZ: 8,
+  minX: -18,
+  maxX: 18,
+  minZ: -16,
+  maxZ: 16,
 } as const;
 
 /**
