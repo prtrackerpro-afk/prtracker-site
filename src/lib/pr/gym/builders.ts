@@ -1936,26 +1936,30 @@ export function buildSkillsBoard(accentHex: string, slots: SkillBoardSlot[]): Sk
     const meta = SKILL_TIER_META[tier];
     const isUnlocked = tier !== "locked";
 
-    // Disco da badge — cor do tier
+    // Disco da badge — V16.8 cycle 85: 22% maior pra ler de longe
     const badge = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.18, 0.04, 24),
+      new THREE.CylinderGeometry(0.22, 0.22, 0.05, 28),
       new THREE.MeshStandardMaterial({
         color: meta.color,
-        roughness: 0.35,
-        metalness: 0.55,
+        roughness: 0.3,
+        metalness: 0.6,
         emissive: meta.color,
-        emissiveIntensity: isUnlocked ? 0.4 : 0,
+        emissiveIntensity: isUnlocked ? 0.5 : 0,
       })
     );
     badge.rotation.x = Math.PI / 2;
     badge.position.set(x, y, 0.05);
     g.add(badge);
 
-    // Anel externo lime (highlight pra quem tem tier > unlocked)
+    // Anel externo lime — V16.8 cycle 86: maior + emissive
     if (isUnlocked && tier !== "unlocked") {
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.2, 0.012, 12, 36),
-        new THREE.MeshBasicMaterial({ color: accentHex })
+        new THREE.TorusGeometry(0.245, 0.018, 12, 36),
+        new THREE.MeshStandardMaterial({
+          color: accentHex,
+          emissive: accentHex,
+          emissiveIntensity: 1.0,
+        })
       );
       ring.position.set(x, y, 0.06);
       g.add(ring);
