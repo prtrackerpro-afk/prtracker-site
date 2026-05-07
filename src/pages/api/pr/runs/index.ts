@@ -1,5 +1,9 @@
 import type { APIRoute } from "astro";
-import { getServerSupabase } from "../../../../lib/supabase/server";
+import {
+  getServerSupabase,
+  getAdminSupabase,
+} from "../../../../lib/supabase/server";
+import { xpForRunPR } from "../../../../lib/pr/gym/xp";
 
 export const prerender = false;
 
@@ -63,11 +67,45 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     return jsonError(500, "upsert_failed", error.message);
   }
 
+  // XP: prêmio com base no tempo (e melhoria, se já tinha tempo anterior).
+  void grantRunXp(athlete.userId, distance, timeSec, currentBest);
+
   return new Response(
     JSON.stringify({ distance, best_time_sec: timeSec, improved: true }),
     { status: 201, headers: { "Content-Type": "application/json" } }
   );
 };
+
+async function grantRunXp(
+  userId: string,
+  distance: string,
+  timeSec: number,
+  previousTimeSec: number | null
+) {
+  try {
+    const xp = xpForRunPR(distance, timeSec, previousTimeSec);
+    if (xp <= 0) return;
+    const admin = getAdminSupabase();
+    await admin.from("pr_xp_events").upsert(
+      [
+        {
+          user_id: userId,
+          source: "run_pr",
+          source_key: `run:${distance}:${timeSec}`,
+          amount: xp,
+          payload: {
+            distance,
+            time_sec: timeSec,
+            previous_time_sec: previousTimeSec,
+          },
+        },
+      ],
+      { onConflict: "user_id,source,source_key", ignoreDuplicates: true }
+    );
+  } catch (e) {
+    console.warn("[pr:grantRunXp] failed", e);
+  }
+}
 
 function jsonError(status: number, code: string, message?: string) {
   return new Response(JSON.stringify({ error: code, message }), {

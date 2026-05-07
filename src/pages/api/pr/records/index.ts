@@ -4,6 +4,7 @@ import { isExercise } from "../../../../lib/pr/exercises";
 import { insertPR } from "../../../../lib/pr/db";
 import { tierForLift, TIER_META, type Tier } from "../../../../lib/pr/strength-score";
 import { sendLevelUpEmail } from "../../../../lib/pr/email";
+import { xpForLiftPR, xpForStreakDay } from "../../../../lib/pr/gym/xp";
 
 export const prerender = false;
 
@@ -66,6 +67,18 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       });
     }
 
+    // XP: only for new PRs. Idempotent via unique (user_id, source, source_key).
+    if (isPR && athlete.bodyWeightKg && athlete.sex) {
+      void grantPRXp({
+        userId: athlete.userId,
+        exercise: body.exercise,
+        weight,
+        bodyWeightKg: athlete.bodyWeightKg,
+        sex: athlete.sex,
+        performedAt: record.performed_at,
+      });
+    }
+
     return new Response(JSON.stringify(record), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -118,6 +131,49 @@ async function notifyLevelUp(opts: {
     });
   } catch (e) {
     console.warn("[pr:notifyLevelUp] failed", e);
+  }
+}
+
+async function grantPRXp(opts: {
+  userId: string;
+  exercise: import("../../../../lib/pr/exercises").ExerciseId;
+  weight: number;
+  bodyWeightKg: number;
+  sex: "male" | "female";
+  performedAt: string;
+}) {
+  try {
+    const score = tierForLift(opts.exercise, opts.weight, opts.bodyWeightKg, opts.sex);
+    const liftXp = xpForLiftPR(opts.weight, score.tier as Tier);
+    if (liftXp <= 0) return;
+    const day = String(opts.performedAt).slice(0, 10);
+    const admin = getAdminSupabase();
+    await admin.from("pr_xp_events").upsert(
+      [
+        {
+          user_id: opts.userId,
+          source: "lift_pr",
+          source_key: `lift:${opts.exercise}:${opts.weight}`,
+          amount: liftXp,
+          payload: {
+            exercise: opts.exercise,
+            weight_kg: opts.weight,
+            tier: score.tier,
+            date: day,
+          },
+        },
+        {
+          user_id: opts.userId,
+          source: "streak_day",
+          source_key: `streak:${day}`,
+          amount: xpForStreakDay(),
+          payload: { day },
+        },
+      ],
+      { onConflict: "user_id,source,source_key", ignoreDuplicates: true }
+    );
+  } catch (e) {
+    console.warn("[pr:grantPRXp] failed", e);
   }
 }
 

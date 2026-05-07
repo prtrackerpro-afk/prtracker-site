@@ -63,6 +63,11 @@ import {
 } from "../../lib/pr/gym/audio";
 import { ParticleBurst, CameraShake } from "../../lib/pr/gym/fx";
 import { getProsByType, getFeaturedPro, type Pro, type ProType } from "../../lib/pr/gym/pros";
+import {
+  levelFromXp,
+  xpToNextLevel,
+  type XpBreakdown,
+} from "../../lib/pr/gym/xp";
 
 // V4 do virtual gym. Avatar customizável (gênero, pele, cabelo, regata,
 // shorts) com animação de caminhada (pernas/braços alternados). Colisão
@@ -106,6 +111,8 @@ interface Props {
   runs?: Partial<Record<RunDistance, number>>;
   /** Layout do gym salvo no Supabase (SSR). null = usa localStorage / DEFAULT. */
   initialLayout?: GymLayout | null;
+  /** XP total acumulado do atleta. */
+  xpTotal?: number;
 }
 
 export default function VirtualGym({
@@ -116,6 +123,7 @@ export default function VirtualGym({
   skills = {},
   runs = {},
   initialLayout = null,
+  xpTotal = 0,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
@@ -129,6 +137,9 @@ export default function VirtualGym({
   const [runsModalOpen, setRunsModalOpen] = useState(false);
   const [skillsLocal, setSkillsLocal] = useState<Partial<Record<SkillId, number>>>(skills);
   const [runsLocal, setRunsLocal] = useState<Partial<Record<RunDistance, number>>>(runs);
+  const [xpModalOpen, setXpModalOpen] = useState(false);
+  const [xpBreakdown, setXpBreakdown] = useState<XpBreakdown | null>(null);
+  const [xpLoading, setXpLoading] = useState(false);
   const [audioMuted, setAudioMuted] = useState(false);
   const [reelOpen, setReelOpen] = useState(false);
   const [activeReel, setActiveReel] = useState<Reel | null>(null);
@@ -156,6 +167,7 @@ export default function VirtualGym({
     selectedProType !== null ||
     skillsModalOpen ||
     runsModalOpen ||
+    xpModalOpen ||
     reelOpen ||
     showTutorial ||
     customOpen;
@@ -172,6 +184,23 @@ export default function VirtualGym({
   function applyPrefs(next: AvatarPrefs) {
     setAvatarPrefs(next);
     saveAvatarPrefs(next);
+  }
+
+  async function openXpBreakdown() {
+    setXpModalOpen(true);
+    if (xpBreakdown) return; // já tem cache
+    setXpLoading(true);
+    try {
+      const res = await fetch("/api/pr/xp", { credentials: "include" });
+      if (res.ok) {
+        const data = (await res.json()) as XpBreakdown;
+        setXpBreakdown(data);
+      }
+    } catch {
+      // silent
+    } finally {
+      setXpLoading(false);
+    }
   }
 
   async function saveSkill(skillId: SkillId, reps: number) {
@@ -1381,6 +1410,45 @@ export default function VirtualGym({
           </span>
         </div>
 
+        {/* LEVEL pill — clica abre breakdown */}
+        {(() => {
+          const lvl = levelFromXp(xpTotal);
+          const next = xpToNextLevel(xpTotal);
+          const xpDisplay =
+            xpTotal >= 10000
+              ? `${(xpTotal / 1000).toFixed(1)}k`
+              : String(xpTotal);
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                openXpBreakdown();
+              }}
+              className="group relative flex items-center gap-2 rounded-full bg-navy-900/80 border border-fuchsia-500/40 hover:border-fuchsia-400 px-3 py-1.5 transition"
+              aria-label="Ver breakdown de XP"
+            >
+              <span className="text-base leading-none">✨</span>
+              <span className="font-display text-sm leading-none text-fuchsia-300">
+                LVL {lvl}
+              </span>
+              <span className="text-[10px] uppercase tracking-widest text-navy-300 leading-none tabular-nums">
+                {xpDisplay} XP
+              </span>
+              {/* Mini progress bar embaixo */}
+              <span
+                className="absolute left-3 right-3 bottom-0.5 h-0.5 bg-fuchsia-500/20 rounded-full overflow-hidden"
+                aria-hidden="true"
+              >
+                <span
+                  className="block h-full bg-fuchsia-400 transition-all"
+                  style={{ width: `${next.pctInLevel}%` }}
+                />
+              </span>
+            </button>
+          );
+        })()}
+
         {/* Próxima conquista (primeiro ghost da lista) */}
         {(() => {
           const nextGhost = HALL_EXERCISES.find(
@@ -2095,7 +2163,175 @@ export default function VirtualGym({
           onSave={saveRun}
         />
       )}
+
+      {/* XP breakdown modal */}
+      {xpModalOpen && (
+        <XpBreakdownModal
+          fallbackTotal={xpTotal}
+          breakdown={xpBreakdown}
+          loading={xpLoading}
+          onClose={() => setXpModalOpen(false)}
+        />
+      )}
     </>
+  );
+}
+
+// =================================================================
+// XpBreakdownModal — mostra de onde vem cada XP (PR / skill / run / streak)
+// =================================================================
+
+interface XpBreakdownModalProps {
+  fallbackTotal: number;
+  breakdown: XpBreakdown | null;
+  loading: boolean;
+  onClose: () => void;
+}
+
+function XpBreakdownModal({
+  fallbackTotal,
+  breakdown,
+  loading,
+  onClose,
+}: XpBreakdownModalProps) {
+  const total = breakdown?.total ?? fallbackTotal;
+  const lvl = breakdown?.level ?? levelFromXp(total);
+  const next = xpToNextLevel(total);
+
+  return (
+    <div
+      style={{ position: "absolute", inset: 0, zIndex: 32 }}
+      className="flex items-end sm:items-center justify-center bg-black/85 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-fuchsia-500/40 bg-navy-900 shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-navy-700">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-fuchsia-300">
+              ✨ EXPERIÊNCIA
+            </div>
+            <div className="font-display text-lg tracking-tight">
+              Level {lvl}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-navy-300 hover:text-white text-lg leading-none"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-4">
+          {/* XP total + barra de progresso */}
+          <div className="rounded-xl border border-navy-700 bg-navy-800/40 p-4 mb-4 text-center">
+            <div className="font-display text-4xl tabular-nums text-fuchsia-300">
+              {total.toLocaleString("pt-BR")}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-navy-300 mt-1">
+              XP TOTAL
+            </div>
+            <div className="mt-3">
+              <div className="h-2 bg-navy-900 rounded-full overflow-hidden border border-navy-700">
+                <div
+                  className="h-full bg-gradient-to-r from-fuchsia-600 to-fuchsia-300 transition-all"
+                  style={{ width: `${next.pctInLevel}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-navy-300 mt-1.5 tabular-nums">
+                <span>Lvl {lvl}</span>
+                <span>+{next.needed.toLocaleString("pt-BR")} XP pra Lvl {lvl + 1}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Breakdown por fonte */}
+          {loading && !breakdown ? (
+            <div className="text-center text-sm text-navy-300 py-6">
+              Calculando...
+            </div>
+          ) : breakdown ? (
+            <>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-navy-300 mb-2">
+                DE ONDE VEM
+              </div>
+              <ul className="space-y-1.5 mb-4">
+                <BreakdownRow
+                  emoji="🏋️"
+                  label="PRs de força"
+                  amount={breakdown.bySource.lift_pr}
+                  total={total}
+                  color="#D8FF2C"
+                />
+                <BreakdownRow
+                  emoji="🤸"
+                  label="Skills (BMU/MU/...)"
+                  amount={breakdown.bySource.skill_tier}
+                  total={total}
+                  color="#7df9ff"
+                />
+                <BreakdownRow
+                  emoji="🏃"
+                  label="Corridas"
+                  amount={breakdown.bySource.run_pr}
+                  total={total}
+                  color="#43B02A"
+                />
+                <BreakdownRow
+                  emoji="🔥"
+                  label="Dias com PR (streak)"
+                  amount={breakdown.bySource.streak_day}
+                  total={total}
+                  color="#ff8030"
+                />
+              </ul>
+              <p className="text-[10px] text-navy-300 leading-tight px-1">
+                XP é ganho só em recordes batidos — bater 100kg de novo não dá
+                XP, só superar.
+              </p>
+            </>
+          ) : (
+            <div className="text-center text-sm text-navy-300 py-4">
+              Sem dados ainda. Bate seu primeiro PR pra começar.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface BreakdownRowProps {
+  emoji: string;
+  label: string;
+  amount: number;
+  total: number;
+  color: string;
+}
+
+function BreakdownRow({ emoji, label, amount, total, color }: BreakdownRowProps) {
+  const pct = total > 0 ? (amount / total) * 100 : 0;
+  return (
+    <li className="rounded-lg bg-navy-800/40 border border-navy-700 p-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-base leading-none">{emoji}</span>
+        <span className="text-xs text-navy-100 flex-1 truncate">{label}</span>
+        <span className="text-sm font-display tabular-nums" style={{ color }}>
+          {amount.toLocaleString("pt-BR")}
+        </span>
+      </div>
+      <div className="mt-1 h-1 bg-navy-900 rounded-full overflow-hidden">
+        <div
+          className="h-full transition-all"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
+    </li>
   );
 }
 

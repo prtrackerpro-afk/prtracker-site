@@ -1,5 +1,14 @@
 import type { APIRoute } from "astro";
-import { getServerSupabase } from "../../../../lib/supabase/server";
+import {
+  getServerSupabase,
+  getAdminSupabase,
+} from "../../../../lib/supabase/server";
+import {
+  SKILL_TIER_META,
+  tierForReps,
+  type SkillTier,
+} from "../../../../lib/pr/gym/skills";
+import { xpForSkillTier } from "../../../../lib/pr/gym/xp";
 
 export const prerender = false;
 
@@ -63,11 +72,55 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     return jsonError(500, "upsert_failed", error.message);
   }
 
+  // XP: grant for each tier reached (idempotente via unique key).
+  void grantSkillTierXp(athlete.userId, skillId, reps);
+
   return new Response(
     JSON.stringify({ skill_id: skillId, best_reps: reps, improved: true }),
     { status: 201, headers: { "Content-Type": "application/json" } }
   );
 };
+
+async function grantSkillTierXp(userId: string, skillId: string, reps: number) {
+  try {
+    const reachedTier = tierForReps(reps);
+    const stopRank = SKILL_TIER_META[reachedTier].rank;
+    const tiersInOrder: SkillTier[] = [
+      "unlocked",
+      "bronze",
+      "silver",
+      "gold",
+      "diamond",
+    ];
+    const events: Array<{
+      user_id: string;
+      source: string;
+      source_key: string;
+      amount: number;
+      payload: unknown;
+    }> = [];
+    for (const t of tiersInOrder) {
+      if (SKILL_TIER_META[t].rank > stopRank) break;
+      const xp = xpForSkillTier(t);
+      if (xp <= 0) continue;
+      events.push({
+        user_id: userId,
+        source: "skill_tier",
+        source_key: `skill:${skillId}:${t}`,
+        amount: xp,
+        payload: { skill_id: skillId, tier: t, reps },
+      });
+    }
+    if (events.length === 0) return;
+    const admin = getAdminSupabase();
+    await admin.from("pr_xp_events").upsert(events, {
+      onConflict: "user_id,source,source_key",
+      ignoreDuplicates: true,
+    });
+  } catch (e) {
+    console.warn("[pr:grantSkillTierXp] failed", e);
+  }
+}
 
 function jsonError(status: number, code: string, message?: string) {
   return new Response(JSON.stringify({ error: code, message }), {
