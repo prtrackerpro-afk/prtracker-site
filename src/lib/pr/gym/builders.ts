@@ -362,17 +362,18 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   rightLeg.position.set(0.10, 0.985, 0);
   root.add(rightLeg);
 
-  // === ARMS com pose natural (cycle 63) — leve flexão fora do corpo
+  // === ARMS com pose natural (cycle 95) — match com NPC pose
+  // (10° pra fora + 8° pra frente). Antes 7° + 3°, ainda parecia rígido.
   const leftArm = buildArm(skinMat, topMat);
   leftArm.position.set(-shoulderHalfW - 0.02, 1.62, 0);
-  leftArm.rotation.z = -0.12; // 7° pra fora
-  leftArm.rotation.x = -0.05;
+  leftArm.rotation.z = -0.18;
+  leftArm.rotation.x = -0.08;
   root.add(leftArm);
 
   const rightArm = buildArm(skinMat, topMat);
   rightArm.position.set(shoulderHalfW + 0.02, 1.62, 0);
-  rightArm.rotation.z = 0.12;
-  rightArm.rotation.x = -0.05;
+  rightArm.rotation.z = 0.18;
+  rightArm.rotation.x = -0.08;
   root.add(rightArm);
 
   return { root, leftLeg, rightLeg, leftArm, rightArm, head };
@@ -442,44 +443,53 @@ function buildLeg(
 }
 
 /**
- * Braço: regata (mangueta curta) cobrindo topo, depois pele.
- * Origin = ombro (top of upper arm).
+ * Braço: deltoide visível + sleeve da regata + bíceps + cotovelo flexionado
+ * + antebraço com leve rotação + mão. Origin = ombro.
+ * Cycle 96: match com NPC arm (separação forearm pra elbow flex real).
  */
 function buildArm(skinMat: THREE.Material, topMat: THREE.Material): THREE.Group {
   const g = new THREE.Group();
-  // Mangueta curta da regata cobrindo o ombro (3cm da regata desce pelo braço)
+  // Deltoide (esfera no ombro pra musculatura visível)
+  const delt = new THREE.Mesh(new THREE.SphereGeometry(0.078, 12, 10), skinMat);
+  delt.position.y = 0;
+  g.add(delt);
+  // Mangueta da regata cobrindo o topo do braço
   const sleeve = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.075, 0.07, 0.06, 10),
+    new THREE.CylinderGeometry(0.075, 0.07, 0.08, 10),
     topMat
   );
   sleeve.position.y = -0.03;
   g.add(sleeve);
   // Bíceps
   const upper = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.06, 0.28, 10),
+    new THREE.CylinderGeometry(0.07, 0.06, 0.26, 10),
     skinMat
   );
   upper.position.y = -0.2;
   upper.castShadow = true;
   g.add(upper);
-  // Cotovelo
+  // Cotovelo (esfera)
   const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), skinMat);
-  elbow.position.y = -0.36;
+  elbow.position.y = -0.34;
   g.add(elbow);
-  // Antebraço
+  // Forearm em group separado pra elbow flex real
+  const forearm = new THREE.Group();
+  forearm.position.y = -0.34;
+  forearm.rotation.x = 0.18; // ~10° flex
+  g.add(forearm);
   const lower = new THREE.Mesh(
     new THREE.CylinderGeometry(0.058, 0.052, 0.26, 10),
     skinMat
   );
-  lower.position.y = -0.5;
+  lower.position.y = -0.15;
   lower.castShadow = true;
-  g.add(lower);
-  // Mão — capsule achatada pra parecer punho (cycle 70)
+  forearm.add(lower);
+  // Mão — capsule achatada
   const hand = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.04, 6, 8), skinMat);
   hand.scale.set(1.0, 1.0, 1.4);
-  hand.position.y = -0.66;
+  hand.position.y = -0.32;
   hand.castShadow = true;
-  g.add(hand);
+  forearm.add(hand);
   return g;
 }
 

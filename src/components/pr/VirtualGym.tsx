@@ -1601,14 +1601,16 @@ export default function VirtualGym({
           0,
           0.1
         );
+        // Cycle 96: idle preserva pose natural (-0.08 = leve pra frente)
+        // em vez de lerp pra 0 (braços rígidos pendulares).
         avatarParts.leftArm.rotation.x = lerpAngle(
           avatarParts.leftArm.rotation.x,
-          0,
+          -0.08,
           0.1
         );
         avatarParts.rightArm.rotation.x = lerpAngle(
           avatarParts.rightArm.rotation.x,
-          0,
+          -0.08,
           0.1
         );
         avatarParts.root.position.y = Math.sin(t * 1.6) * 0.03;
