@@ -572,6 +572,32 @@ export default function VirtualGym({
     rightBaseboard.position.set(ROOM_W / 2 - 0.02, baseboardH / 2, 0);
     scene.add(rightBaseboard);
 
+    // V16.8 cycle 99: corner posts (estructural) onde paredes se encontram.
+    // Coluna escura vertical com accent lime na base — define o canto do
+    // ginásio em vez do plano "infinity wall".
+    const cornerPostMat = new THREE.MeshStandardMaterial({
+      color: 0x16162a,
+      roughness: 0.65,
+      metalness: 0.25,
+      emissive: 0x0a0a18,
+      emissiveIntensity: 0.4,
+    });
+    for (const cx of [-ROOM_W / 2 + 0.06, ROOM_W / 2 - 0.06]) {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, WALL_H, 0.12),
+        cornerPostMat
+      );
+      post.position.set(cx, WALL_H / 2, -ROOM_D / 2 + 0.06);
+      scene.add(post);
+      // Accent lime band na base do post
+      const postBand = new THREE.Mesh(
+        new THREE.BoxGeometry(0.14, 0.04, 0.14),
+        new THREE.MeshBasicMaterial({ color: accentColor })
+      );
+      postBand.position.set(cx, 0.22, -ROOM_D / 2 + 0.06);
+      scene.add(postBand);
+    }
+
     // === WALL LOGO gigante ATRAS dos troféus =======================
     // "PR TRACKER · HALL OF FAME" ocupando ~10m de largura na parede.
     // Domina a parede do fundo como num CrossFit box real.
