@@ -1719,7 +1719,7 @@ export default function VirtualGym({
         className="flex flex-col gap-2 items-start"
       >
         {/* STREAK Duolingo-style */}
-        <div className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-orange-500/40 px-3 py-1.5">
+        <div className="flex items-center gap-2 rounded-full bg-navy-900/90 border-2 border-orange-500/70 px-3.5 py-2 shadow-lg shadow-orange-500/20">
           <span className="text-xl leading-none">🔥</span>
           <div className="flex items-baseline gap-1">
             <span
@@ -1744,7 +1744,7 @@ export default function VirtualGym({
         </div>
 
         {/* PROGRESSO — meta clara "X/11 troféus" */}
-        <div className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-brand-lime/40 px-3 py-1.5">
+        <div className="flex items-center gap-2 rounded-full bg-navy-900/90 border-2 border-brand-lime/70 px-3.5 py-2 shadow-lg shadow-brand-lime/20">
           <span className="text-base leading-none">🏆</span>
           <span className="font-display text-sm tabular-nums leading-none text-brand-lime">
             {trophies.length}<span className="text-navy-300">/11</span>
@@ -1766,7 +1766,7 @@ export default function VirtualGym({
                 playClick();
                 openXpBreakdown();
               }}
-              className="group relative flex items-center gap-2 rounded-full bg-navy-900/80 border border-fuchsia-500/40 hover:border-fuchsia-400 px-3 py-1.5 transition"
+              className="group relative flex items-center gap-2 rounded-full bg-navy-900/90 border-2 border-fuchsia-500/70 hover:border-fuchsia-400 hover:bg-fuchsia-500/10 px-3.5 py-2 transition shadow-lg shadow-fuchsia-500/20"
               aria-label="Ver breakdown de XP"
             >
               <span className="text-base leading-none">✨</span>
