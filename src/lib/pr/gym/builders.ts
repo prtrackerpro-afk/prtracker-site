@@ -2363,14 +2363,24 @@ export function buildNPC(props: NPCProps): NPCParts {
   mouth.position.set(0, -headR * 0.33, headR * 0.94);
   head.add(mouth);
 
-  // Cabelo — hemisfério cobrindo o topo do skull
+  // Cabelo — hemisfério MAIS CURTO (era π/1.8 ≈ 100°, agora π/2.5 ≈ 72°)
+  // pra não cobrir os olhos. Position.y = +0.02 também sobe um pouco.
   const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(headR + 0.02, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.8),
+    new THREE.SphereGeometry(headR + 0.02, 24, 18, 0, Math.PI * 2, 0, Math.PI / 2.5),
     hairMat
   );
-  hair.position.y = -0.01;
+  hair.position.y = 0.04;
   hair.castShadow = true;
   head.add(hair);
+
+  // Franja sutil na frente da testa (box achatado horizontal)
+  const fringe = new THREE.Mesh(
+    new THREE.BoxGeometry(headR * 1.4, headR * 0.18, headR * 0.5),
+    hairMat
+  );
+  fringe.position.set(0, headR * 0.55, headR * 0.55);
+  fringe.rotation.x = -0.15;
+  head.add(fringe);
 
   // Female: mecha lateral
   if (isF) {
@@ -2627,29 +2637,63 @@ export function buildNPC(props: NPCProps): NPCParts {
     root.add(leg);
   }
 
-  // === Braços ===
+  // === Braços com pose natural — upper inclinado, lower com leve flexão ===
+  // V16.8 cycle 62: braços não pendulares. Upper rotacionado pra fora (5°)
+  // + lower com elbow flex (15°) pra parecer relaxado em vez de boneco rigido.
+  // Ombro com esfera deltoide (musculatura visível).
   const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
-  for (const sx of [-shoulderHalfW - 0.02, shoulderHalfW + 0.02]) {
+  for (const dir of [-1, 1]) {
+    const sx = dir * (shoulderHalfW + 0.02);
     const arm = new THREE.Group();
     arm.position.set(sx, 1.62, 0);
+    // Pose: braço inclinado pra fora + frente (mãos não tocam corpo)
+    arm.rotation.z = dir * 0.18; // 10° pra fora
+    arm.rotation.x = -0.08; // leve pra frente
+
+    // Deltoide (esfera no ombro pra musculatura)
+    const delt = new THREE.Mesh(
+      new THREE.SphereGeometry(0.075, 12, 10),
+      skinMat
+    );
+    delt.position.y = 0;
+    arm.add(delt);
+
+    // Upper arm
     const upper = new THREE.Mesh(
       new THREE.CylinderGeometry(0.07, 0.06, 0.28, 10),
       skinMat
     );
-    upper.position.y = -0.2;
+    upper.position.y = -0.18;
     arm.add(upper);
+
+    // Cotovelo (esfera) + lower arm com leve flexão
+    const elbow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.058, 10, 8),
+      skinMat
+    );
+    elbow.position.y = -0.34;
+    arm.add(elbow);
+
+    // Forearm em grupo separado pra ter rotation de cotovelo
+    const forearm = new THREE.Group();
+    forearm.position.y = -0.34;
+    forearm.rotation.x = 0.18; // ~10° elbow flex
+    arm.add(forearm);
     const lower = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.058, 0.052, 0.26, 10),
+      new THREE.CylinderGeometry(0.058, 0.052, 0.28, 10),
       skinMat
     );
-    lower.position.y = -0.5;
-    arm.add(lower);
+    lower.position.y = -0.16;
+    forearm.add(lower);
+
+    // Mão fechada (esfera)
     const hand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06, 10, 8),
+      new THREE.SphereGeometry(0.07, 10, 8),
       skinMat
     );
-    hand.position.y = -0.66;
-    arm.add(hand);
+    hand.position.y = -0.34;
+    forearm.add(hand);
+
     root.add(arm);
   }
 
