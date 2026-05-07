@@ -1878,7 +1878,7 @@ export default function VirtualGym({
         <button
           type="button"
           onClick={() => setMode((m) => (m === "follow" ? "orbit" : "follow"))}
-          className="text-[10px] uppercase tracking-widest font-display rounded-full border border-white/30 bg-navy-900/80 text-white px-3 py-1.5 hover:border-brand-lime hover:text-brand-lime transition"
+          className="text-[10px] uppercase tracking-widest font-display rounded-full border-2 border-white/40 bg-navy-900/90 text-white px-3.5 py-2 hover:border-brand-lime hover:text-brand-lime transition shadow-md"
           aria-label="Trocar modo de câmera"
         >
           {mode === "follow" ? "📷 Seguir" : "🔄 Girar"}
@@ -1886,7 +1886,7 @@ export default function VirtualGym({
         <button
           type="button"
           onClick={() => setReelOpen(true)}
-          className="text-[10px] uppercase tracking-widest font-display rounded-full border border-brand-lime/60 bg-brand-lime/10 text-brand-lime px-3 py-1.5 hover:bg-brand-lime/20 transition"
+          className="text-[10px] uppercase tracking-widest font-display rounded-full border-2 border-brand-lime/70 bg-brand-lime/15 text-brand-lime px-3.5 py-2 hover:bg-brand-lime/30 transition shadow-md shadow-brand-lime/10"
           aria-label="Abrir Reels"
         >
           🎬 Reels
@@ -1895,7 +1895,7 @@ export default function VirtualGym({
           <button
             type="button"
             onClick={() => setCustomOpen(true)}
-            className="text-[10px] uppercase tracking-widest font-display rounded-full border border-white/30 bg-navy-900/80 text-white px-3 py-1.5 hover:border-brand-lime hover:text-brand-lime transition"
+            className="text-[10px] uppercase tracking-widest font-display rounded-full border-2 border-white/40 bg-navy-900/90 text-white px-3.5 py-2 hover:border-brand-lime hover:text-brand-lime transition shadow-md"
             aria-label="Customizar avatar"
           >
             👤 Avatar
