@@ -855,7 +855,7 @@ function buildLoadedBarbell(): THREE.Group {
         roughness: 0.5,
         metalness: 0.15,
         emissive: p.color,
-        emissiveIntensity: 0.08,
+        emissiveIntensity: 0.18,
       });
       const plate = new THREE.Mesh(
         new THREE.CylinderGeometry(p.radius, p.radius, 0.05, 24),
@@ -1444,7 +1444,7 @@ export function buildPlateTree(): THREE.Group {
       peg.position.set(0, y, dz * 0.6);
       g.add(peg);
 
-      // Anilhas no peg
+      // Anilhas no peg — V16.7 cycle 26: emissive sutil pra anilhas brilharem
       const data = pegPlates[idx];
       if (!data) continue;
       const radius = 0.08 + (data.kg / 25) * 0.07;
@@ -1453,6 +1453,8 @@ export function buildPlateTree(): THREE.Group {
         color: data.color,
         roughness: 0.45,
         metalness: 0.15,
+        emissive: data.color,
+        emissiveIntensity: 0.12,
       });
       for (let i = 0; i < data.count; i++) {
         const plate = new THREE.Mesh(
