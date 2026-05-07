@@ -401,9 +401,9 @@ export default function VirtualGym({
     scene.add(avatarSpot);
     scene.add(avatarSpot.target);
 
-    // V16.7 cycle 25: ambient dust particles — partículas pequenas
-    // flutuando pra dar atmosfera. Procedural via Points.
-    const dustCount = 200;
+    // V16.7 cycle 46: ambient dust particles — 350 motes (era 200) pra
+    // mais atmosfera no mapa dobrado.
+    const dustCount = 350;
     const dustGeometry = new THREE.BufferGeometry();
     const dustPositions = new Float32Array(dustCount * 3);
     const dustVelocities = new Float32Array(dustCount * 3);
@@ -584,12 +584,17 @@ export default function VirtualGym({
     fameDeck.receiveShadow = true;
     scene.add(fameDeck);
 
-    // Faixa lime na frente do deck (linha de demarcação)
+    // Faixa lime na frente do deck (linha de demarcação) — V16.7 cycle 47:
+    // mais grossa + emissive pra brilhar como fita LED de chão
     const fameStrip = new THREE.Mesh(
-      new THREE.BoxGeometry(fameDeckW, 0.04, 0.06),
-      new THREE.MeshBasicMaterial({ color: accentColor })
+      new THREE.BoxGeometry(fameDeckW, 0.08, 0.08),
+      new THREE.MeshStandardMaterial({
+        color: accentColor,
+        emissive: accentColor,
+        emissiveIntensity: 1.5,
+      })
     );
-    fameStrip.position.set(0, 0.21, -ROOM_D / 2 + 1.65);
+    fameStrip.position.set(0, 0.22, -ROOM_D / 2 + 1.65);
     scene.add(fameStrip);
 
     // Carpet visual estilo museum (Palmeiras Verde) — leve glow accent
