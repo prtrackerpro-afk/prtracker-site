@@ -438,8 +438,9 @@ export default function VirtualGym({
       roughness: 0.95,
       metalness: 0.02,
     });
-    // V16.7 cycle 23: floor com textura procedural (grid sutil) pra dar
-    // sensação de escala — antes era um plano preto monolítico.
+    // V16.8 cycle 97: floor com textura procedural mais rica — grid 1m
+    // + sub-grid 0.5m + scuff marks (riscos) pra parecer piso usado de
+    // box, não apenas grid plano.
     const floorCanvas = document.createElement("canvas");
     floorCanvas.width = 512;
     floorCanvas.height = 512;
@@ -447,9 +448,22 @@ export default function VirtualGym({
     // Base
     fctxFloor.fillStyle = "#0a0a14";
     fctxFloor.fillRect(0, 0, 512, 512);
-    // Grid lines (1m squares — repetidas pelo wrap)
-    fctxFloor.strokeStyle = "#1a1a26";
+    // Sub-grid 0.5m (linhas mais finas)
+    fctxFloor.strokeStyle = "#14141e";
     fctxFloor.lineWidth = 1;
+    for (let i = 0; i <= 512; i += 32) {
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(i, 0);
+      fctxFloor.lineTo(i, 512);
+      fctxFloor.stroke();
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(0, i);
+      fctxFloor.lineTo(512, i);
+      fctxFloor.stroke();
+    }
+    // Grid principal 1m (linhas mais visíveis)
+    fctxFloor.strokeStyle = "#1f1f30";
+    fctxFloor.lineWidth = 1.5;
     for (let i = 0; i <= 512; i += 64) {
       fctxFloor.beginPath();
       fctxFloor.moveTo(i, 0);
@@ -460,12 +474,25 @@ export default function VirtualGym({
       fctxFloor.lineTo(512, i);
       fctxFloor.stroke();
     }
-    // Speckle (pequenos pontos pra textura granulada)
-    for (let i = 0; i < 80; i++) {
+    // Speckle (granulado de borracha)
+    for (let i = 0; i < 120; i++) {
       const x = Math.random() * 512;
       const y = Math.random() * 512;
       fctxFloor.fillStyle = `rgba(40, 40, 60, ${Math.random() * 0.3})`;
       fctxFloor.fillRect(x, y, 2, 2);
+    }
+    // Scuff marks (riscos sutis pra parecer piso usado)
+    for (let i = 0; i < 14; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const len = 8 + Math.random() * 24;
+      const ang = Math.random() * Math.PI * 2;
+      fctxFloor.strokeStyle = `rgba(80, 80, 95, ${0.05 + Math.random() * 0.1})`;
+      fctxFloor.lineWidth = 1;
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(x, y);
+      fctxFloor.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      fctxFloor.stroke();
     }
     const floorTex = new THREE.CanvasTexture(floorCanvas);
     floorTex.colorSpace = THREE.SRGBColorSpace;
@@ -514,6 +541,36 @@ export default function VirtualGym({
     );
     trim.position.set(0, WALL_H - 0.3, -ROOM_D / 2 + 0.04);
     scene.add(trim);
+
+    // V16.8 cycle 98: baseboard (rodapé) onde parede encontra o chão.
+    // Banda escura de 0.18m com leve emissive — quebra o vazio entre
+    // wall escura e floor escuro, dá profundidade arquitetônica.
+    const baseboardMat = new THREE.MeshStandardMaterial({
+      color: 0x1c1c2a,
+      roughness: 0.7,
+      metalness: 0.2,
+      emissive: 0x05050a,
+      emissiveIntensity: 0.3,
+    });
+    const baseboardH = 0.18;
+    const backBaseboard = new THREE.Mesh(
+      new THREE.BoxGeometry(ROOM_W, baseboardH, 0.04),
+      baseboardMat
+    );
+    backBaseboard.position.set(0, baseboardH / 2, -ROOM_D / 2 + 0.02);
+    scene.add(backBaseboard);
+    const leftBaseboard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, baseboardH, ROOM_D),
+      baseboardMat
+    );
+    leftBaseboard.position.set(-ROOM_W / 2 + 0.02, baseboardH / 2, 0);
+    scene.add(leftBaseboard);
+    const rightBaseboard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, baseboardH, ROOM_D),
+      baseboardMat
+    );
+    rightBaseboard.position.set(ROOM_W / 2 - 0.02, baseboardH / 2, 0);
+    scene.add(rightBaseboard);
 
     // === WALL LOGO gigante ATRAS dos troféus =======================
     // "PR TRACKER · HALL OF FAME" ocupando ~10m de largura na parede.
