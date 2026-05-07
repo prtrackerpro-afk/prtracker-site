@@ -711,12 +711,16 @@ export function buildPowerRack(accentHex: string): THREE.Group {
     emissiveIntensity: 0.15,
   });
 
-  const W = 1.6;
-  const D = 1.4;
-  const H = 2.6;
+  // V16.8 cycle 103: proporcoes ajustadas pro avatar 1.95m (era 2.6/1.6/1.4
+  // = power rack tamanho gigante). Agora match com Rogue R-3 / Eleiko XF80.
+  const W = 1.40;
+  const D = 1.20;
+  const H = 2.40;
 
   // 4 colunas com furos visíveis (decals canvas) — recurso característico
   // de power rack pra ajustar altura dos hooks/safety pins.
+  // V16.8 cycle 105: + numeros (1-24) ao lado de cada furo pra visual mais
+  // tecnico (estilo Rogue Monster com hole numbering).
   const colCanvas = document.createElement("canvas");
   colCanvas.width = 64;
   colCanvas.height = 512;
@@ -730,6 +734,15 @@ export function buildPowerRack(accentHex: string): THREE.Group {
     cctx.arc(32, 16 + i * 20, 5, 0, Math.PI * 2);
     cctx.fill();
   }
+  // Numeros do furo (1-24) na lateral
+  cctx.fillStyle = "#5a5a6a";
+  cctx.font = "bold 10px Inter, sans-serif";
+  cctx.textAlign = "left";
+  cctx.textBaseline = "middle";
+  for (let i = 0; i < 24; i++) {
+    const num = String(24 - i).padStart(2, "0");
+    cctx.fillText(num, 44, 16 + i * 20);
+  }
   const colTex = new THREE.CanvasTexture(colCanvas);
   colTex.colorSpace = THREE.SRGBColorSpace;
   colTex.wrapT = THREE.ClampToEdgeWrapping;
@@ -738,9 +751,10 @@ export function buildPowerRack(accentHex: string): THREE.Group {
     roughness: 0.4,
     metalness: 0.7,
   });
+  // V16.8 cycle 103: colunas mais finas (0.09 → 0.07) — Rogue R-3 = 7×7cm
   for (const x of [-W / 2, W / 2]) {
     for (const z of [-D / 2, D / 2]) {
-      const col = new THREE.Mesh(new THREE.BoxGeometry(0.09, H, 0.09), colMat);
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.07, H, 0.07), colMat);
       col.position.set(x, H / 2, z);
       col.castShadow = true;
       g.add(col);
@@ -777,7 +791,8 @@ export function buildPowerRack(accentHex: string): THREE.Group {
     g.add(baseLink);
   }
 
-  // J-hooks lime (suportam a barbell — altura 1.25m)
+  // V16.8 cycle 104: J-hooks com detalhamento (corpo + braco horizontal +
+  // parafuso central preto + presilha lateral pra fixacao realista)
   for (const x of [-W / 2, W / 2]) {
     const hook = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.18), accent);
     hook.position.set(x, 1.25, D / 2 - 0.04);
@@ -786,6 +801,21 @@ export function buildPowerRack(accentHex: string): THREE.Group {
     const hookArm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.12), accent);
     hookArm.position.set(x, 1.34, D / 2 - 0.12);
     g.add(hookArm);
+    // Parafuso central (esfera preta) — detalhe visual de montagem
+    const screw = new THREE.Mesh(
+      new THREE.SphereGeometry(0.018, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.4, metalness: 0.6 })
+    );
+    screw.position.set(x, 1.25, D / 2 - 0.04);
+    g.add(screw);
+    // Presilha lateral (pin de seguranca em forma de L)
+    const pin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 0.06, 8),
+      STEEL_MAT
+    );
+    pin.rotation.z = Math.PI / 2;
+    pin.position.set(x + (x > 0 ? 0.05 : -0.05), 1.22, D / 2 - 0.04);
+    g.add(pin);
   }
 
   // Pinos de segurança horizontais (safety pins — altura 0.9m)
