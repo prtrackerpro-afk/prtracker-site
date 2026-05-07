@@ -2282,10 +2282,6 @@ export function buildNPC(props: NPCProps): NPCParts {
     emissive: hairColor,
     emissiveIntensity: 0.6,
   });
-  // Diagnóstico: verifica se função está sendo chamada
-  if (typeof window !== "undefined") {
-    console.log(`[buildNPC] Built ${gender} NPC: skin=${skinHex}, headR=${0.28}`);
-  }
   const topColor = new THREE.Color(topHex);
   const topMat = new THREE.MeshStandardMaterial({
     color: topColor,
@@ -2310,30 +2306,15 @@ export function buildNPC(props: NPCProps): NPCParts {
   const isF = gender === "female";
   const isM = gender === "male";
   const torsoR = isF ? 0.18 : isM ? 0.22 : 0.20;
-  // V16.4 CYCLE 3: head BASKETBALL (0.5m radius). Se não aparecer assim,
-  // é bug de scene graph (NPC group nunca sendo adicionado à cena, ou
-  // posição Y zerada em algum lugar). Esse tamanho NÃO PODE ser ignorado.
-  const headR = 0.5;
+  // V16.5 CYCLE 4: depois do basketball test confirmou que head sempre
+  // foi renderizada, ajusto pra tamanho realista mas ainda 50% maior
+  // (0.21 → 0.32) pra garantir visibilidade à distância da câmera.
+  const headR = 0.32;
 
-  // === HEAD — geometria pura + halo emissive marker ===
+  // === HEAD — geometria pura ===
   const head = new THREE.Group();
 
-  // Halo emissive grande logo abaixo do skull (debug + visual identidade) —
-  // ring lime brilhante que NUNCA fica invisível mesmo em shadow.
-  const halo = new THREE.Mesh(
-    new THREE.RingGeometry(headR + 0.02, headR + 0.08, 24),
-    new THREE.MeshBasicMaterial({
-      color: 0xD8FF2C,
-      transparent: true,
-      opacity: 0.85,
-      side: THREE.DoubleSide,
-    })
-  );
-  halo.rotation.x = -Math.PI / 2;
-  halo.position.y = -headR * 1.05;
-  head.add(halo);
-
-  // Skull (esfera skin) — agora MAIOR
+  // Skull (esfera skin) — tamanho aumentado vs avatar pra dar destaque NPC
   const skull = new THREE.Mesh(
     new THREE.SphereGeometry(headR, 24, 18),
     skinMat
