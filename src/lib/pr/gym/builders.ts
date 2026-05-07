@@ -2265,25 +2265,43 @@ export function buildNPC(props: NPCProps): NPCParts {
   const root = new THREE.Group();
   const { skinHex, hairHex, topHex, shortsHex, gender, initial, outfit } = props;
 
+  // V16.2: emissive em todos os materiais do NPC pra garantir visibilidade
+  // mesmo em áreas pouco iluminadas (booth alcove, atrás do banner, etc).
+  // Sem isso, MeshStandardMaterial aparece quase preto fora dos cones de
+  // spotlight — o que deixava a cabeça do NPC invisível contra o background.
+  const skinColor = new THREE.Color(skinHex);
   const skinMat = new THREE.MeshStandardMaterial({
-    color: skinHex,
+    color: skinColor,
     roughness: 0.7,
+    emissive: skinColor,
+    emissiveIntensity: 0.35,
   });
+  const hairColor = new THREE.Color(hairHex);
   const hairMat = new THREE.MeshStandardMaterial({
-    color: hairHex,
+    color: hairColor,
     roughness: 0.85,
+    emissive: hairColor,
+    emissiveIntensity: 0.3,
   });
+  const topColor = new THREE.Color(topHex);
   const topMat = new THREE.MeshStandardMaterial({
-    color: topHex,
+    color: topColor,
     roughness: 0.7,
+    emissive: topColor,
+    emissiveIntensity: 0.25,
   });
+  const shortsColor = new THREE.Color(shortsHex);
   const shortsMat = new THREE.MeshStandardMaterial({
-    color: shortsHex,
+    color: shortsColor,
     roughness: 0.85,
+    emissive: shortsColor,
+    emissiveIntensity: 0.2,
   });
   const shoeMat = new THREE.MeshStandardMaterial({
     color: 0x111111,
     roughness: 0.6,
+    emissive: 0x111111,
+    emissiveIntensity: 0.2,
   });
 
   const isF = gender === "female";
