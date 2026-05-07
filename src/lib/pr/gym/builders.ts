@@ -2265,24 +2265,27 @@ export function buildNPC(props: NPCProps): NPCParts {
   const root = new THREE.Group();
   const { skinHex, hairHex, topHex, shortsHex, gender, initial, outfit } = props;
 
-  // V16.2: emissive em todos os materiais do NPC pra garantir visibilidade
-  // mesmo em áreas pouco iluminadas (booth alcove, atrás do banner, etc).
-  // Sem isso, MeshStandardMaterial aparece quase preto fora dos cones de
-  // spotlight — o que deixava a cabeça do NPC invisível contra o background.
+  // V16.3: emissive AGRESSIVO (era 0.35, agora 0.7) pra cabeça ficar
+  // visível mesmo em zona escura. Trade-off: NPC parece "fluorescente"
+  // de perto, mas é melhor isso que cabeça invisível.
   const skinColor = new THREE.Color(skinHex);
   const skinMat = new THREE.MeshStandardMaterial({
     color: skinColor,
     roughness: 0.7,
     emissive: skinColor,
-    emissiveIntensity: 0.35,
+    emissiveIntensity: 0.7,
   });
   const hairColor = new THREE.Color(hairHex);
   const hairMat = new THREE.MeshStandardMaterial({
     color: hairColor,
     roughness: 0.85,
     emissive: hairColor,
-    emissiveIntensity: 0.3,
+    emissiveIntensity: 0.6,
   });
+  // Diagnóstico: verifica se função está sendo chamada
+  if (typeof window !== "undefined") {
+    console.log(`[buildNPC] Built ${gender} NPC: skin=${skinHex}, headR=${0.28}`);
+  }
   const topColor = new THREE.Color(topHex);
   const topMat = new THREE.MeshStandardMaterial({
     color: topColor,
@@ -2307,14 +2310,30 @@ export function buildNPC(props: NPCProps): NPCParts {
   const isF = gender === "female";
   const isM = gender === "male";
   const torsoR = isF ? 0.18 : isM ? 0.22 : 0.20;
-  const headR = 0.21;
+  // V16.3: head 35% MAIOR (0.21 → 0.28) pra ser visível mesmo de longe.
+  // Bug recorrente: cabeça invisível atrás de booth banner. Cabeça maior
+  // + halo emissive embaixo garante "não tem como não ver".
+  const headR = 0.28;
 
-  // === HEAD — geometria pura, sem canvas (canvas estava falhando em runtime) ===
-  // Estrutura: skull esférico + 2 olhos (esferas pretas) + boca (box) +
-  // cabelo (hemisfério). Tudo geometria nativa Three.js — robusto.
+  // === HEAD — geometria pura + halo emissive marker ===
   const head = new THREE.Group();
 
-  // Skull (esfera skin)
+  // Halo emissive grande logo abaixo do skull (debug + visual identidade) —
+  // ring lime brilhante que NUNCA fica invisível mesmo em shadow.
+  const halo = new THREE.Mesh(
+    new THREE.RingGeometry(headR + 0.02, headR + 0.08, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xD8FF2C,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+    })
+  );
+  halo.rotation.x = -Math.PI / 2;
+  halo.position.y = -headR * 1.05;
+  head.add(halo);
+
+  // Skull (esfera skin) — agora MAIOR
   const skull = new THREE.Mesh(
     new THREE.SphereGeometry(headR, 24, 18),
     skinMat
