@@ -15,6 +15,8 @@ import {
   buildRunBoard,
   DEFAULT_RUN_SLOTS,
   buildSponsorBooth,
+  buildNPC,
+  buildStreakPillar,
 } from "../../lib/pr/gym/builders";
 import { HALL_EXERCISES, UNLOCK_THRESHOLDS } from "../../lib/pr/gym/hall";
 import { exerciseLabel as exerciseLabelFn } from "../../lib/pr/exercises";
@@ -66,9 +68,11 @@ interface Props {
   athleteName: string;
   accent: string;
   trophies: GymTrophy[];
+  /** Dias consecutivos com PR/atividade (Duolingo-style). Default 0. */
+  streakDays?: number;
 }
 
-export default function VirtualGym({ athleteName, accent, trophies }: Props) {
+export default function VirtualGym({ athleteName, accent, trophies, streakDays = 0 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
@@ -518,30 +522,68 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       professional: {
         name: "Camila",
         specialty: "Nutrição esportiva · CRN/RS",
-        avatarColor: "#43B02A", // verde food
+        avatarColor: "#43B02A",
       },
       accentHex: "#43B02A",
       slotId: "nutri",
     });
     nutriBooth.group.position.set(-4.2, 0, 4.5);
-    nutriBooth.group.rotation.y = -Math.PI / 2; // banner vira pro aisle (+x)
+    nutriBooth.group.rotation.y = -Math.PI / 2;
     sponsorsGroup.add(nutriBooth.group);
     colliders.push({ cx: -4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
+
+    // NPC Camila ao lado do booth (atrás do balcão, idle)
+    const nutriNPC = buildNPC({
+      skinHex: "#e0b18a",
+      hairHex: "#5e3a1f",
+      topHex: "#43B02A",
+      shortsHex: "#1e1b50",
+      gender: "female",
+      initial: "C",
+    });
+    nutriNPC.group.position.set(-4.2, 0, 3.7);
+    nutriNPC.group.rotation.y = Math.PI / 2; // olha pra direita (aisle)
+    nutriNPC.group.userData.npcSlot = "nutri";
+    nutriNPC.group.traverse((c) => {
+      c.userData.npcSlot = "nutri";
+    });
+    sponsorsGroup.add(nutriNPC.group);
+    const npcAnimRefs: Array<{ head: THREE.Group; body: THREE.Group; phase: number }> = [
+      { head: nutriNPC.head, body: nutriNPC.body, phase: 0 },
+    ];
 
     const ptBooth = buildSponsorBooth({
       title: "PERSONAL TRAINER",
       professional: {
         name: "Bruno",
         specialty: "Powerlifting · CREF 12345-G",
-        avatarColor: "#DA291C", // vermelho strength
+        avatarColor: "#DA291C",
       },
       accentHex: "#D8FF2C",
       slotId: "pt",
     });
     ptBooth.group.position.set(4.2, 0, 4.5);
-    ptBooth.group.rotation.y = Math.PI / 2; // banner vira pro aisle (-x)
+    ptBooth.group.rotation.y = Math.PI / 2;
     sponsorsGroup.add(ptBooth.group);
     colliders.push({ cx: 4.2, cz: 4.5, hw: 0.6, hd: 1.0 });
+
+    // NPC Bruno ao lado do booth
+    const ptNPC = buildNPC({
+      skinHex: "#c08a5e",
+      hairHex: "#1a1410",
+      topHex: "#D8FF2C",
+      shortsHex: "#111111",
+      gender: "male",
+      initial: "B",
+    });
+    ptNPC.group.position.set(4.2, 0, 3.7);
+    ptNPC.group.rotation.y = -Math.PI / 2; // olha pra esquerda (aisle)
+    ptNPC.group.userData.npcSlot = "pt";
+    ptNPC.group.traverse((c) => {
+      c.userData.npcSlot = "pt";
+    });
+    sponsorsGroup.add(ptNPC.group);
+    npcAnimRefs.push({ head: ptNPC.head, body: ptNPC.body, phase: 1.5 });
 
     const emptyBooth = buildSponsorBooth({
       title: "ANUNCIE AQUI",
@@ -553,6 +595,17 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
     emptyBooth.group.rotation.y = -Math.PI / 2;
     sponsorsGroup.add(emptyBooth.group);
     colliders.push({ cx: -4.2, cz: 1.5, hw: 0.6, hd: 1.0 });
+
+    // === STREAK PILLAR (Duolingo-style fogo de frequência) =========
+    // Posicionado na entrada (perto do avatar) pra ser visto direto
+    // ao entrar no gym. Click → modal de detalhe.
+    const streakPillarParts = buildStreakPillar(streakDays);
+    streakPillarParts.group.position.set(0, 0, ROOM_D / 2 - 1.2);
+    streakPillarParts.group.userData.kind = "streak-pillar";
+    streakPillarParts.hitBox.userData.kind = "streak-pillar";
+    scene.add(streakPillarParts.group);
+    colliders.push({ cx: 0, cz: ROOM_D / 2 - 1.2, hw: 0.7, hd: 0.7 });
+    const streakFlameRef = streakPillarParts.flame;
 
     // === SKILLS BOARD — angulado pro aisle central (visível andando) ===
     // Em vez de plano contra a parede, board fica em "stand" inclinado
@@ -991,6 +1044,17 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
       // Atualiza tela do projetor da sala de Reels
       drawProjectorScreen(t, activeReelRef.current);
 
+      // Anima NPCs (idle bob na cabeça + leve sway)
+      for (const npc of npcAnimRefs) {
+        npc.head.position.y = Math.sin(t * 1.4 + npc.phase) * 0.025;
+        npc.body.rotation.y = Math.sin(t * 0.7 + npc.phase) * 0.04;
+      }
+
+      // Anima chama do streak pillar (flicker + scale pulse)
+      const flameScale = 1 + Math.sin(t * 8) * 0.08 + Math.sin(t * 13) * 0.04;
+      streakFlameRef.scale.set(flameScale, flameScale * 1.1, flameScale);
+      streakFlameRef.rotation.y = Math.sin(t * 2) * 0.1;
+
       // Avatar aura (10+ trofeus) — anima glow pulsante na ring abaixo
       if (avatarAura) {
         const auraScale = 1 + Math.sin(t * 2) * 0.05;
@@ -1059,6 +1123,34 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
   return (
     <>
       <div ref={mountRef} style={{ position: "absolute", inset: 0 }} />
+
+      {/* STREAK HUD top-left — Duolingo style flame counter */}
+      <div
+        style={{ position: "absolute", top: 12, left: 12, zIndex: 10 }}
+        className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-orange-500/40 px-3 py-1.5"
+      >
+        <span className="text-xl leading-none">🔥</span>
+        <div className="flex items-baseline gap-1">
+          <span
+            className="font-display text-lg tabular-nums leading-none"
+            style={{
+              color:
+                streakDays >= 30
+                  ? "#ff44aa"
+                  : streakDays >= 7
+                  ? "#ff5050"
+                  : streakDays >= 3
+                  ? "#ff8030"
+                  : "#ffa050",
+            }}
+          >
+            {streakDays}
+          </span>
+          <span className="text-[10px] uppercase tracking-widest text-navy-300 leading-none">
+            {streakDays === 1 ? "dia" : "dias"}
+          </span>
+        </div>
+      </div>
 
       {/* Top-right HUD: Camera + Reels + Customize */}
       <div
@@ -1279,7 +1371,7 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
             </div>
 
             {selectedSponsor.professional ? (
-              <div className="p-5">
+              <div className="p-5 max-h-[75vh] overflow-y-auto">
                 <div className="flex items-center gap-4 mb-4">
                   <div
                     className="w-20 h-20 rounded-full grid place-items-center font-display text-3xl flex-shrink-0"
@@ -1299,17 +1391,49 @@ export default function VirtualGym({ athleteName, accent, trophies }: Props) {
                     </div>
                   </div>
                 </div>
-                <p className="text-sm text-navy-300 mb-4 leading-relaxed">
-                  Atendimento online pra atletas BR. Treino e nutrição ajustados pro
-                  seu PR e meta. Conversa direto pelo WhatsApp.
-                </p>
+
+                {/* Marketplace — dietas (Nutri) ou treinos (PT) */}
+                <div className="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2 mt-4">
+                  {selectedSponsor.id === "nutri" ? "DIETAS DISPONÍVEIS" : "TREINOS DISPONÍVEIS"}
+                </div>
+                <ul className="space-y-2 mb-4">
+                  {(selectedSponsor.id === "nutri"
+                    ? [
+                        { title: "Cutting 12 semanas", subtitle: "Hipertrofia · 2.300 kcal/dia", price: "R$ 89" },
+                        { title: "Bulking limpo", subtitle: "Ganho de massa · 3.200 kcal/dia", price: "R$ 89" },
+                        { title: "Plano competição", subtitle: "Powerlifting peak week", price: "R$ 149" },
+                      ]
+                    : [
+                        { title: "Hipertrofia 4×/sem", subtitle: "Push-Pull-Legs · 12 semanas", price: "R$ 99" },
+                        { title: "Powerlifting 5/3/1", subtitle: "Foco em PR · 16 semanas", price: "R$ 129" },
+                        { title: "CrossFit conditioning", subtitle: "WODs progressivos", price: "R$ 89" },
+                      ]
+                  ).map((item) => (
+                    <li
+                      key={item.title}
+                      className="rounded-xl border border-navy-700 bg-navy-800/40 p-3 flex items-center gap-3 hover:border-brand-lime/40 transition"
+                    >
+                      <div className="text-2xl flex-shrink-0">
+                        {selectedSponsor.id === "nutri" ? "🥗" : "💪"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm truncate">{item.title}</div>
+                        <div className="text-[11px] text-navy-300 truncate">{item.subtitle}</div>
+                      </div>
+                      <div className="text-xs font-bold text-brand-lime tabular-nums flex-shrink-0">
+                        {item.price}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
                 <a
                   href="https://wa.me/5551982061914"
                   target="_blank"
                   rel="noopener"
                   className="block w-full text-center rounded-lg bg-brand-lime text-navy-900 font-semibold px-4 py-3 hover:opacity-90 transition mb-2"
                 >
-                  💬 Falar no WhatsApp
+                  💬 Comprar pelo WhatsApp
                 </a>
                 <a
                   href="https://instagram.com/pr.tracker"

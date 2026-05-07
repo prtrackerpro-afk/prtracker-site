@@ -1596,27 +1596,33 @@ export function buildSkillsBoard(accentHex: string): THREE.Group {
   borderBot.position.y = -boardH / 2;
   g.add(borderBot);
 
-  // Título "GINÁSTICOS" em cima do board
+  // Título "GINÁSTICOS" — GIGANTE + neon glow effect
   const titleCanvas = document.createElement("canvas");
-  titleCanvas.width = 1024;
-  titleCanvas.height = 192;
+  titleCanvas.width = 2048;
+  titleCanvas.height = 384;
   const tctx = titleCanvas.getContext("2d")!;
-  tctx.clearRect(0, 0, 1024, 192);
-  tctx.fillStyle = accentHex;
-  tctx.font = "900 110px Archivo Black, Inter, sans-serif";
-  tctx.textAlign = "center";
-  tctx.textBaseline = "middle";
-  tctx.fillText("GINÁSTICOS", 512, 70);
+  tctx.clearRect(0, 0, 2048, 384);
+  // Glow effect (camadas progressivas)
+  for (let glow = 0; glow < 3; glow++) {
+    tctx.shadowColor = accentHex;
+    tctx.shadowBlur = 30 - glow * 10;
+    tctx.fillStyle = accentHex;
+    tctx.font = "900 220px Archivo Black, Inter, sans-serif";
+    tctx.textAlign = "center";
+    tctx.textBaseline = "middle";
+    tctx.fillText("GINÁSTICOS", 1024, 130);
+  }
+  tctx.shadowBlur = 0;
   tctx.fillStyle = "#9ca3af";
-  tctx.font = "500 38px Inter, sans-serif";
-  tctx.fillText("Em breve · Desbloqueie cada skill", 512, 145);
+  tctx.font = "500 60px Inter, sans-serif";
+  tctx.fillText("Em breve · Desbloqueie cada skill", 1024, 280);
   const titleTex = new THREE.CanvasTexture(titleCanvas);
   titleTex.colorSpace = THREE.SRGBColorSpace;
   const title = new THREE.Mesh(
-    new THREE.PlaneGeometry(boardW * 0.92, 0.42),
+    new THREE.PlaneGeometry(boardW * 0.96, 0.7),
     new THREE.MeshBasicMaterial({ map: titleTex, transparent: true })
   );
-  title.position.set(0, boardH / 2 - 0.32, 0.04);
+  title.position.set(0, boardH / 2 - 0.4, 0.04);
   g.add(title);
 
   // 6 badges circulares (3 colunas × 2 linhas)
@@ -1713,27 +1719,32 @@ export function buildRunBoard(accentHex: string, slots: RunSlot[]): THREE.Group 
   borderR.position.x = boardW / 2;
   g.add(borderR);
 
-  // Título
+  // Título — GIGANTE + neon glow
   const titleCanvas = document.createElement("canvas");
-  titleCanvas.width = 1024;
-  titleCanvas.height = 192;
+  titleCanvas.width = 2048;
+  titleCanvas.height = 384;
   const tctx = titleCanvas.getContext("2d")!;
-  tctx.clearRect(0, 0, 1024, 192);
-  tctx.fillStyle = accentHex;
-  tctx.font = "900 100px Archivo Black, Inter, sans-serif";
-  tctx.textAlign = "center";
-  tctx.textBaseline = "middle";
-  tctx.fillText("CORRIDA", 512, 70);
+  tctx.clearRect(0, 0, 2048, 384);
+  for (let glow = 0; glow < 3; glow++) {
+    tctx.shadowColor = accentHex;
+    tctx.shadowBlur = 30 - glow * 10;
+    tctx.fillStyle = accentHex;
+    tctx.font = "900 220px Archivo Black, Inter, sans-serif";
+    tctx.textAlign = "center";
+    tctx.textBaseline = "middle";
+    tctx.fillText("CORRIDA", 1024, 130);
+  }
+  tctx.shadowBlur = 0;
   tctx.fillStyle = "#9ca3af";
-  tctx.font = "500 32px Inter, sans-serif";
-  tctx.fillText("Em breve · Registre seus tempos", 512, 140);
+  tctx.font = "500 60px Inter, sans-serif";
+  tctx.fillText("Em breve · Registre seus tempos", 1024, 280);
   const titleTex = new THREE.CanvasTexture(titleCanvas);
   titleTex.colorSpace = THREE.SRGBColorSpace;
   const title = new THREE.Mesh(
-    new THREE.PlaneGeometry(boardW * 0.92, 0.36),
+    new THREE.PlaneGeometry(boardW * 0.96, 0.7),
     new THREE.MeshBasicMaterial({ map: titleTex, transparent: true })
   );
-  title.position.set(0, boardH / 2 - 0.28, 0.04);
+  title.position.set(0, boardH / 2 - 0.4, 0.04);
   g.add(title);
 
   // 4 slots horizontais
@@ -1789,6 +1800,363 @@ export function buildRunBoard(accentHex: string, slots: RunSlot[]): THREE.Group 
   }
 
   return g;
+}
+
+// =================================================================
+// NPC AVATAR — figura 3D dos profissionais parceiros (Nutri / PT)
+// Versão simplificada do buildAvatar, sem face customizável — só
+// proporções + cores definidas pelo painel.
+// =================================================================
+
+export interface NPCParts {
+  group: THREE.Group;
+  /** Cabeça pra leve idle bob. */
+  head: THREE.Group;
+  /** Body pra leve sway. */
+  body: THREE.Group;
+}
+
+export interface NPCProps {
+  skinHex: string;
+  hairHex: string;
+  topHex: string;
+  shortsHex: string;
+  /** "male" / "female" pra proporções. */
+  gender: "male" | "female" | "fluid";
+  /** Inicial pra mostrar no peito (ex: "C", "B"). */
+  initial: string;
+}
+
+export function buildNPC(props: NPCProps): NPCParts {
+  const root = new THREE.Group();
+  const { skinHex, hairHex, topHex, shortsHex, gender, initial } = props;
+
+  const skinMat = new THREE.MeshStandardMaterial({
+    color: skinHex,
+    roughness: 0.7,
+  });
+  const hairMat = new THREE.MeshStandardMaterial({
+    color: hairHex,
+    roughness: 0.85,
+  });
+  const topMat = new THREE.MeshStandardMaterial({
+    color: topHex,
+    roughness: 0.7,
+  });
+  const shortsMat = new THREE.MeshStandardMaterial({
+    color: shortsHex,
+    roughness: 0.85,
+  });
+  const shoeMat = new THREE.MeshStandardMaterial({
+    color: 0x111111,
+    roughness: 0.6,
+  });
+
+  const isF = gender === "female";
+  const isM = gender === "male";
+  const torsoR = isF ? 0.18 : isM ? 0.22 : 0.20;
+  const headR = 0.21;
+
+  // === HEAD esférico simples ===
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(
+    new THREE.SphereGeometry(headR, 28, 22),
+    skinMat
+  );
+  skull.scale.set(1.0, 1.06, 1.0);
+  skull.castShadow = true;
+  head.add(skull);
+
+  // 2 olhos pretos pequenos
+  for (const sx of [-0.075, 0.075]) {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.024, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    eye.position.set(sx, 0.025, headR * 0.92);
+    head.add(eye);
+  }
+
+  // Sorriso simples (torus segment)
+  const smile = new THREE.Mesh(
+    new THREE.TorusGeometry(0.045, 0.01, 6, 14, Math.PI * 0.7),
+    new THREE.MeshStandardMaterial({ color: 0x4a1f1f, roughness: 0.6 })
+  );
+  smile.rotation.x = Math.PI;
+  smile.rotation.z = Math.PI / 2;
+  smile.position.set(0, -0.06, headR * 0.9);
+  head.add(smile);
+
+  // Cabelo cap (hemisferio cobrindo top + nuca)
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(headR + 0.022, 28, 22, 0, Math.PI * 2, 0, Math.PI / 1.65),
+    hairMat
+  );
+  cap.scale.set(1.0, 1.06, 1.0);
+  cap.position.y = -0.02;
+  cap.castShadow = true;
+  head.add(cap);
+
+  // Pescoço
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.07, 0.085, 0.09, 12),
+    skinMat
+  );
+  neck.position.y = -headR - 0.02;
+  head.add(neck);
+
+  head.position.y = 1.95;
+  root.add(head);
+
+  // === TORSO + INITIAL ===
+  const body = new THREE.Group();
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(torsoR, torsoR * 0.92, 0.55, 18),
+    topMat
+  );
+  torso.position.y = 1.375;
+  torso.castShadow = true;
+  body.add(torso);
+
+  // Inicial no peito
+  const initCanvas = document.createElement("canvas");
+  initCanvas.width = 256;
+  initCanvas.height = 256;
+  const ictx = initCanvas.getContext("2d")!;
+  ictx.clearRect(0, 0, 256, 256);
+  ictx.fillStyle = "#01002A";
+  ictx.beginPath();
+  ictx.arc(128, 128, 70, 0, Math.PI * 2);
+  ictx.fill();
+  ictx.fillStyle = topHex;
+  ictx.font = "900 110px Archivo Black, Inter, sans-serif";
+  ictx.textAlign = "center";
+  ictx.textBaseline = "middle";
+  ictx.fillText(initial, 128, 134);
+  const initTex = new THREE.CanvasTexture(initCanvas);
+  initTex.colorSpace = THREE.SRGBColorSpace;
+  const chestBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.18, 0.18),
+    new THREE.MeshBasicMaterial({ map: initTex, transparent: true })
+  );
+  chestBadge.position.set(0, 1.43, torsoR + 0.005);
+  body.add(chestBadge);
+
+  // Hip
+  const hip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.21, 0.20, 0.18, 16),
+    shortsMat
+  );
+  hip.position.y = 1.0;
+  body.add(hip);
+
+  root.add(body);
+
+  // === Pernas ===
+  for (const sx of [-0.1, 0.1]) {
+    const leg = new THREE.Group();
+    leg.position.set(sx, 0.985, 0);
+    const shorts = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11, 0.105, 0.18, 10),
+      shortsMat
+    );
+    shorts.position.y = -0.09;
+    leg.add(shorts);
+    const thigh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.085, 0.07, 0.28, 10),
+      skinMat
+    );
+    thigh.position.y = -0.32;
+    leg.add(thigh);
+    const calf = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.065, 0.055, 0.36, 10),
+      skinMat
+    );
+    calf.position.y = -0.65;
+    leg.add(calf);
+    const shoe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.13, 0.09, 0.24),
+      shoeMat
+    );
+    shoe.position.set(0, -0.91, 0.05);
+    leg.add(shoe);
+    root.add(leg);
+  }
+
+  // === Braços ===
+  const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
+  for (const sx of [-shoulderHalfW - 0.02, shoulderHalfW + 0.02]) {
+    const arm = new THREE.Group();
+    arm.position.set(sx, 1.62, 0);
+    const upper = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.06, 0.28, 10),
+      skinMat
+    );
+    upper.position.y = -0.2;
+    arm.add(upper);
+    const lower = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.058, 0.052, 0.26, 10),
+      skinMat
+    );
+    lower.position.y = -0.5;
+    arm.add(lower);
+    const hand = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 10, 8),
+      skinMat
+    );
+    hand.position.y = -0.66;
+    arm.add(hand);
+    root.add(arm);
+  }
+
+  return { group: root, head, body };
+}
+
+// =================================================================
+// STREAK PILLAR — totem de fogo Duolingo-style
+// =================================================================
+
+export interface StreakPillarParts {
+  group: THREE.Group;
+  /** Mesh da chama pra animar pulsar/flicker. */
+  flame: THREE.Group;
+  hitBox: THREE.Mesh;
+}
+
+/**
+ * Pilar visual com contador de streak (X dias consecutivos com PR).
+ * Visual: base preta + número GIGANTE em fogo + chama animada em cima.
+ */
+export function buildStreakPillar(streakDays: number): StreakPillarParts {
+  const g = new THREE.Group();
+
+  // Base do pilar (cilindro escuro)
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.6, 1.6, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0x14111e,
+      roughness: 0.5,
+      metalness: 0.4,
+    })
+  );
+  base.position.y = 0.8;
+  base.castShadow = true;
+  g.add(base);
+
+  // LED ring na base (lime accent)
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.55, 0.04, 8, 24),
+    new THREE.MeshBasicMaterial({ color: 0xff6020 })
+  );
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.05;
+  g.add(ring);
+
+  // Painel frontal com NÚMERO gigante
+  const numCanvas = document.createElement("canvas");
+  numCanvas.width = 768;
+  numCanvas.height = 768;
+  const nctx = numCanvas.getContext("2d")!;
+  nctx.fillStyle = "#0a0010";
+  nctx.fillRect(0, 0, 768, 768);
+
+  // Borda dupla orange
+  const flameColor = streakDays >= 30 ? "#ff44aa" : streakDays >= 7 ? "#ff3030" : streakDays >= 3 ? "#ff8030" : "#ffa050";
+  nctx.strokeStyle = flameColor;
+  nctx.lineWidth = 14;
+  nctx.strokeRect(12, 12, 744, 744);
+
+  // Header "STREAK"
+  nctx.fillStyle = flameColor;
+  nctx.font = "900 80px Archivo Black, Inter, sans-serif";
+  nctx.textAlign = "center";
+  nctx.textBaseline = "middle";
+  nctx.fillText("STREAK", 384, 100);
+
+  // Emoji fogo gigante embaixo do número
+  nctx.font = "120px sans-serif";
+  nctx.fillText("🔥", 384, 220);
+
+  // Número
+  nctx.fillStyle = "#ffffff";
+  nctx.font = "900 380px Archivo Black, Inter, sans-serif";
+  nctx.fillText(String(streakDays), 384, 460);
+
+  // "DIAS"
+  nctx.fillStyle = flameColor;
+  nctx.font = "900 90px Archivo Black, Inter, sans-serif";
+  nctx.fillText(streakDays === 1 ? "DIA" : "DIAS", 384, 620);
+
+  // Subtexto motivacional
+  nctx.fillStyle = "#9ca3af";
+  nctx.font = "500 32px Inter, sans-serif";
+  const sub =
+    streakDays === 0
+      ? "Treina hoje pra começar"
+      : streakDays >= 7
+      ? "Não pode parar agora!"
+      : "Mantenha a chama";
+  nctx.fillText(sub, 384, 700);
+
+  const numTex = new THREE.CanvasTexture(numCanvas);
+  numTex.colorSpace = THREE.SRGBColorSpace;
+  const numPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.95, 0.95),
+    new THREE.MeshBasicMaterial({ map: numTex })
+  );
+  numPanel.position.set(0, 0.85, 0.61);
+  g.add(numPanel);
+
+  // === CHAMA 3D em cima ===
+  const flame = new THREE.Group();
+  flame.position.set(0, 1.65, 0);
+
+  // Layer 1: chama externa (laranja transparente)
+  const f1 = new THREE.Mesh(
+    new THREE.ConeGeometry(0.32, 0.7, 12),
+    new THREE.MeshBasicMaterial({
+      color: 0xff6020,
+      transparent: true,
+      opacity: 0.7,
+    })
+  );
+  f1.position.y = 0.35;
+  flame.add(f1);
+
+  // Layer 2: chama média (amarela)
+  const f2 = new THREE.Mesh(
+    new THREE.ConeGeometry(0.22, 0.55, 12),
+    new THREE.MeshBasicMaterial({
+      color: 0xffaa30,
+      transparent: true,
+      opacity: 0.85,
+    })
+  );
+  f2.position.y = 0.35;
+  flame.add(f2);
+
+  // Layer 3: núcleo (amarelo claro brilhante)
+  const f3 = new THREE.Mesh(
+    new THREE.ConeGeometry(0.13, 0.4, 12),
+    new THREE.MeshBasicMaterial({
+      color: 0xffe080,
+    })
+  );
+  f3.position.y = 0.32;
+  flame.add(f3);
+
+  g.add(flame);
+
+  // Hit-box pra raycast
+  const hitBox = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 2.8, 0.8),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitBox.position.y = 1.4;
+  hitBox.userData.kind = "streak-pillar";
+  g.add(hitBox);
+
+  return { group: g, flame, hitBox };
 }
 
 // =================================================================
