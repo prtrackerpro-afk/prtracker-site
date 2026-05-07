@@ -3,8 +3,27 @@ export const prerender = false;
 import "../../../styles/global.css";
 import GymEditor from "../../../components/pr/GymEditor";
 import BottomNav from "../../../components/pr/BottomNav.astro";
+import { getServerSupabase } from "../../../lib/supabase/server";
+import { DEFAULT_LAYOUT, type GymLayout } from "../../../lib/pr/gym/layout";
 
 const athlete = Astro.locals.athlete!;
+
+// SSR: carrega layout salvo do Supabase. Fallback DEFAULT_LAYOUT.
+// O componente GymEditor ainda re-hidrata no client pra pegar
+// mudanças feitas em outra aba/device, mas começar com o layout
+// correto evita flash visual.
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+const { data: athleteRow } = await supabase
+  .from("pr_athletes")
+  .select("gym_layout")
+  .eq("user_id", athlete.userId)
+  .maybeSingle();
+
+const initialLayout: GymLayout =
+  (athleteRow?.gym_layout as GymLayout | null) ?? DEFAULT_LAYOUT;
 ---
 
 <!doctype html>
@@ -28,7 +47,7 @@ const athlete = Astro.locals.athlete!;
     </header>
 
     <main class="max-w-4xl mx-auto px-4">
-      <GymEditor client:only="react" />
+      <GymEditor client:only="react" initialLayout={initialLayout} />
     </main>
 
     <BottomNav active="profile" />

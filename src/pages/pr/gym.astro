@@ -111,6 +111,16 @@ for (const row of runRows ?? []) {
   runs[row.distance as string] = Number(row.best_time_sec);
 }
 
+// === Gym layout — coluna pr_athletes.gym_layout (migration 0015) ===
+// VirtualGym lê esse layout via prop. Se NULL (atleta nunca customizou),
+// o componente cai pro DEFAULT_LAYOUT internamente.
+const { data: athleteRow } = await supabase
+  .from("pr_athletes")
+  .select("gym_layout")
+  .eq("user_id", athlete.userId)
+  .maybeSingle();
+const initialGymLayout = (athleteRow?.gym_layout as unknown) ?? null;
+
 function shortName(label: string): string {
   // Take first letter of each word, max 4 chars
   return label
@@ -155,6 +165,7 @@ function shortName(label: string): string {
           streakDays={streakDays}
           skills={skills}
           runs={runs}
+          initialLayout={initialGymLayout}
         >
           {/* Fallback enquanto a ilha React hidrata. Se isso ficar visível
               por mais de 2-3s, a hidratação falhou (cheque o console). */}

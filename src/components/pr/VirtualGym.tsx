@@ -47,7 +47,9 @@ import {
 import { resolveCollisions, type AABB, AVATAR_RADIUS } from "../../lib/pr/gym/collision";
 import {
   loadLayout,
+  saveLayout,
   DEFAULT_LAYOUT,
+  type GymLayout,
   type GymObjectType,
 } from "../../lib/pr/gym/layout";
 import {
@@ -102,6 +104,8 @@ interface Props {
   skills?: Partial<Record<SkillId, number>>;
   /** Run records — Map distance → seconds. Default empty. */
   runs?: Partial<Record<RunDistance, number>>;
+  /** Layout do gym salvo no Supabase (SSR). null = usa localStorage / DEFAULT. */
+  initialLayout?: GymLayout | null;
 }
 
 export default function VirtualGym({
@@ -111,6 +115,7 @@ export default function VirtualGym({
   streakDays = 0,
   skills = {},
   runs = {},
+  initialLayout = null,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
@@ -222,13 +227,20 @@ export default function VirtualGym({
     if (!mountMaybe) return;
     const mount: HTMLDivElement = mountMaybe;
 
-    // === Layout — carrega posições editáveis do localStorage ==========
-    // Cada objeto editável (power_rack, booths, boards, etc) tem sua
-    // posição x/z/rot definida em DEFAULT_LAYOUT (ver layout.ts) ou
-    // sobrescrita pelo editor 2D em /pr/gym/edit. Helper `lo(type)`
-    // retorna o objeto encontrado ou cai no default. Y permanece
-    // hardcoded por tipo (alturas têm semântica fixa).
-    const layout = loadLayout();
+    // === Layout — carrega posições editáveis ==========================
+    // Prioridade: prop initialLayout (SSR Supabase) > localStorage
+    // > DEFAULT_LAYOUT. Sincroniza localStorage com a fonte canônica
+    // pra próxima carga ser instant (cache).
+    let layout = initialLayout ?? loadLayout();
+    if (initialLayout) {
+      // Cache local pra próxima visita ser instant
+      saveLayout(initialLayout);
+    }
+    // Se localStorage tinha algo mas server retornou null, mantemos
+    // localStorage (atleta pode estar editando offline).
+    if (!initialLayout && layout === DEFAULT_LAYOUT) {
+      layout = loadLayout();
+    }
     const defaultByType = new Map(
       DEFAULT_LAYOUT.objects.map((o) => [o.type, o]),
     );

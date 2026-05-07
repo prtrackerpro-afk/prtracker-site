@@ -69,11 +69,58 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Hidrata do servidor (Supabase) na montagem; fallback localStorage.
   useEffect(() => {
-    setLayout(loadLayout());
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/pr/gym/layout", { credentials: "include" });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (data.layout) {
+            setLayout(data.layout);
+            // Sincroniza localStorage com o servidor (cache local).
+            saveLayout(data.layout);
+            return;
+          }
+        }
+      } catch {
+        // Sem rede / sem auth → cai pro localStorage.
+      }
+      if (!cancelled) setLayout(loadLayout());
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  /**
+   * Salva no servidor com debounce de 500ms (evita flood durante drag).
+   * Sempre salva no localStorage primeiro (cache rápido).
+   */
+  function persistLayout(next: GymLayout) {
+    saveLayout(next);
+    if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
+    pendingSaveRef.current = setTimeout(async () => {
+      setSyncStatus("syncing");
+      try {
+        const res = await fetch("/api/pr/gym/layout", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ layout: next }),
+        });
+        setSyncStatus(res.ok ? "synced" : "error");
+      } catch {
+        setSyncStatus("error");
+      }
+    }, 500);
+  }
 
   /** Rotação em snap de 45° (π/4). dir=+1 horário, -1 anti-horário. */
   function rotateSelected(dir: 1 | -1 = 1) {
@@ -89,7 +136,7 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
     next = Math.round(next / STEP) * STEP;
     const updated = updateObject(layout, selected, { rot: next });
     setLayout(updated);
-    saveLayout(updated);
+    persistLayout(updated);
     setSavedAt(Date.now());
   }
 
@@ -99,7 +146,7 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
     const newObj: GymObject = { id, type, x: 0, z: 0, rot: 0 };
     const updated = addObject(layout, newObj);
     setLayout(updated);
-    saveLayout(updated);
+    persistLayout(updated);
     setSelected(id);
     setSavedAt(Date.now());
   }
@@ -117,7 +164,7 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
     if (!confirm(`Remover "${meta.label}"?`)) return;
     const updated = removeObject(layout, selected);
     setLayout(updated);
-    saveLayout(updated);
+    persistLayout(updated);
     setSelected(null);
     setSavedAt(Date.now());
   }
@@ -191,7 +238,7 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
 
   function onSvgPointerUp() {
     if (!dragging) return;
-    saveLayout(layout);
+    persistLayout(layout);
     setDragging(null);
     setSavedAt(Date.now());
   }
@@ -205,6 +252,7 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
     if (!confirm("Restaurar layout padrão? Suas mudanças serão perdidas.")) return;
     const fresh = resetLayout();
     setLayout(fresh);
+    persistLayout(fresh);
     setSelected(null);
     setSavedAt(Date.now());
   }
@@ -220,6 +268,7 @@ export default function GymEditor({ initialLayout }: GymEditorProps) {
       return;
     const fresh = applyPreset(presetId);
     setLayout(fresh);
+    persistLayout(fresh);
     setSelected(null);
     setSavedAt(Date.now());
   }
