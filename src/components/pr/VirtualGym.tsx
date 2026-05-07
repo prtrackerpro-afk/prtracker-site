@@ -31,6 +31,7 @@ import {
   buildRowingMachine,
   buildPlyoBox,
   buildCrossFitRig,
+  STEEL_MAT,
   type SkillBoardSlot,
   type RunSlot,
 } from "../../lib/pr/gym/builders";
@@ -74,6 +75,7 @@ import {
   playBell,
   playWhoosh,
   startAmbient,
+  stopAmbient,
   setMuted,
 } from "../../lib/pr/gym/audio";
 import { ParticleBurst, CameraShake } from "../../lib/pr/gym/fx";
@@ -726,12 +728,8 @@ export default function VirtualGym({
      * NPC fica em booth-local -z (atrás), depois rotaciona pelo rot do booth.
      */
     function npcBehindBooth(boothX: number, boothZ: number, rot: number, distance = 0.5) {
-      // Local offset (0, 0, -distance) rotacionado por rot:
-      const localZ = -distance;
-      const wx = -localZ * Math.sin(rot);
-      const wz = -localZ * Math.cos(rot);
-      // Wait, rotation around Y by angle θ takes (0, 0, z) to (z*sin(θ), 0, z*cos(θ)).
-      // For local (0, 0, -distance) → (-distance*sin(rot), 0, -distance*cos(rot))
+      // Rotação Y por θ leva (0, 0, z) → (z*sin(θ), 0, z*cos(θ)).
+      // Local offset (0, 0, -distance) (atrás do banner) → world:
       return {
         x: boothX + (-distance) * Math.sin(rot),
         z: boothZ + (-distance) * Math.cos(rot),

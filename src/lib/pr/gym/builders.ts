@@ -3681,8 +3681,15 @@ export function buildRowingMachine(accentHex: string): THREE.Group {
   rdctx.fillText("245 W", 128, 120);
   const rowDisplayTex = new THREE.CanvasTexture(rowDisplayCanvas);
   rowDisplayTex.colorSpace = THREE.SRGBColorSpace;
-  // Substitui o display sólido pelo canvas
-  display.material = new THREE.MeshBasicMaterial({ map: rowDisplayTex });
+  // Mesh adicional com canvas texture sobreposta ao display sólido (não
+  // reatribui display.material — TypeScript reclama por divergir do tipo
+  // declarado na criação).
+  const displayCanvas = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.3, 0.16),
+    new THREE.MeshBasicMaterial({ map: rowDisplayTex })
+  );
+  displayCanvas.position.set(0, 1.15, -0.97);
+  g.add(displayCanvas);
 
   // Footplates (pés ergonômicos)
   for (const sx of [-0.18, 0.18]) {
