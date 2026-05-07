@@ -1041,12 +1041,14 @@ export default function VirtualGym({
     // Mas queremos ápice em -x (na lente, projetando pra +x... NÃO, projetor
     // aponta pra -x onde está a tela). Então rotation.z = π/2 → ápice em -x.
     const beamLength = PROJ_X - 0.3 - (-2.5); // ~2.7m
+    // V16.7 cycle 16: opacity 0.18 → 0.4 (mais que dobro). User pediu várias
+    // vezes "feixe visível pra parede". 0.4 é dramático mas clean.
     const projBeam = new THREE.Mesh(
       new THREE.ConeGeometry(1.1, beamLength, 24, 1, true),
       new THREE.MeshBasicMaterial({
         color: 0xfff5e0,
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.4,
         side: THREE.DoubleSide,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
@@ -1077,7 +1079,7 @@ export default function VirtualGym({
       new THREE.MeshBasicMaterial({
         color: 0xfff5e0,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.7,
         side: THREE.DoubleSide,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
@@ -1087,8 +1089,8 @@ export default function VirtualGym({
     projBeamInner.position.set(PROJ_X - 0.35 - (beamLength * 0.9) / 2, PROJ_Y, 0);
     projRoomGroup.add(projBeamInner);
 
-    // Spotlight real iluminando a área entre projetor e tela
-    const beamSpot = new THREE.SpotLight(0xfff5e0, 0.8, 4, Math.PI / 7, 0.4, 1.0);
+    // Spotlight real iluminando a área entre projetor e tela — bem mais forte
+    const beamSpot = new THREE.SpotLight(0xfff5e0, 2.0, 6, Math.PI / 6, 0.5, 1.0);
     beamSpot.position.set(PROJ_X - 0.3, PROJ_Y, 0);
     const beamSpotTarget = new THREE.Object3D();
     beamSpotTarget.position.set(-2.5, PROJ_Y - 0.4, 0);
