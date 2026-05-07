@@ -2700,45 +2700,67 @@ export function buildStreakPillar(streakDays: number): StreakPillarParts {
   numPanel.position.set(0, 0.85, 0.61);
   g.add(numPanel);
 
-  // === CHAMA 3D em cima ===
+  // === CHAMA 3D em cima — V16.7 cycle 14: 50% maior + emissive halo ===
   const flame = new THREE.Group();
   flame.position.set(0, 1.65, 0);
 
-  // Layer 1: chama externa (laranja transparente)
+  // Layer 1: chama externa (laranja transparente) — bem maior
   const f1 = new THREE.Mesh(
-    new THREE.ConeGeometry(0.32, 0.7, 12),
+    new THREE.ConeGeometry(0.48, 1.05, 14),
     new THREE.MeshBasicMaterial({
       color: 0xff6020,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending,
     })
   );
-  f1.position.y = 0.35;
+  f1.position.y = 0.52;
   flame.add(f1);
 
   // Layer 2: chama média (amarela)
   const f2 = new THREE.Mesh(
-    new THREE.ConeGeometry(0.22, 0.55, 12),
+    new THREE.ConeGeometry(0.32, 0.82, 14),
     new THREE.MeshBasicMaterial({
       color: 0xffaa30,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
     })
   );
-  f2.position.y = 0.35;
+  f2.position.y = 0.5;
   flame.add(f2);
 
   // Layer 3: núcleo (amarelo claro brilhante)
   const f3 = new THREE.Mesh(
-    new THREE.ConeGeometry(0.13, 0.4, 12),
+    new THREE.ConeGeometry(0.18, 0.6, 14),
     new THREE.MeshBasicMaterial({
       color: 0xffe080,
     })
   );
-  f3.position.y = 0.32;
+  f3.position.y = 0.46;
   flame.add(f3);
 
+  // Halo emissive embaixo da chama (efeito calor irradiando)
+  const halo = new THREE.Mesh(
+    new THREE.RingGeometry(0.45, 0.7, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xff6020,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  halo.rotation.x = -Math.PI / 2;
+  halo.position.y = 0.02;
+  flame.add(halo);
+
   g.add(flame);
+
+  // PointLight no topo da chama pra iluminar área (visível à distância)
+  const flameLight = new THREE.PointLight(0xff7030, 0.8, 4, 1.5);
+  flameLight.position.set(0, 2.0, 0);
+  g.add(flameLight);
 
   // Hit-box pra raycast
   const hitBox = new THREE.Mesh(
