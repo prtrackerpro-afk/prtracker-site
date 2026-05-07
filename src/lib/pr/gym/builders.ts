@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { splitPlates, BAR_KG } from "../plates";
 import type { AvatarPrefs } from "./avatar-prefs";
+import { BODY_PROPORTIONS } from "./avatar-prefs";
 import {
   SKILL_TIER_META,
   tierForReps,
@@ -111,10 +112,21 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   // Animal Crossing/Viverse Retro vs realismo seco. Total ~1.95m.
   const isF = prefs.gender === "female";
   const isM = prefs.gender === "male";
-  const torsoTopR = isF ? 0.20 : isM ? 0.24 : 0.22;
-  const torsoBotR = isF ? 0.18 : isM ? 0.20 : 0.19;
-  const hipR = isF ? 0.22 : isM ? 0.20 : 0.21;
-  const shoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
+
+  // Body type multiplicadores — afeta peito/barriga/braço/perna
+  const props = BODY_PROPORTIONS[prefs.bodyType] ?? BODY_PROPORTIONS.normal;
+
+  // Base por gender, depois aplicado bodyType chestWidth multiplier
+  const baseTorsoTopR = isF ? 0.20 : isM ? 0.24 : 0.22;
+  const baseTorsoBotR = isF ? 0.18 : isM ? 0.20 : 0.19;
+  const baseHipR = isF ? 0.22 : isM ? 0.20 : 0.21;
+  const baseShoulderHalfW = isF ? 0.22 : isM ? 0.26 : 0.24;
+
+  const torsoTopR = baseTorsoTopR * props.chestWidth;
+  const torsoBotR = baseTorsoBotR * props.bellyWidth;
+  const hipR = baseHipR * Math.max(props.bellyWidth * 0.85, 0.95); // hips acompanham menos
+  const shoulderHalfW = baseShoulderHalfW * props.chestWidth;
+
   const headR = 0.21; // BIGGER (era 0.165) — visível de qualquer ângulo
 
   // === HEAD ESFÉRICO — round head + face simples + hair cap =====
@@ -381,25 +393,46 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   hips.castShadow = true;
   root.add(hips);
 
+  // === BARRIGA EXTRA pra chubby/obese ===========================
+  // Mesh esférico achatado sobreposto ao torso na altura abaixo do peito.
+  // Só renderiza pra bodies com bellyWidth alto.
+  if (props.bellyWidth >= 1.30) {
+    const bellyR = baseTorsoBotR * props.bellyWidth * 0.95;
+    const bellyDepth = baseTorsoBotR * props.bellyDepth;
+    const belly = new THREE.Mesh(
+      new THREE.SphereGeometry(bellyR, 22, 18),
+      topMat
+    );
+    // Achata vertical pra dar formato de barriga (não esfera total)
+    belly.scale.set(1.0, 0.7, bellyDepth / bellyR);
+    belly.position.set(0, torsoY - torsoH * 0.18, torsoTopR * 0.15);
+    belly.castShadow = true;
+    root.add(belly);
+  }
+
   // === LEGS — pés tocam o chão ==================================
   // legGroup origin = quadril (y=0.985). Parts vão pra baixo até a sola
   // do tênis encostar no chão (sole bottom y ≈ 0).
-  const leftLeg = buildLeg(skinMat, shortsMat, shoeMat);
-  leftLeg.position.set(-0.10, 0.985, 0);
+  // Espaçamento entre pernas escala com bellyWidth (corpos maiores = pernas mais afastadas).
+  const legSpread = 0.10 * Math.max(1, props.bellyWidth * 0.85);
+  const leftLeg = buildLeg(skinMat, shortsMat, shoeMat, props.legWidth);
+  leftLeg.position.set(-legSpread, 0.985, 0);
   root.add(leftLeg);
 
-  const rightLeg = buildLeg(skinMat, shortsMat, shoeMat);
-  rightLeg.position.set(0.10, 0.985, 0);
+  const rightLeg = buildLeg(skinMat, shortsMat, shoeMat, props.legWidth);
+  rightLeg.position.set(legSpread, 0.985, 0);
   root.add(rightLeg);
 
   // === ARMS — pendurados ao lado do torso =======================
   // armGroup origin = ombro (y=1.62). Parts vão pra baixo.
-  const leftArm = buildArm(skinMat, topMat);
-  leftArm.position.set(-shoulderHalfW - 0.02, 1.62, 0);
+  // Para corpos com peito largo/ombro forte, braços ficam mais afastados.
+  const armOffset = shoulderHalfW + 0.02 + (props.armWidth - 1) * 0.04;
+  const leftArm = buildArm(skinMat, topMat, props.armWidth);
+  leftArm.position.set(-armOffset, 1.62, 0);
   root.add(leftArm);
 
-  const rightArm = buildArm(skinMat, topMat);
-  rightArm.position.set(shoulderHalfW + 0.02, 1.62, 0);
+  const rightArm = buildArm(skinMat, topMat, props.armWidth);
+  rightArm.position.set(armOffset, 1.62, 0);
   root.add(rightArm);
 
   return { root, leftLeg, rightLeg, leftArm, rightArm, head };
@@ -408,16 +441,21 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
 /**
  * Perna: shorts curto no topo (visível abaixo do hip), depois coxa,
  * panturrilha, tênis. Origin = quadril (top of thigh).
+ *
+ * `legScale` afeta largura (raio dos cilindros). Default 1.0 = perna normal.
+ * Strong/giant = >1, skinny = <1, obese = bem maior.
  */
 function buildLeg(
   skinMat: THREE.Material,
   shortsMat: THREE.Material,
-  shoeMat: THREE.Material
+  shoeMat: THREE.Material,
+  legScale: number = 1.0
 ): THREE.Group {
   const g = new THREE.Group();
+  const s = legScale;
   // Shorts cobrindo topo da coxa (até ~10cm abaixo do hip)
   const shortsCover = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.11, 0.105, 0.18, 10),
+    new THREE.CylinderGeometry(0.11 * s, 0.105 * s, 0.18, 10),
     shortsMat
   );
   shortsCover.position.y = -0.09;
@@ -426,7 +464,7 @@ function buildLeg(
 
   // Coxa (skin)
   const thigh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.085, 0.07, 0.28, 10),
+    new THREE.CylinderGeometry(0.085 * s, 0.07 * s, 0.28, 10),
     skinMat
   );
   thigh.position.y = -0.32;
@@ -434,13 +472,13 @@ function buildLeg(
   g.add(thigh);
 
   // Joelho (esfera pra suavizar a junção)
-  const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), skinMat);
+  const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07 * s, 10, 8), skinMat);
   knee.position.y = -0.46;
   g.add(knee);
 
   // Panturrilha
   const calf = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.065, 0.055, 0.36, 10),
+    new THREE.CylinderGeometry(0.065 * s, 0.055 * s, 0.36, 10),
     skinMat
   );
   calf.position.y = -0.65;
@@ -448,18 +486,18 @@ function buildLeg(
   g.add(calf);
 
   // Tornozelo
-  const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 6), skinMat);
+  const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.052 * s, 8, 6), skinMat);
   ankle.position.y = -0.84;
   g.add(ankle);
 
   // Tênis (caixa de couro preto + sola lime)
-  const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.24), shoeMat);
+  const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.13 * s, 0.09, 0.24), shoeMat);
   shoe.position.set(0, -0.91, 0.05);
   shoe.castShadow = true;
   g.add(shoe);
   // Sola lime (assinatura visual da marca)
   const sole = new THREE.Mesh(
-    new THREE.BoxGeometry(0.135, 0.025, 0.25),
+    new THREE.BoxGeometry(0.135 * s, 0.025, 0.25),
     new THREE.MeshStandardMaterial({ color: 0xd8ff2c, roughness: 0.5 })
   );
   sole.position.set(0, -0.97, 0.05);
@@ -471,38 +509,46 @@ function buildLeg(
 /**
  * Braço: regata (mangueta curta) cobrindo topo, depois pele.
  * Origin = ombro (top of upper arm).
+ *
+ * `armScale` afeta largura. Strong = >1 (bíceps marombeiro),
+ * skinny = <1 (braço fininho), giant = bem maior.
  */
-function buildArm(skinMat: THREE.Material, topMat: THREE.Material): THREE.Group {
+function buildArm(
+  skinMat: THREE.Material,
+  topMat: THREE.Material,
+  armScale: number = 1.0
+): THREE.Group {
   const g = new THREE.Group();
+  const s = armScale;
   // Mangueta curta da regata cobrindo o ombro (3cm da regata desce pelo braço)
   const sleeve = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.075, 0.07, 0.06, 10),
+    new THREE.CylinderGeometry(0.075 * s, 0.07 * s, 0.06, 10),
     topMat
   );
   sleeve.position.y = -0.03;
   g.add(sleeve);
-  // Bíceps
+  // Bíceps — pra strong/giant fica visivelmente cheio
   const upper = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.06, 0.28, 10),
+    new THREE.CylinderGeometry(0.07 * s, 0.06 * s, 0.28, 10),
     skinMat
   );
   upper.position.y = -0.2;
   upper.castShadow = true;
   g.add(upper);
   // Cotovelo
-  const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), skinMat);
+  const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.058 * s, 10, 8), skinMat);
   elbow.position.y = -0.36;
   g.add(elbow);
   // Antebraço
   const lower = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.058, 0.052, 0.26, 10),
+    new THREE.CylinderGeometry(0.058 * s, 0.052 * s, 0.26, 10),
     skinMat
   );
   lower.position.y = -0.5;
   lower.castShadow = true;
   g.add(lower);
-  // Mão (esfera)
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), skinMat);
+  // Mão (esfera) — sempre tamanho fixo (mãos não escalam tanto com músculo)
+  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06 * Math.min(s, 1.15), 10, 8), skinMat);
   hand.position.y = -0.66;
   g.add(hand);
   return g;
@@ -2468,4 +2514,572 @@ export function buildSquatRack(accentHex: string): THREE.Group {
   g.add(barbell);
 
   return g;
+}
+
+// =================================================================
+// NPC ESPECIALIZADOS — Personal (marombeiro forte) e Nutri (galega + óculos)
+// =================================================================
+//
+// Espelham a interface NPCParts de buildNPC, mas com proporções e
+// acessórios distintivos pra ficarem reconhecíveis no gym (Felipe pediu
+// que ambos sejam visualmente marcantes — Personal forte, Nutri galega
+// loira de óculos).
+
+/**
+ * Personal Trainer NPC — marombeiro forte. Cabelo bem curto (cap
+ * pequena), peito largo, bíceps grandes, top sem manga (regata) lime.
+ * Acessório: prancheta segurada na mão direita (cilindro escuro
+ * + plano branco).
+ */
+export function buildPersonalNPC(): NPCParts {
+  const root = new THREE.Group();
+
+  const skinHex = "#c08a5e"; // bronzeado
+  const hairHex = "#1a1410";
+  const topHex = "#D8FF2C"; // lime
+  const shortsHex = "#111111";
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.7 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: hairHex, roughness: 0.85 });
+  const topMat = new THREE.MeshStandardMaterial({ color: topHex, roughness: 0.7 });
+  const shortsMat = new THREE.MeshStandardMaterial({ color: shortsHex, roughness: 0.85 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
+
+  // === Proporções marombeiro: torso largo (chest 1.35x) + bíceps grandes (1.6x) ===
+  const chestMul = 1.35;
+  const armMul = 1.6;
+  const legMul = 1.25;
+  const torsoR = 0.22 * chestMul;
+  const headR = 0.21;
+
+  // === HEAD esférico — face simples + cap curtíssimo (quase careca) ===
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(
+    new THREE.SphereGeometry(headR, 28, 22),
+    skinMat
+  );
+  skull.scale.set(1.0, 1.06, 1.0);
+  skull.castShadow = true;
+  head.add(skull);
+
+  // 2 olhos pretos
+  for (const sx of [-0.075, 0.075]) {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    eye.position.set(sx, 0.025, headR * 0.92);
+    head.add(eye);
+  }
+
+  // Sorriso confiante (mais largo)
+  const smile = new THREE.Mesh(
+    new THREE.TorusGeometry(0.05, 0.011, 6, 14, Math.PI * 0.7),
+    new THREE.MeshStandardMaterial({ color: 0x4a1f1f, roughness: 0.6 })
+  );
+  smile.rotation.x = Math.PI;
+  smile.rotation.z = Math.PI / 2;
+  smile.position.set(0, -0.06, headR * 0.9);
+  head.add(smile);
+
+  // Cap MINI — cabelo bem rapado (2mm). Hemisfério bem fino e baixo.
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(headR + 0.008, 28, 22, 0, Math.PI * 2, 0, Math.PI / 2.2),
+    hairMat
+  );
+  cap.scale.set(1.0, 1.06, 1.0);
+  cap.position.y = 0.005;
+  head.add(cap);
+
+  // Pescoço grosso (marombeiro)
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.085, 0.10, 0.09, 12),
+    skinMat
+  );
+  neck.position.y = -headR - 0.02;
+  head.add(neck);
+
+  head.position.y = 1.95;
+  root.add(head);
+
+  // === TORSO LARGO ===
+  const body = new THREE.Group();
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(torsoR, torsoR * 0.9, 0.55, 22),
+    topMat
+  );
+  torso.position.y = 1.375;
+  torso.castShadow = true;
+  body.add(torso);
+
+  // Peitoral definido (2 esferas no peito superior)
+  for (const sx of [-torsoR * 0.4, torsoR * 0.4]) {
+    const pec = new THREE.Mesh(
+      new THREE.SphereGeometry(torsoR * 0.45, 16, 12),
+      topMat
+    );
+    pec.scale.set(1.0, 0.6, 0.5);
+    pec.position.set(sx, 1.55, torsoR * 0.55);
+    body.add(pec);
+  }
+
+  // Ombros grandes (delts)
+  const shoulderHalfW = 0.26 * chestMul;
+  for (const sx of [-shoulderHalfW, shoulderHalfW]) {
+    const shoulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.11 * chestMul, 16, 12),
+      topMat
+    );
+    shoulder.position.set(sx, 1.62, 0);
+    shoulder.castShadow = true;
+    body.add(shoulder);
+  }
+
+  // Logo "PT" no peito
+  const ptCanvas = document.createElement("canvas");
+  ptCanvas.width = 256;
+  ptCanvas.height = 256;
+  const pctx = ptCanvas.getContext("2d")!;
+  pctx.clearRect(0, 0, 256, 256);
+  pctx.fillStyle = "#01002A";
+  pctx.beginPath();
+  pctx.arc(128, 128, 76, 0, Math.PI * 2);
+  pctx.fill();
+  pctx.fillStyle = topHex;
+  pctx.font = "900 92px Archivo Black, Inter, sans-serif";
+  pctx.textAlign = "center";
+  pctx.textBaseline = "middle";
+  pctx.fillText("PT", 128, 138);
+  const ptTex = new THREE.CanvasTexture(ptCanvas);
+  ptTex.colorSpace = THREE.SRGBColorSpace;
+  const ptBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.22, 0.22),
+    new THREE.MeshBasicMaterial({ map: ptTex, transparent: true })
+  );
+  ptBadge.position.set(0, 1.40, torsoR + 0.005);
+  body.add(ptBadge);
+
+  // Hip
+  const hip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.20, 0.18, 16),
+    shortsMat
+  );
+  hip.position.y = 1.0;
+  body.add(hip);
+
+  root.add(body);
+
+  // === Pernas grandes ===
+  const legSpread = 0.13;
+  for (const sx of [-legSpread, legSpread]) {
+    const leg = new THREE.Group();
+    leg.position.set(sx, 0.985, 0);
+    const shorts = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11 * legMul, 0.105 * legMul, 0.18, 10),
+      shortsMat
+    );
+    shorts.position.y = -0.09;
+    leg.add(shorts);
+    const thigh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.085 * legMul, 0.07 * legMul, 0.28, 10),
+      skinMat
+    );
+    thigh.position.y = -0.32;
+    leg.add(thigh);
+    const calf = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.075 * legMul, 0.06 * legMul, 0.36, 10),
+      skinMat
+    );
+    calf.position.y = -0.65;
+    leg.add(calf);
+    const shoe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, 0.09, 0.25),
+      shoeMat
+    );
+    shoe.position.set(0, -0.91, 0.05);
+    leg.add(shoe);
+    // Sola lime
+    const sole = new THREE.Mesh(
+      new THREE.BoxGeometry(0.145, 0.025, 0.26),
+      new THREE.MeshStandardMaterial({ color: 0xd8ff2c })
+    );
+    sole.position.set(0, -0.97, 0.05);
+    leg.add(sole);
+    root.add(leg);
+  }
+
+  // === Braços com BÍCEPS GRANDES ===
+  for (const sx of [-shoulderHalfW - 0.02, shoulderHalfW + 0.02]) {
+    const arm = new THREE.Group();
+    arm.position.set(sx, 1.62, 0);
+    // Bíceps GRANDE (cilindro maior + esfera no meio simulando músculo)
+    const upper = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07 * armMul, 0.06 * armMul, 0.28, 10),
+      skinMat
+    );
+    upper.position.y = -0.2;
+    upper.castShadow = true;
+    arm.add(upper);
+    // "Pico" do bíceps (esfera achatada destacando músculo)
+    const bicepsPeak = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08 * armMul, 14, 10),
+      skinMat
+    );
+    bicepsPeak.scale.set(1.0, 0.7, 0.85);
+    bicepsPeak.position.set(0, -0.13, 0.02);
+    arm.add(bicepsPeak);
+    // Cotovelo
+    const elbow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06 * armMul, 10, 8),
+      skinMat
+    );
+    elbow.position.y = -0.36;
+    arm.add(elbow);
+    // Antebraço
+    const lower = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.058 * armMul, 0.052 * armMul, 0.26, 10),
+      skinMat
+    );
+    lower.position.y = -0.5;
+    arm.add(lower);
+    // Mão
+    const hand = new THREE.Mesh(
+      new THREE.SphereGeometry(0.065, 10, 8),
+      skinMat
+    );
+    hand.position.y = -0.66;
+    arm.add(hand);
+
+    // PRANCHETA na mão direita (sx > 0)
+    if (sx > 0) {
+      const clipboard = new THREE.Group();
+      const board = new THREE.Mesh(
+        new THREE.BoxGeometry(0.18, 0.22, 0.012),
+        new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.6 })
+      );
+      board.position.y = -0.78;
+      clipboard.add(board);
+      // Folha branca
+      const sheet = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.15, 0.18),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      sheet.position.set(0, -0.78, 0.008);
+      clipboard.add(sheet);
+      // Clip metálico no topo
+      const clip = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.025, 0.018),
+        new THREE.MeshStandardMaterial({ color: 0x888a96, metalness: 0.7, roughness: 0.3 })
+      );
+      clip.position.set(0, -0.69, 0.012);
+      clipboard.add(clip);
+      // 3 linhas de "treino" no papel (simulando texto)
+      for (let i = 0; i < 3; i++) {
+        const line = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.10, 0.005),
+          new THREE.MeshBasicMaterial({ color: 0x444444 })
+        );
+        line.position.set(0, -0.74 - i * 0.025, 0.009);
+        clipboard.add(line);
+      }
+      arm.add(clipboard);
+    }
+
+    root.add(arm);
+  }
+
+  return { group: root, head, body };
+}
+
+/**
+ * Nutricionista NPC — galega bonita com óculos. Loira (cabelo longo
+ * loiro), pele clara, top branco (lab coat), óculos elegantes.
+ */
+export function buildNutriNPC(): NPCParts {
+  const root = new THREE.Group();
+
+  const skinHex = "#f5d7be"; // pele clara
+  const hairHex = "#d4a04a"; // loiro
+  const topHex = "#ffffff"; // branco (lab coat)
+  const shortsHex = "#1e1b50"; // navy
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.7 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: hairHex, roughness: 0.85 });
+  const topMat = new THREE.MeshStandardMaterial({ color: topHex, roughness: 0.7 });
+  const shortsMat = new THREE.MeshStandardMaterial({ color: shortsHex, roughness: 0.85 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+
+  const torsoR = 0.18; // proporção feminina
+  const headR = 0.21;
+
+  // === HEAD ===
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(
+    new THREE.SphereGeometry(headR, 32, 24),
+    skinMat
+  );
+  skull.scale.set(1.0, 1.08, 1.0);
+  skull.castShadow = true;
+  head.add(skull);
+
+  // Olhos azuis (galega)
+  for (const sx of [-0.075, 0.075]) {
+    // Sclera (branco do olho)
+    const sclera = new THREE.Mesh(
+      new THREE.SphereGeometry(0.030, 12, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    sclera.position.set(sx, 0.025, headR * 0.91);
+    head.add(sclera);
+    // Íris azul
+    const iris = new THREE.Mesh(
+      new THREE.SphereGeometry(0.018, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0x4a8acc })
+    );
+    iris.position.set(sx, 0.025, headR * 0.94);
+    head.add(iris);
+    // Pupila preta
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.010, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    pupil.position.set(sx, 0.025, headR * 0.96);
+    head.add(pupil);
+  }
+
+  // ÓCULOS — armação retangular preta + lentes transparentes
+  const glassesGroup = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x14111e,
+    roughness: 0.4,
+    metalness: 0.3,
+  });
+  // Aro esquerdo
+  const leftRim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.045, 0.006, 6, 18),
+    frameMat
+  );
+  leftRim.position.set(-0.075, 0.025, headR * 0.97);
+  glassesGroup.add(leftRim);
+  // Aro direito
+  const rightRim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.045, 0.006, 6, 18),
+    frameMat
+  );
+  rightRim.position.set(0.075, 0.025, headR * 0.97);
+  glassesGroup.add(rightRim);
+  // Ponte (entre os 2 aros)
+  const bridge = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.005, 0.005, 0.06, 6),
+    frameMat
+  );
+  bridge.rotation.z = Math.PI / 2;
+  bridge.position.set(0, 0.025, headR * 0.98);
+  glassesGroup.add(bridge);
+  // Lentes (planos transparentes-azulados)
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: 0xa0c8ff,
+    transparent: true,
+    opacity: 0.18,
+    roughness: 0.1,
+  });
+  for (const sx of [-0.075, 0.075]) {
+    const lens = new THREE.Mesh(
+      new THREE.CircleGeometry(0.042, 18),
+      lensMat
+    );
+    lens.position.set(sx, 0.025, headR * 0.975);
+    glassesGroup.add(lens);
+  }
+  // Hastes laterais (esticando até atrás da orelha)
+  for (const sx of [-1, 1]) {
+    const temple = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.005, 0.005, 0.18, 6),
+      frameMat
+    );
+    temple.rotation.x = Math.PI / 2;
+    temple.position.set(sx * 0.115, 0.025, headR * 0.55);
+    glassesGroup.add(temple);
+  }
+  head.add(glassesGroup);
+
+  // Sorriso doce (curva pequena)
+  const smile = new THREE.Mesh(
+    new THREE.TorusGeometry(0.038, 0.009, 6, 14, Math.PI * 0.7),
+    new THREE.MeshStandardMaterial({ color: 0xc44a5a, roughness: 0.5 })
+  );
+  smile.rotation.x = Math.PI;
+  smile.rotation.z = Math.PI / 2;
+  smile.position.set(0, -0.07, headR * 0.9);
+  head.add(smile);
+
+  // Bochechas levemente rosadas (2 manchas suaves)
+  for (const sx of [-1, 1]) {
+    const cheek = new THREE.Mesh(
+      new THREE.CircleGeometry(0.035, 14),
+      new THREE.MeshBasicMaterial({ color: 0xf6b8b0, transparent: true, opacity: 0.4 })
+    );
+    cheek.position.set(sx * 0.10, -0.02, headR * 0.94);
+    head.add(cheek);
+  }
+
+  // CABELO LONGO LOIRO — cap envolvente + tail nas costas
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(headR + 0.025, 32, 24, 0, Math.PI * 2, 0, Math.PI / 1.55),
+    hairMat
+  );
+  cap.scale.set(1.05, 1.10, 1.05);
+  cap.position.y = 0.005;
+  cap.castShadow = true;
+  head.add(cap);
+  // Cabelo descendo nas costas (capsula achatada)
+  const longBack = new THREE.Mesh(
+    new THREE.CapsuleGeometry(headR * 0.95, 0.55, 8, 16),
+    hairMat
+  );
+  longBack.scale.set(1.1, 1, 0.42);
+  longBack.position.set(0, -headR * 0.6, -headR * 0.55);
+  longBack.castShadow = true;
+  head.add(longBack);
+  // Mecha caindo na frente (lateral direita do rosto)
+  const frontStrand = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.04, 0.18, 6, 10),
+    hairMat
+  );
+  frontStrand.scale.set(0.7, 1, 0.5);
+  frontStrand.position.set(headR * 0.55, -headR * 0.25, headR * 0.6);
+  frontStrand.rotation.z = -0.15;
+  head.add(frontStrand);
+
+  // Pescoço fino
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.075, 0.09, 12),
+    skinMat
+  );
+  neck.position.y = -headR - 0.02;
+  head.add(neck);
+
+  head.position.y = 1.95;
+  root.add(head);
+
+  // === TORSO + LAB COAT ===
+  const body = new THREE.Group();
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(torsoR, torsoR * 0.92, 0.55, 22),
+    topMat
+  );
+  torso.position.y = 1.375;
+  torso.castShadow = true;
+  body.add(torso);
+
+  // Detalhe lab coat: lapelas verticais (2 retângulos verdes pra contraste)
+  for (const sx of [-1, 1]) {
+    const lapel = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.05, 0.4),
+      new THREE.MeshBasicMaterial({ color: 0x43B02A })
+    );
+    lapel.position.set(sx * torsoR * 0.5, 1.42, torsoR + 0.001);
+    body.add(lapel);
+  }
+
+  // Logo "N" verde no peito
+  const nCanvas = document.createElement("canvas");
+  nCanvas.width = 256;
+  nCanvas.height = 256;
+  const nctx = nCanvas.getContext("2d")!;
+  nctx.clearRect(0, 0, 256, 256);
+  nctx.fillStyle = "#43B02A";
+  nctx.beginPath();
+  nctx.arc(128, 128, 70, 0, Math.PI * 2);
+  nctx.fill();
+  nctx.fillStyle = "#ffffff";
+  nctx.font = "900 110px Archivo Black, Inter, sans-serif";
+  nctx.textAlign = "center";
+  nctx.textBaseline = "middle";
+  nctx.fillText("N", 128, 138);
+  const nTex = new THREE.CanvasTexture(nCanvas);
+  nTex.colorSpace = THREE.SRGBColorSpace;
+  const nBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.18, 0.18),
+    new THREE.MeshBasicMaterial({ map: nTex, transparent: true })
+  );
+  nBadge.position.set(0, 1.32, torsoR + 0.005);
+  body.add(nBadge);
+
+  // Hip
+  const hip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.20, 0.18, 0.18, 16),
+    shortsMat
+  );
+  hip.position.y = 1.0;
+  body.add(hip);
+
+  root.add(body);
+
+  // === Pernas (femininas, sem músculo exagerado) ===
+  for (const sx of [-0.10, 0.10]) {
+    const leg = new THREE.Group();
+    leg.position.set(sx, 0.985, 0);
+    const skirt = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.10, 0.095, 0.18, 10),
+      shortsMat
+    );
+    skirt.position.y = -0.09;
+    leg.add(skirt);
+    const thigh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.075, 0.062, 0.28, 10),
+      skinMat
+    );
+    thigh.position.y = -0.32;
+    leg.add(thigh);
+    const calf = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.058, 0.05, 0.36, 10),
+      skinMat
+    );
+    calf.position.y = -0.65;
+    leg.add(calf);
+    // Sapato fechado (não tênis — Nutri usa sapato profissional)
+    const shoe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.11, 0.06, 0.20),
+      shoeMat
+    );
+    shoe.position.set(0, -0.93, 0.04);
+    leg.add(shoe);
+    root.add(leg);
+  }
+
+  // === Braços (femininos, finos) ===
+  const shoulderHalfW = 0.21;
+  for (const sx of [-shoulderHalfW - 0.02, shoulderHalfW + 0.02]) {
+    const arm = new THREE.Group();
+    arm.position.set(sx, 1.62, 0);
+    // Manga curta lab coat
+    const sleeve = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.065, 0.10, 10),
+      topMat
+    );
+    sleeve.position.y = -0.05;
+    arm.add(sleeve);
+    const upper = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.052, 0.24, 10),
+      skinMat
+    );
+    upper.position.y = -0.22;
+    arm.add(upper);
+    const lower = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.045, 0.26, 10),
+      skinMat
+    );
+    lower.position.y = -0.5;
+    arm.add(lower);
+    const hand = new THREE.Mesh(
+      new THREE.SphereGeometry(0.052, 10, 8),
+      skinMat
+    );
+    hand.position.y = -0.66;
+    arm.add(hand);
+    root.add(arm);
+  }
+
+  return { group: root, head, body };
 }
