@@ -182,8 +182,9 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   // Hemisfério ligeiramente maior que o skull cobrindo top + lateral
   // + nuca, deixando só a face na frente exposta.
   if (prefs.hairStyle !== "bald") {
+    // V16.8 cycle 64: hair caps mais CURTOS (não cobrem olhos) + posição
+    // mais alta. Antes π/1.65 (109°) cobria abaixo da linha dos olhos.
     if (prefs.hairStyle === "short") {
-      // Cap hemisférica sólida cobrindo top + sides + back
       const capGeom = new THREE.SphereGeometry(
         headR + 0.02,
         32,
@@ -191,15 +192,14 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
         0,
         Math.PI * 2,
         0,
-        Math.PI / 1.65
+        Math.PI / 2.4 // ~75° (era 109°)
       );
       const cap = new THREE.Mesh(capGeom, hairMat);
       cap.scale.set(1.0, 1.08, 1.0);
-      cap.position.y = -0.02;
+      cap.position.y = 0.04;
       cap.castShadow = true;
       head.add(cap);
     } else if (prefs.hairStyle === "long") {
-      // Cap maior + cabelo longo descendo nas costas
       const capGeom = new THREE.SphereGeometry(
         headR + 0.025,
         32,
@@ -207,10 +207,11 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
         0,
         Math.PI * 2,
         0,
-        Math.PI / 1.55
+        Math.PI / 2.2 // ~82° (era 116°)
       );
       const cap = new THREE.Mesh(capGeom, hairMat);
       cap.scale.set(1.0, 1.08, 1.0);
+      cap.position.y = 0.03;
       cap.castShadow = true;
       head.add(cap);
       // Cabelo longo nas costas (capsula achatada)
@@ -223,7 +224,6 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
       back.castShadow = true;
       head.add(back);
     } else if (prefs.hairStyle === "ponytail") {
-      // Cap puxada pra trás
       const capGeom = new THREE.SphereGeometry(
         headR + 0.018,
         32,
@@ -231,10 +231,10 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
         0,
         Math.PI * 2,
         0,
-        Math.PI / 1.7
+        Math.PI / 2.5 // ~72° (era 106°)
       );
       const cap = new THREE.Mesh(capGeom, hairMat);
-      cap.position.set(0, 0, -0.02);
+      cap.position.set(0, 0.03, -0.02);
       head.add(cap);
       // Tie ball atrás (esfera pequena)
       const tieBall = new THREE.Mesh(
@@ -393,14 +393,17 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   rightLeg.position.set(0.10, 0.985, 0);
   root.add(rightLeg);
 
-  // === ARMS — pendurados ao lado do torso =======================
-  // armGroup origin = ombro (y=1.62). Parts vão pra baixo.
+  // === ARMS com pose natural (cycle 63) — leve flexão fora do corpo
   const leftArm = buildArm(skinMat, topMat);
   leftArm.position.set(-shoulderHalfW - 0.02, 1.62, 0);
+  leftArm.rotation.z = -0.12; // 7° pra fora
+  leftArm.rotation.x = -0.05;
   root.add(leftArm);
 
   const rightArm = buildArm(skinMat, topMat);
   rightArm.position.set(shoulderHalfW + 0.02, 1.62, 0);
+  rightArm.rotation.z = 0.12;
+  rightArm.rotation.x = -0.05;
   root.add(rightArm);
 
   return { root, leftLeg, rightLeg, leftArm, rightArm, head };
