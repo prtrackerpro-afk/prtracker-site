@@ -772,6 +772,15 @@ export default function VirtualGym({
       c.userData.npcSlot = "nutri";
     });
     sponsorsGroup.add(nutriNPC.group);
+    // Spotlight direto na cabeça do NPC pra garantir visibilidade
+    const nutriSpot = new THREE.SpotLight(0xffffff, 1.5, 6, Math.PI / 4, 0.4, 1.0);
+    nutriSpot.position.set(nutriNpcPos.x, 4, nutriNpcPos.z);
+    const nutriSpotTarget = new THREE.Object3D();
+    nutriSpotTarget.position.set(nutriNpcPos.x, 1.8, nutriNpcPos.z);
+    scene.add(nutriSpotTarget);
+    nutriSpot.target = nutriSpotTarget;
+    scene.add(nutriSpot);
+
     const npcAnimRefs: Array<{ head: THREE.Group; body: THREE.Group; phase: number }> = [
       { head: nutriNPC.head, body: nutriNPC.body, phase: 0 },
     ];
@@ -811,6 +820,15 @@ export default function VirtualGym({
       c.userData.npcSlot = "pt";
     });
     sponsorsGroup.add(ptNPC.group);
+    // Spotlight direto na cabeça do PT NPC
+    const ptSpot = new THREE.SpotLight(0xffffff, 1.5, 6, Math.PI / 4, 0.4, 1.0);
+    ptSpot.position.set(ptNpcPos.x, 4, ptNpcPos.z);
+    const ptSpotTarget = new THREE.Object3D();
+    ptSpotTarget.position.set(ptNpcPos.x, 1.8, ptNpcPos.z);
+    scene.add(ptSpotTarget);
+    ptSpot.target = ptSpotTarget;
+    scene.add(ptSpot);
+
     npcAnimRefs.push({ head: ptNPC.head, body: ptNPC.body, phase: 1.5 });
 
     const emptyBooth = buildSponsorBooth({
