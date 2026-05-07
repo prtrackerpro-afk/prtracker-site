@@ -841,6 +841,7 @@ export default function VirtualGym({
     nutriNPC.group.userData.npcSlot = "nutri";
     nutriNPC.group.traverse((c) => {
       c.userData.npcSlot = "nutri";
+      if ((c as THREE.Mesh).isMesh) c.castShadow = true;
     });
     sponsorsGroup.add(nutriNPC.group);
     // Spotlight direto na cabeça do NPC pra garantir visibilidade
@@ -890,6 +891,7 @@ export default function VirtualGym({
     ptNPC.group.userData.npcSlot = "pt";
     ptNPC.group.traverse((c) => {
       c.userData.npcSlot = "pt";
+      if ((c as THREE.Mesh).isMesh) c.castShadow = true;
     });
     sponsorsGroup.add(ptNPC.group);
     // Spotlight direto na cabeça do PT NPC
@@ -1266,6 +1268,12 @@ export default function VirtualGym({
     const spawnPos = lo("spawn");
     avatarParts.root.position.set(spawnPos.x, 0, spawnPos.z);
     avatarParts.root.rotation.y = spawnPos.rot;
+    // V16.7 cycle 38: garante shadow casting do avatar (todos os meshes)
+    avatarParts.root.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+      }
+    });
 
     // Avatar aura (efeito 10+ troféus) — disco glow embaixo
     let avatarAura: THREE.Mesh | null = null;
