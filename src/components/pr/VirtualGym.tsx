@@ -832,6 +832,7 @@ export default function VirtualGym({
       gender: "female",
       initial: "C",
       outfit: "labcoat",
+      nameTag: "Camila · Nutri",
     });
     const nutriNpcPos = npcBesideBooth(nutriPos.x, nutriPos.z, nutriPos.rot, 2.0);
     nutriNPC.group.position.set(nutriNpcPos.x, 0, nutriNpcPos.z);
@@ -881,6 +882,7 @@ export default function VirtualGym({
       gender: "male",
       initial: "B",
       outfit: "athletic",
+      nameTag: "Bruno · Personal",
     });
     const ptNpcPos = npcBesideBooth(ptPos.x, ptPos.z, ptPos.rot, 2.0);
     ptNPC.group.position.set(ptNpcPos.x, 0, ptNpcPos.z);
