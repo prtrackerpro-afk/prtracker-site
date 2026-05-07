@@ -689,12 +689,13 @@ function buildMiniBarbell(weightKg: number): THREE.Group {
       const colorHex = IWF_COLOR_BY_KG[pair.kg] ?? 0x9ca3af;
       const radius = 0.1 + (pair.kg / 25) * 0.08;
       const thickness = 0.035 + (pair.kg / 25) * 0.02;
+      // V16.8 cycle 91: emissive boost mini-barbell plates
       const mat = new THREE.MeshStandardMaterial({
         color: colorHex,
-        roughness: 0.4,
-        metalness: 0.2,
+        roughness: 0.35,
+        metalness: 0.25,
         emissive: colorHex,
-        emissiveIntensity: 0.12,
+        emissiveIntensity: 0.25,
       });
       for (let i = 0; i < pair.count; i++) {
         const plate = new THREE.Mesh(
@@ -2960,19 +2961,24 @@ export function buildSponsorBooth(
     new THREE.MeshBasicMaterial({ color: accentColor, side: THREE.DoubleSide })
   );
   // RingGeometry com 4 segmentos vira quadrado, mas precisamos retângulo —
-  // usamos 4 boxes finas pra demarcar
+  // V16.8 cycle 92: borda lime do booth com emissive (mais visível)
+  const edgeMat = new THREE.MeshStandardMaterial({
+    color: accentColor,
+    emissive: accentColor,
+    emissiveIntensity: 0.7,
+  });
   for (const dz of [-floorD / 2, floorD / 2]) {
     const edge = new THREE.Mesh(
-      new THREE.BoxGeometry(floorW, 0.02, 0.04),
-      new THREE.MeshBasicMaterial({ color: accentColor })
+      new THREE.BoxGeometry(floorW, 0.03, 0.05),
+      edgeMat
     );
     edge.position.set(0, 0.02, dz);
     g.add(edge);
   }
   for (const dx of [-floorW / 2, floorW / 2]) {
     const edge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.02, floorD),
-      new THREE.MeshBasicMaterial({ color: accentColor })
+      new THREE.BoxGeometry(0.05, 0.03, floorD),
+      edgeMat
     );
     edge.position.set(dx, 0.02, 0);
     g.add(edge);
