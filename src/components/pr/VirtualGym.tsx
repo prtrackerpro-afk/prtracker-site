@@ -806,7 +806,7 @@ export default function VirtualGym({
     const ptNPC = buildNPC({
       skinHex: "#c08a5e",
       hairHex: "#1a1410",
-      topHex: "#1a1a3a", // muscle tank dark navy
+      topHex: "#DA291C", // muscle tank vermelho — contraste alto contra navy bg
       shortsHex: "#111111",
       gender: "male",
       initial: "B",
