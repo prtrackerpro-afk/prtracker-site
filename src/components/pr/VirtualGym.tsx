@@ -363,21 +363,22 @@ export default function VirtualGym({
     // Volta pra modern showroom: ambient generoso + key + fill brancos +
     // SPOTS extras nos pedestais (track lighting MAIS forte) +
     // follow spot accent no avatar.
-    const hemi = new THREE.HemisphereLight(0xeaf0ff, 0x1a1640, 0.95);
+    // V16.6 cycle 10: ambient boost + shadow camera ampliada pro mapa dobrado
+    const hemi = new THREE.HemisphereLight(0xeaf0ff, 0x1a1640, 1.1);
     scene.add(hemi);
 
-    const ambient = new THREE.AmbientLight(0xc8cfe0, 0.55);
+    const ambient = new THREE.AmbientLight(0xc8cfe0, 0.8);
     scene.add(ambient);
 
-    // Key light forte branca quente (sol)
-    const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.6);
-    keyLight.position.set(4, 10, 6);
+    // Key light forte branca quente (sol) — shadow camera 2x maior pro mapa dobrado
+    const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.8);
+    keyLight.position.set(8, 14, 10);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.camera.left = -12;
-    keyLight.shadow.camera.right = 12;
-    keyLight.shadow.camera.top = 12;
-    keyLight.shadow.camera.bottom = -12;
+    keyLight.shadow.camera.left = -22;
+    keyLight.shadow.camera.right = 22;
+    keyLight.shadow.camera.top = 22;
+    keyLight.shadow.camera.bottom = -22;
     keyLight.shadow.bias = -0.0005;
     keyLight.shadow.normalBias = 0.02;
     scene.add(keyLight);
