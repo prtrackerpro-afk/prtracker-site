@@ -11,6 +11,7 @@ import { REELS, type Reel } from "../../lib/pr/gym/reels";
 import {
   buildAvatar,
   buildPowerRack,
+  buildSquatRack,
   buildPlatform,
   buildHallPedestal,
   buildCeilingBeams,
@@ -20,6 +21,16 @@ import {
   buildSponsorBooth,
   buildNPC,
   buildStreakPillar,
+  buildBench,
+  buildDumbbellRack,
+  buildKettlebell,
+  buildPlateTree,
+  buildCableMachine,
+  buildTreadmill,
+  buildAssaultBike,
+  buildRowingMachine,
+  buildPlyoBox,
+  buildCrossFitRig,
   type SkillBoardSlot,
   type RunSlot,
 } from "../../lib/pr/gym/builders";
@@ -388,9 +399,11 @@ export default function VirtualGym({
       metalness: 0.1,
     });
 
-    const ROOM_W = 18;
-    const ROOM_D = 16;
-    const WALL_H = 6.5;
+    // V15: gym dobrou em area pra caber novos equipamentos.
+    // Bounds em layout.ts: x ∈ [-18,+18], z ∈ [-16,+16].
+    const ROOM_W = 36;
+    const ROOM_D = 32;
+    const WALL_H = 7.5;
 
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -479,7 +492,9 @@ export default function VirtualGym({
     const ledStripes: THREE.Mesh[] = []; // pra animação pulse
 
     // Plataforma elevada (carpete escuro + faixa lime na frente)
-    const fameDeckW = ROOM_W - 1.4;
+    // V15: largura fixa 17m (não escala com ROOM_W) — pedestais ficariam
+    // muito espaçados se usássemos toda a largura do gym dobrado.
+    const fameDeckW = Math.min(ROOM_W - 1.4, 17);
     const fameDeckD = 1.4;
     const fameDeck = new THREE.Mesh(
       new THREE.BoxGeometry(fameDeckW, 0.18, fameDeckD),
@@ -838,13 +853,23 @@ export default function VirtualGym({
       scene.add(leg);
     }
 
-    // === PROJECTOR ROOM (canto esquerdo-frente) ===================
-    // Sala dedicada de Reels: tela grande de projeção em uma "alcova"
-    // formada por 2 paredes parciais, com SOFA pra sentar e ver.
-    const projRoomZ = ROOM_D / 2 - 3.5;
-    const projRoomX = -ROOM_W / 2 + 0.5;
+    // === PROJECTOR ROOM (V15 — sofá virado pra tela) ===============
+    // Antes: sofá rotacionado 90° errado em relação à tela ("TV nem
+    // da pra ver"). Agora: tudo é montado dentro de um Group orientado
+    // pelo layout (lo("projector_room").rot), com tela frontal e sofá
+    // a 2.5m de distância apontado pra ela.
+    //
+    // Geometria interna do grupo (rot=0 → tela aponta pra +x da sala):
+    //   tela em x=-2.5, virada pro centro do grupo
+    //   projetor pendurado em (0, ALTO, 0) apontando pra tela
+    //   sofá em x=+1.0 virado pra -x (pra tela)
+    const projRoomGroup = new THREE.Group();
+    const projRoomPos = lo("projector_room");
+    projRoomGroup.position.set(projRoomPos.x, 0, projRoomPos.z);
+    projRoomGroup.rotation.y = projRoomPos.rot;
+    scene.add(projRoomGroup);
 
-    // Tela grande (4m × 2.25m, 16:9)
+    // Canvas da tela (regenerado a cada frame por drawProjectorScreen)
     const projScreenCanvas = document.createElement("canvas");
     projScreenCanvas.width = 1280;
     projScreenCanvas.height = 720;
@@ -852,21 +877,23 @@ export default function VirtualGym({
     const projScreenTex = new THREE.CanvasTexture(projScreenCanvas);
     projScreenTex.colorSpace = THREE.SRGBColorSpace;
 
+    // Frame da tela (faixa preta atrás)
     const projScreenFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 2.4, 4.18),
+      new THREE.BoxGeometry(0.08, 2.4, 4.2),
       new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.3, metalness: 0.5 })
     );
-    projScreenFrame.position.set(projRoomX - 0.03, 2.4, projRoomZ);
-    scene.add(projScreenFrame);
+    projScreenFrame.position.set(-2.5, 2.4, 0);
+    projRoomGroup.add(projScreenFrame);
 
+    // Tela (PlaneGeometry, virada pra +x — rot Y = +π/2)
     const projScreen = new THREE.Mesh(
       new THREE.PlaneGeometry(4, 2.25),
       new THREE.MeshBasicMaterial({ map: projScreenTex })
     );
-    projScreen.position.set(projRoomX - 0.005, 2.4, projRoomZ);
+    projScreen.position.set(-2.45, 2.4, 0);
     projScreen.rotation.y = Math.PI / 2;
     projScreen.userData.kind = "projector-screen";
-    scene.add(projScreen);
+    projRoomGroup.add(projScreen);
 
     // Função pra desenhar conteúdo da tela
     function drawProjectorScreen(t: number, currentReel: Reel | null) {
@@ -917,13 +944,13 @@ export default function VirtualGym({
       projScreenTex.needsUpdate = true;
     }
 
-    // Projetor pendurado no teto + cone de luz
+    // Projetor pendurado entre tela e sofá (apontando pra tela em -x)
     const projBody = new THREE.Mesh(
-      new THREE.BoxGeometry(0.4, 0.22, 0.55),
+      new THREE.BoxGeometry(0.55, 0.22, 0.4),
       new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.4, metalness: 0.5 })
     );
-    projBody.position.set(projRoomX + 1.8, WALL_H - 0.5, projRoomZ);
-    scene.add(projBody);
+    projBody.position.set(0, WALL_H - 0.7, 0);
+    projRoomGroup.add(projBody);
     const projLens = new THREE.Mesh(
       new THREE.CylinderGeometry(0.07, 0.09, 0.07, 14),
       new THREE.MeshStandardMaterial({
@@ -933,31 +960,117 @@ export default function VirtualGym({
       })
     );
     projLens.rotation.z = Math.PI / 2;
-    projLens.position.set(projRoomX + 2.05, WALL_H - 0.5, projRoomZ);
-    scene.add(projLens);
+    projLens.position.set(-0.3, WALL_H - 0.7, 0);
+    projRoomGroup.add(projLens);
 
-    // Sofá / banco baixo em frente à tela
+    // Cone de luz emissivo do projetor pra tela (visual feedback)
+    const projBeam = new THREE.Mesh(
+      new THREE.ConeGeometry(0.6, 2.5, 12, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff5e0,
+        transparent: true,
+        opacity: 0.06,
+        side: THREE.DoubleSide,
+      })
+    );
+    // Cone com ponta no projetor, base na tela
+    projBeam.rotation.z = Math.PI / 2;
+    projBeam.position.set(-1.4, WALL_H - 0.7, 0);
+    projRoomGroup.add(projBeam);
+
+    // Sofá virado pra tela (long-side perpendicular ao eixo da tela).
+    // sofa faces -x, so sitter looks at the screen (which is at -x).
+    // sofaSeat: width along Z (2.2m), depth along X (0.7m).
+    const sofaMat = new THREE.MeshStandardMaterial({
+      color: 0x14111e,
+      roughness: 0.7,
+      metalness: 0.1,
+    });
     const sofaSeat = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, 0.32, 0.7),
-      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.7, metalness: 0.1 })
+      new THREE.BoxGeometry(0.7, 0.32, 2.2),
+      sofaMat
     );
-    sofaSeat.position.set(projRoomX + 2.6, 0.16, projRoomZ);
+    sofaSeat.position.set(1.5, 0.16, 0);
     sofaSeat.castShadow = true;
-    scene.add(sofaSeat);
-    const sofaBack = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, 0.5, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0x14111e, roughness: 0.7, metalness: 0.1 })
-    );
-    sofaBack.position.set(projRoomX + 2.6, 0.48, projRoomZ + 0.4);
-    scene.add(sofaBack);
-    colliders.push({ cx: projRoomX + 2.6, cz: projRoomZ, hw: 1.2, hd: 0.5 });
+    projRoomGroup.add(sofaSeat);
 
-    // Spot dim no projetor
-    const projSpot = new THREE.SpotLight(0xddc890, 0.6, 10, Math.PI / 5, 0.55, 1.4);
-    projSpot.position.set(projRoomX + 2.5, 5.5, projRoomZ);
-    projSpot.target.position.set(projRoomX + 1, 1.5, projRoomZ);
+    // Encosto atrás do sofá (no lado +x do sofá, pq olha pra -x)
+    const sofaBack = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.5, 2.2),
+      sofaMat
+    );
+    sofaBack.position.set(1.85, 0.48, 0);
+    sofaBack.castShadow = true;
+    projRoomGroup.add(sofaBack);
+
+    // Almofadas pra dar peso visual
+    for (const dz of [-0.7, 0, 0.7]) {
+      const cushion = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.2, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x1a1620, roughness: 0.85 })
+      );
+      cushion.position.set(1.5, 0.42, dz);
+      cushion.castShadow = true;
+      projRoomGroup.add(cushion);
+    }
+
+    // Tapete sob o sofá (rug definindo a área de cinema)
+    const rug = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.5, 3.0),
+      new THREE.MeshBasicMaterial({
+        color: 0x14111e,
+        transparent: true,
+        opacity: 0.7,
+      })
+    );
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(0.2, 0.005, 0);
+    projRoomGroup.add(rug);
+
+    // Collider do sofá (em coords MUNDO — calculadas via group)
+    {
+      const worldPos = new THREE.Vector3();
+      sofaSeat.getWorldPosition(worldPos);
+      colliders.push({ cx: worldPos.x, cz: worldPos.z, hw: 0.5, hd: 1.2 });
+    }
+
+    // Spot ambient pra área do cinema
+    const projSpot = new THREE.SpotLight(0xddc890, 0.6, 12, Math.PI / 5, 0.55, 1.4);
+    projSpot.position.set(projRoomPos.x + 1, 5.5, projRoomPos.z);
+    projSpot.target.position.set(projRoomPos.x - 1, 1.5, projRoomPos.z);
     scene.add(projSpot);
     scene.add(projSpot.target);
+
+    // === V15 — equipamentos extras (todos suportam múltiplas instâncias) ===
+    // Itera sobre layout.objects e renderiza cada tipo com builder próprio.
+    // Para tipos singleton (já renderizados acima via `lo()`), pula aqui.
+    const SINGLETON_HANDLED = new Set<GymObjectType>([
+      "trophy_hall",
+      "skills_board",
+      "run_board",
+      "streak_pillar",
+      "personal_booth",
+      "nutri_booth",
+      "empty_booth",
+      "power_rack",
+      "platform",
+      "projector_room",
+      "spawn",
+    ]);
+
+    for (const obj of layout.objects) {
+      if (SINGLETON_HANDLED.has(obj.type)) continue;
+      const built = buildExtraEquipment(obj.type, accent);
+      if (!built) continue;
+      built.position.set(obj.x, 0, obj.z);
+      built.rotation.y = obj.rot;
+      scene.add(built);
+      // Collider aproximado pro AABB do equipamento
+      const bbox = new THREE.Box3().setFromObject(built);
+      const sx = (bbox.max.x - bbox.min.x) / 2;
+      const sz = (bbox.max.z - bbox.min.z) / 2;
+      colliders.push({ cx: obj.x, cz: obj.z, hw: Math.max(0.3, sx * 0.85), hd: Math.max(0.3, sz * 0.85) });
+    }
 
     // === Avatar ====================================================
     const avatarParts = buildAvatar(avatarPrefs);
@@ -2662,6 +2775,44 @@ function RunsModal({ runs, onClose, onSave }: RunsModalProps) {
 // =================================================================
 // HELPERS
 // =================================================================
+
+/**
+ * Builder dispatcher pros equipamentos do V15 (multiple-instance).
+ * Singletons (boards, booths, streak, etc) ainda são construídos
+ * inline no componente porque têm side-effects (raycast hitBox,
+ * NPCs animados, etc).
+ */
+function buildExtraEquipment(
+  type: GymObjectType,
+  accentHex: string
+): THREE.Group | null {
+  switch (type) {
+    case "bench":
+      return buildBench();
+    case "squat_rack":
+      return buildSquatRack(accentHex);
+    case "dumbbell_rack":
+      return buildDumbbellRack();
+    case "kettlebell":
+      return buildKettlebell(0.18);
+    case "plate_tree":
+      return buildPlateTree();
+    case "cable_machine":
+      return buildCableMachine(accentHex);
+    case "treadmill":
+      return buildTreadmill(accentHex);
+    case "assault_bike":
+      return buildAssaultBike(accentHex);
+    case "rowing_machine":
+      return buildRowingMachine(accentHex);
+    case "plyo_box":
+      return buildPlyoBox(0.6);
+    case "crossfit_rig":
+      return buildCrossFitRig(4.0, 2.0).group;
+    default:
+      return null;
+  }
+}
 
 function lerpAngle(a: number, b: number, t: number): number {
   let d = b - a;
