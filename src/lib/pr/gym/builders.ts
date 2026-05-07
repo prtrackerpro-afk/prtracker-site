@@ -1784,6 +1784,7 @@ export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
   }
 
   // === ETIQUETA do exercício na parte da frente do pedestal ====
+  // V16.7 cycle 20: auto-fit fontSize pra exercícios longos (CLEAN_AND_JERK)
   const tagCanvas = document.createElement("canvas");
   tagCanvas.width = 768;
   tagCanvas.height = 96;
@@ -1792,10 +1793,16 @@ export function buildHallPedestal(props: HallPedestalProps): HallPedestalParts {
   tctx.fillStyle = hasUnlocked ? tierColorHex : "#5a5a64";
   tctx.fillRect(0, 0, 768, 96);
   tctx.fillStyle = hasUnlocked ? "#01002A" : "#9a9aa4";
-  tctx.font = "900 56px Archivo Black, Inter, sans-serif";
+  const exTitle = exerciseLabel.toUpperCase();
+  let tagFontSize = 56;
+  tctx.font = `900 ${tagFontSize}px Archivo Black, Inter, sans-serif`;
+  while (tctx.measureText(exTitle).width > 720 && tagFontSize > 24) {
+    tagFontSize -= 4;
+    tctx.font = `900 ${tagFontSize}px Archivo Black, Inter, sans-serif`;
+  }
   tctx.textAlign = "center";
   tctx.textBaseline = "middle";
-  tctx.fillText(exerciseLabel.toUpperCase(), 384, 48);
+  tctx.fillText(exTitle, 384, 48);
   const tagTex = new THREE.CanvasTexture(tagCanvas);
   tagTex.colorSpace = THREE.SRGBColorSpace;
   const tag = new THREE.Mesh(
@@ -2954,11 +2961,16 @@ export function buildSponsorBooth(
   bctx.strokeRect(8, 8, 1008, 1008);
   bctx.setLineDash([]);
 
-  // Header bar (color)
+  // Header bar (color) — auto-fit pra "PERSONAL TRAINER" longo
   bctx.fillStyle = accentHex;
   bctx.fillRect(20, 20, 984, 130);
   bctx.fillStyle = "#01002A";
-  bctx.font = "900 70px Archivo Black, Inter, sans-serif";
+  let titleSize = 70;
+  bctx.font = `900 ${titleSize}px Archivo Black, Inter, sans-serif`;
+  while (bctx.measureText(title).width > 940 && titleSize > 30) {
+    titleSize -= 4;
+    bctx.font = `900 ${titleSize}px Archivo Black, Inter, sans-serif`;
+  }
   bctx.textAlign = "center";
   bctx.textBaseline = "middle";
   bctx.fillText(title, 512, 85);
