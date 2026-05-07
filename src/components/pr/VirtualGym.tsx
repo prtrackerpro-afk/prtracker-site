@@ -33,6 +33,17 @@ import {
   type HairStyle,
 } from "../../lib/pr/gym/avatar-prefs";
 import { resolveCollisions, type AABB, AVATAR_RADIUS } from "../../lib/pr/gym/collision";
+import {
+  playClick,
+  playChime,
+  playMystery,
+  playBell,
+  playWhoosh,
+  startAmbient,
+  setMuted,
+} from "../../lib/pr/gym/audio";
+import { ParticleBurst, CameraShake } from "../../lib/pr/gym/fx";
+import { getProsByType, getFeaturedPro, type Pro, type ProType } from "../../lib/pr/gym/pros";
 
 // V4 do virtual gym. Avatar customizável (gênero, pele, cabelo, regata,
 // shorts) com animação de caminhada (pernas/braços alternados). Colisão
@@ -80,6 +91,8 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
   const [selected, setSelected] = useState<GymTrophy | null>(null);
   const [selectedGhost, setSelectedGhost] = useState<GhostExercise | null>(null);
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorSlot | null>(null);
+  const [selectedProType, setSelectedProType] = useState<ProType | null>(null);
+  const [audioMuted, setAudioMuted] = useState(false);
   const [reelOpen, setReelOpen] = useState(false);
   const [activeReel, setActiveReel] = useState<Reel | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
@@ -103,6 +116,7 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
     selected !== null ||
     selectedGhost !== null ||
     selectedSponsor !== null ||
+    selectedProType !== null ||
     reelOpen ||
     showTutorial ||
     customOpen;
@@ -164,6 +178,21 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
     controls.enabled = false;
 
     const accentColor = new THREE.Color(accent);
+
+    // === FX system (particles + camera shake) ====================
+    const particleBurst = new ParticleBurst(400);
+    scene.add(particleBurst.points);
+    const cameraShake = new CameraShake();
+
+    // === Audio init (lazy — primeiro pointerdown ativa) ==========
+    const onFirstInteraction = () => {
+      // Apenas garante AudioContext criado pra próximas chamadas
+      playClick();
+      // Inicia ambient hum sutil
+      startAmbient();
+      window.removeEventListener("pointerdown", onFirstInteraction);
+    };
+    window.addEventListener("pointerdown", onFirstInteraction, { once: true });
 
     // === Lighting BRIGHT modern showroom + Hall em destaque =========
     // V7 dark theatre falhou — fitness app precisa ser bright + acolhedor.
@@ -886,7 +915,12 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
       ndc.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
       ndc.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
-      const targets: THREE.Object3D[] = [trophiesGroup, projScreen, sponsorsGroup];
+      const targets: THREE.Object3D[] = [
+        trophiesGroup,
+        projScreen,
+        sponsorsGroup,
+        streakPillarParts.hitBox,
+      ];
       const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
       if (first) {
@@ -896,18 +930,56 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
           !obj.userData.trophy &&
           !obj.userData.ghostExercise &&
           !obj.userData.sponsorSlot &&
-          obj.userData.kind !== "projector-screen"
+          !obj.userData.npcSlot &&
+          obj.userData.kind !== "projector-screen" &&
+          obj.userData.kind !== "streak-pillar"
         ) {
           obj = obj.parent;
         }
         if (obj?.userData.trophy) {
-          setSelected(obj.userData.trophy as GymTrophy);
+          // JUICE: chime + particle burst lime + camera shake leve
+          playChime();
+          const trophy = obj.userData.trophy as GymTrophy;
+          const worldPos = new THREE.Vector3();
+          obj.getWorldPosition(worldPos);
+          worldPos.y += 0.6;
+          particleBurst.burst(worldPos, 35, new THREE.Color(trophy.color), 1.2);
+          cameraShake.trigger(0.06, 0.18);
+          setSelected(trophy);
         } else if (obj?.userData.ghostExercise) {
+          // JUICE: mystery sound + particles roxos sutis
+          playMystery();
+          const worldPos = new THREE.Vector3();
+          obj.getWorldPosition(worldPos);
+          worldPos.y += 0.5;
+          particleBurst.burst(worldPos, 18, new THREE.Color(0x6b3aff), 0.7);
           setSelectedGhost(obj.userData.ghostExercise as GhostExercise);
-        } else if (obj?.userData.sponsorSlot) {
-          setSelectedSponsor(obj.userData.sponsorSlot as SponsorSlot);
+        } else if (obj?.userData.sponsorSlot || obj?.userData.npcSlot) {
+          // JUICE: bell sound
+          playBell();
+          const slotId = (obj.userData.sponsorSlot as SponsorSlot | undefined)?.id
+            ?? (obj.userData.npcSlot as string | undefined);
+          if (slotId === "nutri" || slotId === "pt") {
+            // Abre lista de pros (NPC fallback)
+            setSelectedProType(slotId as ProType);
+          } else if (slotId === "empty") {
+            setSelectedSponsor({
+              id: "empty",
+              title: "ANUNCIE AQUI",
+              professional: null,
+            });
+          }
         } else if (obj?.userData.kind === "projector-screen") {
+          playClick();
           setReelOpen(true);
+        } else if (obj?.userData.kind === "streak-pillar") {
+          // JUICE: whoosh + chama particles laranja
+          playWhoosh();
+          const worldPos = new THREE.Vector3();
+          obj.getWorldPosition(worldPos);
+          worldPos.y += 1.6;
+          particleBurst.burst(worldPos, 60, new THREE.Color(0xff6020), 1.5);
+          cameraShake.trigger(0.04, 0.15);
         }
       }
     };
@@ -998,7 +1070,7 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
         avatarParts.head.rotation.y = Math.sin(t * 0.8) * 0.05;
       }
 
-      // Camera mode
+      // Camera mode + shake offset
       const followNow = modeRef.current === "follow";
       controls.enabled = !followNow;
       if (followNow) {
@@ -1011,6 +1083,12 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
       } else {
         controls.update();
       }
+      // Aplica camera shake (sutil offset)
+      const shake = cameraShake.update(dt);
+      camera.position.add(shake);
+
+      // Update particles
+      particleBurst.update(dt);
 
       // === GAMIFICATION ANIMATIONS ================================
       // LED stripe pulse (3+ trofeus desbloqueados)
@@ -1097,6 +1175,7 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
         joy.removeEventListener("pointercancel", onJoyUp);
       }
       controls.dispose();
+      particleBurst.dispose();
       scene.traverse((obj) => {
         if ((obj as THREE.Mesh).geometry) (obj as THREE.Mesh).geometry?.dispose();
         const mat = (obj as THREE.Mesh).material;
@@ -1124,32 +1203,82 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
     <>
       <div ref={mountRef} style={{ position: "absolute", inset: 0 }} />
 
-      {/* STREAK HUD top-left — Duolingo style flame counter */}
+      {/* TOP-LEFT HUD: Streak + Próxima conquista + Audio toggle */}
       <div
         style={{ position: "absolute", top: 12, left: 12, zIndex: 10 }}
-        className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-orange-500/40 px-3 py-1.5"
+        className="flex flex-col gap-2 items-start"
       >
-        <span className="text-xl leading-none">🔥</span>
-        <div className="flex items-baseline gap-1">
-          <span
-            className="font-display text-lg tabular-nums leading-none"
-            style={{
-              color:
-                streakDays >= 30
-                  ? "#ff44aa"
-                  : streakDays >= 7
-                  ? "#ff5050"
-                  : streakDays >= 3
-                  ? "#ff8030"
-                  : "#ffa050",
-            }}
-          >
-            {streakDays}
-          </span>
-          <span className="text-[10px] uppercase tracking-widest text-navy-300 leading-none">
-            {streakDays === 1 ? "dia" : "dias"}
+        {/* STREAK Duolingo-style */}
+        <div className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-orange-500/40 px-3 py-1.5">
+          <span className="text-xl leading-none">🔥</span>
+          <div className="flex items-baseline gap-1">
+            <span
+              className="font-display text-lg tabular-nums leading-none"
+              style={{
+                color:
+                  streakDays >= 30
+                    ? "#ff44aa"
+                    : streakDays >= 7
+                    ? "#ff5050"
+                    : streakDays >= 3
+                    ? "#ff8030"
+                    : "#ffa050",
+              }}
+            >
+              {streakDays}
+            </span>
+            <span className="text-[10px] uppercase tracking-widest text-navy-300 leading-none">
+              {streakDays === 1 ? "dia" : "dias"}
+            </span>
+          </div>
+        </div>
+
+        {/* PROGRESSO — meta clara "X/11 troféus" */}
+        <div className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-brand-lime/40 px-3 py-1.5">
+          <span className="text-base leading-none">🏆</span>
+          <span className="font-display text-sm tabular-nums leading-none text-brand-lime">
+            {trophies.length}<span className="text-navy-300">/11</span>
           </span>
         </div>
+
+        {/* Próxima conquista (primeiro ghost da lista) */}
+        {(() => {
+          const nextGhost = HALL_EXERCISES.find(
+            (id) => !trophies.find((t) => t.exerciseId === id)
+          );
+          if (!nextGhost) return null;
+          return (
+            <a
+              href={`/pr/log?ex=${nextGhost}`}
+              className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-white/20 px-3 py-1.5 hover:border-brand-lime/40 transition"
+              onClick={() => playClick()}
+            >
+              <span className="text-[10px] uppercase tracking-widest text-navy-300 leading-none">
+                Próximo
+              </span>
+              <span className="text-xs font-semibold text-white leading-none">
+                {exerciseLabelFn(nextGhost as ExerciseId)}
+              </span>
+              <span className="text-xs text-brand-lime leading-none">→</span>
+            </a>
+          );
+        })()}
+
+        {/* Audio mute toggle */}
+        <button
+          type="button"
+          onClick={() => {
+            const newMuted = !audioMuted;
+            setAudioMuted(newMuted);
+            setMuted(newMuted);
+            if (!newMuted) playClick();
+          }}
+          className="flex items-center gap-2 rounded-full bg-navy-900/80 border border-white/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-navy-300 hover:text-white transition"
+          aria-label={audioMuted ? "Ativar som" : "Mute"}
+        >
+          <span className="text-base leading-none">{audioMuted ? "🔇" : "🔊"}</span>
+          {audioMuted ? "Mutado" : "Som"}
+        </button>
       </div>
 
       {/* Top-right HUD: Camera + Reels + Customize */}
@@ -1338,6 +1467,89 @@ export default function VirtualGym({ athleteName, accent, trophies, streakDays =
             >
               Voltar pro ginásio
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pro directory list modal — quando clica NPC sem contratante */}
+      {selectedProType && (
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 28 }}
+          className="flex items-end sm:items-center justify-center bg-black/80 p-4"
+          onClick={() => setSelectedProType(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-brand-lime/40 bg-navy-900 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-navy-700">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-brand-lime">
+                  PROFISSIONAIS DISPONÍVEIS
+                </div>
+                <div className="font-display text-lg tracking-tight">
+                  {selectedProType === "nutri" ? "Nutricionistas" : "Personal Trainers"}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedProType(null)}
+                className="text-navy-300 hover:text-white text-lg leading-none"
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-3">
+              <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {getProsByType(selectedProType).map((p) => (
+                  <li
+                    key={p.id}
+                    className="rounded-xl border border-navy-700 bg-navy-800/40 p-3"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div
+                        className="w-12 h-12 rounded-full grid place-items-center font-display text-xl flex-shrink-0"
+                        style={{ background: p.avatarColor, color: "#01002A" }}
+                      >
+                        {p.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm leading-tight">{p.name}</div>
+                        <div className="text-[11px] text-navy-300 leading-tight">
+                          {p.city} · {p.state}
+                        </div>
+                        <div className="text-[10px] text-brand-lime mt-0.5">{p.specialty}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`https://wa.me/${p.whatsapp}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="flex-1 text-center text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-2 hover:opacity-90 transition"
+                      >
+                        💬 WhatsApp
+                      </a>
+                      <a
+                        href={`https://instagram.com/${p.instagram}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="flex-1 text-center text-xs rounded-lg border border-navy-600 text-white px-3 py-2 hover:bg-navy-800 transition"
+                      >
+                        📷 Instagram
+                      </a>
+                    </div>
+                    <div className="text-[10px] text-navy-300 mt-2 text-right">
+                      {p.credential}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-navy-300 mt-3 text-center">
+                PR Tracker valida CREF / CRN antes de aprovar cada profissional
+              </p>
+            </div>
           </div>
         </div>
       )}
