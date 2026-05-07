@@ -438,8 +438,9 @@ export default function VirtualGym({
       roughness: 0.95,
       metalness: 0.02,
     });
-    // V16.7 cycle 23: floor com textura procedural (grid sutil) pra dar
-    // sensação de escala — antes era um plano preto monolítico.
+    // V16.8 cycle 97: floor com textura procedural mais rica — grid 1m
+    // + sub-grid 0.5m + scuff marks (riscos) pra parecer piso usado de
+    // box, não apenas grid plano.
     const floorCanvas = document.createElement("canvas");
     floorCanvas.width = 512;
     floorCanvas.height = 512;
@@ -447,9 +448,22 @@ export default function VirtualGym({
     // Base
     fctxFloor.fillStyle = "#0a0a14";
     fctxFloor.fillRect(0, 0, 512, 512);
-    // Grid lines (1m squares — repetidas pelo wrap)
-    fctxFloor.strokeStyle = "#1a1a26";
+    // Sub-grid 0.5m (linhas mais finas)
+    fctxFloor.strokeStyle = "#14141e";
     fctxFloor.lineWidth = 1;
+    for (let i = 0; i <= 512; i += 32) {
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(i, 0);
+      fctxFloor.lineTo(i, 512);
+      fctxFloor.stroke();
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(0, i);
+      fctxFloor.lineTo(512, i);
+      fctxFloor.stroke();
+    }
+    // Grid principal 1m (linhas mais visíveis)
+    fctxFloor.strokeStyle = "#1f1f30";
+    fctxFloor.lineWidth = 1.5;
     for (let i = 0; i <= 512; i += 64) {
       fctxFloor.beginPath();
       fctxFloor.moveTo(i, 0);
@@ -460,12 +474,25 @@ export default function VirtualGym({
       fctxFloor.lineTo(512, i);
       fctxFloor.stroke();
     }
-    // Speckle (pequenos pontos pra textura granulada)
-    for (let i = 0; i < 80; i++) {
+    // Speckle (granulado de borracha)
+    for (let i = 0; i < 120; i++) {
       const x = Math.random() * 512;
       const y = Math.random() * 512;
       fctxFloor.fillStyle = `rgba(40, 40, 60, ${Math.random() * 0.3})`;
       fctxFloor.fillRect(x, y, 2, 2);
+    }
+    // Scuff marks (riscos sutis pra parecer piso usado)
+    for (let i = 0; i < 14; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const len = 8 + Math.random() * 24;
+      const ang = Math.random() * Math.PI * 2;
+      fctxFloor.strokeStyle = `rgba(80, 80, 95, ${0.05 + Math.random() * 0.1})`;
+      fctxFloor.lineWidth = 1;
+      fctxFloor.beginPath();
+      fctxFloor.moveTo(x, y);
+      fctxFloor.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      fctxFloor.stroke();
     }
     const floorTex = new THREE.CanvasTexture(floorCanvas);
     floorTex.colorSpace = THREE.SRGBColorSpace;
@@ -515,6 +542,62 @@ export default function VirtualGym({
     trim.position.set(0, WALL_H - 0.3, -ROOM_D / 2 + 0.04);
     scene.add(trim);
 
+    // V16.8 cycle 98: baseboard (rodapé) onde parede encontra o chão.
+    // Banda escura de 0.18m com leve emissive — quebra o vazio entre
+    // wall escura e floor escuro, dá profundidade arquitetônica.
+    const baseboardMat = new THREE.MeshStandardMaterial({
+      color: 0x1c1c2a,
+      roughness: 0.7,
+      metalness: 0.2,
+      emissive: 0x05050a,
+      emissiveIntensity: 0.3,
+    });
+    const baseboardH = 0.18;
+    const backBaseboard = new THREE.Mesh(
+      new THREE.BoxGeometry(ROOM_W, baseboardH, 0.04),
+      baseboardMat
+    );
+    backBaseboard.position.set(0, baseboardH / 2, -ROOM_D / 2 + 0.02);
+    scene.add(backBaseboard);
+    const leftBaseboard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, baseboardH, ROOM_D),
+      baseboardMat
+    );
+    leftBaseboard.position.set(-ROOM_W / 2 + 0.02, baseboardH / 2, 0);
+    scene.add(leftBaseboard);
+    const rightBaseboard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, baseboardH, ROOM_D),
+      baseboardMat
+    );
+    rightBaseboard.position.set(ROOM_W / 2 - 0.02, baseboardH / 2, 0);
+    scene.add(rightBaseboard);
+
+    // V16.8 cycle 99: corner posts (estructural) onde paredes se encontram.
+    // Coluna escura vertical com accent lime na base — define o canto do
+    // ginásio em vez do plano "infinity wall".
+    const cornerPostMat = new THREE.MeshStandardMaterial({
+      color: 0x16162a,
+      roughness: 0.65,
+      metalness: 0.25,
+      emissive: 0x0a0a18,
+      emissiveIntensity: 0.4,
+    });
+    for (const cx of [-ROOM_W / 2 + 0.06, ROOM_W / 2 - 0.06]) {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, WALL_H, 0.12),
+        cornerPostMat
+      );
+      post.position.set(cx, WALL_H / 2, -ROOM_D / 2 + 0.06);
+      scene.add(post);
+      // Accent lime band na base do post
+      const postBand = new THREE.Mesh(
+        new THREE.BoxGeometry(0.14, 0.04, 0.14),
+        new THREE.MeshBasicMaterial({ color: accentColor })
+      );
+      postBand.position.set(cx, 0.22, -ROOM_D / 2 + 0.06);
+      scene.add(postBand);
+    }
+
     // === WALL LOGO gigante ATRAS dos troféus =======================
     // "PR TRACKER · HALL OF FAME" ocupando ~10m de largura na parede.
     // Domina a parede do fundo como num CrossFit box real.
@@ -531,8 +614,11 @@ export default function VirtualGym({
     const topTier = tierNames.sort((a, b) => tierByRank(b) - tierByRank(a))[0] ?? "ATLETA";
     const headerSubtitle = topTier.toUpperCase();
 
-    const wallLogo = buildWallLogo(9, "#D8FF2C", headerSubtitle);
-    wallLogo.position.set(0, WALL_H - 2.0, -ROOM_D / 2 + 0.04);
+    // V16.8 cycle 101: logo MENOR (era 9 de largura → 7) + posicionado
+    // mais baixo (WALL_H - 3.2 → centro 4.3) pra não passar do trim/track
+    // rail no teto e ficar inteiramente visível na parede.
+    const wallLogo = buildWallLogo(7, "#D8FF2C", headerSubtitle);
+    wallLogo.position.set(0, WALL_H - 3.2, -ROOM_D / 2 + 0.04);
     scene.add(wallLogo);
 
     // Subtítulo com NOME do atleta abaixo do logo (proeminente)
@@ -552,7 +638,8 @@ export default function VirtualGym({
       new THREE.PlaneGeometry(7, 0.8),
       new THREE.MeshBasicMaterial({ map: subTex, transparent: true })
     );
-    subPlaque.position.set(0, WALL_H - 3.4, -ROOM_D / 2 + 0.05);
+    // V16.8 cycle 101: subPlaque também desce (logo desceu 1.2)
+    subPlaque.position.set(0, WALL_H - 5.2, -ROOM_D / 2 + 0.05);
     scene.add(subPlaque);
 
     // === HALL OF FAME V7 ==========================================
@@ -704,10 +791,17 @@ export default function VirtualGym({
       }
     });
 
-    // Track rail no teto conectando todas as luminárias (visual industrial)
+    // Track rail no teto conectando todas as luminárias
+    // V16.8 cycle 93: cor mais clara + emissive sutil
     const trackRail = new THREE.Mesh(
       new THREE.BoxGeometry(fameDeckW + 0.4, 0.04, 0.06),
-      new THREE.MeshStandardMaterial({ color: 0x222232, roughness: 0.4, metalness: 0.7 })
+      new THREE.MeshStandardMaterial({
+        color: 0x3a3a4a,
+        roughness: 0.4,
+        metalness: 0.7,
+        emissive: 0x1a1a26,
+        emissiveIntensity: 0.2,
+      })
     );
     trackRail.position.set(0, WALL_H - 0.02, -ROOM_D / 2 + 1.0);
     scene.add(trackRail);
@@ -1594,14 +1688,16 @@ export default function VirtualGym({
           0,
           0.1
         );
+        // Cycle 96: idle preserva pose natural (-0.08 = leve pra frente)
+        // em vez de lerp pra 0 (braços rígidos pendulares).
         avatarParts.leftArm.rotation.x = lerpAngle(
           avatarParts.leftArm.rotation.x,
-          0,
+          -0.08,
           0.1
         );
         avatarParts.rightArm.rotation.x = lerpAngle(
           avatarParts.rightArm.rotation.x,
-          0,
+          -0.08,
           0.1
         );
         avatarParts.root.position.y = Math.sin(t * 1.6) * 0.03;

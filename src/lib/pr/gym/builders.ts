@@ -180,11 +180,19 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
 
   const faceTex = new THREE.CanvasTexture(faceCanvas);
   faceTex.colorSpace = THREE.SRGBColorSpace;
+  // V16.8 cycle 100: face plane FORA da superfície do skull (era headR*0.92,
+  // dentro da esfera — depth test escondia atrás do skull). Agora headR*1.005
+  // + polygonOffset pra garantir render por cima.
   const face = new THREE.Mesh(
     new THREE.PlaneGeometry(headR * 1.7, headR * 1.7),
-    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+    new THREE.MeshBasicMaterial({
+      map: faceTex,
+      transparent: true,
+      depthTest: false,
+    })
   );
-  face.position.set(0, 0.005, headR * 0.92);
+  face.position.set(0, 0.005, headR * 1.005);
+  face.renderOrder = 5;
   head.add(face);
 
   // === CABELO esférico envolvente sobre a cabeça redonda =========
@@ -280,57 +288,9 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   neck.position.y = -headSize / 2 - 0.04;
   head.add(neck);
 
-  // CABELO conforme estilo (3D real, não cap chato)
-  if (prefs.hairStyle !== "bald") {
-    if (prefs.hairStyle === "short") {
-      // Cap esférica fina cobrindo topo + atrás
-      const capGeom = new THREE.SphereGeometry(headR + 0.012, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.9);
-      const cap = new THREE.Mesh(capGeom, hairMat);
-      cap.position.y = 0.005;
-      head.add(cap);
-      // Pequena franja na frente
-      const fringe = new THREE.Mesh(
-        new THREE.BoxGeometry(headR * 1.6, 0.04, 0.06),
-        hairMat
-      );
-      fringe.position.set(0, headR * 0.55, headR * 0.85);
-      head.add(fringe);
-    } else if (prefs.hairStyle === "long") {
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(headR + 0.014, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.7),
-        hairMat
-      );
-      cap.position.y = 0;
-      head.add(cap);
-      // Cabelo longo nas costas (capsula achatada)
-      const back = new THREE.Mesh(
-        new THREE.CapsuleGeometry(headR * 0.85, 0.4, 6, 12),
-        hairMat
-      );
-      back.scale.set(1, 1, 0.4);
-      back.position.set(0, -0.15, -headR * 0.45);
-      head.add(back);
-    } else if (prefs.hairStyle === "ponytail") {
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(headR + 0.012, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.9),
-        hairMat
-      );
-      head.add(cap);
-      const tieBall = new THREE.Mesh(
-        new THREE.SphereGeometry(0.04, 12, 10),
-        hairMat
-      );
-      tieBall.position.set(0, 0.02, -headR * 0.95);
-      head.add(tieBall);
-      const tail = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.025, 0.32, 10),
-        hairMat
-      );
-      tail.position.set(0, -0.12, -headR * 1.0);
-      tail.rotation.x = -0.45;
-      head.add(tail);
-    }
-  }
+  // V16.8 cycle 94: REMOVIDO bloco duplicado de cabelo (era um segundo
+  // pass com π/1.7 e π/1.9 — caps maiores stacking por cima do primeiro
+  // bloco em π/2.1/π/2.2/π/2.5). Causava o cabelo cobrir os olhos.
 
   // Cabeça posicionada em y=1.88 absoluto (centro do crânio)
   head.position.y = 2.0; // cycle 74: ajustado pra cabeça 0.26
@@ -410,17 +370,18 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   rightLeg.position.set(0.10, 0.985, 0);
   root.add(rightLeg);
 
-  // === ARMS com pose natural (cycle 63) — leve flexão fora do corpo
+  // === ARMS com pose natural (cycle 95) — match com NPC pose
+  // (10° pra fora + 8° pra frente). Antes 7° + 3°, ainda parecia rígido.
   const leftArm = buildArm(skinMat, topMat);
   leftArm.position.set(-shoulderHalfW - 0.02, 1.62, 0);
-  leftArm.rotation.z = -0.12; // 7° pra fora
-  leftArm.rotation.x = -0.05;
+  leftArm.rotation.z = -0.18;
+  leftArm.rotation.x = -0.08;
   root.add(leftArm);
 
   const rightArm = buildArm(skinMat, topMat);
   rightArm.position.set(shoulderHalfW + 0.02, 1.62, 0);
-  rightArm.rotation.z = 0.12;
-  rightArm.rotation.x = -0.05;
+  rightArm.rotation.z = 0.18;
+  rightArm.rotation.x = -0.08;
   root.add(rightArm);
 
   return { root, leftLeg, rightLeg, leftArm, rightArm, head };
@@ -490,44 +451,53 @@ function buildLeg(
 }
 
 /**
- * Braço: regata (mangueta curta) cobrindo topo, depois pele.
- * Origin = ombro (top of upper arm).
+ * Braço: deltoide visível + sleeve da regata + bíceps + cotovelo flexionado
+ * + antebraço com leve rotação + mão. Origin = ombro.
+ * Cycle 96: match com NPC arm (separação forearm pra elbow flex real).
  */
 function buildArm(skinMat: THREE.Material, topMat: THREE.Material): THREE.Group {
   const g = new THREE.Group();
-  // Mangueta curta da regata cobrindo o ombro (3cm da regata desce pelo braço)
+  // Deltoide (esfera no ombro pra musculatura visível)
+  const delt = new THREE.Mesh(new THREE.SphereGeometry(0.078, 12, 10), skinMat);
+  delt.position.y = 0;
+  g.add(delt);
+  // Mangueta da regata cobrindo o topo do braço
   const sleeve = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.075, 0.07, 0.06, 10),
+    new THREE.CylinderGeometry(0.075, 0.07, 0.08, 10),
     topMat
   );
   sleeve.position.y = -0.03;
   g.add(sleeve);
   // Bíceps
   const upper = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.06, 0.28, 10),
+    new THREE.CylinderGeometry(0.07, 0.06, 0.26, 10),
     skinMat
   );
   upper.position.y = -0.2;
   upper.castShadow = true;
   g.add(upper);
-  // Cotovelo
+  // Cotovelo (esfera)
   const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), skinMat);
-  elbow.position.y = -0.36;
+  elbow.position.y = -0.34;
   g.add(elbow);
-  // Antebraço
+  // Forearm em group separado pra elbow flex real
+  const forearm = new THREE.Group();
+  forearm.position.y = -0.34;
+  forearm.rotation.x = 0.18; // ~10° flex
+  g.add(forearm);
   const lower = new THREE.Mesh(
     new THREE.CylinderGeometry(0.058, 0.052, 0.26, 10),
     skinMat
   );
-  lower.position.y = -0.5;
+  lower.position.y = -0.15;
   lower.castShadow = true;
-  g.add(lower);
-  // Mão — capsule achatada pra parecer punho (cycle 70)
+  forearm.add(lower);
+  // Mão — capsule achatada
   const hand = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.04, 6, 8), skinMat);
   hand.scale.set(1.0, 1.0, 1.4);
-  hand.position.y = -0.66;
+  hand.position.y = -0.32;
   hand.castShadow = true;
-  g.add(hand);
+  forearm.add(hand);
   return g;
 }
 
