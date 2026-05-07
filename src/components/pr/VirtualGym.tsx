@@ -394,10 +394,39 @@ export default function VirtualGym({
     scene.add(rim);
 
     // Avatar follow spot sutil (não dominante mas highlights o avatar)
-    const avatarSpot = new THREE.SpotLight(0xffffff, 0.7, 18, Math.PI / 4, 0.6, 1.0);
+    const avatarSpot = new THREE.SpotLight(0xffffff, 1.0, 18, Math.PI / 4, 0.6, 1.0);
     avatarSpot.position.set(0, 7, 6);
     scene.add(avatarSpot);
     scene.add(avatarSpot.target);
+
+    // V16.7 cycle 25: ambient dust particles — partículas pequenas
+    // flutuando pra dar atmosfera. Procedural via Points.
+    const dustCount = 200;
+    const dustGeometry = new THREE.BufferGeometry();
+    const dustPositions = new Float32Array(dustCount * 3);
+    const dustVelocities = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i++) {
+      // Espalha pelo gym todo (38m × 8m alto × 34m)
+      dustPositions[i * 3] = (Math.random() - 0.5) * 38;
+      dustPositions[i * 3 + 1] = Math.random() * 6 + 0.5;
+      dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 34;
+      // Velocidade lenta vertical + sway horizontal
+      dustVelocities[i * 3] = (Math.random() - 0.5) * 0.05;
+      dustVelocities[i * 3 + 1] = -0.04 - Math.random() * 0.03;
+      dustVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
+    }
+    dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+    const dustMaterial = new THREE.PointsMaterial({
+      color: 0xfff5e0,
+      size: 0.04,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    const dustParticles = new THREE.Points(dustGeometry, dustMaterial);
+    scene.add(dustParticles);
 
     // === Sala (chão escuro + 3 paredes navy near-black) ============
     // V16.7 cycle 24: paredes com cor LEVEMENTE mais clara (0x0a0a18 → 0x12121e)
@@ -1451,6 +1480,21 @@ export default function VirtualGym({
       const dt = Math.min(0.05, (now - lastT) / 1000);
       lastT = now;
       const t = (now - startT) / 1000;
+
+      // V16.7 cycle 25: anima dust particles — descem lentamente + sway
+      const dustPosArr = dustGeometry.attributes.position!.array as Float32Array;
+      for (let i = 0; i < dustCount; i++) {
+        dustPosArr[i * 3] += dustVelocities[i * 3]! * dt * (1 + Math.sin(t * 0.3 + i) * 0.3);
+        dustPosArr[i * 3 + 1] += dustVelocities[i * 3 + 1]! * dt;
+        dustPosArr[i * 3 + 2] += dustVelocities[i * 3 + 2]! * dt;
+        // Reset quando cair abaixo do chão
+        if (dustPosArr[i * 3 + 1]! < 0.2) {
+          dustPosArr[i * 3 + 1] = 6.5;
+          dustPosArr[i * 3] = (Math.random() - 0.5) * 38;
+          dustPosArr[i * 3 + 2] = (Math.random() - 0.5) * 34;
+        }
+      }
+      dustGeometry.attributes.position!.needsUpdate = true;
 
       const inputLocked = inputLockedRef.current;
       let ix = inputLocked ? 0 : (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + jx;
