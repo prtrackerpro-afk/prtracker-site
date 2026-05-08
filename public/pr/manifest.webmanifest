@@ -34,5 +34,32 @@
     }
   ],
   "categories": ["sports", "fitness", "lifestyle"],
-  "lang": "pt-BR"
+  "lang": "pt-BR",
+  "shortcuts": [
+    {
+      "name": "Registrar PR",
+      "short_name": "PR",
+      "description": "Logue novo personal record",
+      "url": "/pr/log",
+      "icons": [{ "src": "/admin/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ginásio Virtual",
+      "short_name": "Gym",
+      "url": "/pr/gym",
+      "icons": [{ "src": "/admin/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Macros",
+      "short_name": "Dieta",
+      "url": "/pr/diet",
+      "icons": [{ "src": "/admin/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Fliperama",
+      "short_name": "Arcade",
+      "url": "/pr/arcade",
+      "icons": [{ "src": "/admin/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }
