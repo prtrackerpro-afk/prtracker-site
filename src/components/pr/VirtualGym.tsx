@@ -2385,32 +2385,37 @@ export default function VirtualGym({
           break;
 
         case "bike":
-          // Assault bike: pedalada circular = hip rotation oscilante + knee flex
-          // sincronizado (joelho dobra quando perna SOBE no pedal)
+          // Assault bike REAL: athlete sentado no saddle (~0.7m)
+          // Pernas: pedalada circular completa
+          //   - Top of pedal stroke: hip mais alto (-1.6 = perna pra cima/frente),
+          //     knee SUPER dobrado (1.6 ~90°)
+          //   - Bottom of stroke: hip mais baixo (-0.4), knee pouco dobrado (0.3)
+          // Bracos: rotation.x = -PI/2 (paralelos pra frente segurando handle)
+          //         forearm flex 1.0 (cotovelo levemente dobrado)
           {
             const tt = performance.now() / 1000;
             const phase = tt * 5;
-            const ls = Math.sin(phase);
-            const rs = Math.sin(phase + Math.PI);
-            // HIP: oscila entre -0.2 (perna pra trás abaixo) e 0.8 (perna pra frente alto)
-            a.leftLeg.rotation.x = 0.3 + ls * 0.5;
-            a.rightLeg.rotation.x = 0.3 + rs * 0.5;
-            // KNEE flex: máximo quando perna está alta (sin > 0)
-            a.leftCalf.rotation.x = 0.3 + Math.max(0, ls) * 1.0;
-            a.rightCalf.rotation.x = 0.3 + Math.max(0, rs) * 1.0;
-            // Braços: rotation.x -1.2 (frente segurando handles)
-            a.leftArm.rotation.x = -1.2;
-            a.rightArm.rotation.x = -1.2;
-            a.leftArm.rotation.z = -0.3;
-            a.rightArm.rotation.z = 0.3;
-            // Forearm: ligeiramente flexionado segurando guidão
-            a.leftForearm.rotation.x = 0.5;
-            a.rightForearm.rotation.x = 0.5;
+            const ls = (Math.sin(phase) + 1) / 2; // 0-1
+            const rs = (Math.sin(phase + Math.PI) + 1) / 2;
+            // Sentado em saddle alto
+            a.root.position.y = 0.5;
+            a.root.rotation.x = -0.2; // leve lean pra frente segurando handle
+            // HIP: -1.6 (perna alta) → -0.4 (perna baixa)
+            a.leftLeg.rotation.x = -0.4 - ls * 1.2;
+            a.rightLeg.rotation.x = -0.4 - rs * 1.2;
+            // KNEE flex: 0.3 (esticado) → 1.6 (dobrado quando perna alta)
+            a.leftCalf.rotation.x = 0.3 + ls * 1.3;
+            a.rightCalf.rotation.x = 0.3 + rs * 1.3;
+            // Bracos: pra frente paralelos, leve queda nos handles
+            a.leftArm.rotation.x = -Math.PI / 2;
+            a.rightArm.rotation.x = -Math.PI / 2;
+            a.leftArm.rotation.z = -0.35;
+            a.rightArm.rotation.z = 0.35;
+            // Forearm: levemente flex (cotovelo macio segurando)
+            a.leftForearm.rotation.x = 0.6;
+            a.rightForearm.rotation.x = 0.6;
             a.leftHand.rotation.set(0, 0, 0);
             a.rightHand.rotation.set(0, 0, 0);
-            // Sentado (root.y baixo)
-            a.root.position.y = -0.1;
-            a.root.rotation.x = -0.15; // leve lean pra frente
           }
           break;
 
