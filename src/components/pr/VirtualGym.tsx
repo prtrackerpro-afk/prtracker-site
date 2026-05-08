@@ -868,6 +868,7 @@ export default function VirtualGym({
     const powerRack = buildPowerRack(accent);
     powerRack.position.set(powerRackPos.x, 0, powerRackPos.z);
     powerRack.rotation.y = powerRackPos.rot + Math.PI / 8;
+    powerRack.userData.playExercise = "squat";
     scene.add(powerRack);
     colliders.push({ cx: powerRackPos.x, cz: powerRackPos.z, hw: 1.0, hd: 1.0 });
 
@@ -1546,6 +1547,7 @@ export default function VirtualGym({
       "spawn",
     ]);
 
+    const playableEquipments: THREE.Group[] = [];
     for (const obj of layout.objects) {
       if (SINGLETON_HANDLED.has(obj.type)) continue;
       const built = buildExtraEquipment(obj.type, accent);
@@ -1553,6 +1555,7 @@ export default function VirtualGym({
       built.position.set(obj.x, 0, obj.z);
       built.rotation.y = obj.rot;
       scene.add(built);
+      if (built.userData.playExercise) playableEquipments.push(built);
       // Collider aproximado pro AABB do equipamento
       const bbox = new THREE.Box3().setFromObject(built);
       const sx = (bbox.max.x - bbox.min.x) / 2;
@@ -1697,7 +1700,9 @@ export default function VirtualGym({
         runBoardParts.hitBox,
         cinemaRoom,
         arcadeRoom,
+        powerRack,
         ...hotspotPortals,
+        ...playableEquipments,
       ];
       const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
@@ -1710,6 +1715,7 @@ export default function VirtualGym({
           !obj.userData.sponsorSlot &&
           !obj.userData.npcSlot &&
           !obj.userData.hotspot &&
+          !obj.userData.playExercise &&
           obj.userData.kind !== "projector-screen" &&
           obj.userData.kind !== "streak-pillar" &&
           obj.userData.kind !== "skills-board" &&
@@ -1767,6 +1773,18 @@ export default function VirtualGym({
         } else if (obj?.userData.kind === "run-board") {
           playClick();
           if (!visitMode) setRunsModalOpen(true);
+        } else if (obj?.userData.playExercise) {
+          // PR2: dispara CustomEvent pra abrir PlayMode overlay
+          playClick();
+          obj.getWorldPosition(tmpWorldPos);
+          tmpWorldPos.y += 0.6;
+          tmpColor.set(0xd8ff2c);
+          particleBurst.burst(tmpWorldPos, 18, tmpColor, 0.8);
+          window.dispatchEvent(
+            new CustomEvent("playmode:open", {
+              detail: { exercise: obj.userData.playExercise as string },
+            })
+          );
         } else if (obj?.userData.hotspot) {
           // PR3 cycles 14-20: hotspots de navegação
           playClick();
@@ -3355,32 +3373,59 @@ function buildExtraEquipment(
   type: GymObjectType,
   accentHex: string
 ): THREE.Group | null {
+  let g: THREE.Group | null = null;
+  let playExercise: string | null = null;
   switch (type) {
     case "bench":
-      return buildBench();
+      g = buildBench();
+      playExercise = "bench";
+      break;
     case "squat_rack":
-      return buildSquatRack(accentHex);
+      g = buildSquatRack(accentHex);
+      playExercise = "squat";
+      break;
     case "dumbbell_rack":
-      return buildDumbbellRack();
+      g = buildDumbbellRack();
+      playExercise = "pushup";
+      break;
     case "kettlebell":
-      return buildKettlebell(0.18);
+      g = buildKettlebell(0.18);
+      playExercise = "kbswing";
+      break;
     case "plate_tree":
-      return buildPlateTree();
+      g = buildPlateTree();
+      break;
     case "cable_machine":
-      return buildCableMachine(accentHex);
+      g = buildCableMachine(accentHex);
+      playExercise = "pullup";
+      break;
     case "treadmill":
-      return buildTreadmill(accentHex);
+      g = buildTreadmill(accentHex);
+      playExercise = "burpee";
+      break;
     case "assault_bike":
-      return buildAssaultBike(accentHex);
+      g = buildAssaultBike(accentHex);
+      playExercise = "burpee";
+      break;
     case "rowing_machine":
-      return buildRowingMachine(accentHex);
+      g = buildRowingMachine(accentHex);
+      playExercise = "burpee";
+      break;
     case "plyo_box":
-      return buildPlyoBox(0.6);
+      g = buildPlyoBox(0.6);
+      playExercise = "boxjump";
+      break;
     case "crossfit_rig":
-      return buildCrossFitRig(4.0, 2.0).group;
+      g = buildCrossFitRig(4.0, 2.0).group;
+      playExercise = "pullup";
+      break;
     default:
       return null;
   }
+  if (g && playExercise) {
+    g.userData.playExercise = playExercise;
+  }
+  return g;
 }
 
 function lerpAngle(a: number, b: number, t: number): number {
