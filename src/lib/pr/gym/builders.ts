@@ -116,6 +116,251 @@ export function buildTowel(color = 0xda291c): THREE.Group {
   return g;
 }
 
+// V16.8 Fase 3 cycles 302-351: Sala de cinema premium
+// Sala 6×4m anexa ao gym, com tela 4×2.25m, projetor, 24 poltronas em 4 fileiras
+export function buildCinemaRoom(athleteName: string): THREE.Group {
+  const g = new THREE.Group();
+  const ROOM_W = 6;
+  const ROOM_D = 4;
+  const ROOM_H = 3;
+
+  // Paredes pretas absorventes
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: 0x05050a,
+    roughness: 0.95,
+    metalness: 0,
+  });
+  // Floor — carpete escuro
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0a14,
+    roughness: 0.9,
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  g.add(floor);
+
+  // Runner lime central (red carpet style)
+  const runner = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.8, ROOM_D),
+    new THREE.MeshBasicMaterial({ color: 0xd8ff2c, transparent: true, opacity: 0.4 })
+  );
+  runner.rotation.x = -Math.PI / 2;
+  runner.position.y = 0.001;
+  g.add(runner);
+
+  // 3 paredes (frontal=tela, fundo, lateral)
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_H), wallMat);
+  back.position.set(0, ROOM_H / 2, -ROOM_D / 2);
+  g.add(back);
+  const left = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_D, ROOM_H), wallMat);
+  left.position.set(-ROOM_W / 2, ROOM_H / 2, 0);
+  left.rotation.y = Math.PI / 2;
+  g.add(left);
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_D, ROOM_H), wallMat);
+  right.position.set(ROOM_W / 2, ROOM_H / 2, 0);
+  right.rotation.y = -Math.PI / 2;
+  g.add(right);
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), wallMat);
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.set(0, ROOM_H, 0);
+  g.add(ceiling);
+
+  // === TELA (4m × 2.25m) ===
+  // Frame metálico lime
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0xd8ff2c,
+    roughness: 0.4,
+    metalness: 0.7,
+    emissive: 0xd8ff2c,
+    emissiveIntensity: 0.2,
+  });
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(4.1, 2.35, 0.06),
+    frameMat
+  );
+  frame.position.set(0, 1.5, ROOM_D / 2 - 0.04);
+  frame.rotation.y = Math.PI;
+  g.add(frame);
+
+  // Tela com canvas dinâmico (Hall of Fame intro do athlete)
+  const screenCanvas = document.createElement("canvas");
+  screenCanvas.width = 1024;
+  screenCanvas.height = 576;
+  const sctx = screenCanvas.getContext("2d")!;
+  sctx.fillStyle = "#0a0a14";
+  sctx.fillRect(0, 0, 1024, 576);
+  // Background gradient
+  const grad = sctx.createRadialGradient(512, 288, 100, 512, 288, 600);
+  grad.addColorStop(0, "rgba(216,255,44,0.15)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  sctx.fillStyle = grad;
+  sctx.fillRect(0, 0, 1024, 576);
+  // Title
+  sctx.fillStyle = "#d8ff2c";
+  sctx.font = "900 80px Archivo Black, Inter, sans-serif";
+  sctx.textAlign = "center";
+  sctx.fillText("HALL OF FAME", 512, 200);
+  // Athlete name
+  sctx.fillStyle = "#ffffff";
+  sctx.font = "900 60px Archivo Black, Inter, sans-serif";
+  sctx.fillText(athleteName.toUpperCase(), 512, 290);
+  // Subtitle
+  sctx.fillStyle = "#9ca3af";
+  sctx.font = "500 28px Inter, sans-serif";
+  sctx.fillText("Os PRs que viraram troféu", 512, 350);
+  // Logo PR Tracker
+  sctx.fillStyle = "#d8ff2c";
+  sctx.font = "bold 22px Inter, sans-serif";
+  sctx.fillText("PR TRACKER", 512, 510);
+  const screenTex = new THREE.CanvasTexture(screenCanvas);
+  screenTex.colorSpace = THREE.SRGBColorSpace;
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(4, 2.25),
+    new THREE.MeshBasicMaterial({ map: screenTex })
+  );
+  screen.position.set(0, 1.5, ROOM_D / 2 - 0.07);
+  screen.rotation.y = Math.PI;
+  g.add(screen);
+
+  // === Projetor no teto ===
+  const projBody = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.18, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x141420, roughness: 0.6, metalness: 0.4 })
+  );
+  projBody.position.set(0, ROOM_H - 0.12, -0.5);
+  g.add(projBody);
+  // Lente saindo
+  const lens = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.07, 0.1, 16),
+    new THREE.MeshStandardMaterial({ color: 0x6a6a76, roughness: 0.2, metalness: 0.85 })
+  );
+  lens.rotation.x = Math.PI / 2;
+  lens.position.set(0, ROOM_H - 0.18, -0.3);
+  g.add(lens);
+  // LED frontal lime
+  const led = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 0.008, 8),
+    new THREE.MeshBasicMaterial({ color: 0xd8ff2c })
+  );
+  led.rotation.x = Math.PI / 2;
+  led.position.set(0.07, ROOM_H - 0.16, -0.32);
+  g.add(led);
+  // Cone de luz projetada (aditivo)
+  const beam = new THREE.Mesh(
+    new THREE.ConeGeometry(0.8, 2.5, 16, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0xfff8c8,
+      transparent: true,
+      opacity: 0.05,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  beam.rotation.x = Math.PI / 2;
+  beam.position.set(0, ROOM_H - 0.5, 0.6);
+  g.add(beam);
+
+  // === Speaker towers (2 caixas pretas grandes) ===
+  for (const sx of [-1.95, 1.95]) {
+    const sp = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 1.5, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.85 })
+    );
+    sp.position.set(sx, 0.75, ROOM_D / 2 - 0.2);
+    g.add(sp);
+    // Cone subwoofer (3 cones na frente)
+    for (let i = 0; i < 3; i++) {
+      const cone = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.08, 0.03, 12),
+        new THREE.MeshStandardMaterial({ color: 0x1a1a26, roughness: 0.6 })
+      );
+      cone.rotation.x = Math.PI / 2;
+      cone.position.set(sx, 0.3 + i * 0.4, ROOM_D / 2 - 0.32);
+      g.add(cone);
+    }
+  }
+
+  // === Poltronas: 4 fileiras × 6 = 24 ===
+  const seatMat = new THREE.MeshStandardMaterial({ color: 0x141420, roughness: 0.85 });
+  const seatAccent = new THREE.MeshStandardMaterial({
+    color: 0xd8ff2c,
+    roughness: 0.5,
+    emissive: 0xd8ff2c,
+    emissiveIntensity: 0.25,
+  });
+  const ROW_COUNT = 4;
+  const SEAT_PER_ROW = 6;
+  const ROW_SPACING_Z = 0.55;
+  const SEAT_SPACING_X = 0.7;
+  const ROW_RISE = 0.15; // estádio
+  for (let row = 0; row < ROW_COUNT; row++) {
+    for (let s = 0; s < SEAT_PER_ROW; s++) {
+      const sx = -((SEAT_PER_ROW - 1) * SEAT_SPACING_X) / 2 + s * SEAT_SPACING_X;
+      const sz = -1.0 + row * ROW_SPACING_Z;
+      const sy = row * ROW_RISE;
+      // Assento
+      const seat = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.1, 0.45),
+        seatMat
+      );
+      seat.position.set(sx, sy + 0.45, sz);
+      g.add(seat);
+      // Encosto
+      const back = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.6, 0.08),
+        seatMat
+      );
+      back.position.set(sx, sy + 0.78, sz - 0.18);
+      g.add(back);
+      // Linha lime no topo do encosto
+      const line = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.02, 0.08),
+        seatAccent
+      );
+      line.position.set(sx, sy + 1.07, sz - 0.18);
+      g.add(line);
+    }
+  }
+
+  // === Floor lights laterais (LED ribbons) ===
+  for (const side of [-1, 1]) {
+    const ribbon = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.02, ROOM_D),
+      new THREE.MeshBasicMaterial({ color: 0xd8ff2c })
+    );
+    ribbon.position.set(side * (ROOM_W / 2 - 0.08), 0.05, 0);
+    g.add(ribbon);
+  }
+
+  // === Sign na entrada (acima da tela) ===
+  const signCanvas = document.createElement("canvas");
+  signCanvas.width = 512;
+  signCanvas.height = 96;
+  const sigctx = signCanvas.getContext("2d")!;
+  sigctx.fillStyle = "#01002A";
+  sigctx.fillRect(0, 0, 512, 96);
+  sigctx.strokeStyle = "#d8ff2c";
+  sigctx.lineWidth = 4;
+  sigctx.strokeRect(8, 8, 496, 80);
+  sigctx.fillStyle = "#d8ff2c";
+  sigctx.font = "900 50px Archivo Black, Inter, sans-serif";
+  sigctx.textAlign = "center";
+  sigctx.textBaseline = "middle";
+  sigctx.fillText("CINEMA", 256, 48);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  signTex.colorSpace = THREE.SRGBColorSpace;
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.2, 0.22),
+    new THREE.MeshBasicMaterial({ map: signTex, transparent: true })
+  );
+  sign.position.set(0, 2.85, ROOM_D / 2 - 0.05);
+  sign.rotation.y = Math.PI;
+  g.add(sign);
+
+  return g;
+}
+
 // V16.8 cycles 213-216: cenário decorativos (WOD board, espelhos, relógio)
 export function buildWODBoard(): THREE.Group {
   const g = new THREE.Group();

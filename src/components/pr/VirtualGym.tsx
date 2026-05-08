@@ -38,6 +38,7 @@ import {
   buildWODBoard,
   buildClock,
   buildMirror,
+  buildCinemaRoom,
   STEEL_MAT,
   type SkillBoardSlot,
   type RunSlot,
@@ -899,6 +900,12 @@ export default function VirtualGym({
     belt.position.set(powerRackPos.x - 0.7, 0.35, powerRackPos.z - 0.8);
     belt.rotation.y = 0.5;
     scene.add(belt);
+
+    // V16.8 Fase 3: Sala de cinema anexa ao gym (canto sudoeste, fora da plataforma)
+    const cinemaRoom = buildCinemaRoom(athleteName);
+    cinemaRoom.position.set(-ROOM_W / 2 + 4, 0, ROOM_D / 2 - 4);
+    cinemaRoom.rotation.y = Math.PI / 4;
+    scene.add(cinemaRoom);
 
     // V16.8 cycles 213-216: WOD board + relógio + espelhos na parede esquerda
     const wodBoard = buildWODBoard();
