@@ -208,6 +208,25 @@ const { count: unreadCount = 0 } = await supabase
         </section>
       )}
 
+      {/* Quick links — novas features das fases 3, 6, 8 */}
+      <section class="mb-6 grid grid-cols-3 gap-2">
+        <a href="/pr/diet" class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 hover:border-brand-lime/40 transition text-center">
+          <div class="text-2xl mb-1">🥗</div>
+          <div class="text-xs font-display font-semibold">Macros</div>
+          <div class="text-[10px] text-navy-400">tracker</div>
+        </a>
+        <a href="/pr/gym" class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 hover:border-brand-lime/40 transition text-center">
+          <div class="text-2xl mb-1">🏋️</div>
+          <div class="text-xs font-display font-semibold">Gym</div>
+          <div class="text-[10px] text-navy-400">virtual</div>
+        </a>
+        <a href="/pr/arcade" class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 hover:border-brand-lime/40 transition text-center">
+          <div class="text-2xl mb-1">🎮</div>
+          <div class="text-xs font-display font-semibold">Arcade</div>
+          <div class="text-[10px] text-navy-400">jogos</div>
+        </a>
+      </section>
+
       <section class="mb-3 flex items-baseline justify-between">
         <h1 class="text-xl font-semibold tracking-tight">Histórico</h1>
         {records.length > 0 && (
