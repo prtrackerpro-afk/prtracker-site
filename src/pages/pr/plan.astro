@@ -1,0 +1,190 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import BottomNav from "../../components/pr/BottomNav.astro";
+import { getServerSupabase } from "../../lib/supabase/server";
+
+const athlete = Astro.locals.athlete;
+if (!athlete) return Astro.redirect("/pr/login");
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+// Plano ativo mais recente do atleta
+const { data: plans = [] } = await supabase
+  .from("pr_workout_plans")
+  .select("id, name, week_start_date, notes, coach_id, pr_coaches!inner(display_name)")
+  .eq("athlete_id", athlete.userId)
+  .eq("status", "active")
+  .order("week_start_date", { ascending: false })
+  .limit(1);
+
+const planList = (plans ?? []) as Array<{
+  id: string;
+  name: string;
+  week_start_date: string;
+  notes: string | null;
+  coach_id: string;
+  pr_coaches: { display_name: string };
+}>;
+
+const currentPlan = planList[0] ?? null;
+
+let exercises: Array<{
+  id: string;
+  day_index: number;
+  order_idx: number;
+  exercise_name: string;
+  sets: number | null;
+  reps: string | null;
+  weight_kg: number | null;
+  rpe: number | null;
+  rest_sec: number | null;
+  notes: string | null;
+  done_at: string | null;
+}> = [];
+
+if (currentPlan) {
+  const { data } = await supabase
+    .from("pr_workout_exercises")
+    .select(
+      "id, day_index, order_idx, exercise_name, sets, reps, weight_kg, rpe, rest_sec, notes, done_at"
+    )
+    .eq("plan_id", currentPlan.id)
+    .order("day_index", { ascending: true })
+    .order("order_idx", { ascending: true });
+  exercises = (data ?? []) as typeof exercises;
+}
+
+const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+// Group por dia
+const byDay: Record<number, typeof exercises> = {};
+for (const ex of exercises) {
+  (byDay[ex.day_index] ??= []).push(ex);
+}
+
+// Calcular dia atual relativo à week_start
+let currentDayIdx = 0;
+if (currentPlan) {
+  const weekStart = new Date(currentPlan.week_start_date);
+  const today = new Date();
+  const diff = Math.floor((today.getTime() - weekStart.getTime()) / 86400000);
+  currentDayIdx = Math.max(0, Math.min(6, diff));
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Plano de treino · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <a href="/pr" class="text-sm text-navy-300 hover:text-white">← Voltar</a>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">PLANO DE TREINO</div>
+      <h1 class="font-display text-3xl tracking-tight text-white">
+        {currentPlan ? currentPlan.name : "Sem plano ativo"}
+      </h1>
+      {currentPlan && (
+        <p class="text-sm text-navy-300">
+          Coach: <strong>{currentPlan.pr_coaches.display_name}</strong> · Semana de {currentPlan.week_start_date}
+        </p>
+      )}
+    </header>
+
+    <main class="max-w-md mx-auto px-4 space-y-4">
+      {!currentPlan && (
+        <div class="rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 p-5">
+          <p class="text-sm mb-2">
+            Você ainda não tem plano ativo. Vincule-se a um <strong>Personal Trainer</strong> pra receber treinos.
+          </p>
+          <a href="/pr/coach" class="inline-block text-xs bg-brand-lime text-navy-900 font-bold rounded-lg px-3 py-2">
+            Encontrar coach →
+          </a>
+        </div>
+      )}
+
+      {currentPlan && DAYS.map((day, dayIdx) => {
+        const dayExercises = byDay[dayIdx] ?? [];
+        const isToday = dayIdx === currentDayIdx;
+        return (
+          <section class={`rounded-2xl border ${isToday ? "border-2 border-brand-lime/40 bg-brand-lime/5" : "border-navy-700 bg-navy-800/30"} p-4`}>
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="font-display text-lg">
+                {day} {isToday && <span class="text-[10px] uppercase tracking-wider text-brand-lime ml-1">HOJE</span>}
+              </h2>
+              <span class="text-xs text-navy-400">{dayExercises.length} exercício{dayExercises.length === 1 ? "" : "s"}</span>
+            </div>
+            {dayExercises.length === 0 ? (
+              <div class="text-xs text-navy-500 italic">Descanso</div>
+            ) : (
+              <ul class="space-y-2">
+                {dayExercises.map((ex) => (
+                  <li class="flex items-start gap-2 p-2 bg-navy-900/50 rounded-lg" data-ex-id={ex.id}>
+                    <button
+                      type="button"
+                      class="checkin-btn flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 border-brand-lime grid place-items-center hover:bg-brand-lime hover:text-navy-900 transition"
+                      data-ex-id={ex.id}
+                      data-done={ex.done_at ? "true" : "false"}
+                    >
+                      {ex.done_at && <span class="text-brand-lime text-xs">✓</span>}
+                    </button>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-semibold text-white">{ex.exercise_name}</div>
+                      <div class="text-xs text-navy-300 mt-0.5">
+                        {ex.sets && ex.reps && <span>{ex.sets} × {ex.reps}</span>}
+                        {ex.weight_kg && <span class="ml-2">{ex.weight_kg}kg</span>}
+                        {ex.rpe && <span class="ml-2 text-orange-400">RPE {ex.rpe}</span>}
+                        {ex.rest_sec && <span class="ml-2 text-navy-400">{ex.rest_sec}s rest</span>}
+                      </div>
+                      {ex.notes && <div class="text-[10px] text-navy-400 mt-0.5 italic">{ex.notes}</div>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+    </main>
+
+    <BottomNav active="profile" />
+
+    <script>
+      // Check-in: marca exercício como feito
+      document.querySelectorAll(".checkin-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const exId = (btn as HTMLButtonElement).dataset.exId;
+          const isDone = (btn as HTMLButtonElement).dataset.done === "true";
+          if (!exId) return;
+          const newDone = !isDone;
+          try {
+            const res = await fetch("/api/pr/coach/checkin", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ exercise_id: exId, done: newDone }),
+            });
+            if (res.ok) {
+              (btn as HTMLButtonElement).dataset.done = String(newDone);
+              btn.innerHTML = newDone ? '<span class="text-brand-lime text-xs">✓</span>' : "";
+              if (newDone) {
+                btn.classList.add("bg-brand-lime", "text-navy-900");
+              } else {
+                btn.classList.remove("bg-brand-lime", "text-navy-900");
+              }
+            }
+          } catch {
+            // silencioso
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
