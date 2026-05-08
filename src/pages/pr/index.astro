@@ -8,6 +8,7 @@ import { summarize, tierLabel, tierColor } from "../../lib/pr/strength-score";
 import { computeQuests, formatRemaining } from "../../lib/pr/quests";
 import PRProgressionChart from "../../components/pr/PRProgressionChart";
 import BottomNav from "../../components/pr/BottomNav.astro";
+import TutorialOverlay from "../../components/pr/TutorialOverlay";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
 
@@ -259,5 +260,6 @@ const { count: unreadCount = 0 } = await supabase
     </a>
 
     <BottomNav active="home" unreadCount={Number(unreadCount ?? 0)} />
+    <TutorialOverlay client:only="react" />
   </body>
 </html>
