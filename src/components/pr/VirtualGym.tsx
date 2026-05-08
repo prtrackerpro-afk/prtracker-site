@@ -1999,9 +1999,9 @@ export default function VirtualGym({
       let initialRootY = 0;
       let initialRootRotX = 0;
       if (eq.exercise === "bench") {
-        offsetFwd = 0; // EM CIMA do banco
-        initialRootY = 0.5; // altura banco
-        initialRootRotX = -Math.PI / 2; // deitado
+        offsetFwd = 0;
+        initialRootY = 0;
+        initialRootRotX = 0; // EM PE (representação simplificada — bench virtual)
       } else if (eq.exercise === "squat") {
         offsetFwd = 0; // dentro do rack
         initialRootY = 0;
@@ -2016,8 +2016,8 @@ export default function VirtualGym({
         initialRootRotX = 0;
       } else if (eq.exercise === "pushup") {
         offsetFwd = 0.4;
-        initialRootY = 0.4;
-        initialRootRotX = -Math.PI / 2;
+        initialRootY = 0;
+        initialRootRotX = 0;
       } else if (eq.exercise === "boxjump") {
         offsetFwd = -0.6; // 60cm na frente do box
         initialRootY = 0;
@@ -2194,28 +2194,22 @@ export default function VirtualGym({
       void arms;
       switch (exercise) {
         case "bench":
-          // Bench press REAL: avatar deita horizontal de costas no banco
-          // Banco em y=0.45 → avatar fica em y=0.7 (head em y=2.0 + rotation.x=-PI/2
-          // → head agora está atrás na direção -Z. root.y=0.7 mantém peito sobre banco)
-          a.root.rotation.x = -Math.PI / 2;
-          a.root.position.y = 0.7;
-          // Pernas apontam pra direita (no nosso sistema, com root rotacionado,
-          // legs descem em direção aos pés do banco — rotation.x = 0)
+          // Bench REPRESENTACIONAL: avatar em pé empurra barbell virtual pra cima
+          // (representacao simplificada — bench virtual à frente do atleta)
+          // Up arm rotation.x = -PI/2 (paralelo ao chão pra frente)
+          // Forearm flex: 1.5 (peito) → 0.1 (estendido frente)
+          a.root.rotation.x = 0;
+          a.root.position.y = 0;
           a.leftLeg.rotation.x = 0;
           a.rightLeg.rotation.x = 0;
           a.leftCalf.rotation.x = 0;
           a.rightCalf.rotation.x = 0;
-          // BRACOS: agora apontam pra cima (em direção ao teto após deitar)
-          // p=0 (down): bracos dobrados (forearm flexionado), bar no peito
-          // p=1 (up): bracos esticados, bar lockout
-          // Upper arm rotation.x: -PI/2 sempre (perpendicular ao torso = vertical)
-          a.leftArm.rotation.x = -Math.PI / 2;
+          a.leftArm.rotation.x = -Math.PI / 2; // pra frente paralelo
           a.rightArm.rotation.x = -Math.PI / 2;
           a.leftArm.rotation.z = -0.3;
           a.rightArm.rotation.z = 0.3;
-          // FOREARM flex: p=0 dobrado (1.6 rad ~90°), p=1 esticado (0.18 base)
-          a.leftForearm.rotation.x = 1.6 - p * 1.4;
-          a.rightForearm.rotation.x = 1.6 - p * 1.4;
+          a.leftForearm.rotation.x = 1.5 - p * 1.4; // 90° dobrado → quase reto
+          a.rightForearm.rotation.x = 1.5 - p * 1.4;
           a.leftHand.rotation.set(0, 0, 0);
           a.rightHand.rotation.set(0, 0, 0);
           break;
@@ -2296,23 +2290,20 @@ export default function VirtualGym({
           break;
 
         case "pushup":
-          // Push-up REAL: avatar horizontal acima do chão
-          // root.rotation.x = -PI/2 (vira pra ficar paralelo)
-          // root.y oscila pra simular subir/descer do chão
-          a.root.rotation.x = -Math.PI / 2;
-          // p=0 (chest baixo) → p=1 (lockout alto)
-          a.root.position.y = 0.6 + p * 0.2;
-          // Bracos: rotation.x = 0 (perpendicular ao torso = vertical no espaço mundo)
-          a.leftArm.rotation.x = 0;
-          a.rightArm.rotation.x = 0;
+          // Push-up REPRESENTACIONAL: avatar em pé empurra braços PRA BAIXO/FRENTE
+          // (em vez de deitar horizontal que ficava esquisito)
+          // Bracos: rotation.x = +PI/4 (pra baixo e frente)
+          // Forearm flex: 1.5 (dobrado) → 0.1 (esticado)
+          a.root.rotation.x = 0;
+          a.root.position.y = 0;
+          a.leftArm.rotation.x = Math.PI / 4;
+          a.rightArm.rotation.x = Math.PI / 4;
           a.leftArm.rotation.z = -0.4;
           a.rightArm.rotation.z = 0.4;
-          // Forearm flex: p=0 dobrado (1.5 rad), p=1 estendido (0)
-          a.leftForearm.rotation.x = 1.5 - p * 1.3;
-          a.rightForearm.rotation.x = 1.5 - p * 1.3;
+          a.leftForearm.rotation.x = 1.5 - p * 1.4;
+          a.rightForearm.rotation.x = 1.5 - p * 1.4;
           a.leftHand.rotation.set(0, 0, 0);
           a.rightHand.rotation.set(0, 0, 0);
-          // Pernas estendidas pra trás (rotation.x = 0 mas root está rotacionado)
           a.leftLeg.rotation.x = 0;
           a.rightLeg.rotation.x = 0;
           a.leftCalf.rotation.x = 0;
@@ -2632,14 +2623,14 @@ export default function VirtualGym({
 
         // Camera close-up por exercício (lateral pra lifts, frente pra pullup, etc)
         const lookY =
-          eq.exercise === "pullup" ? 1.8 :
-          eq.exercise === "bench" ? 0.7 :
-          eq.exercise === "pushup" ? 0.5 :
+          eq.exercise === "pullup" ? 2.0 :
+          eq.exercise === "bench" ? 1.4 : // alto pq bracos sobem
+          eq.exercise === "pushup" ? 1.0 :
           eq.exercise === "deadlift" ? 0.8 :
-          eq.exercise === "boxjump" ? 1.0 :
-          eq.exercise === "row" ? 0.6 :
-          eq.exercise === "bike" ? 0.7 :
-          1.0;
+          eq.exercise === "boxjump" ? 1.2 :
+          eq.exercise === "row" ? 0.8 :
+          eq.exercise === "bike" ? 0.9 :
+          1.2;
         tmpCamTarget.set(eq.x, lookY, eq.z);
         let camDist = 3.5;
         let sideAngle = Math.PI / 2;
