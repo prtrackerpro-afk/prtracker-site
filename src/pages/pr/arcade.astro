@@ -2,7 +2,6 @@
 export const prerender = false;
 import "../../styles/global.css";
 import BottomNav from "../../components/pr/BottomNav.astro";
-import BarbellBounceGame from "../../components/pr/BarbellBounceGame";
 
 const athlete = Astro.locals.athlete;
 if (!athlete) return Astro.redirect("/pr/login");
@@ -27,14 +26,34 @@ if (!athlete) return Astro.redirect("/pr/login");
 
     <main class="max-w-2xl mx-auto px-4 space-y-6">
       <section class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-4 shadow-lg shadow-brand-lime/5">
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime">JOGO 1</div>
-            <h2 class="font-display text-xl text-white">Barbell Bounce</h2>
-            <p class="text-xs text-navy-300">Endless runner — pula barras, abaixa nas baixas.</p>
+        <div class="mb-3">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime">JOGO 1</div>
+          <h2 class="font-display text-xl text-white">Barbell Bounce</h2>
+          <p class="text-xs text-navy-300">Endless runner — pula barras, abaixa nas baixas.</p>
+        </div>
+        <div id="game-container" class="relative w-full" style="min-height: 280px;">
+          <canvas
+            id="bb-canvas"
+            width="640"
+            height="360"
+            class="bg-navy-900 border-2 border-brand-lime/40 rounded-lg w-full block cursor-pointer"
+            style="touch-action: none; image-rendering: pixelated;"
+          ></canvas>
+          <div id="bb-overlay" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none rounded-lg" style="background: rgba(0,0,0,0.5);">
+            <div class="text-3xl sm:text-4xl font-display font-bold text-brand-lime mb-2">▶ TOQUE PRA JOGAR</div>
+            <div class="text-xs text-white/80" id="bb-hi-display">Best: 0</div>
           </div>
         </div>
-        <BarbellBounceGame client:load />
+        <div class="text-xs text-navy-300 text-center mt-3 max-w-md mx-auto">
+          <strong class="text-white">Como jogar:</strong> ESPAÇO ou ↑ pra pular ·
+          ↓ pra abaixar · No celular: tap pula, swipe ↓ abaixa.
+        </div>
+        <div class="text-center mt-3" id="bb-result" style="display:none;">
+          <div class="text-2xl font-display font-bold text-white" id="bb-final-score">Score: 0</div>
+          <button id="bb-restart" type="button" class="mt-2 bg-brand-lime text-navy-900 font-display font-bold rounded-lg px-6 py-2.5 hover:opacity-90">
+            ↻ JOGAR DE NOVO
+          </button>
+        </div>
       </section>
 
       <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4">
@@ -51,5 +70,282 @@ if (!athlete) return Astro.redirect("/pr/login");
     </main>
 
     <BottomNav active="profile" />
+
+    <script is:inline>
+      // Vanilla JS Barbell Bounce — sem React, hidratacao garantida.
+      (function () {
+        const canvas = document.getElementById("bb-canvas");
+        const overlay = document.getElementById("bb-overlay");
+        const hiDisplay = document.getElementById("bb-hi-display");
+        const result = document.getElementById("bb-result");
+        const finalScoreEl = document.getElementById("bb-final-score");
+        const restartBtn = document.getElementById("bb-restart");
+        if (!canvas || !overlay) {
+          console.error("[bb] canvas/overlay missing");
+          return;
+        }
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        let hi = Number(localStorage.getItem("pr_bb_hi") || "0");
+        if (hiDisplay) hiDisplay.textContent = "Best: " + hi;
+
+        let running = false;
+        let rafId = 0;
+
+        function startGame() {
+          if (running) return;
+          running = true;
+          overlay.style.display = "none";
+          result.style.display = "none";
+
+          const W = canvas.width;
+          const H = canvas.height;
+          const groundY = H - 60;
+
+          const player = { x: 80, y: groundY, vy: 0, w: 38, h: 56 };
+          const gravity = 0.85;
+          const jumpV = -16;
+
+          let obstacles = [];
+          let frame = 0;
+          let speed = 6;
+          let scoreLocal = 0;
+          let jumpHeld = false;
+          let duckHeld = false;
+
+          function spawn() {
+            const t = Math.random() < 0.6 ? "high" : "low";
+            if (t === "high") {
+              obstacles.push({ x: W + 20, y: groundY - 60, w: 24, h: 60, type: t });
+            } else {
+              obstacles.push({ x: W + 20, y: groundY - 130, w: 50, h: 18, type: t });
+            }
+          }
+
+          function onKeyDown(e) {
+            if (e.code === "Space" || e.code === "ArrowUp") {
+              e.preventDefault();
+              jumpHeld = true;
+            }
+            if (e.code === "ArrowDown") {
+              e.preventDefault();
+              duckHeld = true;
+            }
+          }
+          function onKeyUp(e) {
+            if (e.code === "Space" || e.code === "ArrowUp") jumpHeld = false;
+            if (e.code === "ArrowDown") duckHeld = false;
+          }
+          window.addEventListener("keydown", onKeyDown);
+          window.addEventListener("keyup", onKeyUp);
+
+          let touchStartY = 0;
+          function onPointerDown(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            touchStartY = e.clientY - rect.top;
+            jumpHeld = true;
+          }
+          function onPointerMove(e) {
+            if (!jumpHeld) return;
+            const rect = canvas.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            if (y - touchStartY > 25) {
+              duckHeld = true;
+              jumpHeld = false;
+            }
+          }
+          function onPointerUp() {
+            jumpHeld = false;
+            duckHeld = false;
+          }
+          canvas.addEventListener("pointerdown", onPointerDown);
+          canvas.addEventListener("pointermove", onPointerMove);
+          canvas.addEventListener("pointerup", onPointerUp);
+          canvas.addEventListener("pointercancel", onPointerUp);
+
+          function endGame() {
+            running = false;
+            cancelAnimationFrame(rafId);
+            window.removeEventListener("keydown", onKeyDown);
+            window.removeEventListener("keyup", onKeyUp);
+            canvas.removeEventListener("pointerdown", onPointerDown);
+            canvas.removeEventListener("pointermove", onPointerMove);
+            canvas.removeEventListener("pointerup", onPointerUp);
+            canvas.removeEventListener("pointercancel", onPointerUp);
+
+            // Game over overlay no canvas
+            ctx.fillStyle = "rgba(1,0,42,0.85)";
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = "#DA291C";
+            ctx.font = "bold 48px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("GAME OVER", W / 2, H / 2 - 10);
+            ctx.fillStyle = "#D8FF2C";
+            ctx.font = "bold 28px sans-serif";
+            ctx.fillText("Score: " + scoreLocal, W / 2, H / 2 + 30);
+
+            if (scoreLocal > hi) {
+              hi = scoreLocal;
+              localStorage.setItem("pr_bb_hi", String(hi));
+              if (hiDisplay) hiDisplay.textContent = "Best: " + hi;
+            }
+            if (scoreLocal > 50) {
+              fetch("/api/pr/arcade/score", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ game_id: "barbell_bounce", score: scoreLocal }),
+              }).catch(function () {});
+            }
+
+            finalScoreEl.textContent = "Score: " + scoreLocal + " · Best: " + hi;
+            result.style.display = "block";
+          }
+
+          function loop() {
+            if (!running) return;
+            frame++;
+
+            if (jumpHeld && player.y >= groundY - 1) player.vy = jumpV;
+            const ducking = duckHeld && player.y >= groundY - 1;
+            player.vy += gravity;
+            player.y += player.vy;
+            if (player.y > groundY) {
+              player.y = groundY;
+              player.vy = 0;
+            }
+
+            const playerH = ducking ? 30 : player.h;
+            const playerY = ducking ? groundY - 30 : player.y - player.h;
+
+            if (frame % Math.max(50, 90 - Math.floor(scoreLocal / 100)) === 0) spawn();
+
+            obstacles.forEach(function (o) {
+              o.x -= speed;
+            });
+            obstacles = obstacles.filter(function (o) {
+              return o.x + o.w > 0;
+            });
+
+            for (let i = 0; i < obstacles.length; i++) {
+              const o = obstacles[i];
+              if (
+                player.x < o.x + o.w &&
+                player.x + player.w > o.x &&
+                playerY < o.y + o.h &&
+                playerY + playerH > o.y
+              ) {
+                endGame();
+                return;
+              }
+            }
+
+            if (frame % 200 === 0 && speed < 14) speed += 0.5;
+            scoreLocal = Math.floor(frame / 6);
+
+            // Render
+            ctx.fillStyle = "#01002A";
+            ctx.fillRect(0, 0, W, H);
+
+            ctx.strokeStyle = "rgba(216,255,44,0.1)";
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+              const x = (frame * speed * 0.3 + i * 100) % W;
+              ctx.beginPath();
+              ctx.moveTo(x, groundY);
+              ctx.lineTo(x - 30, H);
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = "#0a0a14";
+            ctx.fillRect(0, groundY, W, H - groundY);
+            ctx.strokeStyle = "#D8FF2C";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(W, groundY);
+            ctx.stroke();
+
+            ctx.fillStyle = "#D8FF2C";
+            ctx.fillRect(player.x, playerY, player.w, playerH);
+            ctx.fillStyle = "#01002A";
+            ctx.fillRect(player.x + 8, playerY + 8, 6, 6);
+            ctx.font = "bold 10px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText("PR", player.x + 4, playerY + 30);
+
+            for (let i = 0; i < obstacles.length; i++) {
+              const o = obstacles[i];
+              if (o.type === "high") {
+                ctx.fillStyle = "#DA291C";
+                ctx.fillRect(o.x, o.y, o.w, o.h);
+                ctx.fillStyle = "#0057B8";
+                ctx.fillRect(o.x - 5, o.y - 6, o.w + 10, 8);
+              } else {
+                ctx.fillStyle = "#FFC72C";
+                ctx.fillRect(o.x, o.y, o.w, o.h);
+              }
+            }
+
+            ctx.fillStyle = "#D8FF2C";
+            ctx.font = "bold 24px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText("SCORE: " + scoreLocal, 16, 30);
+            ctx.font = "14px sans-serif";
+            ctx.fillStyle = "#9ca3af";
+            ctx.fillText("HI: " + hi, 16, 50);
+
+            rafId = requestAnimationFrame(loop);
+          }
+          rafId = requestAnimationFrame(loop);
+        }
+
+        // Tela inicial — desenha o "fundo" do jogo
+        function drawIdle() {
+          const W = canvas.width;
+          const H = canvas.height;
+          ctx.fillStyle = "#01002A";
+          ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = "#0a0a14";
+          ctx.fillRect(0, H - 60, W, 60);
+          ctx.strokeStyle = "#D8FF2C";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, H - 60);
+          ctx.lineTo(W, H - 60);
+          ctx.stroke();
+          // Player parado
+          ctx.fillStyle = "#D8FF2C";
+          ctx.fillRect(80, H - 60 - 56, 38, 56);
+          ctx.fillStyle = "#01002A";
+          ctx.fillRect(88, H - 60 - 56 + 8, 6, 6);
+          ctx.font = "bold 10px sans-serif";
+          ctx.fillText("PR", 84, H - 60 - 56 + 30);
+        }
+        drawIdle();
+
+        // Click/keyboard pra iniciar
+        canvas.addEventListener("click", function () {
+          if (!running) startGame();
+        });
+        // Touch separadamente pra mobile
+        canvas.addEventListener("touchstart", function (e) {
+          if (!running) {
+            e.preventDefault();
+            startGame();
+          }
+        });
+        window.addEventListener("keydown", function (e) {
+          if (!running && e.code === "Space") {
+            e.preventDefault();
+            startGame();
+          }
+        });
+        if (restartBtn) restartBtn.addEventListener("click", function () {
+          if (!running) startGame();
+        });
+      })();
+    </script>
   </body>
 </html>
