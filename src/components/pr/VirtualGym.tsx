@@ -1992,17 +1992,61 @@ export default function VirtualGym({
       exerciseReps = 0;
       exercisePressed = false;
       exerciseWasUp = false;
-      // Posiciona avatar na pose do equipamento
-      // Pullup: EM CIMA do rig (pendurado)
-      // Squat: dentro do rack (offset 0)
-      // Bench/etc: 0.4m na frente
-      const offset = (eq.exercise === "pullup" || eq.exercise === "squat") ? 0 : 0.4;
+      // Posiciona avatar e DETERMINA POSE INICIAL do equipamento
+      // Cada exercise tem (offsetX, offsetZ, rootY, rootRotX) específicos
+      let offsetFwd = 0; // distância na frente do equipamento
+      let offsetSide = 0;
+      let initialRootY = 0;
+      let initialRootRotX = 0;
+      if (eq.exercise === "bench") {
+        offsetFwd = 0; // EM CIMA do banco
+        initialRootY = 0.5; // altura banco
+        initialRootRotX = -Math.PI / 2; // deitado
+      } else if (eq.exercise === "squat") {
+        offsetFwd = 0; // dentro do rack
+        initialRootY = 0;
+        initialRootRotX = 0;
+      } else if (eq.exercise === "deadlift") {
+        offsetFwd = 0;
+        initialRootY = 0;
+        initialRootRotX = 0;
+      } else if (eq.exercise === "pullup") {
+        offsetFwd = 0; // sob a barra
+        initialRootY = 0;
+        initialRootRotX = 0;
+      } else if (eq.exercise === "pushup") {
+        offsetFwd = 0.4;
+        initialRootY = 0.4;
+        initialRootRotX = -Math.PI / 2;
+      } else if (eq.exercise === "boxjump") {
+        offsetFwd = -0.6; // 60cm na frente do box
+        initialRootY = 0;
+      } else if (eq.exercise === "kbswing") {
+        offsetFwd = 0.5;
+        initialRootY = 0;
+      } else if (eq.exercise === "run") {
+        offsetFwd = 0; // EM CIMA da esteira
+        initialRootY = 0.18; // altura belt
+      } else if (eq.exercise === "bike") {
+        offsetFwd = 0; // sentado na bike
+        initialRootY = -0.1;
+      } else if (eq.exercise === "row") {
+        offsetFwd = 0; // sentado no rower
+        initialRootY = 0;
+      } else {
+        offsetFwd = 0.4;
+      }
+      const fwdX = Math.sin(eq.rotY);
+      const fwdZ = Math.cos(eq.rotY);
+      const sideX = Math.sin(eq.rotY + Math.PI / 2);
+      const sideZ = Math.cos(eq.rotY + Math.PI / 2);
       avatarParts.root.position.set(
-        eq.x + Math.sin(eq.rotY) * offset,
-        0,
-        eq.z + Math.cos(eq.rotY) * offset
+        eq.x + fwdX * offsetFwd + sideX * offsetSide,
+        initialRootY,
+        eq.z + fwdZ * offsetFwd + sideZ * offsetSide
       );
       avatarParts.root.rotation.y = eq.rotY;
+      avatarParts.root.rotation.x = initialRootRotX;
       // Esconde prompt, mostra HUD
       if (promptEl) promptEl.classList.add("hidden");
       if (exerciseHudEl) {
@@ -2151,9 +2195,10 @@ export default function VirtualGym({
       switch (exercise) {
         case "bench":
           // Bench press REAL: avatar deita horizontal de costas no banco
-          // Banco em y=0.45 → avatar deitado y=0.5 (acima do banco)
+          // Banco em y=0.45 → avatar fica em y=0.7 (head em y=2.0 + rotation.x=-PI/2
+          // → head agora está atrás na direção -Z. root.y=0.7 mantém peito sobre banco)
           a.root.rotation.x = -Math.PI / 2;
-          a.root.position.y = 0.5;
+          a.root.position.y = 0.7;
           // Pernas apontam pra direita (no nosso sistema, com root rotacionado,
           // legs descem em direção aos pés do banco — rotation.x = 0)
           a.leftLeg.rotation.x = 0;
@@ -2227,12 +2272,12 @@ export default function VirtualGym({
           break;
         case "pullup":
           // Pull-up REAL: avatar pendurado, FOREARM flex puxa o corpo pra cima
-          // Bracos sempre acima da cabeca (rotation.x = -PI = bracos pra CIMA)
-          // Forearm flex: p=0 estendido (0 rad) — corpo lá embaixo
-          //               p=1 totalmente flexionado (2.0 rad) — corpo no topo
+          // Pull-up bar do power rack está em y=2.58 (H-0.02)
+          // Avatar mãos em y_world = root.y + 1.62 + 0.34 + 0.30 = root.y + 2.26
+          // Pra mãos ficarem na bar (2.58): root.y = 2.58 - 2.26 = 0.32 (down)
+          // Topo (queixo na bar): root.y = 0.55 (sobe 0.23)
           a.root.rotation.x = 0;
-          // Avatar sobe verticalmente conforme bracos puxam
-          a.root.position.y = p * 0.45; // 0 (pendurado) → 0.45m (queixo na barra)
+          a.root.position.y = 0.3 + p * 0.4;
           // Bracos pra cima (rotation.x = -PI = vertical apontando pra cima)
           a.leftArm.rotation.x = -Math.PI;
           a.rightArm.rotation.x = -Math.PI;
@@ -2251,12 +2296,12 @@ export default function VirtualGym({
           break;
 
         case "pushup":
-          // Push-up REAL: avatar horizontal (rotation.x = -PI/2)
-          // FOREARM flex empurra do chão. p=0 dobrado (peito perto chão),
-          // p=1 estendido (lockout)
+          // Push-up REAL: avatar horizontal acima do chão
+          // root.rotation.x = -PI/2 (vira pra ficar paralelo)
+          // root.y oscila pra simular subir/descer do chão
           a.root.rotation.x = -Math.PI / 2;
-          // root.y constante 0.4 (corpo paralelo ao chão)
-          a.root.position.y = 0.4;
+          // p=0 (chest baixo) → p=1 (lockout alto)
+          a.root.position.y = 0.6 + p * 0.2;
           // Bracos: rotation.x = 0 (perpendicular ao torso = vertical no espaço mundo)
           a.leftArm.rotation.x = 0;
           a.rightArm.rotation.x = 0;
