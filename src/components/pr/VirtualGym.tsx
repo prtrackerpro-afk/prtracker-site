@@ -2415,35 +2415,49 @@ export default function VirtualGym({
           break;
 
         case "row":
-          // Rowing REAL: 4 fases (drive/finish/recovery/catch) representadas via rowP 0-1
-          // - rowP=0 (catch): pernas dobradas (knee max), torso inclinado pra frente,
-          //   bracos estendidos pra frente
-          // - rowP=1 (finish): pernas estendidas, torso lean back, bracos puxados ate peito
+          // Rowing REAL (Concept2 spec):
+          // Avatar SENTADO em y=0.36 (altura do seat). Foot plate na frente.
+          // Catch (rowP=0): joelhos super dobrados (calf colado na coxa),
+          //                 shins verticais, torso lean +20° pra frente,
+          //                 braços estendidos pra FRENTE em direção ao handle
+          // Drive→Finish (rowP=1): pernas estendidas, torso lean back -15°,
+          //                       braços puxados, cotovelos atrás, mãos no peito
           {
             const tt = performance.now() / 1000;
             const phase = tt * 1.6;
             const rowP = (Math.sin(phase) + 1) / 2;
-            // PERNAS: hip + knee
-            // catch: hip rotation -0.6 + knee flex 1.5
-            // finish: hip 0 + knee 0
-            a.leftLeg.rotation.x = -(1 - rowP) * 0.6;
-            a.rightLeg.rotation.x = -(1 - rowP) * 0.6;
-            a.leftCalf.rotation.x = (1 - rowP) * 1.5;
-            a.rightCalf.rotation.x = (1 - rowP) * 1.5;
-            // TORSO LEAN: catch (-0.4 inclinado pra frente) → finish (+0.2 lean back)
-            a.root.rotation.x = -(1 - rowP) * 0.4 + rowP * 0.2;
-            // BRAÇOS: catch (estendidos -1.5) → finish (puxados -0.3)
-            a.leftArm.rotation.x = -1.5 + rowP * 1.2;
-            a.rightArm.rotation.x = -1.5 + rowP * 1.2;
+            // Avatar SENTADO: y constante, pernas dobradas
+            a.root.position.y = 0.36;
+            // TORSO LEAN: catch +0.35 (pra frente) → finish -0.25 (lean back)
+            a.root.rotation.x = 0.35 - rowP * 0.6;
+            // PERNAS:
+            // - Sentado, hip rotation precisa ser PRA CIMA (calc paralelo ao seat)
+            //   No catch: pernas dobradas em ~90° (joelhos altos)
+            //   No finish: pernas estendidas pra frente
+            // Hip rotation positiva = perna pra TRÁS (não queremos)
+            // Hip rotation negativa = perna pra FRENTE (queremos)
+            // Como avatar está sentado, hip "pra frente" = -PI/2 (perna paralela ao chão)
+            // Catch: hip -1.4 + knee bent muito (calf perpendicular = -1.5 do hip)
+            // Finish: hip -PI/2 + knee 0 (perna estendida)
+            a.leftLeg.rotation.x = -1.4 + rowP * (-Math.PI / 2 + 1.4); // -1.4 → -PI/2
+            a.rightLeg.rotation.x = -1.4 + rowP * (-Math.PI / 2 + 1.4);
+            // Knee: catch (1.7 super dobrado) → finish (0 estendido)
+            a.leftCalf.rotation.x = (1 - rowP) * 1.7;
+            a.rightCalf.rotation.x = (1 - rowP) * 1.7;
+            // BRAÇOS:
+            // Catch: braços estendidos pra FRENTE/cima = upper rotation.x = -1.0,
+            //        forearm reto (0)
+            // Finish: braços PUXADOS — upper rotation.x = +0.3 (cotovelo pra trás),
+            //         forearm flex 2.0 (handle no peito)
+            a.leftArm.rotation.x = -1.0 + rowP * 1.3; // -1.0 → +0.3
+            a.rightArm.rotation.x = -1.0 + rowP * 1.3;
             a.leftArm.rotation.z = -0.15;
             a.rightArm.rotation.z = 0.15;
-            // FOREARM flex: catch (0 reto) → finish (1.6 dobrado puxando)
-            a.leftForearm.rotation.x = rowP * 1.6;
-            a.rightForearm.rotation.x = rowP * 1.6;
+            // Forearm flex: catch (reto) → finish (dobra puxando)
+            a.leftForearm.rotation.x = rowP * 2.0;
+            a.rightForearm.rotation.x = rowP * 2.0;
             a.leftHand.rotation.set(0, 0, 0);
             a.rightHand.rotation.set(0, 0, 0);
-            // Sentado, com leve slide do seat (root.position.x ou y)
-            a.root.position.y = -rowP * 0.15;
           }
           break;
         case "burpee":
