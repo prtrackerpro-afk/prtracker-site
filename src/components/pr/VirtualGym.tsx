@@ -1914,6 +1914,9 @@ export default function VirtualGym({
       burpee: "💥 Burpee",
       boxjump: "📦 Box Jump",
       kbswing: "🪝 KB Swing",
+      run: "🏃 Treadmill Run",
+      bike: "🚴 Assault Bike",
+      row: "🚣 Rowing",
     };
 
     function findNearestEquipment(): EquipmentRef | null {
@@ -1964,6 +1967,25 @@ export default function VirtualGym({
     virtualBarbell.visible = false;
     scene.add(virtualBarbell);
 
+    // Virtual KB (kettlebell) pro KB swing
+    const virtualKB = new THREE.Group();
+    {
+      const ball = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 16, 12),
+        new THREE.MeshStandardMaterial({ color: 0x141420, roughness: 0.5 })
+      );
+      virtualKB.add(ball);
+      const handle = new THREE.Mesh(
+        new THREE.TorusGeometry(0.07, 0.012, 8, 16, Math.PI),
+        new THREE.MeshStandardMaterial({ color: 0xc0c5cc, roughness: 0.3, metalness: 0.7 })
+      );
+      handle.rotation.x = Math.PI / 2;
+      handle.position.y = 0.13;
+      virtualKB.add(handle);
+    }
+    virtualKB.visible = false;
+    scene.add(virtualKB);
+
     function engageEquipment(eq: EquipmentRef) {
       engagedEquipment = eq;
       exerciseProgress = 0;
@@ -1993,7 +2015,10 @@ export default function VirtualGym({
         }
         if (exerciseHudActionEl) {
           const isTap = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
-          exerciseHudActionEl.textContent = isTap ? "TAP · ESPAÇO" : "SEGURA · ESPAÇO";
+          const isCardio = eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row";
+          exerciseHudActionEl.textContent = isTap ? "TAP · ESPAÇO" :
+                                            isCardio ? "MANTÉM · ESPAÇO" :
+                                            "SEGURA · ESPAÇO";
         }
       }
       burpeePhase = 0;
@@ -2030,6 +2055,7 @@ export default function VirtualGym({
       if (promptEl) promptEl.classList.add("hidden"); // Hide prompt enquanto câmera volta
       inputLockedRef.current = false;
       virtualBarbell.visible = false;
+      virtualKB.visible = false;
     }
 
     // Click no prompt → engage
@@ -2202,6 +2228,57 @@ export default function VirtualGym({
           arms.leftLeg.rotation.x = (1 - p) * 0.15;
           arms.rightLeg.rotation.x = (1 - p) * 0.15;
           break;
+        case "run":
+          // Treadmill run: pernas alternam, bracos balancam (continuo, nao hold)
+          // p sobe automatico quando pressed (representa velocidade)
+          {
+            const tt = performance.now() / 1000;
+            const phase = tt * 6; // 6Hz steps
+            arms.leftLeg.rotation.x = Math.sin(phase) * 0.7;
+            arms.rightLeg.rotation.x = -Math.sin(phase) * 0.7;
+            arms.leftArm.rotation.x = -Math.sin(phase) * 0.6;
+            arms.rightArm.rotation.x = Math.sin(phase) * 0.6;
+            arms.leftArm.rotation.z = -0.18;
+            arms.rightArm.rotation.z = 0.18;
+            arms.root.position.y = Math.abs(Math.sin(phase * 2)) * 0.04;
+            arms.root.rotation.x = 0;
+          }
+          break;
+        case "bike":
+          // Assault bike: pernas pedalam circulares + bracos seguram handles
+          {
+            const tt = performance.now() / 1000;
+            const phase = tt * 5;
+            // Simula pedalada (rotation.x oscilante)
+            arms.leftLeg.rotation.x = 0.3 + Math.sin(phase) * 0.5;
+            arms.rightLeg.rotation.x = 0.3 + Math.sin(phase + Math.PI) * 0.5;
+            // Bracos pra frente segurando handle
+            arms.leftArm.rotation.x = -1.2 + Math.sin(phase) * 0.2;
+            arms.rightArm.rotation.x = -1.2 + Math.sin(phase + Math.PI) * 0.2;
+            arms.leftArm.rotation.z = -0.3;
+            arms.rightArm.rotation.z = 0.3;
+            arms.root.position.y = -0.1;
+            arms.root.rotation.x = 0;
+          }
+          break;
+        case "row":
+          // Rowing: alterna entre extensao (pernas estendidas + bracos puxados)
+          // e flexao (pernas dobradas + bracos estendidos)
+          {
+            const tt = performance.now() / 1000;
+            const phase = tt * 1.6; // 1 stroke per ~1.5s
+            const rowP = (Math.sin(phase) + 1) / 2; // 0→1 oscillating
+            arms.leftLeg.rotation.x = rowP * 0.8;
+            arms.rightLeg.rotation.x = rowP * 0.8;
+            // Bracos: extendido quando pernas dobradas, puxado quando pernas estendidas
+            arms.leftArm.rotation.x = -1.2 + rowP * 1.4;
+            arms.rightArm.rotation.x = -1.2 + rowP * 1.4;
+            arms.leftArm.rotation.z = -0.18;
+            arms.rightArm.rotation.z = 0.18;
+            arms.root.position.y = -rowP * 0.15;
+            arms.root.rotation.x = -rowP * 0.15;
+          }
+          break;
         case "burpee":
           // 4 fases: 0=stand, 0.25=squat, 0.5=plank, 0.75=jump
           if (p < 0.2) {
@@ -2268,7 +2345,23 @@ export default function VirtualGym({
         // Update progress
         const eq = engagedEquipment;
         const isTapDriven = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
-        if (!isTapDriven) {
+        const isCardio = eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row";
+        // Cardio: count reps based on time pressed (1 rep / 0.6s)
+        if (isCardio && exercisePressed) {
+          const now = performance.now();
+          if (!exerciseWasUp || now - lastTapTime > 600) {
+            exerciseReps++;
+            if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
+            lastTapTime = now;
+            exerciseWasUp = true;
+            if (exerciseReps % 10 === 0) playChime();
+          }
+        }
+        if (isCardio) {
+          // Cardio anima continuamente quando pressed, para quando solta
+          exerciseProgress = exercisePressed ? 1 : Math.max(0, exerciseProgress - dt * 2);
+        }
+        if (!isTapDriven && !isCardio) {
           const targetSpeed = exercisePressed ? 1.6 : -1.6;
           exerciseProgress = Math.max(0, Math.min(1, exerciseProgress + targetSpeed * dt));
           // Conta rep no peak (>0.92) e volta (<0.08)
@@ -2297,6 +2390,21 @@ export default function VirtualGym({
         // Posiciona virtual barbell pros 3 lifts principais
         const showBarbell = eq.exercise === "bench" || eq.exercise === "squat" || eq.exercise === "deadlift";
         virtualBarbell.visible = showBarbell;
+        // Virtual KB pro swing
+        virtualKB.visible = eq.exercise === "kbswing";
+        if (eq.exercise === "kbswing") {
+          // KB descreve arco entre as pernas (p=0) ate peito (p=1)
+          const angle = -Math.PI / 2 - (1 - exerciseProgress) * Math.PI / 2;
+          const ax = avatarParts.root.position.x;
+          const az = avatarParts.root.position.z;
+          // Posicao relativa frente do avatar (rotY)
+          const fwd = new THREE.Vector3(Math.sin(eq.rotY), 0, Math.cos(eq.rotY));
+          virtualKB.position.set(
+            ax + fwd.x * Math.cos(angle) * 0.6,
+            1.0 + Math.sin(angle) * 0.6,
+            az + fwd.z * Math.cos(angle) * 0.6
+          );
+        }
         if (showBarbell) {
           const ax = avatarParts.root.position.x;
           const ay = avatarParts.root.position.y;
@@ -3924,15 +4032,15 @@ function buildExtraEquipment(
       break;
     case "treadmill":
       g = buildTreadmill(accentHex);
-      playExercise = "burpee";
+      playExercise = "run";
       break;
     case "assault_bike":
       g = buildAssaultBike(accentHex);
-      playExercise = "burpee";
+      playExercise = "bike";
       break;
     case "rowing_machine":
       g = buildRowingMachine(accentHex);
-      playExercise = "burpee";
+      playExercise = "row";
       break;
     case "plyo_box":
       g = buildPlyoBox(0.6);
