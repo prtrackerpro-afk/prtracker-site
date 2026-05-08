@@ -1,0 +1,79 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import BottomNav from "../../components/pr/BottomNav.astro";
+
+const athlete = Astro.locals.athlete;
+if (!athlete) return Astro.redirect("/pr/login");
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Lab · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto">
+      <a href="/pr" class="text-sm text-navy-300 hover:text-white">← Voltar</a>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">LAB</div>
+      <h1 class="font-display text-3xl tracking-tight text-white">Em construção</h1>
+      <p class="text-sm text-navy-300">Features novas que ainda estão em piloto. Tua vista é privilégio.</p>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <a href="/pr/diet" class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5 hover:scale-[1.02] transition">
+        <div class="text-3xl mb-2">🥗</div>
+        <div class="text-sm font-display font-bold text-brand-lime mb-1">Macros Tracker</div>
+        <div class="text-xs text-navy-300">
+          Logue refeições, veja macros do dia. Sem nutri obrigatório.
+        </div>
+      </a>
+
+      <a href="/pr/arcade" class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5 hover:scale-[1.02] transition">
+        <div class="text-3xl mb-2">🎮</div>
+        <div class="text-sm font-display font-bold text-brand-lime mb-1">Fliperama</div>
+        <div class="text-xs text-navy-300">
+          3 jogos fitness-themed. Jogo 1 (Barbell Bounce) já disponível.
+        </div>
+      </a>
+
+      <a href="/pr/achievements" class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5 hover:scale-[1.02] transition">
+        <div class="text-3xl mb-2">🏆</div>
+        <div class="text-sm font-display font-bold text-brand-lime mb-1">Achievements</div>
+        <div class="text-xs text-navy-300">
+          12 conquistas pra desbloquear. Streaks, PR ratios, milestones.
+        </div>
+      </a>
+
+      <a href="/pr/coach" class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5 hover:scale-[1.02] transition">
+        <div class="text-3xl mb-2">🎓</div>
+        <div class="text-sm font-display font-bold text-brand-lime mb-1">Coach (PT/Nutri)</div>
+        <div class="text-xs text-navy-300">
+          Vire coach. Atletas vinculados, planos semanais, assinatura.
+        </div>
+      </a>
+
+      <a href="/pr/eventos" class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5 hover:scale-[1.02] transition">
+        <div class="text-3xl mb-2">🥇</div>
+        <div class="text-sm font-display font-bold text-brand-lime mb-1">Eventos</div>
+        <div class="text-xs text-navy-300">
+          Competições amadoras. Box pode organizar throwdown próprio.
+        </div>
+      </a>
+
+      <a href="/pr/gym" class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5 hover:scale-[1.02] transition">
+        <div class="text-3xl mb-2">🏋️</div>
+        <div class="text-sm font-display font-bold text-brand-lime mb-1">Gym Virtual</div>
+        <div class="text-xs text-navy-300">
+          Sala de cinema, espelhos, WOD board, equipamentos com proporções premium.
+        </div>
+      </a>
+    </main>
+
+    <BottomNav active="profile" />
+  </body>
+</html>
