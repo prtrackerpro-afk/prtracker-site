@@ -211,6 +211,13 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
         <div id="search-results" class="max-h-64 overflow-y-auto space-y-1 text-sm"></div>
         <div id="qty-section" class="hidden mt-3 pt-3 border-t border-navy-800">
           <div id="selected-food-name" class="text-sm text-brand-lime mb-2"></div>
+
+          <!-- Quick portions: aparecem dinamicamente baseado no nome do alimento -->
+          <div id="quick-portions" class="hidden mb-2">
+            <div class="text-[10px] uppercase tracking-wider text-navy-300 mb-1">Porção rápida</div>
+            <div id="quick-portions-list" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
           <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Quantidade (g)</label>
           <input
             id="food-qty"
@@ -260,6 +267,70 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
         modal.classList.remove("flex");
       });
 
+      // Quick portions library: tabela de porções típicas em gramas
+      // Match por substring case-insensitive no nome do alimento.
+      type Portion = { label: string; g: number };
+      const PORTION_TABLE: { match: RegExp; portions: Portion[] }[] = [
+        { match: /banana/i, portions: [{ label: "1 banana média (118g)", g: 118 }, { label: "1 banana pequena (90g)", g: 90 }] },
+        { match: /maca|maçã/i, portions: [{ label: "1 maçã média (180g)", g: 180 }] },
+        { match: /laranja/i, portions: [{ label: "1 laranja (130g)", g: 130 }] },
+        { match: /mamao|mamão/i, portions: [{ label: "1 fatia (140g)", g: 140 }] },
+        { match: /abacate/i, portions: [{ label: "1/2 abacate (100g)", g: 100 }, { label: "1 abacate (200g)", g: 200 }] },
+        { match: /^ovo /i, portions: [{ label: "1 ovo (50g)", g: 50 }, { label: "2 ovos (100g)", g: 100 }, { label: "3 ovos (150g)", g: 150 }] },
+        { match: /pao frances|pão francês/i, portions: [{ label: "1 unidade (50g)", g: 50 }] },
+        { match: /pao integral|pão integral/i, portions: [{ label: "1 fatia (25g)", g: 25 }, { label: "2 fatias (50g)", g: 50 }] },
+        { match: /pao de queijo|pão de queijo/i, portions: [{ label: "1 unidade (25g)", g: 25 }, { label: "3 unidades (75g)", g: 75 }] },
+        { match: /tapioca/i, portions: [{ label: "1 tapioca pequena (40g)", g: 40 }, { label: "1 tapioca média (80g)", g: 80 }] },
+        { match: /whey/i, portions: [{ label: "1 scoop (30g)", g: 30 }, { label: "2 scoops (60g)", g: 60 }] },
+        { match: /creatina/i, portions: [{ label: "1 dose (5g)", g: 5 }, { label: "1 dose dupla (10g)", g: 10 }] },
+        { match: /albumina/i, portions: [{ label: "1 dose (15g)", g: 15 }] },
+        { match: /bcaa/i, portions: [{ label: "1 dose (5g)", g: 5 }] },
+        { match: /barr.*proteina|barr.*prote/i, portions: [{ label: "1 barra (30g)", g: 30 }] },
+        { match: /arroz/i, portions: [{ label: "1 escumadeira (60g)", g: 60 }, { label: "2 escumadeiras (120g)", g: 120 }, { label: "1 prato raso (200g)", g: 200 }] },
+        { match: /feijao|feijão/i, portions: [{ label: "1 concha (80g)", g: 80 }, { label: "2 conchas (160g)", g: 160 }] },
+        { match: /macarrao|macarrão/i, portions: [{ label: "1 prato raso (180g)", g: 180 }] },
+        { match: /frango|coxa|sobrecoxa/i, portions: [{ label: "1 file (120g)", g: 120 }, { label: "1 sobrecoxa (110g)", g: 110 }] },
+        { match: /atum lata/i, portions: [{ label: "1 lata (170g)", g: 170 }, { label: "1/2 lata (85g)", g: 85 }] },
+        { match: /sardinha/i, portions: [{ label: "1 lata (125g)", g: 125 }] },
+        { match: /tilapia|tilápia|salmao|salmão|file mignon|file/i, portions: [{ label: "1 file pequeno (120g)", g: 120 }, { label: "1 file médio (180g)", g: 180 }] },
+        { match: /carne moida|carne moída/i, portions: [{ label: "1 porção (100g)", g: 100 }, { label: "1 porção grande (150g)", g: 150 }] },
+        { match: /batata doce|batata-doce/i, portions: [{ label: "1 média (150g)", g: 150 }] },
+        { match: /batata inglesa/i, portions: [{ label: "1 média (170g)", g: 170 }] },
+        { match: /aveia/i, portions: [{ label: "1 colher sopa (15g)", g: 15 }, { label: "3 colheres (45g)", g: 45 }] },
+        { match: /leite (integral|desnatado)/i, portions: [{ label: "1 copo (200ml)", g: 200 }, { label: "1 xícara (240ml)", g: 240 }] },
+        { match: /iogurte/i, portions: [{ label: "1 pote (170g)", g: 170 }, { label: "1 copo (200g)", g: 200 }] },
+        { match: /queijo/i, portions: [{ label: "1 fatia (30g)", g: 30 }, { label: "2 fatias (60g)", g: 60 }] },
+        { match: /castanha/i, portions: [{ label: "1 unidade (5g)", g: 5 }, { label: "1 punhado (30g)", g: 30 }] },
+        { match: /amendoim/i, portions: [{ label: "1 punhado (30g)", g: 30 }] },
+        { match: /pasta de amendoim/i, portions: [{ label: "1 colher sopa (16g)", g: 16 }] },
+        { match: /azeite/i, portions: [{ label: "1 colher sopa (13g)", g: 13 }] },
+        { match: /cafe|café/i, portions: [{ label: "1 xícara (50ml)", g: 50 }, { label: "1 caneca (200ml)", g: 200 }] },
+        { match: /cerveja/i, portions: [{ label: "1 long neck (350ml)", g: 350 }, { label: "1 lata (350ml)", g: 350 }] },
+      ];
+
+      function showQuickPortions(foodName: string) {
+        const portionsBox = document.getElementById("quick-portions") as HTMLDivElement;
+        const list = document.getElementById("quick-portions-list") as HTMLDivElement;
+        list.innerHTML = "";
+        const match = PORTION_TABLE.find((p) => p.match.test(foodName));
+        if (!match) {
+          portionsBox.classList.add("hidden");
+          return;
+        }
+        portionsBox.classList.remove("hidden");
+        match.portions.forEach((p) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "px-2.5 py-1 rounded-full text-xs bg-navy-800 hover:bg-brand-lime hover:text-navy-900 text-white border border-navy-700";
+          btn.textContent = p.label;
+          btn.addEventListener("click", () => {
+            qtyInput.value = String(p.g);
+            qtyInput.focus();
+          });
+          list.appendChild(btn);
+        });
+      }
+
       searchInput?.addEventListener("input", () => {
         if (searchTimer) clearTimeout(searchTimer);
         const q = searchInput.value.trim();
@@ -280,7 +351,9 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
               selectedFoodId = f.id;
               selectedNameEl.textContent = f.name;
               qtySection.classList.remove("hidden");
+              showQuickPortions(f.name);
               qtyInput.focus();
+              qtyInput.select();
             });
             resultsBox.appendChild(item);
           });
