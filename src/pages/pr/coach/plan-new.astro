@@ -1,0 +1,265 @@
+---
+export const prerender = false;
+import "../../../styles/global.css";
+import BottomNav from "../../../components/pr/BottomNav.astro";
+import { getServerSupabase } from "../../../lib/supabase/server";
+
+const athlete = Astro.locals.athlete;
+if (!athlete) return Astro.redirect("/pr/login");
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+// Verifica se é coach PT approved
+const { data: coach } = await supabase
+  .from("pr_coaches")
+  .select("status, coach_type, display_name")
+  .eq("user_id", athlete.userId)
+  .maybeSingle();
+
+const isPTApproved = coach?.coach_type === "personal_trainer" && coach?.status === "approved";
+
+// Lista atletas vinculados pra escolher
+const { data: athletes = [] } = isPTApproved
+  ? await supabase
+      .from("pr_coach_athletes")
+      .select("athlete_id, pr_athletes!inner(handle, display_name)")
+      .eq("coach_id", athlete.userId)
+      .eq("coach_type", "personal_trainer")
+      .is("ended_at", null)
+  : { data: [] };
+
+// Calcula proxima segunda (default week_start)
+const today = new Date();
+const dow = today.getDay(); // 0=dom, 1=seg
+const daysUntilMonday = dow === 1 ? 0 : (8 - dow) % 7 || 7;
+const nextMonday = new Date(today);
+nextMonday.setDate(today.getDate() + daysUntilMonday);
+const defaultWeekStart = nextMonday.toISOString().slice(0, 10);
+
+const DAY_LABELS = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
+
+// Lista de exercicios sugeridos (autocomplete)
+const SUGGESTED_EXERCISES = [
+  "Back Squat", "Front Squat", "Overhead Squat", "Box Squat",
+  "Bench Press", "Incline Bench Press", "Close Grip Bench Press",
+  "Deadlift", "Sumo Deadlift", "Romanian Deadlift", "Stiff Leg Deadlift",
+  "Power Clean", "Hang Clean", "Squat Clean", "Clean & Jerk",
+  "Power Snatch", "Hang Snatch", "Squat Snatch",
+  "Push Press", "Push Jerk", "Split Jerk", "Shoulder Press",
+  "Thruster", "Wall Ball", "Box Jump", "Burpee",
+  "Pull-up", "Chin-up", "Muscle-up", "Toes to Bar",
+  "Handstand Push-up", "Handstand Walk", "Pistol Squat",
+  "Kettlebell Swing", "Goblet Squat", "Turkish Get-up",
+  "Dumbbell Press", "Dumbbell Row", "Dumbbell Lunge",
+  "Lat Pulldown", "Cable Row", "Face Pull",
+  "Leg Press", "Leg Curl", "Leg Extension", "Calf Raise",
+  "Hip Thrust", "Glute Bridge", "Bulgarian Split Squat",
+  "Plank", "Russian Twist", "Hanging Leg Raise", "Ab Wheel",
+  "Run 5k", "Run 10k", "Row 2k", "Row 5k", "Bike 10k",
+  "EMOM 10min", "AMRAP 12min", "For Time WOD",
+];
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Novo plano · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-4xl mx-auto">
+      <a href="/pr/coach" class="text-sm text-navy-300 hover:text-white">← Coach</a>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">NOVO PLANO</div>
+      <h1 class="font-display text-3xl tracking-tight text-white">Editor de treino semanal</h1>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 space-y-4">
+      {!isPTApproved && (
+        <div class="rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 p-5">
+          <p class="text-sm">
+            Apenas <strong>Personal Trainers aprovados</strong> podem criar planos. Cadastre-se em
+            <a href="/pr/coach" class="text-brand-lime hover:underline">/pr/coach</a> e aguarde a aprovação.
+          </p>
+        </div>
+      )}
+
+      {isPTApproved && (athletes.length === 0) && (
+        <div class="rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 p-5">
+          <p class="text-sm">
+            Você ainda não tem atletas vinculados. Volte em
+            <a href="/pr/coach" class="text-brand-lime hover:underline">/pr/coach</a>
+            e gere um link de convite.
+          </p>
+        </div>
+      )}
+
+      {isPTApproved && athletes.length > 0 && (
+        <form id="plan-form" class="space-y-4">
+          <section class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Atleta</label>
+              <select name="athlete_id" required class="w-full bg-navy-800 border border-navy-700 rounded-lg px-3 py-2.5 text-sm">
+                {athletes.map((a: { athlete_id: string; pr_athletes: { display_name: string; handle: string } }) => (
+                  <option value={a.athlete_id}>{a.pr_athletes.display_name} (@{a.pr_athletes.handle})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Nome do plano</label>
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="Ex: Bloco Hipertrofia W1"
+                class="w-full bg-navy-800 border border-navy-700 rounded-lg px-3 py-2.5 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Semana inicia em</label>
+              <input
+                type="date"
+                name="week_start_date"
+                required
+                value={defaultWeekStart}
+                class="w-full bg-navy-800 border border-navy-700 rounded-lg px-3 py-2.5 text-sm"
+              />
+            </div>
+          </section>
+
+          <section class="grid grid-cols-1 sm:grid-cols-7 gap-3">
+            {DAY_LABELS.map((day, dayIdx) => (
+              <div class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 min-h-[200px]" data-day={dayIdx}>
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="font-display text-sm font-bold">{day}</h3>
+                  <button
+                    type="button"
+                    class="add-ex-btn text-xs text-brand-lime hover:underline"
+                    data-day={dayIdx}
+                  >
+                    + Add
+                  </button>
+                </div>
+                <ul class="exercise-list space-y-2 text-xs"></ul>
+              </div>
+            ))}
+          </section>
+
+          <button
+            type="submit"
+            class="w-full bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-4 text-base hover:opacity-90"
+          >
+            Salvar plano
+          </button>
+          <div id="error-msg" class="text-sm text-red-400 hidden"></div>
+        </form>
+      )}
+    </main>
+
+    <BottomNav active="profile" />
+
+    <script define:vars={{ SUGGESTED_EXERCISES }}>
+      const form = document.getElementById("plan-form");
+      let exerciseId = 0;
+
+      function buildExerciseRow(dayIdx) {
+        exerciseId++;
+        const li = document.createElement("li");
+        li.className = "rounded-lg bg-navy-900 p-2 space-y-1.5 border border-navy-700";
+        li.dataset.dayIdx = String(dayIdx);
+        li.dataset.id = String(exerciseId);
+        li.innerHTML = `
+          <input list="ex-suggestions" class="ex-name w-full bg-navy-800 border border-navy-700 rounded px-2 py-1 text-xs" placeholder="Exercício" required />
+          <div class="grid grid-cols-2 gap-1">
+            <input class="ex-sets w-full bg-navy-800 border border-navy-700 rounded px-2 py-1 text-xs" placeholder="Sets" type="number" min="1" max="20" />
+            <input class="ex-reps w-full bg-navy-800 border border-navy-700 rounded px-2 py-1 text-xs" placeholder="Reps" />
+          </div>
+          <div class="grid grid-cols-2 gap-1">
+            <input class="ex-weight w-full bg-navy-800 border border-navy-700 rounded px-2 py-1 text-xs" placeholder="kg" type="number" step="0.5" />
+            <input class="ex-rpe w-full bg-navy-800 border border-navy-700 rounded px-2 py-1 text-xs" placeholder="RPE" type="number" min="1" max="10" />
+          </div>
+          <div class="flex gap-1">
+            <input class="ex-rest flex-1 bg-navy-800 border border-navy-700 rounded px-2 py-1 text-xs" placeholder="Descanso (s)" type="number" min="0" />
+            <button type="button" class="del-btn px-2 py-1 text-xs bg-red-900/50 hover:bg-red-900 rounded">✕</button>
+          </div>
+        `;
+        const delBtn = li.querySelector(".del-btn");
+        delBtn?.addEventListener("click", () => li.remove());
+        return li;
+      }
+
+      // Datalist com sugestões (compartilhado)
+      const datalist = document.createElement("datalist");
+      datalist.id = "ex-suggestions";
+      SUGGESTED_EXERCISES.forEach((ex) => {
+        const opt = document.createElement("option");
+        opt.value = ex;
+        datalist.appendChild(opt);
+      });
+      document.body.appendChild(datalist);
+
+      document.querySelectorAll(".add-ex-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const dayIdx = Number(btn.getAttribute("data-day"));
+          const dayCol = document.querySelector(`[data-day="${dayIdx}"] .exercise-list`);
+          dayCol?.appendChild(buildExerciseRow(dayIdx));
+        });
+      });
+
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const exercises = [];
+        document.querySelectorAll("li[data-day-idx]").forEach((li, i) => {
+          const dayIdx = Number(li.getAttribute("data-day-idx"));
+          const orderIdx = Array.from(li.parentElement.children).indexOf(li);
+          const name = li.querySelector(".ex-name").value.trim();
+          if (!name) return;
+          const sets = li.querySelector(".ex-sets").value;
+          const reps = li.querySelector(".ex-reps").value;
+          const weight = li.querySelector(".ex-weight").value;
+          const rpe = li.querySelector(".ex-rpe").value;
+          const rest = li.querySelector(".ex-rest").value;
+          exercises.push({
+            day_index: dayIdx,
+            order_idx: orderIdx,
+            exercise_name: name,
+            sets: sets ? Number(sets) : null,
+            reps: reps || null,
+            weight_kg: weight ? Number(weight) : null,
+            rpe: rpe ? Number(rpe) : null,
+            rest_sec: rest ? Number(rest) : null,
+          });
+        });
+        const errorMsg = document.getElementById("error-msg");
+        try {
+          const res = await fetch("/api/pr/coach/plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              athlete_id: fd.get("athlete_id"),
+              name: fd.get("name"),
+              week_start_date: fd.get("week_start_date"),
+              exercises,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errorMsg.textContent = data.message || "Erro ao salvar plano.";
+            errorMsg.classList.remove("hidden");
+            return;
+          }
+          window.location.href = "/pr/coach";
+        } catch {
+          errorMsg.textContent = "Erro de conexão.";
+          errorMsg.classList.remove("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>
