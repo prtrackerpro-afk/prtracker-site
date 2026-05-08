@@ -39,6 +39,7 @@ import {
   buildClock,
   buildMirror,
   buildCinemaRoom,
+  buildArcadeRoom,
   STEEL_MAT,
   type SkillBoardSlot,
   type RunSlot,
@@ -905,7 +906,15 @@ export default function VirtualGym({
     const cinemaRoom = buildCinemaRoom(athleteName);
     cinemaRoom.position.set(-ROOM_W / 2 + 4, 0, ROOM_D / 2 - 4);
     cinemaRoom.rotation.y = Math.PI / 4;
+    cinemaRoom.userData.hotspot = "cinema";
     scene.add(cinemaRoom);
+
+    // V16.8 PR2: Sala de Fliperama ao lado do cinema (mesmo eixo, deslocada)
+    const arcadeRoom = buildArcadeRoom();
+    arcadeRoom.position.set(-ROOM_W / 2 + 10, 0, ROOM_D / 2 - 5.5);
+    arcadeRoom.rotation.y = Math.PI / 4;
+    arcadeRoom.userData.hotspot = "arcade";
+    scene.add(arcadeRoom);
 
     // V16.8 cycles 213-216: WOD board + relógio + espelhos na parede esquerda
     const wodBoard = buildWODBoard();
