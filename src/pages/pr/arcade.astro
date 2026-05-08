@@ -56,16 +56,66 @@ if (!athlete) return Astro.redirect("/pr/login");
         </div>
       </section>
 
-      <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4">
-        <div class="text-[10px] uppercase tracking-[0.3em] text-navy-400">JOGO 2 — EM BREVE</div>
-        <h2 class="font-display text-xl text-navy-300">Protein Shaker</h2>
-        <p class="text-xs text-navy-400">Match-3 puzzle. Combine ingredientes pra montar shakes.</p>
+      <section class="rounded-2xl border-2 border-pink-500/40 bg-pink-500/5 p-4 shadow-lg shadow-pink-500/5">
+        <div class="mb-3">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-pink-400">JOGO 2</div>
+          <h2 class="font-display text-xl text-white">Protein Shaker</h2>
+          <p class="text-xs text-navy-300">Match-3 — combine 3+ ingredientes iguais. 60 segundos.</p>
+        </div>
+        <div id="ps-container" class="relative w-full" style="min-height: 280px;">
+          <canvas
+            id="ps-canvas"
+            width="480"
+            height="480"
+            class="bg-navy-900 border-2 border-pink-500/40 rounded-lg w-full block cursor-pointer mx-auto"
+            style="touch-action: none; image-rendering: pixelated; max-width: 480px;"
+          ></canvas>
+          <div id="ps-overlay" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none rounded-lg" style="background: rgba(0,0,0,0.5);">
+            <div class="text-3xl font-display font-bold text-pink-400 mb-2">▶ TOQUE PRA JOGAR</div>
+            <div class="text-xs text-white/80" id="ps-hi-display">Best: 0</div>
+          </div>
+        </div>
+        <div class="text-xs text-navy-300 text-center mt-3 max-w-md mx-auto">
+          <strong class="text-white">Como jogar:</strong> Clica num tile e depois num adjacente pra trocar.
+          Match-3+ = pontos. Combo aumenta o multiplicador.
+        </div>
+        <div class="text-center mt-3" id="ps-result" style="display:none;">
+          <div class="text-2xl font-display font-bold text-white" id="ps-final-score">Score: 0</div>
+          <button id="ps-restart" type="button" class="mt-2 bg-pink-500 text-white font-display font-bold rounded-lg px-6 py-2.5 hover:opacity-90">
+            ↻ JOGAR DE NOVO
+          </button>
+        </div>
       </section>
 
-      <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4">
-        <div class="text-[10px] uppercase tracking-[0.3em] text-navy-400">JOGO 3 — EM BREVE</div>
-        <h2 class="font-display text-xl text-navy-300">WOD Sprint</h2>
-        <p class="text-xs text-navy-400">Battle royale fitness 8 jogadores. Multiplayer real-time.</p>
+      <section class="rounded-2xl border-2 border-blue-500/40 bg-blue-500/5 p-4 shadow-lg shadow-blue-500/5">
+        <div class="mb-3">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-blue-400">JOGO 3</div>
+          <h2 class="font-display text-xl text-white">WOD Sprint</h2>
+          <p class="text-xs text-navy-300">Tap rítmico nos exercícios. 60 segundos. Acerta o timing.</p>
+        </div>
+        <div id="ws-container" class="relative w-full" style="min-height: 280px;">
+          <canvas
+            id="ws-canvas"
+            width="480"
+            height="540"
+            class="bg-navy-900 border-2 border-blue-500/40 rounded-lg w-full block cursor-pointer mx-auto"
+            style="touch-action: none; image-rendering: pixelated; max-width: 480px;"
+          ></canvas>
+          <div id="ws-overlay" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none rounded-lg" style="background: rgba(0,0,0,0.5);">
+            <div class="text-3xl font-display font-bold text-blue-400 mb-2">▶ TOQUE PRA JOGAR</div>
+            <div class="text-xs text-white/80" id="ws-hi-display">Best: 0</div>
+          </div>
+        </div>
+        <div class="text-xs text-navy-300 text-center mt-3 max-w-md mx-auto">
+          <strong class="text-white">Como jogar:</strong> Tap nas notas quando entrarem na zona lime.
+          Teclas A/S/D/F (desktop) ou tap no botão (mobile).
+        </div>
+        <div class="text-center mt-3" id="ws-result" style="display:none;">
+          <div class="text-2xl font-display font-bold text-white" id="ws-final-score">Score: 0</div>
+          <button id="ws-restart" type="button" class="mt-2 bg-blue-500 text-white font-display font-bold rounded-lg px-6 py-2.5 hover:opacity-90">
+            ↻ JOGAR DE NOVO
+          </button>
+        </div>
       </section>
     </main>
 
@@ -524,6 +574,571 @@ if (!athlete) return Astro.redirect("/pr/login");
             e.preventDefault();
             startGame();
           }
+        });
+        if (restartBtn) restartBtn.addEventListener("click", function () {
+          if (!running) startGame();
+        });
+      })();
+    </script>
+
+    <script is:inline>
+      // === JOGO 2 — PROTEIN SHAKER (match-3) ===
+      (function () {
+        const canvas = document.getElementById("ps-canvas");
+        const overlay = document.getElementById("ps-overlay");
+        const hiDisplay = document.getElementById("ps-hi-display");
+        const result = document.getElementById("ps-result");
+        const finalScoreEl = document.getElementById("ps-final-score");
+        const restartBtn = document.getElementById("ps-restart");
+        if (!canvas || !overlay) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        let hi = Number(localStorage.getItem("pr_ps_hi") || "0");
+        if (hiDisplay) hiDisplay.textContent = "Best: " + hi;
+
+        const COLS = 6;
+        const ROWS = 6;
+        const CELL = 80;
+        const TOP_PAD = 0; // tabuleiro comeca em y=0
+        const TYPES = 6; // 6 ingredientes
+        // Ingredientes: 0=whey(branco), 1=banana(amarelo), 2=ovo(creme), 3=oat(marrom), 4=leite(azul), 5=morango(rosa)
+        const COLORS = ["#ffffff", "#FFC72C", "#fff8c8", "#8c5a3a", "#0057B8", "#ff66aa"];
+        const ICONS = ["W", "🍌", "🥚", "🌾", "M", "🍓"];
+
+        let board = [];
+        let running = false;
+        let timeLeft = 60;
+        let score = 0;
+        let combo = 0;
+        let timerInterval = 0;
+        let selected = null;
+        let animationOffsets = []; // pra anim de fall
+
+        function newBoard() {
+          board = [];
+          for (let r = 0; r < ROWS; r++) {
+            const row = [];
+            for (let c = 0; c < COLS; c++) {
+              row.push(Math.floor(Math.random() * TYPES));
+            }
+            board.push(row);
+          }
+          // Re-randomize matches iniciais
+          let attempts = 0;
+          while (findMatches().length > 0 && attempts < 100) {
+            const m = findMatches()[0];
+            board[m.r][m.c] = (board[m.r][m.c] + 1) % TYPES;
+            attempts++;
+          }
+        }
+
+        function findMatches() {
+          const matches = [];
+          // Horizontal
+          for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS - 2; c++) {
+              const v = board[r][c];
+              if (v < 0) continue;
+              if (board[r][c + 1] === v && board[r][c + 2] === v) {
+                let len = 3;
+                while (c + len < COLS && board[r][c + len] === v) len++;
+                for (let i = 0; i < len; i++) matches.push({ r, c: c + i });
+                c += len - 1;
+              }
+            }
+          }
+          // Vertical
+          for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS - 2; r++) {
+              const v = board[r][c];
+              if (v < 0) continue;
+              if (board[r + 1][c] === v && board[r + 2][c] === v) {
+                let len = 3;
+                while (r + len < ROWS && board[r + len][c] === v) len++;
+                for (let i = 0; i < len; i++) matches.push({ r: r + i, c });
+                r += len - 1;
+              }
+            }
+          }
+          return matches;
+        }
+
+        function clearAndFall() {
+          const matches = findMatches();
+          if (matches.length === 0) {
+            combo = 0;
+            return false;
+          }
+          // Pontuar
+          score += matches.length * 10 * (1 + combo * 0.5);
+          combo++;
+          // Marcar tiles como -1
+          for (const m of matches) board[m.r][m.c] = -1;
+          // Fall down
+          for (let c = 0; c < COLS; c++) {
+            let writeRow = ROWS - 1;
+            for (let r = ROWS - 1; r >= 0; r--) {
+              if (board[r][c] !== -1) {
+                board[writeRow][c] = board[r][c];
+                if (writeRow !== r) board[r][c] = -1;
+                writeRow--;
+              }
+            }
+            // Fill top
+            for (let r = writeRow; r >= 0; r--) {
+              board[r][c] = Math.floor(Math.random() * TYPES);
+            }
+          }
+          return true;
+        }
+
+        function trySwap(a, b) {
+          // Adjacente?
+          const dr = Math.abs(a.r - b.r);
+          const dc = Math.abs(a.c - b.c);
+          if (!(dr + dc === 1)) return false;
+          const tmp = board[a.r][a.c];
+          board[a.r][a.c] = board[b.r][b.c];
+          board[b.r][b.c] = tmp;
+          if (findMatches().length === 0) {
+            // Reverter
+            board[b.r][b.c] = board[a.r][a.c];
+            board[a.r][a.c] = tmp;
+            return false;
+          }
+          // Cascata de matches
+          let cascadeLoops = 0;
+          while (clearAndFall() && cascadeLoops < 10) cascadeLoops++;
+          return true;
+        }
+
+        function drawTile(r, c, type) {
+          const x = c * CELL;
+          const y = r * CELL;
+          if (type < 0) return;
+          // Bg cell
+          ctx.fillStyle = "#0a0a14";
+          ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+          // Tile color
+          ctx.fillStyle = COLORS[type] || "#ffffff";
+          ctx.fillRect(x + 6, y + 6, CELL - 12, CELL - 12);
+          // Selected highlight
+          if (selected && selected.r === r && selected.c === c) {
+            ctx.strokeStyle = "#D8FF2C";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(x + 4, y + 4, CELL - 8, CELL - 8);
+          }
+          // Icon centered
+          ctx.fillStyle = "#01002A";
+          ctx.font = "bold 32px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(ICONS[type] || "?", x + CELL / 2, y + CELL / 2 + 4);
+        }
+
+        function render() {
+          ctx.fillStyle = "#01002A";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+              drawTile(r, c, board[r][c]);
+            }
+          }
+          // HUD top right
+          ctx.fillStyle = "#ff66aa";
+          ctx.font = "bold 22px sans-serif";
+          ctx.textAlign = "right";
+          ctx.textBaseline = "top";
+          ctx.fillText(Math.round(score), canvas.width - 10, 5);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "12px sans-serif";
+          ctx.fillText("SCORE", canvas.width - 10, 32);
+          // Timer
+          ctx.fillStyle = timeLeft <= 10 ? "#DA291C" : "#D8FF2C";
+          ctx.font = "bold 22px sans-serif";
+          ctx.textAlign = "left";
+          ctx.fillText(timeLeft + "s", 10, 5);
+          if (combo > 1) {
+            ctx.fillStyle = "#D8FF2C";
+            ctx.font = "bold 18px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("COMBO x" + combo, canvas.width / 2, 8);
+          }
+        }
+
+        function startGame() {
+          if (running) return;
+          running = true;
+          score = 0;
+          combo = 0;
+          timeLeft = 60;
+          newBoard();
+          overlay.style.display = "none";
+          result.style.display = "none";
+          render();
+          timerInterval = setInterval(function () {
+            timeLeft--;
+            render();
+            if (timeLeft <= 0) endGame();
+          }, 1000);
+        }
+
+        function endGame() {
+          running = false;
+          clearInterval(timerInterval);
+          if (score > hi) {
+            hi = Math.round(score);
+            localStorage.setItem("pr_ps_hi", String(hi));
+            if (hiDisplay) hiDisplay.textContent = "Best: " + hi;
+          }
+          if (score > 50) {
+            fetch("/api/pr/arcade/score", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ game_id: "shaker_mixer", score: Math.round(score) }),
+            }).catch(function () {});
+          }
+          // Pinta GAME OVER
+          ctx.fillStyle = "rgba(1,0,42,0.85)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#ff66aa";
+          ctx.font = "bold 40px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("ACABOU O TEMPO!", canvas.width / 2, canvas.height / 2 - 10);
+          ctx.fillStyle = "#D8FF2C";
+          ctx.font = "bold 24px sans-serif";
+          ctx.fillText("Score: " + Math.round(score), canvas.width / 2, canvas.height / 2 + 30);
+          finalScoreEl.textContent = "Score: " + Math.round(score) + " · Best: " + hi;
+          result.style.display = "block";
+        }
+
+        function getCellFromEvent(e) {
+          const rect = canvas.getBoundingClientRect();
+          const cx = ((e.clientX - rect.left) / rect.width) * canvas.width;
+          const cy = ((e.clientY - rect.top) / rect.height) * canvas.height;
+          const c = Math.floor(cx / CELL);
+          const r = Math.floor(cy / CELL);
+          if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+          return { r, c };
+        }
+
+        canvas.addEventListener("pointerdown", function (e) {
+          if (!running) return;
+          e.preventDefault();
+          const cell = getCellFromEvent(e);
+          if (!cell) return;
+          if (!selected) {
+            selected = cell;
+            render();
+            return;
+          }
+          if (selected.r === cell.r && selected.c === cell.c) {
+            selected = null;
+            render();
+            return;
+          }
+          const swapped = trySwap(selected, cell);
+          selected = null;
+          render();
+        });
+
+        // Idle: tabuleiro com tiles random
+        newBoard();
+        render();
+
+        canvas.addEventListener("click", function () {
+          if (!running) startGame();
+        });
+        canvas.addEventListener("touchstart", function (e) {
+          if (!running) {
+            e.preventDefault();
+            startGame();
+          }
+        });
+        if (restartBtn) restartBtn.addEventListener("click", function () {
+          if (!running) startGame();
+        });
+      })();
+    </script>
+
+    <script is:inline>
+      // === JOGO 3 — WOD SPRINT (rhythm tap) ===
+      (function () {
+        const canvas = document.getElementById("ws-canvas");
+        const overlay = document.getElementById("ws-overlay");
+        const hiDisplay = document.getElementById("ws-hi-display");
+        const result = document.getElementById("ws-result");
+        const finalScoreEl = document.getElementById("ws-final-score");
+        const restartBtn = document.getElementById("ws-restart");
+        if (!canvas || !overlay) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        let hi = Number(localStorage.getItem("pr_ws_hi") || "0");
+        if (hiDisplay) hiDisplay.textContent = "Best: " + hi;
+
+        const W = canvas.width;
+        const H = canvas.height;
+        const LANE_COUNT = 4;
+        const LANE_W = W / LANE_COUNT;
+        const HIT_Y = H - 80;
+        const HIT_TOLERANCE = 35; // pixels
+        const NOTE_R = 30;
+        const LANE_LABELS = ["BURPEE", "SQUAT", "PUSH", "JUMP"];
+        const LANE_KEYS = ["KeyA", "KeyS", "KeyD", "KeyF"];
+        const LANE_COLORS = ["#DA291C", "#FFC72C", "#0057B8", "#43B02A"];
+
+        let notes = [];
+        let running = false;
+        let score = 0;
+        let combo = 0;
+        let perfectCount = 0;
+        let goodCount = 0;
+        let missCount = 0;
+        let timeLeft = 60;
+        let frame = 0;
+        let timerInterval = 0;
+        let lastFlash = [0, 0, 0, 0];
+        let rafId = 0;
+
+        function spawnNote() {
+          notes.push({
+            lane: Math.floor(Math.random() * LANE_COUNT),
+            y: -NOTE_R,
+            hit: false,
+          });
+        }
+
+        function endGame() {
+          running = false;
+          cancelAnimationFrame(rafId);
+          clearInterval(timerInterval);
+          window.removeEventListener("keydown", onKey);
+          if (score > hi) {
+            hi = score;
+            localStorage.setItem("pr_ws_hi", String(hi));
+            if (hiDisplay) hiDisplay.textContent = "Best: " + hi;
+          }
+          if (score > 50) {
+            fetch("/api/pr/arcade/score", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ game_id: "wod_sprint", score: score }),
+            }).catch(function () {});
+          }
+          ctx.fillStyle = "rgba(1,0,42,0.88)";
+          ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = "#0057B8";
+          ctx.font = "bold 36px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("WOD COMPLETO!", W / 2, H / 2 - 30);
+          ctx.fillStyle = "#D8FF2C";
+          ctx.font = "bold 24px sans-serif";
+          ctx.fillText("Score: " + score, W / 2, H / 2 + 10);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "16px sans-serif";
+          ctx.fillText("Perfect: " + perfectCount + " · Good: " + goodCount + " · Miss: " + missCount, W / 2, H / 2 + 40);
+          finalScoreEl.textContent = "Score: " + score + " · Best: " + hi;
+          result.style.display = "block";
+        }
+
+        function tryHit(lane) {
+          for (const n of notes) {
+            if (n.hit || n.lane !== lane) continue;
+            const dist = Math.abs(n.y - HIT_Y);
+            if (dist < HIT_TOLERANCE) {
+              n.hit = true;
+              if (dist < 10) {
+                score += 100 + combo * 5;
+                perfectCount++;
+              } else {
+                score += 50 + combo * 2;
+                goodCount++;
+              }
+              combo++;
+              lastFlash[lane] = frame;
+              return;
+            }
+          }
+          // Miss tap = perde combo
+          combo = 0;
+        }
+
+        function onKey(e) {
+          if (!running) return;
+          const idx = LANE_KEYS.indexOf(e.code);
+          if (idx >= 0) {
+            e.preventDefault();
+            tryHit(idx);
+          }
+        }
+
+        function loop() {
+          if (!running) return;
+          frame++;
+          // Spawn notas em ritmo (~ a cada 30 frames = 0.5s a 60fps)
+          if (frame % Math.max(20, 35 - Math.floor((60 - timeLeft) / 5)) === 0) {
+            spawnNote();
+          }
+          // Move notas
+          const speed = 5 + (60 - timeLeft) * 0.05;
+          for (const n of notes) {
+            if (!n.hit) n.y += speed;
+          }
+          // Notas que passaram = miss
+          for (const n of notes) {
+            if (!n.hit && n.y > HIT_Y + HIT_TOLERANCE + NOTE_R) {
+              n.hit = "miss";
+              missCount++;
+              combo = 0;
+            }
+          }
+          notes = notes.filter(function (n) {
+            return n.y < H + NOTE_R;
+          });
+
+          // Render
+          ctx.fillStyle = "#01002A";
+          ctx.fillRect(0, 0, W, H);
+          // Lanes (linhas verticais)
+          ctx.strokeStyle = "rgba(255,255,255,0.08)";
+          ctx.lineWidth = 1;
+          for (let l = 1; l < LANE_COUNT; l++) {
+            ctx.beginPath();
+            ctx.moveTo(l * LANE_W, 0);
+            ctx.lineTo(l * LANE_W, H);
+            ctx.stroke();
+          }
+          // Hit zone (linha lime)
+          ctx.strokeStyle = "#D8FF2C";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, HIT_Y);
+          ctx.lineTo(W, HIT_Y);
+          ctx.stroke();
+          // Hit zone tolerance area
+          ctx.fillStyle = "rgba(216,255,44,0.08)";
+          ctx.fillRect(0, HIT_Y - HIT_TOLERANCE, W, HIT_TOLERANCE * 2);
+          // Botoes inferiores (lane labels)
+          for (let l = 0; l < LANE_COUNT; l++) {
+            const flash = (frame - lastFlash[l]) < 8;
+            const cx = l * LANE_W + LANE_W / 2;
+            ctx.fillStyle = flash ? LANE_COLORS[l] : "rgba(255,255,255,0.15)";
+            ctx.fillRect(l * LANE_W + 5, H - 50, LANE_W - 10, 45);
+            ctx.fillStyle = flash ? "#01002A" : LANE_COLORS[l];
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(LANE_LABELS[l], cx, H - 28);
+            ctx.fillStyle = flash ? "#01002A" : "#ffffff";
+            ctx.font = "10px sans-serif";
+            ctx.fillText(LANE_KEYS[l].replace("Key", ""), cx, H - 12);
+          }
+          // Notas
+          for (const n of notes) {
+            if (n.hit === true) continue;
+            const cx = n.lane * LANE_W + LANE_W / 2;
+            const color = n.hit === "miss" ? "rgba(218,41,28,0.4)" : LANE_COLORS[n.lane];
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(cx, n.y, NOTE_R, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          // HUD top
+          ctx.fillStyle = "#0057B8";
+          ctx.font = "bold 24px sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText("Score: " + score, 10, 8);
+          ctx.fillStyle = timeLeft <= 10 ? "#DA291C" : "#D8FF2C";
+          ctx.textAlign = "right";
+          ctx.fillText(timeLeft + "s", W - 10, 8);
+          if (combo > 2) {
+            ctx.fillStyle = "#D8FF2C";
+            ctx.font = "bold 22px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("COMBO x" + combo, W / 2, 10);
+          }
+
+          rafId = requestAnimationFrame(loop);
+        }
+
+        function startGame() {
+          if (running) return;
+          running = true;
+          notes = [];
+          score = 0;
+          combo = 0;
+          perfectCount = 0;
+          goodCount = 0;
+          missCount = 0;
+          timeLeft = 60;
+          frame = 0;
+          overlay.style.display = "none";
+          result.style.display = "none";
+          window.addEventListener("keydown", onKey);
+          timerInterval = setInterval(function () {
+            timeLeft--;
+            if (timeLeft <= 0) endGame();
+          }, 1000);
+          rafId = requestAnimationFrame(loop);
+        }
+
+        // Idle render
+        function drawIdle() {
+          ctx.fillStyle = "#01002A";
+          ctx.fillRect(0, 0, W, H);
+          ctx.strokeStyle = "rgba(255,255,255,0.08)";
+          for (let l = 1; l < LANE_COUNT; l++) {
+            ctx.beginPath();
+            ctx.moveTo(l * LANE_W, 0);
+            ctx.lineTo(l * LANE_W, H);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = "#D8FF2C";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, HIT_Y);
+          ctx.lineTo(W, HIT_Y);
+          ctx.stroke();
+          for (let l = 0; l < LANE_COUNT; l++) {
+            const cx = l * LANE_W + LANE_W / 2;
+            ctx.fillStyle = LANE_COLORS[l];
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(LANE_LABELS[l], cx, H - 28);
+          }
+        }
+        drawIdle();
+
+        canvas.addEventListener("click", function (e) {
+          if (!running) {
+            startGame();
+            return;
+          }
+          // Click na zona de uma lane = tap nessa lane
+          const rect = canvas.getBoundingClientRect();
+          const cx = ((e.clientX - rect.left) / rect.width) * W;
+          const lane = Math.floor(cx / LANE_W);
+          if (lane >= 0 && lane < LANE_COUNT) tryHit(lane);
+        });
+        canvas.addEventListener("touchstart", function (e) {
+          if (!running) {
+            e.preventDefault();
+            startGame();
+            return;
+          }
+          e.preventDefault();
+          const t = e.touches[0];
+          if (!t) return;
+          const rect = canvas.getBoundingClientRect();
+          const cx = ((t.clientX - rect.left) / rect.width) * W;
+          const lane = Math.floor(cx / LANE_W);
+          if (lane >= 0 && lane < LANE_COUNT) tryHit(lane);
         });
         if (restartBtn) restartBtn.addEventListener("click", function () {
           if (!running) startGame();
