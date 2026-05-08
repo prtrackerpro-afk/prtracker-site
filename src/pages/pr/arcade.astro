@@ -115,11 +115,17 @@ if (!athlete) return Astro.redirect("/pr/login");
           let duckHeld = false;
 
           function spawn() {
-            const t = Math.random() < 0.6 ? "high" : "low";
-            if (t === "high") {
-              obstacles.push({ x: W + 20, y: groundY - 60, w: 24, h: 60, type: t });
+            // 3 tipos: kettlebell (low jump), plate stack (medium jump), barbell rack (slide under)
+            const r = Math.random();
+            if (r < 0.4) {
+              // Kettlebell — pequena no chao, precisa pular
+              obstacles.push({ x: W + 20, y: groundY - 38, w: 36, h: 38, type: "kettlebell" });
+            } else if (r < 0.75) {
+              // Plate stack — anilhas empilhadas, precisa pular
+              obstacles.push({ x: W + 20, y: groundY - 60, w: 32, h: 60, type: "plate" });
             } else {
-              obstacles.push({ x: W + 20, y: groundY - 130, w: 50, h: 18, type: t });
+              // Pull-up bar — alta, precisa abaixar
+              obstacles.push({ x: W + 20, y: groundY - 130, w: 60, h: 14, type: "pullup" });
             }
           }
 
@@ -203,6 +209,145 @@ if (!athlete) return Astro.redirect("/pr/login");
             result.style.display = "block";
           }
 
+          // === Athlete sprite (vanilla 2D drawing) ===
+          function drawAthlete(ctx, px, py, ph, ducking, frame) {
+            // Cabeça circular skin tone
+            const skinColor = "#e0b18a";
+            const headR = 8;
+            const headX = px + 20;
+            const headY = py + headR + 2;
+            ctx.fillStyle = skinColor;
+            ctx.beginPath();
+            ctx.arc(headX, headY, headR, 0, Math.PI * 2);
+            ctx.fill();
+            // Cabelo (cap escuro)
+            ctx.fillStyle = "#1a1410";
+            ctx.beginPath();
+            ctx.arc(headX, headY - 1, headR, Math.PI, 0);
+            ctx.fill();
+            // Olho
+            ctx.fillStyle = "#01002A";
+            ctx.fillRect(headX + 3, headY - 1, 2, 2);
+            // Sorriso
+            ctx.strokeStyle = "#01002A";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(headX + 2, headY + 3, 2, 0, Math.PI);
+            ctx.stroke();
+
+            // Corpo (regata lime PR TRACKER)
+            const torsoY = py + 14;
+            const torsoH = ducking ? 10 : 22;
+            ctx.fillStyle = "#D8FF2C";
+            ctx.fillRect(px + 12, torsoY, 18, torsoH);
+            // Logo PR no peito
+            ctx.fillStyle = "#01002A";
+            ctx.font = "bold 8px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("PR", px + 21, torsoY + 11);
+
+            if (!ducking) {
+              // Pernas (shorts navy + skin)
+              const legBob = Math.sin(frame * 0.4) * 3;
+              ctx.fillStyle = "#1e1b50";
+              ctx.fillRect(px + 13, py + 36, 7, 8); // shorts esq
+              ctx.fillRect(px + 22, py + 36, 7, 8); // shorts dir
+              ctx.fillStyle = skinColor;
+              ctx.fillRect(px + 14, py + 44 - legBob, 5, 8); // perna esq
+              ctx.fillRect(px + 23, py + 44 + legBob, 5, 8); // perna dir
+              ctx.fillStyle = "#0a0a14";
+              ctx.fillRect(px + 13, py + 52 - legBob, 7, 4); // tenis esq
+              ctx.fillRect(px + 22, py + 52 + legBob, 7, 4); // tenis dir
+              // Sola lime
+              ctx.fillStyle = "#D8FF2C";
+              ctx.fillRect(px + 13, py + 55 - legBob, 7, 1);
+              ctx.fillRect(px + 22, py + 55 + legBob, 7, 1);
+
+              // Braço direito segurando barbell (mini)
+              ctx.fillStyle = skinColor;
+              ctx.fillRect(px + 30, py + 18, 4, 12);
+              // Mini barbell na mao direita
+              ctx.fillStyle = "#dfe2e8"; // chrome
+              ctx.fillRect(px + 30, py + 14, 3, 3); // bar vertical
+              // Plate vermelho topo
+              ctx.fillStyle = "#DA291C";
+              ctx.beginPath();
+              ctx.arc(px + 31, py + 13, 4, 0, Math.PI * 2);
+              ctx.fill();
+              // Plate azul base
+              ctx.fillStyle = "#0057B8";
+              ctx.beginPath();
+              ctx.arc(px + 31, py + 30, 4, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Braço esquerdo
+              ctx.fillStyle = skinColor;
+              ctx.fillRect(px + 8, py + 18, 4, 14);
+            } else {
+              // Ducking: pernas dobradas + cabeça mais baixa
+              ctx.fillStyle = "#1e1b50";
+              ctx.fillRect(px + 13, py + 24, 16, 6);
+              ctx.fillStyle = "#0a0a14";
+              ctx.fillRect(px + 13, py + 28, 7, 2);
+              ctx.fillRect(px + 22, py + 28, 7, 2);
+            }
+          }
+
+          function drawObstacle(ctx, o) {
+            if (o.type === "kettlebell") {
+              // Kettlebell preta com handle metalico
+              const cx = o.x + o.w / 2;
+              const cy = o.y + 18;
+              ctx.fillStyle = "#141420";
+              ctx.beginPath();
+              ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+              ctx.fill();
+              // Handle metalico
+              ctx.strokeStyle = "#dfe2e8";
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.arc(cx, cy - 12, 7, Math.PI, 0);
+              ctx.stroke();
+              // Reflexo
+              ctx.fillStyle = "rgba(255,255,255,0.15)";
+              ctx.beginPath();
+              ctx.arc(cx - 4, cy - 4, 4, 0, Math.PI * 2);
+              ctx.fill();
+              // Numero do peso
+              ctx.fillStyle = "#D8FF2C";
+              ctx.font = "bold 9px sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText("16", cx, cy + 3);
+            } else if (o.type === "plate") {
+              // Stack de plates IWF (vermelho-azul-amarelo)
+              ctx.fillStyle = "#DA291C";
+              ctx.fillRect(o.x, o.y, o.w, 16); // top plate
+              ctx.fillStyle = "#0057B8";
+              ctx.fillRect(o.x, o.y + 18, o.w, 16); // mid
+              ctx.fillStyle = "#FFC72C";
+              ctx.fillRect(o.x, o.y + 36, o.w, 16); // bottom
+              // Hub central preto
+              ctx.fillStyle = "#0a0a14";
+              ctx.fillRect(o.x + o.w / 2 - 3, o.y, 6, o.h);
+            } else if (o.type === "pullup") {
+              // Pull-up bar — barra horizontal alta + 2 postes saindo
+              ctx.fillStyle = "#dfe2e8";
+              ctx.fillRect(o.x, o.y, o.w, 6); // bar chrome
+              ctx.fillStyle = "#4a4d5a";
+              ctx.fillRect(o.x, o.y + 6, 6, 8); // poste esq
+              ctx.fillRect(o.x + o.w - 6, o.y + 6, 6, 8); // poste dir
+              // Knurling lines
+              ctx.strokeStyle = "#9aa3b0";
+              ctx.lineWidth = 1;
+              for (let i = 4; i < o.w - 4; i += 4) {
+                ctx.beginPath();
+                ctx.moveTo(o.x + i, o.y + 1);
+                ctx.lineTo(o.x + i, o.y + 5);
+                ctx.stroke();
+              }
+            }
+          }
+
           function loop() {
             if (!running) return;
             frame++;
@@ -267,25 +412,12 @@ if (!athlete) return Astro.redirect("/pr/login");
             ctx.lineTo(W, groundY);
             ctx.stroke();
 
-            ctx.fillStyle = "#D8FF2C";
-            ctx.fillRect(player.x, playerY, player.w, playerH);
-            ctx.fillStyle = "#01002A";
-            ctx.fillRect(player.x + 8, playerY + 8, 6, 6);
-            ctx.font = "bold 10px sans-serif";
-            ctx.textAlign = "left";
-            ctx.fillText("PR", player.x + 4, playerY + 30);
+            // Player — atleta com barbell nas mãos (cycles 1-3 fitness visual)
+            drawAthlete(ctx, player.x, playerY, playerH, ducking, frame);
 
             for (let i = 0; i < obstacles.length; i++) {
               const o = obstacles[i];
-              if (o.type === "high") {
-                ctx.fillStyle = "#DA291C";
-                ctx.fillRect(o.x, o.y, o.w, o.h);
-                ctx.fillStyle = "#0057B8";
-                ctx.fillRect(o.x - 5, o.y - 6, o.w + 10, 8);
-              } else {
-                ctx.fillStyle = "#FFC72C";
-                ctx.fillRect(o.x, o.y, o.w, o.h);
-              }
+              drawObstacle(ctx, o);
             }
 
             ctx.fillStyle = "#D8FF2C";
@@ -301,27 +433,78 @@ if (!athlete) return Astro.redirect("/pr/login");
           rafId = requestAnimationFrame(loop);
         }
 
-        // Tela inicial — desenha o "fundo" do jogo
+        // Tela inicial — desenha o "fundo" do jogo + atleta parado
         function drawIdle() {
           const W = canvas.width;
           const H = canvas.height;
+          const groundY = H - 60;
           ctx.fillStyle = "#01002A";
           ctx.fillRect(0, 0, W, H);
+          // Background gym silhuetas (rack, bench)
+          ctx.fillStyle = "rgba(216,255,44,0.08)";
+          // Power rack silhouette
+          ctx.fillRect(W - 180, groundY - 90, 6, 90);
+          ctx.fillRect(W - 100, groundY - 90, 6, 90);
+          ctx.fillRect(W - 180, groundY - 90, 86, 4);
+          // Bench silhouette
+          ctx.fillRect(W - 350, groundY - 30, 100, 4);
+          ctx.fillRect(W - 340, groundY - 30, 4, 30);
+          ctx.fillRect(W - 260, groundY - 30, 4, 30);
+          // Floor
           ctx.fillStyle = "#0a0a14";
-          ctx.fillRect(0, H - 60, W, 60);
+          ctx.fillRect(0, groundY, W, 60);
           ctx.strokeStyle = "#D8FF2C";
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(0, H - 60);
-          ctx.lineTo(W, H - 60);
+          ctx.moveTo(0, groundY);
+          ctx.lineTo(W, groundY);
           ctx.stroke();
           // Player parado
-          ctx.fillStyle = "#D8FF2C";
-          ctx.fillRect(80, H - 60 - 56, 38, 56);
-          ctx.fillStyle = "#01002A";
-          ctx.fillRect(88, H - 60 - 56 + 8, 6, 6);
-          ctx.font = "bold 10px sans-serif";
-          ctx.fillText("PR", 84, H - 60 - 56 + 30);
+          drawAthlete(ctx, 80, groundY - 56, 56, false, 0);
+
+          function drawAthlete(ctx, px, py, ph, ducking, frame) {
+            const skinColor = "#e0b18a";
+            const headR = 8;
+            const headX = px + 20;
+            const headY = py + headR + 2;
+            ctx.fillStyle = skinColor;
+            ctx.beginPath();
+            ctx.arc(headX, headY, headR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#1a1410";
+            ctx.beginPath();
+            ctx.arc(headX, headY - 1, headR, Math.PI, 0);
+            ctx.fill();
+            ctx.fillStyle = "#01002A";
+            ctx.fillRect(headX + 3, headY - 1, 2, 2);
+            ctx.strokeStyle = "#01002A";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(headX + 2, headY + 3, 2, 0, Math.PI);
+            ctx.stroke();
+            ctx.fillStyle = "#D8FF2C";
+            ctx.fillRect(px + 12, py + 14, 18, 22);
+            ctx.fillStyle = "#01002A";
+            ctx.font = "bold 8px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("PR", px + 21, py + 25);
+            ctx.fillStyle = "#1e1b50";
+            ctx.fillRect(px + 13, py + 36, 7, 8);
+            ctx.fillRect(px + 22, py + 36, 7, 8);
+            ctx.fillStyle = skinColor;
+            ctx.fillRect(px + 14, py + 44, 5, 8);
+            ctx.fillRect(px + 23, py + 44, 5, 8);
+            ctx.fillStyle = "#0a0a14";
+            ctx.fillRect(px + 13, py + 52, 7, 4);
+            ctx.fillRect(px + 22, py + 52, 7, 4);
+            ctx.fillStyle = "#D8FF2C";
+            ctx.fillRect(px + 13, py + 55, 7, 1);
+            ctx.fillRect(px + 22, py + 55, 7, 1);
+            // Bracos parado
+            ctx.fillStyle = skinColor;
+            ctx.fillRect(px + 8, py + 18, 4, 14);
+            ctx.fillRect(px + 30, py + 18, 4, 14);
+          }
         }
         drawIdle();
 
