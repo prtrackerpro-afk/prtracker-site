@@ -2039,13 +2039,19 @@ export default function VirtualGym({
       // Move avatar 1.6m pra frente do equipamento (sai)
       avatarParts.root.position.x += Math.sin(eq.rotY) * 1.6;
       avatarParts.root.position.z += Math.cos(eq.rotY) * 1.6;
-      // Reset COMPLETO da pose
+      // Reset COMPLETO da pose (incluindo articulacoes novas)
       avatarParts.root.position.y = 0;
       avatarParts.root.rotation.x = 0;
       avatarParts.leftArm.rotation.set(-0.08, 0, -0.18);
       avatarParts.rightArm.rotation.set(-0.08, 0, 0.18);
+      avatarParts.leftForearm.rotation.set(0.18, 0, 0);
+      avatarParts.rightForearm.rotation.set(0.18, 0, 0);
+      avatarParts.leftHand.rotation.set(0, 0, 0);
+      avatarParts.rightHand.rotation.set(0, 0, 0);
       avatarParts.leftLeg.rotation.set(0, 0, 0);
       avatarParts.rightLeg.rotation.set(0, 0, 0);
+      avatarParts.leftCalf.rotation.set(0, 0, 0);
+      avatarParts.rightCalf.rotation.set(0, 0, 0);
       engagedEquipment = null;
       exerciseProgress = 0;
       exerciseReps = 0;
@@ -2133,51 +2139,87 @@ export default function VirtualGym({
     window.addEventListener("keyup", onExerciseKeyUp);
 
     function animateAvatarForExercise(exercise: string, p: number) {
-      // p = 0 (rest/start posicao) → 1 (peak/end posicao)
-      const arms = avatarParts;
+      // p = 0 (rest/down) → 1 (peak/up)
+      // Convencao: rotation.x positivo = perna/braco gira PRA TRAS (do quadril/ombro)
+      //            rotation.x negativo = PRA FRENTE
+      // Calf/Forearm: rotation.x positivo = flexiona JUNTAS (joelho/cotovelo dobra)
+      const a = avatarParts;
       switch (exercise) {
         case "bench":
-          // Bench press REAL: avatar deita horizontal (rotation.x = -PI/2)
-          // root.position.y = 0.5m (altura do banco)
-          arms.root.rotation.x = -Math.PI / 2;
-          arms.root.position.y = 0.5;
-          // Bracos pra cima (em direção ao teto agora que avatar esta deitado)
-          // p=0 (down): bracos no peito (rotation.x = 0)
-          // p=1 (up): bracos esticados pra cima (rotation.x = PI/2 inverso = -PI/2 relativo)
-          arms.leftArm.rotation.x = -p * 1.4;
-          arms.rightArm.rotation.x = -p * 1.4;
-          arms.leftArm.rotation.z = -0.3;
-          arms.rightArm.rotation.z = 0.3;
-          // Pernas reset
-          arms.leftLeg.rotation.x = 0;
-          arms.rightLeg.rotation.x = 0;
+          // Bench press REAL: avatar deita horizontal de costas no banco
+          // Banco em y=0.45 → avatar deitado y=0.5 (acima do banco)
+          a.root.rotation.x = -Math.PI / 2;
+          a.root.position.y = 0.5;
+          // Pernas apontam pra direita (no nosso sistema, com root rotacionado,
+          // legs descem em direção aos pés do banco — rotation.x = 0)
+          a.leftLeg.rotation.x = 0;
+          a.rightLeg.rotation.x = 0;
+          a.leftCalf.rotation.x = 0;
+          a.rightCalf.rotation.x = 0;
+          // BRACOS: agora apontam pra cima (em direção ao teto após deitar)
+          // p=0 (down): bracos dobrados (forearm flexionado), bar no peito
+          // p=1 (up): bracos esticados, bar lockout
+          // Upper arm rotation.x: -PI/2 sempre (perpendicular ao torso = vertical)
+          a.leftArm.rotation.x = -Math.PI / 2;
+          a.rightArm.rotation.x = -Math.PI / 2;
+          a.leftArm.rotation.z = -0.3;
+          a.rightArm.rotation.z = 0.3;
+          // FOREARM flex: p=0 dobrado (1.6 rad ~90°), p=1 esticado (0.18 base)
+          a.leftForearm.rotation.x = 1.6 - p * 1.4;
+          a.rightForearm.rotation.x = 1.6 - p * 1.4;
+          a.leftHand.rotation.set(0, 0, 0);
+          a.rightHand.rotation.set(0, 0, 0);
           break;
+
         case "squat":
-          // Squat: avatar abaixa via root.y (sem dobrar pernas porque pernas
-          // são apenas Groups, não bones, então rotação no root é mais limpa)
-          arms.root.position.y = -(1 - p) * 0.4;
-          arms.root.rotation.x = 0;
-          // Leve leg bend (visual)
-          arms.leftLeg.rotation.x = (1 - p) * 0.4;
-          arms.rightLeg.rotation.x = (1 - p) * 0.4;
-          // Bracos: high bar position (-1.4 = pra cima e pra trás)
-          arms.leftArm.rotation.x = -1.4;
-          arms.rightArm.rotation.x = -1.4;
-          arms.leftArm.rotation.z = -0.4;
-          arms.rightArm.rotation.z = 0.4;
+          // Squat REAL: hip pivota pra trás + joelhos dobram + barbell back rack
+          // p=0 (bottom): pernas MUITO dobradas (knee 1.5 rad) + hip rotation 0.5 (atras)
+          // p=1 (standing): pernas retas, sem rotation
+          a.root.rotation.x = 0;
+          // root.y abaixa pq legs ficam dobradas (centro de massa cai)
+          a.root.position.y = -(1 - p) * 0.45;
+          // Hip rotation pra trás (avatar inclina ao agachar — sit back)
+          a.leftLeg.rotation.x = -(1 - p) * 0.6;
+          a.rightLeg.rotation.x = -(1 - p) * 0.6;
+          // Joelho flex (calf gira pra frente)
+          a.leftCalf.rotation.x = (1 - p) * 1.3;
+          a.rightCalf.rotation.x = (1 - p) * 1.3;
+          // Bracos pra cima e atras (segurando barra trapezios)
+          a.leftArm.rotation.x = -1.7;
+          a.rightArm.rotation.x = -1.7;
+          a.leftArm.rotation.z = -0.5;
+          a.rightArm.rotation.z = 0.5;
+          a.leftForearm.rotation.x = 1.4; // forearm flex segurando barra
+          a.rightForearm.rotation.x = 1.4;
+          a.leftHand.rotation.set(0, 0, 0);
+          a.rightHand.rotation.set(0, 0, 0);
           break;
+
         case "deadlift":
-          // Deadlift: avatar abaixa (root.y) sem rotacionar (rotation.x ficava
-          // esquisito pq movia bracos junto). Bracos esticados pra baixo.
-          arms.root.position.y = -(1 - p) * 0.4;
-          arms.root.rotation.x = 0;
-          arms.leftLeg.rotation.x = (1 - p) * 0.3;
-          arms.rightLeg.rotation.x = (1 - p) * 0.3;
-          // Bracos retos pra baixo
-          arms.leftArm.rotation.x = 0;
-          arms.rightArm.rotation.x = 0;
-          arms.leftArm.rotation.z = -0.05;
-          arms.rightArm.rotation.z = 0.05;
+          // Deadlift REAL: hip baixo + torso muito inclinado + joelhos pouco dobrados +
+          // bracos retos pra baixo. p=1 = lockout standing
+          // Como torso lean nao tem bone, simulamos via root.rotation.x parcial
+          // mas isso gira tudo. Solucao: deixar leg/arm/calf compensar.
+          // Hip rotation: pra trás (deadlift hip hinge)
+          a.leftLeg.rotation.x = -(1 - p) * 0.8;
+          a.rightLeg.rotation.x = -(1 - p) * 0.8;
+          // Joelhos pouco dobrados no deadlift (mais do que stiff, menos que squat)
+          a.leftCalf.rotation.x = (1 - p) * 0.6;
+          a.rightCalf.rotation.x = (1 - p) * 0.6;
+          // Avatar abaixa (proporcional)
+          a.root.position.y = -(1 - p) * 0.35;
+          // Lean torso: simulado via root.rotation.x (gira tudo, mas
+          // bracos compensam ficando retos pra baixo no espaco mundo)
+          a.root.rotation.x = -(1 - p) * 0.8;
+          // Bracos: rotation.x compensa o lean do root pra ficar PRA BAIXO mundo
+          a.leftArm.rotation.x = (1 - p) * 0.8; // compensa lean
+          a.rightArm.rotation.x = (1 - p) * 0.8;
+          a.leftArm.rotation.z = -0.05;
+          a.rightArm.rotation.z = 0.05;
+          a.leftForearm.rotation.x = 0; // antebracos retos
+          a.rightForearm.rotation.x = 0;
+          a.leftHand.rotation.set(0, 0, 0);
+          a.rightHand.rotation.set(0, 0, 0);
           break;
         case "pullup":
           // Pullup: avatar sobe vertical + bracos dobram (rotation.x mais negativo = subindo)
@@ -2406,22 +2448,27 @@ export default function VirtualGym({
           );
         }
         if (showBarbell) {
-          const ax = avatarParts.root.position.x;
-          const ay = avatarParts.root.position.y;
-          const az = avatarParts.root.position.z;
-          const ay_root = ay; // base do avatar
-          if (eq.exercise === "bench") {
-            // Barbell sobre o peito (em y=0.5+0.4=0.9 quando p=0, sobe pra y=1.5 quando p=1)
-            virtualBarbell.position.set(ax, 0.9 + exerciseProgress * 0.6, az + Math.sin(eq.rotY) * 0.0);
-            virtualBarbell.rotation.y = eq.rotY;
-          } else if (eq.exercise === "squat") {
-            // Barbell sobre os trapezios (atras nuca) — y=1.65 + bounce com avatar
-            virtualBarbell.position.set(ax, 1.65 + ay_root, az);
-            virtualBarbell.rotation.y = eq.rotY;
-          } else if (eq.exercise === "deadlift") {
-            // Barbell na altura das maos (y=0.6 quando p=1 stand, y=0.2 quando p=0)
-            virtualBarbell.position.set(ax, 0.2 + exerciseProgress * 0.4 + ay_root, az + Math.sin(eq.rotY) * 0.3);
-            virtualBarbell.rotation.y = eq.rotY;
+          // BARBELL SEGUE AS MAOS DO AVATAR (midpoint entre leftHand e rightHand mundo space)
+          const lh = new THREE.Vector3();
+          const rh = new THREE.Vector3();
+          avatarParts.leftHand.getWorldPosition(lh);
+          avatarParts.rightHand.getWorldPosition(rh);
+          virtualBarbell.position.lerpVectors(lh, rh, 0.5);
+          // Squat: barbell ATRAS da nuca, não nas mãos
+          if (eq.exercise === "squat") {
+            // Posiciona logo abaixo do pescoço (trapezios)
+            virtualBarbell.position.set(
+              avatarParts.root.position.x,
+              avatarParts.root.position.y + 1.45,
+              avatarParts.root.position.z - Math.cos(eq.rotY) * 0.05
+            );
+          }
+          virtualBarbell.rotation.y = eq.rotY;
+          // Tilt do barbell em deadlift (acompanha lean do torso)
+          if (eq.exercise === "deadlift") {
+            virtualBarbell.rotation.x = avatarParts.root.rotation.x;
+          } else {
+            virtualBarbell.rotation.x = 0;
           }
         }
 

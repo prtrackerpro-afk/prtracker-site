@@ -963,6 +963,16 @@ export interface AvatarParts {
   rightArm: THREE.Group;
   /** Cabeça pra leve idle bob. */
   head: THREE.Group;
+  /** Articulações expostas pra animação de exercícios (flex joelho/cotovelo). */
+  leftCalf: THREE.Group;
+  rightCalf: THREE.Group;
+  leftForearm: THREE.Group;
+  rightForearm: THREE.Group;
+  /** Ponto onde a barbell virtual deveria ficar quando segurada (mãos juntas). */
+  leftHand: THREE.Group;
+  rightHand: THREE.Group;
+  /** Torso pra rotação (lean) — pseudo-spine, sem mexer no root. */
+  torso: THREE.Group;
 }
 
 /**
@@ -1372,29 +1382,36 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   root.add(hips);
 
   // === LEGS — pés tocam o chão ==================================
-  // legGroup origin = quadril (y=0.985). Parts vão pra baixo até a sola
-  // do tênis encostar no chão (sole bottom y ≈ 0).
-  const leftLeg = buildLeg(skinMat, shortsMat, shoeMat);
-  leftLeg.position.set(-0.10, 0.985, 0);
-  root.add(leftLeg);
+  const leftLegBuilt = buildLeg(skinMat, shortsMat, shoeMat);
+  leftLegBuilt.leg.position.set(-0.10, 0.985, 0);
+  root.add(leftLegBuilt.leg);
+  const leftLeg = leftLegBuilt.leg;
+  const leftCalf = leftLegBuilt.calf;
 
-  const rightLeg = buildLeg(skinMat, shortsMat, shoeMat);
-  rightLeg.position.set(0.10, 0.985, 0);
-  root.add(rightLeg);
+  const rightLegBuilt = buildLeg(skinMat, shortsMat, shoeMat);
+  rightLegBuilt.leg.position.set(0.10, 0.985, 0);
+  root.add(rightLegBuilt.leg);
+  const rightLeg = rightLegBuilt.leg;
+  const rightCalf = rightLegBuilt.calf;
 
-  // === ARMS com pose natural (cycle 95) — match com NPC pose
-  // (10° pra fora + 8° pra frente). Antes 7° + 3°, ainda parecia rígido.
-  const leftArm = buildArm(skinMat, topMat);
-  leftArm.position.set(-shoulderHalfW - 0.02, 1.62, 0);
-  leftArm.rotation.z = -0.18;
-  leftArm.rotation.x = -0.08;
-  root.add(leftArm);
+  // === ARMS com articulações expostas
+  const leftArmBuilt = buildArm(skinMat, topMat);
+  leftArmBuilt.arm.position.set(-shoulderHalfW - 0.02, 1.62, 0);
+  leftArmBuilt.arm.rotation.z = -0.18;
+  leftArmBuilt.arm.rotation.x = -0.08;
+  root.add(leftArmBuilt.arm);
+  const leftArm = leftArmBuilt.arm;
+  const leftForearm = leftArmBuilt.forearm;
+  const leftHand = leftArmBuilt.hand;
 
-  const rightArm = buildArm(skinMat, topMat);
-  rightArm.position.set(shoulderHalfW + 0.02, 1.62, 0);
-  rightArm.rotation.z = 0.18;
-  rightArm.rotation.x = -0.08;
-  root.add(rightArm);
+  const rightArmBuilt = buildArm(skinMat, topMat);
+  rightArmBuilt.arm.position.set(shoulderHalfW + 0.02, 1.62, 0);
+  rightArmBuilt.arm.rotation.z = 0.18;
+  rightArmBuilt.arm.rotation.x = -0.08;
+  root.add(rightArmBuilt.arm);
+  const rightArm = rightArmBuilt.arm;
+  const rightForearm = rightArmBuilt.forearm;
+  const rightHand = rightArmBuilt.hand;
 
   // V16.8 Fase 5 cycle 464-465: wristband em ambos os pulsos
   const wristband = prefs.wristband ?? "none";
@@ -1412,18 +1429,37 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
       emissive: color,
       emissiveIntensity: 0.15,
     });
-    // Wristband em cada antebraço (mão fica em y=-0.66 do shoulder em y=1.62 → mão em y=0.96)
-    for (const arm of [leftArm, rightArm]) {
+    // Wristband no forearm (não no arm) pra acompanhar o cotovelo flex
+    for (const fa of [leftForearm, rightForearm]) {
       const wb = new THREE.Mesh(
         new THREE.CylinderGeometry(0.062, 0.062, 0.05, 12),
         wbMat
       );
-      wb.position.y = -0.58;
-      arm.add(wb);
+      wb.position.y = -0.25;
+      fa.add(wb);
     }
   }
 
-  return { root, leftLeg, rightLeg, leftArm, rightArm, head };
+  // Torso (interface) é um placeholder Group pra anima de lean. Não tem mesh
+  // próprio (o torso real é o cylinder mesh em torsoY). Lean é feito via root.
+  const torsoPivot = new THREE.Group();
+  root.add(torsoPivot);
+
+  return {
+    root,
+    leftLeg,
+    rightLeg,
+    leftCalf,
+    rightCalf,
+    leftArm,
+    rightArm,
+    leftForearm,
+    rightForearm,
+    leftHand,
+    rightHand,
+    head,
+    torso: torsoPivot,
+  };
 }
 
 /**
@@ -1434,59 +1470,68 @@ function buildLeg(
   skinMat: THREE.Material,
   shortsMat: THREE.Material,
   shoeMat: THREE.Material
-): THREE.Group {
-  const g = new THREE.Group();
-  // Shorts cobrindo topo da coxa (até ~10cm abaixo do hip)
+): { leg: THREE.Group; calf: THREE.Group } {
+  // Hierarquia: leg (root, pivota no quadril) → contém thigh + shortsCover + knee
+  // → calf Group (pivota no joelho em y=-0.46) → contém calf mesh + ankle + shoe + sole
+  const leg = new THREE.Group();
+
+  // Shorts cobrindo topo da coxa (estatico no leg)
   const shortsCover = new THREE.Mesh(
     new THREE.CylinderGeometry(0.11, 0.105, 0.18, 10),
     shortsMat
   );
   shortsCover.position.y = -0.09;
   shortsCover.castShadow = true;
-  g.add(shortsCover);
+  leg.add(shortsCover);
 
-  // Coxa (skin)
+  // Coxa (estatica no leg)
   const thigh = new THREE.Mesh(
     new THREE.CylinderGeometry(0.085, 0.07, 0.28, 10),
     skinMat
   );
   thigh.position.y = -0.32;
   thigh.castShadow = true;
-  g.add(thigh);
+  leg.add(thigh);
 
-  // Joelho (esfera pra suavizar a junção)
+  // Joelho (esfera pra suavizar a juncao)
   const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), skinMat);
   knee.position.y = -0.46;
-  g.add(knee);
+  leg.add(knee);
 
-  // Panturrilha
+  // === CALF Group (pivota no joelho) ===
+  const calfGroup = new THREE.Group();
+  calfGroup.position.y = -0.46; // pivot point = joelho
+
+  // Panturrilha (relativa ao calfGroup)
   const calf = new THREE.Mesh(
     new THREE.CylinderGeometry(0.065, 0.055, 0.36, 10),
     skinMat
   );
-  calf.position.y = -0.65;
+  calf.position.y = -0.19; // 0.36/2 - 0.01 abaixo do joelho
   calf.castShadow = true;
-  g.add(calf);
+  calfGroup.add(calf);
 
   // Tornozelo
   const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 6), skinMat);
-  ankle.position.y = -0.84;
-  g.add(ankle);
+  ankle.position.y = -0.38;
+  calfGroup.add(ankle);
 
-  // Tênis (caixa de couro preto + sola lime)
+  // Tenis
   const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.24), shoeMat);
-  shoe.position.set(0, -0.91, 0.05);
+  shoe.position.set(0, -0.45, 0.05);
   shoe.castShadow = true;
-  g.add(shoe);
-  // Sola lime (assinatura visual da marca)
+  calfGroup.add(shoe);
+  // Sola lime
   const sole = new THREE.Mesh(
     new THREE.BoxGeometry(0.135, 0.025, 0.25),
     new THREE.MeshStandardMaterial({ color: 0xd8ff2c, roughness: 0.5 })
   );
-  sole.position.set(0, -0.97, 0.05);
-  g.add(sole);
+  sole.position.set(0, -0.51, 0.05);
+  calfGroup.add(sole);
 
-  return g;
+  leg.add(calfGroup);
+
+  return { leg, calf: calfGroup };
 }
 
 /**
@@ -1494,36 +1539,42 @@ function buildLeg(
  * + antebraço com leve rotação + mão. Origin = ombro.
  * Cycle 96: match com NPC arm (separação forearm pra elbow flex real).
  */
-function buildArm(skinMat: THREE.Material, topMat: THREE.Material): THREE.Group {
-  const g = new THREE.Group();
-  // Deltoide (esfera no ombro pra musculatura visível)
+function buildArm(
+  skinMat: THREE.Material,
+  topMat: THREE.Material
+): { arm: THREE.Group; forearm: THREE.Group; hand: THREE.Group } {
+  // Hierarquia: arm (pivota no ombro) contem delt + sleeve + upper + elbow
+  // → forearm Group (pivota no cotovelo em y=-0.34) contem lower + hand Group
+  // → hand Group (pivota no pulso em y=-0.30 do forearm) — barbell prende aqui
+  const arm = new THREE.Group();
   const delt = new THREE.Mesh(new THREE.SphereGeometry(0.078, 12, 10), skinMat);
   delt.position.y = 0;
-  g.add(delt);
-  // Mangueta da regata cobrindo o topo do braço
+  arm.add(delt);
   const sleeve = new THREE.Mesh(
     new THREE.CylinderGeometry(0.075, 0.07, 0.08, 10),
     topMat
   );
   sleeve.position.y = -0.03;
-  g.add(sleeve);
-  // Bíceps
+  arm.add(sleeve);
+  // Biceps (estatico no arm)
   const upper = new THREE.Mesh(
     new THREE.CylinderGeometry(0.07, 0.06, 0.26, 10),
     skinMat
   );
   upper.position.y = -0.2;
   upper.castShadow = true;
-  g.add(upper);
-  // Cotovelo (esfera)
+  arm.add(upper);
   const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), skinMat);
   elbow.position.y = -0.34;
-  g.add(elbow);
-  // Forearm em group separado pra elbow flex real
+  arm.add(elbow);
+
+  // === FOREARM Group (pivota no cotovelo) ===
   const forearm = new THREE.Group();
   forearm.position.y = -0.34;
-  forearm.rotation.x = 0.18; // ~10° flex
-  g.add(forearm);
+  forearm.rotation.x = 0.18;
+  arm.add(forearm);
+
+  // Antebraco (estatico no forearm)
   const lower = new THREE.Mesh(
     new THREE.CylinderGeometry(0.058, 0.052, 0.26, 10),
     skinMat
@@ -1531,13 +1582,22 @@ function buildArm(skinMat: THREE.Material, topMat: THREE.Material): THREE.Group 
   lower.position.y = -0.15;
   lower.castShadow = true;
   forearm.add(lower);
-  // Mão — capsule achatada
-  const hand = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.04, 6, 8), skinMat);
-  hand.scale.set(1.0, 1.0, 1.4);
-  hand.position.y = -0.32;
-  hand.castShadow = true;
+
+  // === HAND Group (pivota no punho) ===
+  const hand = new THREE.Group();
+  hand.position.y = -0.30; // ponto do punho relativo ao forearm
   forearm.add(hand);
-  return g;
+  // Mao mesh (capsule achatada)
+  const handMesh = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.055, 0.04, 6, 8),
+    skinMat
+  );
+  handMesh.scale.set(1.0, 1.0, 1.4);
+  handMesh.position.y = -0.02;
+  handMesh.castShadow = true;
+  hand.add(handMesh);
+
+  return { arm, forearm, hand };
 }
 
 // =================================================================
