@@ -1933,6 +1933,37 @@ export default function VirtualGym({
       return best;
     }
 
+    // Barbell virtual nas mãos do avatar (mostrado apenas durante engagement
+    // de bench/squat/deadlift)
+    const virtualBarbell = new THREE.Group();
+    {
+      const bar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.025, 1.5, 8),
+        new THREE.MeshStandardMaterial({ color: 0xdfe2e8, roughness: 0.15, metalness: 0.95 })
+      );
+      bar.rotation.z = Math.PI / 2;
+      virtualBarbell.add(bar);
+      // Plates IWF nos lados
+      for (const side of [-1, 1]) {
+        const plate1 = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.18, 0.04, 16),
+          new THREE.MeshStandardMaterial({ color: 0xda291c, roughness: 0.5 })
+        );
+        plate1.rotation.z = Math.PI / 2;
+        plate1.position.set(side * 0.65, 0, 0);
+        virtualBarbell.add(plate1);
+        const plate2 = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.16, 0.16, 0.04, 16),
+          new THREE.MeshStandardMaterial({ color: 0x0057b8, roughness: 0.5 })
+        );
+        plate2.rotation.z = Math.PI / 2;
+        plate2.position.set(side * 0.7, 0, 0);
+        virtualBarbell.add(plate2);
+      }
+    }
+    virtualBarbell.visible = false;
+    scene.add(virtualBarbell);
+
     function engageEquipment(eq: EquipmentRef) {
       engagedEquipment = eq;
       exerciseProgress = 0;
@@ -1998,6 +2029,7 @@ export default function VirtualGym({
       if (exerciseHudEl) exerciseHudEl.classList.add("hidden");
       if (promptEl) promptEl.classList.add("hidden"); // Hide prompt enquanto câmera volta
       inputLockedRef.current = false;
+      virtualBarbell.visible = false;
     }
 
     // Click no prompt → engage
@@ -2079,39 +2111,43 @@ export default function VirtualGym({
       const arms = avatarParts;
       switch (exercise) {
         case "bench":
-          // Bench press de PE (representação simplificada — avatar em pose
-          // de empurrar barra pra cima na frente)
-          // Bracos sobem (rotation.x: -2.0 = totalmente levantados, -0.8 = no peito)
-          arms.leftArm.rotation.x = -0.8 - p * 1.2;
-          arms.rightArm.rotation.x = -0.8 - p * 1.2;
-          arms.leftArm.rotation.z = -0.4;
-          arms.rightArm.rotation.z = 0.4;
-          arms.root.position.y = 0;
+          // Bench press REAL: avatar deita horizontal (rotation.x = -PI/2)
+          // root.position.y = 0.5m (altura do banco)
+          arms.root.rotation.x = -Math.PI / 2;
+          arms.root.position.y = 0.5;
+          // Bracos pra cima (em direção ao teto agora que avatar esta deitado)
+          // p=0 (down): bracos no peito (rotation.x = 0)
+          // p=1 (up): bracos esticados pra cima (rotation.x = PI/2 inverso = -PI/2 relativo)
+          arms.leftArm.rotation.x = -p * 1.4;
+          arms.rightArm.rotation.x = -p * 1.4;
+          arms.leftArm.rotation.z = -0.3;
+          arms.rightArm.rotation.z = 0.3;
+          // Pernas reset
+          arms.leftLeg.rotation.x = 0;
+          arms.rightLeg.rotation.x = 0;
           break;
         case "squat":
-          // Squat: avatar abaixa (root.y) + pernas dobram + bracos atras nuca
-          arms.leftLeg.rotation.x = (1 - p) * 0.7;
-          arms.rightLeg.rotation.x = (1 - p) * 0.7;
-          // Avatar abaixa quando p=0 (squat down) — mas como pernas estao DOBRADAS,
-          // o avatar fica abaixo pelos joelhos. Ajustamos position.y NEGATIVO no squat
-          arms.root.position.y = -(1 - p) * 0.5;
-          // Bracos atras (segurando barra) — braços pra cima e pra trás
+          // Squat: avatar abaixa via root.y (sem dobrar pernas porque pernas
+          // são apenas Groups, não bones, então rotação no root é mais limpa)
+          arms.root.position.y = -(1 - p) * 0.4;
+          arms.root.rotation.x = 0;
+          // Leve leg bend (visual)
+          arms.leftLeg.rotation.x = (1 - p) * 0.4;
+          arms.rightLeg.rotation.x = (1 - p) * 0.4;
+          // Bracos: high bar position (-1.4 = pra cima e pra trás)
           arms.leftArm.rotation.x = -1.4;
           arms.rightArm.rotation.x = -1.4;
-          arms.leftArm.rotation.z = -0.6;
-          arms.rightArm.rotation.z = 0.6;
-          arms.root.rotation.x = 0;
+          arms.leftArm.rotation.z = -0.4;
+          arms.rightArm.rotation.z = 0.4;
           break;
         case "deadlift":
-          // Deadlift: torso inclina + pernas dobram + bracos retos pra baixo
-          // p=0: hip baixo + torso quase paralelo ao chao
-          // p=1: standing reto
-          arms.leftLeg.rotation.x = (1 - p) * 0.5;
-          arms.rightLeg.rotation.x = (1 - p) * 0.5;
-          arms.root.position.y = -(1 - p) * 0.35;
-          // Inclina root (compensa torso) — quando p=0, torso bem inclinado
-          arms.root.rotation.x = -(1 - p) * 0.5;
-          // Bracos retos pra baixo (segurando barra)
+          // Deadlift: avatar abaixa (root.y) sem rotacionar (rotation.x ficava
+          // esquisito pq movia bracos junto). Bracos esticados pra baixo.
+          arms.root.position.y = -(1 - p) * 0.4;
+          arms.root.rotation.x = 0;
+          arms.leftLeg.rotation.x = (1 - p) * 0.3;
+          arms.rightLeg.rotation.x = (1 - p) * 0.3;
+          // Bracos retos pra baixo
           arms.leftArm.rotation.x = 0;
           arms.rightArm.rotation.x = 0;
           arms.leftArm.rotation.z = -0.05;
@@ -2257,6 +2293,29 @@ export default function VirtualGym({
           (exerciseHudProgressEl as HTMLElement).style.width = (exerciseProgress * 100) + "%";
         }
         animateAvatarForExercise(eq.exercise, exerciseProgress);
+
+        // Posiciona virtual barbell pros 3 lifts principais
+        const showBarbell = eq.exercise === "bench" || eq.exercise === "squat" || eq.exercise === "deadlift";
+        virtualBarbell.visible = showBarbell;
+        if (showBarbell) {
+          const ax = avatarParts.root.position.x;
+          const ay = avatarParts.root.position.y;
+          const az = avatarParts.root.position.z;
+          const ay_root = ay; // base do avatar
+          if (eq.exercise === "bench") {
+            // Barbell sobre o peito (em y=0.5+0.4=0.9 quando p=0, sobe pra y=1.5 quando p=1)
+            virtualBarbell.position.set(ax, 0.9 + exerciseProgress * 0.6, az + Math.sin(eq.rotY) * 0.0);
+            virtualBarbell.rotation.y = eq.rotY;
+          } else if (eq.exercise === "squat") {
+            // Barbell sobre os trapezios (atras nuca) — y=1.65 + bounce com avatar
+            virtualBarbell.position.set(ax, 1.65 + ay_root, az);
+            virtualBarbell.rotation.y = eq.rotY;
+          } else if (eq.exercise === "deadlift") {
+            // Barbell na altura das maos (y=0.6 quando p=1 stand, y=0.2 quando p=0)
+            virtualBarbell.position.set(ax, 0.2 + exerciseProgress * 0.4 + ay_root, az + Math.sin(eq.rotY) * 0.3);
+            virtualBarbell.rotation.y = eq.rotY;
+          }
+        }
 
         // Camera close-up: posição relativa ao equipamento
         // Cada exercicio tem angulo de camera ideal pra ver o movimento
