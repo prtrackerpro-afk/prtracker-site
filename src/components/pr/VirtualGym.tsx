@@ -2319,86 +2319,151 @@ export default function VirtualGym({
           a.rightHand.rotation.set(0, 0, 0);
           break;
         case "run":
-          // Treadmill run: pernas alternam, bracos balancam (continuo, nao hold)
-          // p sobe automatico quando pressed (representa velocidade)
+          // Treadmill run: pernas alternam (hip + knee flex sincronizados)
+          // braços balançam contra-fase
           {
             const tt = performance.now() / 1000;
-            const phase = tt * 6; // 6Hz steps
-            arms.leftLeg.rotation.x = Math.sin(phase) * 0.7;
-            arms.rightLeg.rotation.x = -Math.sin(phase) * 0.7;
-            arms.leftArm.rotation.x = -Math.sin(phase) * 0.6;
-            arms.rightArm.rotation.x = Math.sin(phase) * 0.6;
-            arms.leftArm.rotation.z = -0.18;
-            arms.rightArm.rotation.z = 0.18;
-            arms.root.position.y = Math.abs(Math.sin(phase * 2)) * 0.04;
-            arms.root.rotation.x = 0;
+            const phase = tt * 6;
+            const ls = Math.sin(phase);
+            const rs = Math.sin(phase + Math.PI);
+            // HIP rotation (sobe perna pra frente)
+            a.leftLeg.rotation.x = ls * 0.6;
+            a.rightLeg.rotation.x = rs * 0.6;
+            // KNEE flex (dobra quando perna sobe)
+            a.leftCalf.rotation.x = Math.max(0, ls * 1.0);
+            a.rightCalf.rotation.x = Math.max(0, rs * 1.0);
+            // Bracos opostos das pernas
+            a.leftArm.rotation.x = -rs * 0.7;
+            a.rightArm.rotation.x = -ls * 0.7;
+            a.leftArm.rotation.z = -0.18;
+            a.rightArm.rotation.z = 0.18;
+            // Forearm flex 90° (postura de corrida)
+            a.leftForearm.rotation.x = 1.2;
+            a.rightForearm.rotation.x = 1.2;
+            a.leftHand.rotation.set(0, 0, 0);
+            a.rightHand.rotation.set(0, 0, 0);
+            // Bounce vertical
+            a.root.position.y = Math.abs(Math.sin(phase * 2)) * 0.04;
+            a.root.rotation.x = 0;
           }
           break;
+
         case "bike":
-          // Assault bike: pernas pedalam circulares + bracos seguram handles
+          // Assault bike: pedalada circular = hip rotation oscilante + knee flex
+          // sincronizado (joelho dobra quando perna SOBE no pedal)
           {
             const tt = performance.now() / 1000;
             const phase = tt * 5;
-            // Simula pedalada (rotation.x oscilante)
-            arms.leftLeg.rotation.x = 0.3 + Math.sin(phase) * 0.5;
-            arms.rightLeg.rotation.x = 0.3 + Math.sin(phase + Math.PI) * 0.5;
-            // Bracos pra frente segurando handle
-            arms.leftArm.rotation.x = -1.2 + Math.sin(phase) * 0.2;
-            arms.rightArm.rotation.x = -1.2 + Math.sin(phase + Math.PI) * 0.2;
-            arms.leftArm.rotation.z = -0.3;
-            arms.rightArm.rotation.z = 0.3;
-            arms.root.position.y = -0.1;
-            arms.root.rotation.x = 0;
+            const ls = Math.sin(phase);
+            const rs = Math.sin(phase + Math.PI);
+            // HIP: oscila entre -0.2 (perna pra trás abaixo) e 0.8 (perna pra frente alto)
+            a.leftLeg.rotation.x = 0.3 + ls * 0.5;
+            a.rightLeg.rotation.x = 0.3 + rs * 0.5;
+            // KNEE flex: máximo quando perna está alta (sin > 0)
+            a.leftCalf.rotation.x = 0.3 + Math.max(0, ls) * 1.0;
+            a.rightCalf.rotation.x = 0.3 + Math.max(0, rs) * 1.0;
+            // Braços: rotation.x -1.2 (frente segurando handles)
+            a.leftArm.rotation.x = -1.2;
+            a.rightArm.rotation.x = -1.2;
+            a.leftArm.rotation.z = -0.3;
+            a.rightArm.rotation.z = 0.3;
+            // Forearm: ligeiramente flexionado segurando guidão
+            a.leftForearm.rotation.x = 0.5;
+            a.rightForearm.rotation.x = 0.5;
+            a.leftHand.rotation.set(0, 0, 0);
+            a.rightHand.rotation.set(0, 0, 0);
+            // Sentado (root.y baixo)
+            a.root.position.y = -0.1;
+            a.root.rotation.x = -0.15; // leve lean pra frente
           }
           break;
+
         case "row":
-          // Rowing: alterna entre extensao (pernas estendidas + bracos puxados)
-          // e flexao (pernas dobradas + bracos estendidos)
+          // Rowing REAL: 4 fases (drive/finish/recovery/catch) representadas via rowP 0-1
+          // - rowP=0 (catch): pernas dobradas (knee max), torso inclinado pra frente,
+          //   bracos estendidos pra frente
+          // - rowP=1 (finish): pernas estendidas, torso lean back, bracos puxados ate peito
           {
             const tt = performance.now() / 1000;
-            const phase = tt * 1.6; // 1 stroke per ~1.5s
-            const rowP = (Math.sin(phase) + 1) / 2; // 0→1 oscillating
-            arms.leftLeg.rotation.x = rowP * 0.8;
-            arms.rightLeg.rotation.x = rowP * 0.8;
-            // Bracos: extendido quando pernas dobradas, puxado quando pernas estendidas
-            arms.leftArm.rotation.x = -1.2 + rowP * 1.4;
-            arms.rightArm.rotation.x = -1.2 + rowP * 1.4;
-            arms.leftArm.rotation.z = -0.18;
-            arms.rightArm.rotation.z = 0.18;
-            arms.root.position.y = -rowP * 0.15;
-            arms.root.rotation.x = -rowP * 0.15;
+            const phase = tt * 1.6;
+            const rowP = (Math.sin(phase) + 1) / 2;
+            // PERNAS: hip + knee
+            // catch: hip rotation -0.6 + knee flex 1.5
+            // finish: hip 0 + knee 0
+            a.leftLeg.rotation.x = -(1 - rowP) * 0.6;
+            a.rightLeg.rotation.x = -(1 - rowP) * 0.6;
+            a.leftCalf.rotation.x = (1 - rowP) * 1.5;
+            a.rightCalf.rotation.x = (1 - rowP) * 1.5;
+            // TORSO LEAN: catch (-0.4 inclinado pra frente) → finish (+0.2 lean back)
+            a.root.rotation.x = -(1 - rowP) * 0.4 + rowP * 0.2;
+            // BRAÇOS: catch (estendidos -1.5) → finish (puxados -0.3)
+            a.leftArm.rotation.x = -1.5 + rowP * 1.2;
+            a.rightArm.rotation.x = -1.5 + rowP * 1.2;
+            a.leftArm.rotation.z = -0.15;
+            a.rightArm.rotation.z = 0.15;
+            // FOREARM flex: catch (0 reto) → finish (1.6 dobrado puxando)
+            a.leftForearm.rotation.x = rowP * 1.6;
+            a.rightForearm.rotation.x = rowP * 1.6;
+            a.leftHand.rotation.set(0, 0, 0);
+            a.rightHand.rotation.set(0, 0, 0);
+            // Sentado, com leve slide do seat (root.position.x ou y)
+            a.root.position.y = -rowP * 0.15;
           }
           break;
         case "burpee":
-          // 4 fases: 0=stand, 0.25=squat, 0.5=plank, 0.75=jump
-          if (p < 0.2) {
-            // Standing
-            arms.root.position.y = 0;
-            arms.root.rotation.x = 0;
-            arms.leftArm.rotation.set(-0.08, 0, -0.18);
-            arms.rightArm.rotation.set(-0.08, 0, 0.18);
-            arms.leftLeg.rotation.x = 0;
-            arms.rightLeg.rotation.x = 0;
-          } else if (p < 0.45) {
-            // Squat down
-            arms.root.position.y = -0.6;
-            arms.root.rotation.x = 0;
-            arms.leftLeg.rotation.x = 0.8;
-            arms.rightLeg.rotation.x = 0.8;
-          } else if (p < 0.7) {
-            // Plank
-            arms.root.rotation.x = -Math.PI / 2;
-            arms.root.position.y = 0.2;
-            arms.leftLeg.rotation.x = 0;
-            arms.rightLeg.rotation.x = 0;
+          // 4 fases reais com articulações
+          if (p < 0.25) {
+            // 1. Standing
+            a.root.position.y = 0;
+            a.root.rotation.x = 0;
+            a.leftArm.rotation.set(-0.08, 0, -0.18);
+            a.rightArm.rotation.set(-0.08, 0, 0.18);
+            a.leftForearm.rotation.x = 0.18;
+            a.rightForearm.rotation.x = 0.18;
+            a.leftLeg.rotation.x = 0;
+            a.rightLeg.rotation.x = 0;
+            a.leftCalf.rotation.x = 0;
+            a.rightCalf.rotation.x = 0;
+          } else if (p < 0.5) {
+            // 2. Squat down (deep squat)
+            a.root.position.y = -0.6;
+            a.root.rotation.x = 0;
+            a.leftLeg.rotation.x = -0.5; // hip atras
+            a.rightLeg.rotation.x = -0.5;
+            a.leftCalf.rotation.x = 1.5; // joelhos super dobrados
+            a.rightCalf.rotation.x = 1.5;
+            a.leftArm.rotation.x = -0.6; // bracos pra frente apoiar no chao
+            a.rightArm.rotation.x = -0.6;
+            a.leftForearm.rotation.x = 0;
+            a.rightForearm.rotation.x = 0;
+          } else if (p < 0.75) {
+            // 3. Plank
+            a.root.rotation.x = -Math.PI / 2;
+            a.root.position.y = 0.4;
+            a.leftLeg.rotation.x = 0;
+            a.rightLeg.rotation.x = 0;
+            a.leftCalf.rotation.x = 0;
+            a.rightCalf.rotation.x = 0;
+            a.leftArm.rotation.x = 0;
+            a.rightArm.rotation.x = 0;
+            a.leftArm.rotation.z = -0.4;
+            a.rightArm.rotation.z = 0.4;
+            a.leftForearm.rotation.x = 0;
+            a.rightForearm.rotation.x = 0;
           } else {
-            // Jump up
-            arms.root.position.y = 0.5;
-            arms.root.rotation.x = 0;
-            arms.leftArm.rotation.x = -2.5;
-            arms.rightArm.rotation.x = -2.5;
-            arms.leftLeg.rotation.x = -0.3;
-            arms.rightLeg.rotation.x = -0.3;
+            // 4. Jump up (mãos pra cima)
+            a.root.position.y = 0.4;
+            a.root.rotation.x = 0;
+            a.leftArm.rotation.x = -Math.PI;
+            a.rightArm.rotation.x = -Math.PI;
+            a.leftArm.rotation.z = -0.3;
+            a.rightArm.rotation.z = 0.3;
+            a.leftForearm.rotation.x = 0;
+            a.rightForearm.rotation.x = 0;
+            a.leftLeg.rotation.x = -0.2;
+            a.rightLeg.rotation.x = -0.2;
+            a.leftCalf.rotation.x = 0;
+            a.rightCalf.rotation.x = 0;
           }
           break;
       }
@@ -2520,29 +2585,44 @@ export default function VirtualGym({
           }
         }
 
-        // Camera close-up: posição relativa ao equipamento
-        // Cada exercicio tem angulo de camera ideal pra ver o movimento
-        const lookY = eq.exercise === "pullup" ? 1.6 :
-                      eq.exercise === "deadlift" ? 0.8 :
-                      eq.exercise === "boxjump" ? 1.2 :
-                      1.0;
+        // Camera close-up por exercício (lateral pra lifts, frente pra pullup, etc)
+        const lookY =
+          eq.exercise === "pullup" ? 1.8 :
+          eq.exercise === "bench" ? 0.7 :
+          eq.exercise === "pushup" ? 0.5 :
+          eq.exercise === "deadlift" ? 0.8 :
+          eq.exercise === "boxjump" ? 1.0 :
+          eq.exercise === "row" ? 0.6 :
+          eq.exercise === "bike" ? 0.7 :
+          1.0;
         tmpCamTarget.set(eq.x, lookY, eq.z);
-        // Side view (perpendicular ao eixo do equipamento) pra exercicios continuous
-        // Front view pra explosivos (boxjump/kbswing/burpee)
-        let camDist = 3.2;
-        let sideAngle = Math.PI / 2; // perpendicular = side view
-        let camHeight = 1.4;
+        let camDist = 3.5;
+        let sideAngle = Math.PI / 2;
+        let camHeight = 1.2;
         if (eq.exercise === "pullup") {
-          sideAngle = 0; // de frente
-          camHeight = 1.8;
+          sideAngle = 0;
+          camHeight = 1.0;
+          camDist = 3.5;
+        } else if (eq.exercise === "bench") {
+          sideAngle = Math.PI / 2; // side view
+          camHeight = 1.6;
+          camDist = 3.0;
+        } else if (eq.exercise === "pushup") {
+          sideAngle = Math.PI / 2;
+          camHeight = 1.5;
           camDist = 3.0;
         } else if (eq.exercise === "boxjump" || eq.exercise === "burpee" || eq.exercise === "kbswing") {
-          sideAngle = Math.PI / 4; // 45° pra ver melhor
-          camHeight = 1.8;
+          sideAngle = Math.PI / 3;
+          camHeight = 1.6;
+          camDist = 3.5;
+        } else if (eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row") {
+          sideAngle = Math.PI / 3;
+          camHeight = 1.4;
+          camDist = 4.0;
         }
         tmpCamPos.set(
           eq.x + Math.sin(eq.rotY + sideAngle) * camDist,
-          lookY + camHeight,
+          Math.max(0.6, lookY + camHeight), // nunca abaixo de y=0.6
           eq.z + Math.cos(eq.rotY + sideAngle) * camDist
         );
         camera.position.lerp(tmpCamPos, 0.08);
@@ -2611,11 +2691,14 @@ export default function VirtualGym({
           0.22
         );
 
-        // Walk cycle: pernas e braços alternados
+        // Walk cycle: pernas e braços alternados (com knee flex realista)
         walkPhase += dt * 8;
         const swing = Math.sin(walkPhase) * 0.55;
         avatarParts.leftLeg.rotation.x = swing;
         avatarParts.rightLeg.rotation.x = -swing;
+        // Knee flex quando perna sobe (rotation.x positivo)
+        avatarParts.leftCalf.rotation.x = Math.max(0, swing) * 0.8;
+        avatarParts.rightCalf.rotation.x = Math.max(0, -swing) * 0.8;
         avatarParts.leftArm.rotation.x = -swing * 0.7;
         avatarParts.rightArm.rotation.x = swing * 0.7;
         // Pequeno bounce vertical durante a caminhada
@@ -2631,6 +2714,13 @@ export default function VirtualGym({
           avatarParts.rightLeg.rotation.x,
           0,
           0.1
+        );
+        // Knee tambem volta a 0
+        avatarParts.leftCalf.rotation.x = lerpAngle(
+          avatarParts.leftCalf.rotation.x, 0, 0.1
+        );
+        avatarParts.rightCalf.rotation.x = lerpAngle(
+          avatarParts.rightCalf.rotation.x, 0, 0.1
         );
         // Cycle 96: idle preserva pose natural (-0.08 = leve pra frente)
         // em vez de lerp pra 0 (braços rígidos pendulares).
