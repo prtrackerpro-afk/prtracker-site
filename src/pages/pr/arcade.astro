@@ -1,0 +1,55 @@
+---
+export const prerender = false;
+import "../../styles/global.css";
+import BottomNav from "../../components/pr/BottomNav.astro";
+import BarbellBounceGame from "../../components/pr/BarbellBounceGame";
+
+const athlete = Astro.locals.athlete;
+if (!athlete) return Astro.redirect("/pr/login");
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Fliperama · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto">
+      <a href="/pr/gym" class="text-sm text-navy-300 hover:text-white">← Voltar ao gym</a>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">FLIPERAMA</div>
+      <h1 class="font-display text-3xl tracking-tight text-white">Pega leve. É só diversão.</h1>
+      <p class="text-sm text-navy-300">3 jogos fitness-themed. Score não conta XP no app.</p>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 space-y-6">
+      <section class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-4 shadow-lg shadow-brand-lime/5">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime">JOGO 1</div>
+            <h2 class="font-display text-xl">Barbell Bounce</h2>
+            <p class="text-xs text-navy-300">Endless runner — pula barras, abaixa nas baixas.</p>
+          </div>
+        </div>
+        <BarbellBounceGame client:only="react" />
+      </section>
+
+      <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-navy-400">JOGO 2 — EM BREVE</div>
+        <h2 class="font-display text-xl text-navy-300">Protein Shaker</h2>
+        <p class="text-xs text-navy-400">Match-3 puzzle. Combine ingredientes pra montar shakes.</p>
+      </section>
+
+      <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-navy-400">JOGO 3 — EM BREVE</div>
+        <h2 class="font-display text-xl text-navy-300">WOD Sprint</h2>
+        <p class="text-xs text-navy-400">Battle royale fitness 8 jogadores. Multiplayer real-time.</p>
+      </section>
+    </main>
+
+    <BottomNav active="profile" />
+  </body>
+</html>
