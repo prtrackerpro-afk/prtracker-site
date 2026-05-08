@@ -7,6 +7,11 @@ const STORAGE_KEY = "pr_gym_avatar_v2";
 
 export type Gender = "fluid" | "male" | "female";
 export type HairStyle = "short" | "long" | "ponytail" | "bald";
+// V16.8 Fase 5 (cycles 455-476): acessórios do avatar
+export type Headwear = "none" | "cap" | "backwards" | "beanie";
+export type Eyewear = "none" | "aviator" | "sunglasses";
+export type Beard = "none" | "short" | "full" | "goatee";
+export type WristBand = "none" | "lime" | "red" | "blue" | "yellow";
 
 export interface AvatarPrefs {
   gender: Gender;
@@ -19,6 +24,11 @@ export interface AvatarPrefs {
   top: string;
   /** Cor do shorts. */
   shorts: string;
+  // V16.8 Fase 5 — acessórios opcionais (default "none")
+  headwear?: Headwear;
+  eyewear?: Eyewear;
+  beard?: Beard;
+  wristband?: WristBand;
 }
 
 export const SKIN_TONES = [

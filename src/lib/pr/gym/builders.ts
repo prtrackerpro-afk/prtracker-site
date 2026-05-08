@@ -558,6 +558,130 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
     }
   }
 
+  // V16.8 Fase 5 (cycles 455-477): acessórios do avatar
+  // Headwear (boné/touca)
+  const headwear = prefs.headwear ?? "none";
+  if (headwear !== "none") {
+    const capMat = new THREE.MeshStandardMaterial({
+      color: 0x01002A,
+      roughness: 0.7,
+    });
+    if (headwear === "cap" || headwear === "backwards") {
+      // Crown (cilindro achatado)
+      const crown = new THREE.Mesh(
+        new THREE.SphereGeometry(headR + 0.035, 24, 18, 0, Math.PI * 2, 0, Math.PI / 2.0),
+        capMat
+      );
+      crown.scale.set(1.0, 1.05, 1.0);
+      crown.position.y = headR * 0.4;
+      head.add(crown);
+      // Brim (aba)
+      const brim = new THREE.Mesh(
+        new THREE.BoxGeometry(headR * 1.6, 0.018, headR * 0.95),
+        capMat
+      );
+      const brimZ = headwear === "backwards" ? -headR * 0.7 : headR * 0.7;
+      brim.position.set(0, headR * 0.55, brimZ);
+      head.add(brim);
+      // Logo lime "PR"
+      const logoCanvas = document.createElement("canvas");
+      logoCanvas.width = 128;
+      logoCanvas.height = 128;
+      const lctx = logoCanvas.getContext("2d")!;
+      lctx.clearRect(0, 0, 128, 128);
+      lctx.fillStyle = "#D8FF2C";
+      lctx.font = "900 64px Archivo Black, Inter, sans-serif";
+      lctx.textAlign = "center";
+      lctx.textBaseline = "middle";
+      lctx.fillText("PR", 64, 64);
+      const logoTex = new THREE.CanvasTexture(logoCanvas);
+      logoTex.colorSpace = THREE.SRGBColorSpace;
+      const logo = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.10, 0.10),
+        new THREE.MeshBasicMaterial({ map: logoTex, transparent: true })
+      );
+      logo.position.set(0, headR * 0.58, headwear === "backwards" ? -headR * 0.99 : headR * 0.99);
+      logo.rotation.y = headwear === "backwards" ? Math.PI : 0;
+      head.add(logo);
+    } else if (headwear === "beanie") {
+      // Touca de lã (mesh emborrachado)
+      const beanie = new THREE.Mesh(
+        new THREE.SphereGeometry(headR + 0.045, 24, 18, 0, Math.PI * 2, 0, Math.PI / 1.6),
+        new THREE.MeshStandardMaterial({ color: 0x1a1a26, roughness: 0.9 })
+      );
+      beanie.scale.set(1.0, 1.1, 1.0);
+      beanie.position.y = headR * 0.35;
+      head.add(beanie);
+    }
+  }
+
+  // Eyewear (óculos)
+  const eyewear = prefs.eyewear ?? "none";
+  if (eyewear !== "none") {
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: 0x141420,
+      roughness: 0.4,
+      metalness: 0.6,
+    });
+    const lensColor = eyewear === "aviator" ? 0x6a8aaa : 0x141420;
+    const lensMat = new THREE.MeshStandardMaterial({
+      color: lensColor,
+      roughness: 0.15,
+      metalness: 0.6,
+      transparent: true,
+      opacity: 0.7,
+    });
+    // 2 lentes circulares
+    for (const sx of [-1, 1]) {
+      const lens = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.045, 0.045, 0.005, 16),
+        lensMat
+      );
+      lens.rotation.x = Math.PI / 2;
+      lens.position.set(sx * 0.06, headR * 0.06, headR * 1.01);
+      head.add(lens);
+      // Frame ring
+      const frame = new THREE.Mesh(
+        new THREE.TorusGeometry(0.045, 0.005, 6, 16),
+        frameMat
+      );
+      frame.position.set(sx * 0.06, headR * 0.06, headR * 1.01);
+      head.add(frame);
+    }
+    // Bridge (ponte do nariz)
+    const bridge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.005, 0.005),
+      frameMat
+    );
+    bridge.position.set(0, headR * 0.06, headR * 1.01);
+    head.add(bridge);
+  }
+
+  // Beard (barba)
+  const beard = prefs.beard ?? "none";
+  if (beard !== "none") {
+    const beardMat = new THREE.MeshStandardMaterial({
+      color: prefs.hair,
+      roughness: 0.95,
+    });
+    if (beard === "short" || beard === "full") {
+      const beardHair = new THREE.Mesh(
+        new THREE.SphereGeometry(headR + 0.005, 18, 12, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.4),
+        beardMat
+      );
+      beardHair.scale.set(1.0, beard === "full" ? 1.15 : 0.95, 1.0);
+      beardHair.position.set(0, 0, 0);
+      head.add(beardHair);
+    } else if (beard === "goatee") {
+      const goatee = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.07, 0.04),
+        beardMat
+      );
+      goatee.position.set(0, -headR * 0.55, headR * 0.8);
+      head.add(goatee);
+    }
+  }
+
   // Pescoço (cilindro cheio, conecta ao torso)
   const neck = new THREE.Mesh(
     new THREE.CylinderGeometry(0.075, 0.09, 0.08, 12),
@@ -661,6 +785,33 @@ export function buildAvatar(prefs: AvatarPrefs): AvatarParts {
   rightArm.rotation.z = 0.18;
   rightArm.rotation.x = -0.08;
   root.add(rightArm);
+
+  // V16.8 Fase 5 cycle 464-465: wristband em ambos os pulsos
+  const wristband = prefs.wristband ?? "none";
+  if (wristband !== "none") {
+    const wbColor: Record<string, number> = {
+      lime: 0xd8ff2c,
+      red: 0xda291c,
+      blue: 0x0057b8,
+      yellow: 0xffc72c,
+    };
+    const color = wbColor[wristband] ?? 0xd8ff2c;
+    const wbMat = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.9,
+      emissive: color,
+      emissiveIntensity: 0.15,
+    });
+    // Wristband em cada antebraço (mão fica em y=-0.66 do shoulder em y=1.62 → mão em y=0.96)
+    for (const arm of [leftArm, rightArm]) {
+      const wb = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.062, 0.062, 0.05, 12),
+        wbMat
+      );
+      wb.position.y = -0.58;
+      arm.add(wb);
+    }
+  }
 
   return { root, leftLeg, rightLeg, leftArm, rightArm, head };
 }
