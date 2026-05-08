@@ -2206,72 +2206,89 @@ export default function VirtualGym({
           a.rightCalf.rotation.x = 0;
           a.leftArm.rotation.x = -Math.PI / 2; // pra frente paralelo
           a.rightArm.rotation.x = -Math.PI / 2;
-          a.leftArm.rotation.z = -0.3;
-          a.rightArm.rotation.z = 0.3;
-          a.leftForearm.rotation.x = 1.5 - p * 1.4; // 90° dobrado → quase reto
-          a.rightForearm.rotation.x = 1.5 - p * 1.4;
+          a.leftArm.rotation.z = -0.45; // cotovelos abertos arc natural
+          a.rightArm.rotation.z = 0.45;
+          a.leftForearm.rotation.x = 1.6 - p * 1.6; // 90° (peito) → 0 (lockout)
+          a.rightForearm.rotation.x = 1.6 - p * 1.6;
           a.leftHand.rotation.set(0, 0, 0);
           a.rightHand.rotation.set(0, 0, 0);
           break;
 
         case "squat":
-          // Squat REAL: hip pivota pra trás + joelhos dobram + barbell back rack
-          // p=0 (bottom): pernas MUITO dobradas (knee 1.5 rad) + hip rotation 0.5 (atras)
-          // p=1 (standing): pernas retas, sem rotation
-          a.root.rotation.x = 0;
-          // root.y abaixa pq legs ficam dobradas (centro de massa cai)
-          a.root.position.y = -(1 - p) * 0.45;
-          // Hip rotation pra trás (avatar inclina ao agachar — sit back)
-          a.leftLeg.rotation.x = -(1 - p) * 0.6;
-          a.rightLeg.rotation.x = -(1 - p) * 0.6;
-          // Joelho flex (calf gira pra frente)
-          a.leftCalf.rotation.x = (1 - p) * 1.3;
-          a.rightCalf.rotation.x = (1 - p) * 1.3;
-          // Bracos pra cima e atras (segurando barra trapezios)
-          a.leftArm.rotation.x = -1.7;
-          a.rightArm.rotation.x = -1.7;
-          a.leftArm.rotation.z = -0.5;
-          a.rightArm.rotation.z = 0.5;
-          a.leftForearm.rotation.x = 1.4; // forearm flex segurando barra
-          a.rightForearm.rotation.x = 1.4;
-          a.leftHand.rotation.set(0, 0, 0);
-          a.rightHand.rotation.set(0, 0, 0);
+          // Back Squat REAL (high bar):
+          // p=1 standing: torso vertical, pernas retas, barra trapezios
+          // p=0 bottom: hip below parallel, joelhos rastreiam pés, torso lean -0.3
+          // Knee tracking: shin angle ~30° pra frente (calf rotation positive)
+          // Hip rotation negative (perna pra frente angulada porque sit back DESCE)
+          {
+            const depth = 1 - p;
+            // Torso lean leve pra frente (high bar mais vertical que low bar)
+            a.root.rotation.x = -depth * 0.3;
+            // Avatar baixa proporcional ao squat depth
+            a.root.position.y = -depth * 0.55;
+            // Hip rotation: perna FICA RETA absolute mas calf flex traz pés pra trás
+            // Convencao: negative leg.rotation.x = perna sobe na frente
+            // Quando squat, hip nao deve rotacionar muito — só calf flex faz a magia
+            a.leftLeg.rotation.x = -depth * 0.15;
+            a.rightLeg.rotation.x = -depth * 0.15;
+            // Knee flex BIG (calf rotaciona pra frente, joelho dobra)
+            a.leftCalf.rotation.x = depth * 1.6;
+            a.rightCalf.rotation.x = depth * 1.6;
+            // BRACOS: bem pra cima e pra trás (segurando barra HIGH BAR)
+            // rotation.x = -PI = direção pra cima
+            // rotation.z aberto: ombros largos
+            a.leftArm.rotation.x = -Math.PI;
+            a.rightArm.rotation.x = -Math.PI;
+            a.leftArm.rotation.z = -0.6;
+            a.rightArm.rotation.z = 0.6;
+            // Forearm: dobrado segurando barra (cotovelos pra fora)
+            a.leftForearm.rotation.x = 1.3;
+            a.rightForearm.rotation.x = 1.3;
+            a.leftHand.rotation.set(0, 0, 0);
+            a.rightHand.rotation.set(0, 0, 0);
+          }
           break;
 
         case "deadlift":
-          // Deadlift REAL: hip baixo + torso muito inclinado + joelhos pouco dobrados +
-          // bracos retos pra baixo. p=1 = lockout standing
-          // Como torso lean nao tem bone, simulamos via root.rotation.x parcial
-          // mas isso gira tudo. Solucao: deixar leg/arm/calf compensar.
-          // Hip rotation: pra trás (deadlift hip hinge)
-          a.leftLeg.rotation.x = -(1 - p) * 0.8;
-          a.rightLeg.rotation.x = -(1 - p) * 0.8;
-          // Joelhos pouco dobrados no deadlift (mais do que stiff, menos que squat)
-          a.leftCalf.rotation.x = (1 - p) * 0.6;
-          a.rightCalf.rotation.x = (1 - p) * 0.6;
-          // Avatar abaixa (proporcional)
-          a.root.position.y = -(1 - p) * 0.35;
-          // Lean torso: simulado via root.rotation.x (gira tudo, mas
-          // bracos compensam ficando retos pra baixo no espaco mundo)
-          a.root.rotation.x = -(1 - p) * 0.8;
-          // Bracos: rotation.x compensa o lean do root pra ficar PRA BAIXO mundo
-          a.leftArm.rotation.x = (1 - p) * 0.8; // compensa lean
-          a.rightArm.rotation.x = (1 - p) * 0.8;
-          a.leftArm.rotation.z = -0.05;
-          a.rightArm.rotation.z = 0.05;
-          a.leftForearm.rotation.x = 0; // antebracos retos
-          a.rightForearm.rotation.x = 0;
-          a.leftHand.rotation.set(0, 0, 0);
-          a.rightHand.rotation.set(0, 0, 0);
+          // Deadlift conventional REAL:
+          // p=1 lockout: standing reto, ombros atrás dos quadris, braços pra baixo
+          // p=0 setup: hip below shoulders/above knees, torso lean -0.7 (~40°),
+          //   shins ~10° pra frente (calf 0.3), braços retos puxando barra
+          {
+            const depth = 1 - p;
+            // Torso lean: HIP HINGE (não squat). Lean dramatico pra frente
+            a.root.rotation.x = -depth * 0.7;
+            // Avatar abaixa pouco (deadlift é mais hip hinge que squat)
+            a.root.position.y = -depth * 0.25;
+            // Hip rotation: pernas continuam retas pro chão (calf compensa lean)
+            a.leftLeg.rotation.x = depth * 0.7; // compensa root lean
+            a.rightLeg.rotation.x = depth * 0.7;
+            // Calf flex: pouco (~30°), shins quase verticais
+            a.leftCalf.rotation.x = depth * 0.3;
+            a.rightCalf.rotation.x = depth * 0.3;
+            // BRACOS: precisam ficar PRA BAIXO no mundo apesar do torso lean
+            // root.rotation.x = -0.7 inclina tudo. Braços precisam compensar
+            // segurando barra ABAIXO do corpo
+            a.leftArm.rotation.x = depth * 0.7; // compensa root lean = vertical mundo
+            a.rightArm.rotation.x = depth * 0.7;
+            a.leftArm.rotation.z = -0.05;
+            a.rightArm.rotation.z = 0.05;
+            // Forearm: 100% reto (segurando barra mid-foot)
+            a.leftForearm.rotation.x = 0;
+            a.rightForearm.rotation.x = 0;
+            a.leftHand.rotation.set(0, 0, 0);
+            a.rightHand.rotation.set(0, 0, 0);
+          }
           break;
         case "pullup":
-          // Pull-up REAL: avatar pendurado, FOREARM flex puxa o corpo pra cima
-          // Pull-up bar do power rack está em y=2.58 (H-0.02)
-          // Avatar mãos em y_world = root.y + 1.62 + 0.34 + 0.30 = root.y + 2.26
-          // Pra mãos ficarem na bar (2.58): root.y = 2.58 - 2.26 = 0.32 (down)
-          // Topo (queixo na bar): root.y = 0.55 (sobe 0.23)
+          // Pull-up REAL: avatar pendurado, mãos AGARRAM a barra fixa (acima)
+          // Forearm flex puxa o corpo PRA CIMA até queixo passar a barra
+          // Pull-up bar power rack y=2.58
+          // Avatar height: root + arm + forearm + hand = root.y + 1.62 + 0.34 + 0.30 = root.y+2.26
+          // Down (p=0): mãos na barra, corpo pendurado: root.y = 0.32 (mãos em 2.58)
+          // Up (p=1): queixo na barra (head em 2.58, root.y + 2.0 = 2.58 → root.y = 0.58)
           a.root.rotation.x = 0;
-          a.root.position.y = 0.3 + p * 0.4;
+          a.root.position.y = 0.32 + p * 0.26;
           // Bracos pra cima (rotation.x = -PI = vertical apontando pra cima)
           a.leftArm.rotation.x = -Math.PI;
           a.rightArm.rotation.x = -Math.PI;
