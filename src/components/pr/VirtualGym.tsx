@@ -1930,7 +1930,13 @@ export default function VirtualGym({
         exerciseHudEl.classList.remove("hidden");
         if (exerciseHudTitleEl) exerciseHudTitleEl.textContent = EXERCISE_LABELS[eq.exercise] ?? eq.exercise;
         if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = "0";
+        if (exerciseHudActionEl) {
+          const isTap = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
+          exerciseHudActionEl.textContent = isTap ? "TAP · ESPAÇO" : "SEGURA · ESPAÇO";
+        }
       }
+      burpeePhase = 0;
+      lastTapTime = 0;
     }
 
     function disengageEquipment() {
@@ -1941,18 +1947,23 @@ export default function VirtualGym({
       if (exerciseReps > prev) {
         localStorage.setItem("pr_play_best_" + eq.exercise, String(exerciseReps));
       }
-      // Move avatar 1m pra frente do equipamento (sai)
+      // Move avatar 1.6m pra frente do equipamento (sai)
       avatarParts.root.position.x += Math.sin(eq.rotY) * 1.6;
       avatarParts.root.position.z += Math.cos(eq.rotY) * 1.6;
-      // Reset pose
-      avatarParts.leftArm.rotation.set(0, 0, -0.18);
-      avatarParts.rightArm.rotation.set(0, 0, 0.18);
-      avatarParts.leftArm.rotation.x = -0.08;
-      avatarParts.rightArm.rotation.x = -0.08;
+      // Reset COMPLETO da pose
+      avatarParts.root.position.y = 0;
+      avatarParts.root.rotation.x = 0;
+      avatarParts.leftArm.rotation.set(-0.08, 0, -0.18);
+      avatarParts.rightArm.rotation.set(-0.08, 0, 0.18);
       avatarParts.leftLeg.rotation.set(0, 0, 0);
       avatarParts.rightLeg.rotation.set(0, 0, 0);
       engagedEquipment = null;
+      exerciseProgress = 0;
+      exerciseReps = 0;
+      exerciseWasUp = false;
+      exercisePressed = false;
       if (exerciseHudEl) exerciseHudEl.classList.add("hidden");
+      if (promptEl) promptEl.classList.add("hidden"); // Hide prompt enquanto câmera volta
     }
 
     // Click no prompt → engage
@@ -1964,8 +1975,38 @@ export default function VirtualGym({
     if (promptEl) promptEl.addEventListener("click", onPromptClick);
     if (exerciseHudExitEl) exerciseHudExitEl.addEventListener("click", disengageEquipment);
 
+    let lastTapTime = 0;
+    let burpeePhase = 0; // 0=stand, 1=squat, 2=plank, 3=jump (volta a 0 = +1 rep)
     function pressExercise() {
-      if (engagedEquipment) exercisePressed = true;
+      if (!engagedEquipment) return;
+      const eq = engagedEquipment;
+      if (eq.exercise === "burpee") {
+        // 4-phase tap
+        burpeePhase = (burpeePhase + 1) % 4;
+        if (burpeePhase === 0) {
+          exerciseReps++;
+          if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
+        }
+        // Define progress based on phase pra animação
+        exerciseProgress = burpeePhase / 4;
+      } else if (eq.exercise === "boxjump") {
+        exerciseProgress = 1;
+        exerciseReps++;
+        if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
+        setTimeout(() => { exerciseProgress = 0; }, 600);
+      } else if (eq.exercise === "kbswing") {
+        const now = performance.now();
+        const delta = now - lastTapTime;
+        lastTapTime = now;
+        if (delta > 500 && delta < 1500) {
+          exerciseReps++;
+          if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
+        }
+        exerciseProgress = 1;
+        setTimeout(() => { exerciseProgress = 0; }, 400);
+      } else {
+        exercisePressed = true;
+      }
     }
     function releaseExercise() {
       exercisePressed = false;
@@ -2000,86 +2041,127 @@ export default function VirtualGym({
     window.addEventListener("keyup", onExerciseKeyUp);
 
     function animateAvatarForExercise(exercise: string, p: number) {
-      // p = 0 (rest/down) → 1 (peak/up)
+      // p = 0 (rest/start posicao) → 1 (peak/end posicao)
       const arms = avatarParts;
       switch (exercise) {
         case "bench":
-          // Avatar lying down equivalent — braços empurram pra cima
-          // Como avatar está em pé, simulamos: braços rotation.x lerp pra cima
-          arms.leftArm.rotation.x = -1.2 + p * 0.3; // braços levantados
-          arms.rightArm.rotation.x = -1.2 + p * 0.3;
-          arms.leftArm.rotation.z = -0.3;
-          arms.rightArm.rotation.z = 0.3;
+          // Bench press de PE (representação simplificada — avatar em pose
+          // de empurrar barra pra cima na frente)
+          // Bracos sobem (rotation.x: -2.0 = totalmente levantados, -0.8 = no peito)
+          arms.leftArm.rotation.x = -0.8 - p * 1.2;
+          arms.rightArm.rotation.x = -0.8 - p * 1.2;
+          arms.leftArm.rotation.z = -0.4;
+          arms.rightArm.rotation.z = 0.4;
+          arms.root.position.y = 0;
           break;
         case "squat":
-          // Pernas dobram (pseudo: rotation.x das pernas)
-          arms.leftLeg.rotation.x = -p * 0.6 + 0.3;
-          arms.rightLeg.rotation.x = -p * 0.6 + 0.3;
-          // Avatar bounce vertical
-          arms.root.position.y = -0.3 * (1 - p);
-          // Bracos pra trás (segurando barra back rack)
-          arms.leftArm.rotation.x = -1.5;
-          arms.rightArm.rotation.x = -1.5;
-          arms.leftArm.rotation.z = -0.5;
-          arms.rightArm.rotation.z = 0.5;
+          // Squat: avatar abaixa (root.y) + pernas dobram + bracos atras nuca
+          arms.leftLeg.rotation.x = (1 - p) * 0.7;
+          arms.rightLeg.rotation.x = (1 - p) * 0.7;
+          // Avatar abaixa quando p=0 (squat down) — mas como pernas estao DOBRADAS,
+          // o avatar fica abaixo pelos joelhos. Ajustamos position.y NEGATIVO no squat
+          arms.root.position.y = -(1 - p) * 0.5;
+          // Bracos atras (segurando barra) — braços pra cima e pra trás
+          arms.leftArm.rotation.x = -1.4;
+          arms.rightArm.rotation.x = -1.4;
+          arms.leftArm.rotation.z = -0.6;
+          arms.rightArm.rotation.z = 0.6;
+          arms.root.rotation.x = 0;
           break;
         case "deadlift":
-          // Pernas dobram + torso inclinado
-          arms.leftLeg.rotation.x = 0.3 - p * 0.3;
-          arms.rightLeg.rotation.x = 0.3 - p * 0.3;
-          arms.root.position.y = -0.2 * (1 - p);
-          // Bracos retos pra baixo
+          // Deadlift: torso inclina + pernas dobram + bracos retos pra baixo
+          // p=0: hip baixo + torso quase paralelo ao chao
+          // p=1: standing reto
+          arms.leftLeg.rotation.x = (1 - p) * 0.5;
+          arms.rightLeg.rotation.x = (1 - p) * 0.5;
+          arms.root.position.y = -(1 - p) * 0.35;
+          // Inclina root (compensa torso) — quando p=0, torso bem inclinado
+          arms.root.rotation.x = -(1 - p) * 0.5;
+          // Bracos retos pra baixo (segurando barra)
           arms.leftArm.rotation.x = 0;
           arms.rightArm.rotation.x = 0;
           arms.leftArm.rotation.z = -0.05;
           arms.rightArm.rotation.z = 0.05;
-          // Inclina o root (não tem torso bone, então root.rotation.x compensa)
-          arms.root.rotation.x = -(1 - p) * 0.4;
           break;
         case "pullup":
-          // Avatar sobe verticalmente (root.position.y) + braços dobram
-          arms.root.position.y = p * 0.4;
-          arms.leftArm.rotation.x = -2.5; // braços pra cima
-          arms.rightArm.rotation.x = -2.5;
-          arms.leftArm.rotation.z = -0.2;
-          arms.rightArm.rotation.z = 0.2;
+          // Pullup: avatar sobe vertical + bracos dobram (rotation.x mais negativo = subindo)
+          arms.root.position.y = 1.0 + p * 0.4; // pendurado em ~1m, sobe ate 1.4m
+          // Bracos pra cima (segurando barra)
+          arms.leftArm.rotation.x = -2.7 + p * 0.4;
+          arms.rightArm.rotation.x = -2.7 + p * 0.4;
+          arms.leftArm.rotation.z = -0.3;
+          arms.rightArm.rotation.z = 0.3;
+          // Pernas dobradas
+          arms.leftLeg.rotation.x = 0.4;
+          arms.rightLeg.rotation.x = 0.4;
+          arms.root.rotation.x = 0;
           break;
         case "pushup":
-          // Avatar mantém posição horizontal — só animamos vertical com p
-          arms.root.position.y = -1.2 + p * 0.3;
+          // Pushup: avatar horizontal (rotation.x = -90°)
+          // p=0: chest no chão (root.y baixo)
+          // p=1: bracos extendidos (root.y mais alto)
           arms.root.rotation.x = -Math.PI / 2;
+          arms.root.position.y = 0.2 + p * 0.25; // 0.2m chao -> 0.45m extendido
           arms.leftArm.rotation.x = 0;
           arms.rightArm.rotation.x = 0;
+          // Pernas estendidas
+          arms.leftLeg.rotation.x = 0;
+          arms.rightLeg.rotation.x = 0;
           break;
         case "boxjump":
-          // Pula vertical
+          // Box jump: pula 0.7m, pernas dobram
           arms.root.position.y = p * 0.7;
-          arms.leftLeg.rotation.x = -p * 0.4;
-          arms.rightLeg.rotation.x = -p * 0.4;
-          arms.leftArm.rotation.x = -p * 0.8;
-          arms.rightArm.rotation.x = -p * 0.8;
+          arms.leftLeg.rotation.x = -p * 0.5;
+          arms.rightLeg.rotation.x = -p * 0.5;
+          arms.leftArm.rotation.x = -p * 1.2;
+          arms.rightArm.rotation.x = -p * 1.2;
+          arms.leftArm.rotation.z = -0.3;
+          arms.rightArm.rotation.z = 0.3;
+          arms.root.rotation.x = 0;
           break;
         case "kbswing":
-          // Bracos balançam de baixo (entre as pernas) pra peito
-          // p=0: braços pra baixo+atrás (entre pernas)
-          // p=1: braços horizontal frente (peito)
-          arms.leftArm.rotation.x = 0.6 - p * 1.2;
-          arms.rightArm.rotation.x = 0.6 - p * 1.2;
+          // KB swing: torso inclinado quando p=0, ereto p=1
+          // Bracos balançam de baixo (0.6) ate frente (-0.7)
+          arms.leftArm.rotation.x = 0.7 - p * 1.4;
+          arms.rightArm.rotation.x = 0.7 - p * 1.4;
           arms.leftArm.rotation.z = -0.05;
           arms.rightArm.rotation.z = 0.05;
-          // Torso inclinado quando p baixo
-          arms.root.rotation.x = -(1 - p) * 0.3;
+          arms.root.rotation.x = -(1 - p) * 0.35;
+          arms.root.position.y = 0;
+          // Pernas leve dobra
+          arms.leftLeg.rotation.x = (1 - p) * 0.15;
+          arms.rightLeg.rotation.x = (1 - p) * 0.15;
           break;
         case "burpee":
-          // Não tem fase contínua, é tap-driven. Por simplicidade: alterna entre pose
-          if (p > 0.5) {
-            arms.root.position.y = 0.3;
+          // 4 fases: 0=stand, 0.25=squat, 0.5=plank, 0.75=jump
+          if (p < 0.2) {
+            // Standing
+            arms.root.position.y = 0;
+            arms.root.rotation.x = 0;
+            arms.leftArm.rotation.set(-0.08, 0, -0.18);
+            arms.rightArm.rotation.set(-0.08, 0, 0.18);
+            arms.leftLeg.rotation.x = 0;
+            arms.rightLeg.rotation.x = 0;
+          } else if (p < 0.45) {
+            // Squat down
+            arms.root.position.y = -0.6;
+            arms.root.rotation.x = 0;
+            arms.leftLeg.rotation.x = 0.8;
+            arms.rightLeg.rotation.x = 0.8;
+          } else if (p < 0.7) {
+            // Plank
+            arms.root.rotation.x = -Math.PI / 2;
+            arms.root.position.y = 0.2;
+            arms.leftLeg.rotation.x = 0;
+            arms.rightLeg.rotation.x = 0;
+          } else {
+            // Jump up
+            arms.root.position.y = 0.5;
+            arms.root.rotation.x = 0;
             arms.leftArm.rotation.x = -2.5;
             arms.rightArm.rotation.x = -2.5;
-          } else {
-            arms.root.position.y = -0.5;
-            arms.leftArm.rotation.x = 0;
-            arms.rightArm.rotation.x = 0;
+            arms.leftLeg.rotation.x = -0.3;
+            arms.rightLeg.rotation.x = -0.3;
           }
           break;
       }
@@ -2130,12 +2212,30 @@ export default function VirtualGym({
         animateAvatarForExercise(eq.exercise, exerciseProgress);
 
         // Camera close-up: posição relativa ao equipamento
-        tmpCamTarget.set(eq.x, 1.2, eq.z);
-        tmpCamPos.copy(tmpCamTarget);
-        // Offset baseado na rotação do equipamento — câmera fica diagonal
-        tmpCamPos.x += Math.sin(eq.rotY + Math.PI / 2) * 2.8;
-        tmpCamPos.y += 0.6;
-        tmpCamPos.z += Math.cos(eq.rotY + Math.PI / 2) * 2.8;
+        // Cada exercicio tem angulo de camera ideal pra ver o movimento
+        const lookY = eq.exercise === "pullup" ? 1.6 :
+                      eq.exercise === "deadlift" ? 0.8 :
+                      eq.exercise === "boxjump" ? 1.2 :
+                      1.0;
+        tmpCamTarget.set(eq.x, lookY, eq.z);
+        // Side view (perpendicular ao eixo do equipamento) pra exercicios continuous
+        // Front view pra explosivos (boxjump/kbswing/burpee)
+        let camDist = 3.2;
+        let sideAngle = Math.PI / 2; // perpendicular = side view
+        let camHeight = 1.4;
+        if (eq.exercise === "pullup") {
+          sideAngle = 0; // de frente
+          camHeight = 1.8;
+          camDist = 3.0;
+        } else if (eq.exercise === "boxjump" || eq.exercise === "burpee" || eq.exercise === "kbswing") {
+          sideAngle = Math.PI / 4; // 45° pra ver melhor
+          camHeight = 1.8;
+        }
+        tmpCamPos.set(
+          eq.x + Math.sin(eq.rotY + sideAngle) * camDist,
+          lookY + camHeight,
+          eq.z + Math.cos(eq.rotY + sideAngle) * camDist
+        );
         camera.position.lerp(tmpCamPos, 0.08);
         camera.lookAt(tmpCamTarget);
 
