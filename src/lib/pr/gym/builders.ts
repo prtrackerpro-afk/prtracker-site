@@ -320,6 +320,15 @@ export function buildCinemaRoom(athleteName: string): THREE.Group {
       );
       line.position.set(sx, sy + 1.07, sz - 0.18);
       g.add(line);
+      // V16.8 cycle 11: Cup holder lateral (cilindro escuro)
+      if (s < SEAT_PER_ROW - 1) {
+        const cupHolder = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12),
+          new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.6 })
+        );
+        cupHolder.position.set(sx + SEAT_SPACING_X / 2, sy + 0.55, sz);
+        g.add(cupHolder);
+      }
     }
   }
 
@@ -357,6 +366,362 @@ export function buildCinemaRoom(athleteName: string): THREE.Group {
   sign.position.set(0, 2.85, ROOM_D / 2 - 0.05);
   sign.rotation.y = Math.PI;
   g.add(sign);
+
+  // V16.8 cycle 12: Posters laterais "Coming Soon" + "PR of the Month"
+  for (let i = 0; i < 2; i++) {
+    const posterC = document.createElement("canvas");
+    posterC.width = 256;
+    posterC.height = 384;
+    const pctx2 = posterC.getContext("2d")!;
+    pctx2.fillStyle = i === 0 ? "#01002A" : "#0a0a14";
+    pctx2.fillRect(0, 0, 256, 384);
+    pctx2.strokeStyle = "#d8ff2c";
+    pctx2.lineWidth = 4;
+    pctx2.strokeRect(6, 6, 244, 372);
+    pctx2.fillStyle = "#d8ff2c";
+    pctx2.font = "bold 26px sans-serif";
+    pctx2.textAlign = "center";
+    pctx2.fillText(i === 0 ? "PROXIMO PR" : "RECORDISTA", 128, 80);
+    pctx2.fillText(i === 0 ? "EM BREVE" : "DO MES", 128, 115);
+    pctx2.fillStyle = "#ffffff";
+    pctx2.font = "bold 130px sans-serif";
+    pctx2.fillText(i === 0 ? "?" : "🏆", 128, 240);
+    pctx2.fillStyle = "#d8ff2c";
+    pctx2.font = "16px sans-serif";
+    pctx2.fillText("PR TRACKER", 128, 340);
+    const pTex = new THREE.CanvasTexture(posterC);
+    pTex.colorSpace = THREE.SRGBColorSpace;
+    const poster = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.6, 0.9),
+      new THREE.MeshBasicMaterial({ map: pTex })
+    );
+    poster.position.set(i === 0 ? -ROOM_W / 2 + 0.06 : ROOM_W / 2 - 0.06, 1.5, ROOM_D / 2 - 1.5);
+    poster.rotation.y = i === 0 ? Math.PI / 2 : -Math.PI / 2;
+    g.add(poster);
+  }
+
+  // V16.8 cycle 13: Concession stand decorativo (caixa de pipoca)
+  const popcorn = new THREE.Mesh(
+    new THREE.BoxGeometry(0.25, 0.3, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0xda291c, roughness: 0.7 })
+  );
+  popcorn.position.set(-2.5, 0.15, ROOM_D / 2 - 0.4);
+  g.add(popcorn);
+  // Listras brancas
+  const popcornCanvas = document.createElement("canvas");
+  popcornCanvas.width = 64;
+  popcornCanvas.height = 64;
+  const ppctx = popcornCanvas.getContext("2d")!;
+  for (let s = 0; s < 8; s++) {
+    ppctx.fillStyle = s % 2 === 0 ? "#da291c" : "#ffffff";
+    ppctx.fillRect(s * 8, 0, 8, 64);
+  }
+  const popcornTex = new THREE.CanvasTexture(popcornCanvas);
+  popcornTex.colorSpace = THREE.SRGBColorSpace;
+  const popcornFront = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.25, 0.3),
+    new THREE.MeshBasicMaterial({ map: popcornTex })
+  );
+  popcornFront.position.set(-2.5, 0.15, ROOM_D / 2 - 0.31);
+  g.add(popcornFront);
+  // Pipoca em cima
+  for (let p = 0; p < 8; p++) {
+    const kernel = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 6, 4),
+      new THREE.MeshStandardMaterial({ color: 0xfff8c8, roughness: 0.9 })
+    );
+    kernel.position.set(
+      -2.5 + (Math.random() - 0.5) * 0.18,
+      0.32 + (Math.random()) * 0.05,
+      ROOM_D / 2 - 0.4 + (Math.random() - 0.5) * 0.12
+    );
+    g.add(kernel);
+  }
+
+  return g;
+}
+
+// V16.8 PR2 cycles 8-13: Sala de Fliperama 6×4×3m anexa ao cinema
+// 3 cabines arcade + neon ribbons + disco ball + posters retro
+export function buildArcadeRoom(): THREE.Group {
+  const g = new THREE.Group();
+  const ROOM_W = 6;
+  const ROOM_D = 4;
+  const ROOM_H = 3;
+
+  // Floor xadrez preto/branco classico de fliperama
+  const floorCanvas = document.createElement("canvas");
+  floorCanvas.width = 256;
+  floorCanvas.height = 256;
+  const fctx = floorCanvas.getContext("2d")!;
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      fctx.fillStyle = (i + j) % 2 === 0 ? "#0a0a14" : "#1a1a26";
+      fctx.fillRect(i * 32, j * 32, 32, 32);
+    }
+  }
+  const floorTex = new THREE.CanvasTexture(floorCanvas);
+  floorTex.colorSpace = THREE.SRGBColorSpace;
+  floorTex.wrapS = THREE.RepeatWrapping;
+  floorTex.wrapT = THREE.RepeatWrapping;
+  floorTex.repeat.set(3, 2);
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(ROOM_W, ROOM_D),
+    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.7 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  g.add(floor);
+
+  // Paredes neon roxo escuro
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: 0x1a0a2a,
+    roughness: 0.85,
+  });
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_H), wallMat);
+  back.position.set(0, ROOM_H / 2, -ROOM_D / 2);
+  g.add(back);
+  const left = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_D, ROOM_H), wallMat);
+  left.position.set(-ROOM_W / 2, ROOM_H / 2, 0);
+  left.rotation.y = Math.PI / 2;
+  g.add(left);
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_D, ROOM_H), wallMat);
+  right.position.set(ROOM_W / 2, ROOM_H / 2, 0);
+  right.rotation.y = -Math.PI / 2;
+  g.add(right);
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(ROOM_W, ROOM_D),
+    new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.9 })
+  );
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = ROOM_H;
+  g.add(ceiling);
+
+  // Neon ribbons (lime + magenta) no chao + paredes
+  const limeMat = new THREE.MeshBasicMaterial({ color: 0xd8ff2c });
+  const magentaMat = new THREE.MeshBasicMaterial({ color: 0xff44aa });
+  // Floor strip
+  const limeStrip = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 0.4, 0.04, 0.06), limeMat);
+  limeStrip.position.set(0, 0.02, ROOM_D / 2 - 0.2);
+  g.add(limeStrip);
+  // Wall strips
+  for (const sx of [-ROOM_W / 2 + 0.05, ROOM_W / 2 - 0.05]) {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.04, ROOM_H - 0.4, 0.04), magentaMat);
+    stripe.position.set(sx, ROOM_H / 2, 0);
+    g.add(stripe);
+  }
+
+  // Ceiling ribbon
+  const ceilStrip = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 0.4, 0.04, 0.06), limeMat);
+  ceilStrip.position.set(0, ROOM_H - 0.05, 0);
+  g.add(ceilStrip);
+
+  // === 3 CABINES ARCADE ===
+  const cabineNames = ["BARBELL\nBOUNCE", "PROTEIN\nSHAKER", "WOD\nSPRINT"];
+  const cabineColors = [0xd8ff2c, 0xff44aa, 0x0057b8];
+  for (let i = 0; i < 3; i++) {
+    const cab = new THREE.Group();
+    cab.position.set(-1.6 + i * 1.6, 0, -ROOM_D / 2 + 0.55);
+
+    // Caixa principal (1.8m alta)
+    const box = new THREE.Mesh(
+      new THREE.BoxGeometry(1.0, 1.8, 0.7),
+      new THREE.MeshStandardMaterial({
+        color: cabineColors[i],
+        roughness: 0.5,
+        emissive: cabineColors[i],
+        emissiveIntensity: 0.15,
+      })
+    );
+    box.position.y = 0.9;
+    box.castShadow = true;
+    cab.add(box);
+
+    // Tela CRT no topo (60×45cm)
+    const screenCanvas = document.createElement("canvas");
+    screenCanvas.width = 256;
+    screenCanvas.height = 192;
+    const sctx = screenCanvas.getContext("2d")!;
+    sctx.fillStyle = "#01002A";
+    sctx.fillRect(0, 0, 256, 192);
+    sctx.fillStyle = "#" + (cabineColors[i] ?? 0xd8ff2c).toString(16).padStart(6, "0");
+    sctx.font = "bold 28px sans-serif";
+    sctx.textAlign = "center";
+    sctx.textBaseline = "middle";
+    const lines = (cabineNames[i] ?? "").split("\n");
+    lines.forEach((line, idx) => {
+      sctx.fillText(line, 128, 70 + idx * 36);
+    });
+    sctx.fillStyle = "#ffffff";
+    sctx.font = "12px sans-serif";
+    sctx.fillText("INSERT COIN", 128, 160);
+    const screenTex = new THREE.CanvasTexture(screenCanvas);
+    screenTex.colorSpace = THREE.SRGBColorSpace;
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.6, 0.45),
+      new THREE.MeshBasicMaterial({ map: screenTex })
+    );
+    screen.position.set(0, 1.3, 0.36);
+    cab.add(screen);
+
+    // Marquee superior com nome do jogo
+    const marqueeCanvas = document.createElement("canvas");
+    marqueeCanvas.width = 256;
+    marqueeCanvas.height = 64;
+    const mctx = marqueeCanvas.getContext("2d")!;
+    mctx.fillStyle = "#01002A";
+    mctx.fillRect(0, 0, 256, 64);
+    mctx.fillStyle = "#D8FF2C";
+    mctx.font = "bold 22px sans-serif";
+    mctx.textAlign = "center";
+    mctx.textBaseline = "middle";
+    mctx.fillText(lines[0] ?? "", 128, 32);
+    const marqueeTex = new THREE.CanvasTexture(marqueeCanvas);
+    marqueeTex.colorSpace = THREE.SRGBColorSpace;
+    const marquee = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.85, 0.18),
+      new THREE.MeshBasicMaterial({ map: marqueeTex })
+    );
+    marquee.position.set(0, 1.7, 0.36);
+    cab.add(marquee);
+
+    // Control panel (joystick + 4 botões)
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.95, 0.05, 0.35),
+      new THREE.MeshStandardMaterial({ color: 0x141420, roughness: 0.6 })
+    );
+    panel.position.set(0, 0.95, 0.34);
+    cab.add(panel);
+    // Joystick
+    const stickBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.05, 0.04, 16),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14 })
+    );
+    stickBase.position.set(-0.25, 0.99, 0.34);
+    cab.add(stickBase);
+    const stick = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.1, 8),
+      new THREE.MeshStandardMaterial({ color: 0xdfe2e8, metalness: 0.7 })
+    );
+    stick.position.set(-0.25, 1.05, 0.34);
+    cab.add(stick);
+    const stickBall = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xda291c })
+    );
+    stickBall.position.set(-0.25, 1.11, 0.34);
+    cab.add(stickBall);
+    // 4 botoes coloridos
+    const btnColors = [0xd8ff2c, 0xda291c, 0x0057b8, 0xffc72c];
+    for (let b = 0; b < 4; b++) {
+      const btn = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.025, 0.012, 12),
+        new THREE.MeshStandardMaterial({
+          color: btnColors[b],
+          emissive: btnColors[b],
+          emissiveIntensity: 0.4,
+        })
+      );
+      btn.position.set(0.05 + (b % 2) * 0.1, 0.99, 0.3 + Math.floor(b / 2) * 0.08);
+      cab.add(btn);
+    }
+    // Coin slot
+    const coinSlot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.02, 0.01),
+      new THREE.MeshStandardMaterial({ color: 0x14111e })
+    );
+    coinSlot.position.set(0.3, 0.7, 0.35);
+    cab.add(coinSlot);
+
+    // Speakers laterais
+    for (const sx of [-0.45, 0.45]) {
+      for (let row = 0; row < 3; row++) {
+        const sp = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.022, 0.022, 0.005, 12),
+          new THREE.MeshStandardMaterial({ color: 0x141420 })
+        );
+        sp.rotation.x = Math.PI / 2;
+        sp.position.set(sx, 1.3 + row * 0.05, 0.36);
+        cab.add(sp);
+      }
+    }
+
+    g.add(cab);
+  }
+
+  // Disco ball pendurada
+  const disco = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 16, 12),
+    new THREE.MeshStandardMaterial({
+      color: 0xc0c5cc,
+      metalness: 0.95,
+      roughness: 0.2,
+      emissive: 0xc0c5cc,
+      emissiveIntensity: 0.3,
+    })
+  );
+  disco.position.set(0, ROOM_H - 0.5, 0.5);
+  g.add(disco);
+  // Cabo
+  const wire = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.005, 0.005, 0.3, 6),
+    new THREE.MeshStandardMaterial({ color: 0x141420 })
+  );
+  wire.position.set(0, ROOM_H - 0.18, 0.5);
+  g.add(wire);
+
+  // Sign na entrada
+  const signCanvas = document.createElement("canvas");
+  signCanvas.width = 512;
+  signCanvas.height = 96;
+  const sigctx = signCanvas.getContext("2d")!;
+  sigctx.fillStyle = "#01002A";
+  sigctx.fillRect(0, 0, 512, 96);
+  sigctx.strokeStyle = "#ff44aa";
+  sigctx.lineWidth = 4;
+  sigctx.strokeRect(8, 8, 496, 80);
+  sigctx.fillStyle = "#d8ff2c";
+  sigctx.font = "900 50px Archivo Black, Inter, sans-serif";
+  sigctx.textAlign = "center";
+  sigctx.textBaseline = "middle";
+  sigctx.fillText("FLIPERAMA", 256, 48);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  signTex.colorSpace = THREE.SRGBColorSpace;
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.4, 0.26),
+    new THREE.MeshBasicMaterial({ map: signTex, transparent: true })
+  );
+  sign.position.set(0, 2.85, ROOM_D / 2 - 0.05);
+  sign.rotation.y = Math.PI;
+  g.add(sign);
+
+  // Posters retro nas paredes (canvas simples)
+  for (let i = 0; i < 2; i++) {
+    const posterCanvas = document.createElement("canvas");
+    posterCanvas.width = 256;
+    posterCanvas.height = 384;
+    const pctx = posterCanvas.getContext("2d")!;
+    const bgs = ["#da291c", "#0057b8"];
+    pctx.fillStyle = bgs[i] ?? "#da291c";
+    pctx.fillRect(0, 0, 256, 384);
+    pctx.fillStyle = "#d8ff2c";
+    pctx.font = "bold 38px sans-serif";
+    pctx.textAlign = "center";
+    const titles = ["LIFTING\nLEGEND", "CROSSFIT\nKING"];
+    const lines = (titles[i] ?? "").split("\n");
+    lines.forEach((l, idx) => pctx.fillText(l, 128, 100 + idx * 50));
+    pctx.fillStyle = "#ffffff";
+    pctx.font = "16px sans-serif";
+    pctx.fillText("ARCADE 2026", 128, 350);
+    const posterTex = new THREE.CanvasTexture(posterCanvas);
+    posterTex.colorSpace = THREE.SRGBColorSpace;
+    const poster = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.5, 0.75),
+      new THREE.MeshBasicMaterial({ map: posterTex })
+    );
+    poster.position.set(i === 0 ? -ROOM_W / 2 + 0.04 : ROOM_W / 2 - 0.04, 1.6, 1.2);
+    poster.rotation.y = i === 0 ? Math.PI / 2 : -Math.PI / 2;
+    g.add(poster);
+  }
 
   return g;
 }
