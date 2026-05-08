@@ -1547,6 +1547,16 @@ export default function VirtualGym({
       "spawn",
     ]);
 
+    // Equipamentos com playExercise - registrados pra proximity check
+    type EquipmentRef = {
+      mesh: THREE.Object3D;
+      type: string;
+      exercise: string;
+      x: number;
+      z: number;
+      rotY: number;
+    };
+    const equipmentRefs: EquipmentRef[] = [];
     const playableEquipments: THREE.Group[] = [];
     for (const obj of layout.objects) {
       if (SINGLETON_HANDLED.has(obj.type)) continue;
@@ -1555,13 +1565,32 @@ export default function VirtualGym({
       built.position.set(obj.x, 0, obj.z);
       built.rotation.y = obj.rot;
       scene.add(built);
-      if (built.userData.playExercise) playableEquipments.push(built);
+      if (built.userData.playExercise) {
+        playableEquipments.push(built);
+        equipmentRefs.push({
+          mesh: built,
+          type: obj.type,
+          exercise: built.userData.playExercise,
+          x: obj.x,
+          z: obj.z,
+          rotY: obj.rot,
+        });
+      }
       // Collider aproximado pro AABB do equipamento
       const bbox = new THREE.Box3().setFromObject(built);
       const sx = (bbox.max.x - bbox.min.x) / 2;
       const sz = (bbox.max.z - bbox.min.z) / 2;
       colliders.push({ cx: obj.x, cz: obj.z, hw: Math.max(0.3, sx * 0.85), hd: Math.max(0.3, sz * 0.85) });
     }
+    // Power rack tambem entra no proximity check
+    equipmentRefs.push({
+      mesh: powerRack,
+      type: "power_rack",
+      exercise: "squat",
+      x: powerRackPos.x,
+      z: powerRackPos.z,
+      rotY: powerRackPos.rot + Math.PI / 8,
+    });
 
     // === Avatar ====================================================
     const avatarParts = buildAvatar(avatarPrefs);
@@ -1774,17 +1803,20 @@ export default function VirtualGym({
           playClick();
           if (!visitMode) setRunsModalOpen(true);
         } else if (obj?.userData.playExercise) {
-          // PR2: dispara CustomEvent pra abrir PlayMode overlay
+          // V2: ao invés de abrir modal, usa o sistema in-gym engagement.
+          // Se estiver perto, engage direto. Senão, ignora (athlete precisa andar até lá).
           playClick();
           obj.getWorldPosition(tmpWorldPos);
           tmpWorldPos.y += 0.6;
           tmpColor.set(0xd8ff2c);
           particleBurst.burst(tmpWorldPos, 18, tmpColor, 0.8);
-          window.dispatchEvent(
-            new CustomEvent("playmode:open", {
-              detail: { exercise: obj.userData.playExercise as string },
-            })
-          );
+          // Engage só se estiver perto
+          const dx = tmpWorldPos.x - avatarParts.root.position.x;
+          const dz = tmpWorldPos.z - avatarParts.root.position.z;
+          if (dx * dx + dz * dz < PROXIMITY_RADIUS * PROXIMITY_RADIUS * 1.5) {
+            const eq = equipmentRefs.find((e) => e.mesh === obj || e.mesh.children.includes(obj));
+            if (eq && !engagedEquipment) engageEquipment(eq);
+          }
         } else if (obj?.userData.hotspot) {
           // PR3 cycles 14-20: hotspots de navegação
           playClick();
@@ -1831,6 +1863,228 @@ export default function VirtualGym({
     let lastT = startT;
     let walkPhase = 0;
 
+    // === IN-GYM EXERCISE SYSTEM ===
+    // Quando atleta chega < PROXIMITY_RADIUS de um equipamento, prompt aparece.
+    // Click no prompt (ou tecla E) "engages" — câmera muda pra close-up + avatar
+    // anima fazendo o movimento. Solta espaço/release pra descer.
+    const PROXIMITY_RADIUS = 1.6;
+    let nearestEquipment: EquipmentRef | null = null;
+    let engagedEquipment: EquipmentRef | null = null;
+    let exerciseProgress = 0; // 0 = down, 1 = up
+    let exercisePressed = false;
+    let exerciseReps = 0;
+    let exerciseWasUp = false;
+    const cinematicOffset = new THREE.Vector3(2.5, 1.6, 2.5);
+    const tmpCamPos = new THREE.Vector3();
+    const tmpCamTarget = new THREE.Vector3();
+
+    // Prompt UI (HTML overlay manipulated via DOM)
+    const promptEl = document.getElementById("equipment-prompt");
+    const promptLabelEl = document.getElementById("equipment-prompt-label");
+    const exerciseHudEl = document.getElementById("exercise-hud");
+    const exerciseHudTitleEl = document.getElementById("exercise-hud-title");
+    const exerciseHudRepsEl = document.getElementById("exercise-hud-reps");
+    const exerciseHudActionEl = document.getElementById("exercise-hud-action");
+    const exerciseHudExitEl = document.getElementById("exercise-hud-exit");
+
+    const EXERCISE_LABELS: Record<string, string> = {
+      bench: "🏋️ Bench Press",
+      squat: "🦵 Back Squat",
+      deadlift: "💪 Deadlift",
+      pullup: "🤸 Pull-up",
+      pushup: "🔽 Push-up",
+      burpee: "💥 Burpee",
+      boxjump: "📦 Box Jump",
+      kbswing: "🪝 KB Swing",
+    };
+
+    function findNearestEquipment(): EquipmentRef | null {
+      const ax = avatarParts.root.position.x;
+      const az = avatarParts.root.position.z;
+      let best: EquipmentRef | null = null;
+      let bestD = PROXIMITY_RADIUS * PROXIMITY_RADIUS;
+      for (const eq of equipmentRefs) {
+        const dx = eq.x - ax;
+        const dz = eq.z - az;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < bestD) {
+          bestD = d2;
+          best = eq;
+        }
+      }
+      return best;
+    }
+
+    function engageEquipment(eq: EquipmentRef) {
+      engagedEquipment = eq;
+      exerciseProgress = 0;
+      exerciseReps = 0;
+      exercisePressed = false;
+      exerciseWasUp = false;
+      // Posiciona avatar na pose do equipamento
+      avatarParts.root.position.set(eq.x, 0, eq.z);
+      avatarParts.root.rotation.y = eq.rotY;
+      // Esconde prompt, mostra HUD
+      if (promptEl) promptEl.classList.add("hidden");
+      if (exerciseHudEl) {
+        exerciseHudEl.classList.remove("hidden");
+        if (exerciseHudTitleEl) exerciseHudTitleEl.textContent = EXERCISE_LABELS[eq.exercise] ?? eq.exercise;
+        if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = "0";
+      }
+    }
+
+    function disengageEquipment() {
+      if (!engagedEquipment) return;
+      const eq = engagedEquipment;
+      // Salvar best
+      const prev = Number(localStorage.getItem("pr_play_best_" + eq.exercise) || "0");
+      if (exerciseReps > prev) {
+        localStorage.setItem("pr_play_best_" + eq.exercise, String(exerciseReps));
+      }
+      // Move avatar 1m pra frente do equipamento (sai)
+      avatarParts.root.position.x += Math.sin(eq.rotY) * 1.6;
+      avatarParts.root.position.z += Math.cos(eq.rotY) * 1.6;
+      // Reset pose
+      avatarParts.leftArm.rotation.set(0, 0, -0.18);
+      avatarParts.rightArm.rotation.set(0, 0, 0.18);
+      avatarParts.leftArm.rotation.x = -0.08;
+      avatarParts.rightArm.rotation.x = -0.08;
+      avatarParts.leftLeg.rotation.set(0, 0, 0);
+      avatarParts.rightLeg.rotation.set(0, 0, 0);
+      engagedEquipment = null;
+      if (exerciseHudEl) exerciseHudEl.classList.add("hidden");
+    }
+
+    // Click no prompt → engage
+    function onPromptClick() {
+      if (nearestEquipment && !engagedEquipment) {
+        engageEquipment(nearestEquipment);
+      }
+    }
+    if (promptEl) promptEl.addEventListener("click", onPromptClick);
+    if (exerciseHudExitEl) exerciseHudExitEl.addEventListener("click", disengageEquipment);
+
+    function pressExercise() {
+      if (engagedEquipment) exercisePressed = true;
+    }
+    function releaseExercise() {
+      exercisePressed = false;
+    }
+    if (exerciseHudActionEl) {
+      exerciseHudActionEl.addEventListener("pointerdown", function (e) { e.preventDefault(); pressExercise(); });
+      exerciseHudActionEl.addEventListener("pointerup", function (e) { e.preventDefault(); releaseExercise(); });
+      exerciseHudActionEl.addEventListener("pointercancel", releaseExercise);
+      exerciseHudActionEl.addEventListener("pointerleave", releaseExercise);
+    }
+
+    // Keyboard handlers
+    function onExerciseKeyDown(e: KeyboardEvent) {
+      if (e.code === "KeyE" && nearestEquipment && !engagedEquipment) {
+        e.preventDefault();
+        engageEquipment(nearestEquipment);
+      } else if (e.code === "Escape" && engagedEquipment) {
+        e.preventDefault();
+        disengageEquipment();
+      } else if (e.code === "Space" && engagedEquipment) {
+        e.preventDefault();
+        if (!exercisePressed) pressExercise();
+      }
+    }
+    function onExerciseKeyUp(e: KeyboardEvent) {
+      if (e.code === "Space" && engagedEquipment) {
+        e.preventDefault();
+        releaseExercise();
+      }
+    }
+    window.addEventListener("keydown", onExerciseKeyDown);
+    window.addEventListener("keyup", onExerciseKeyUp);
+
+    function animateAvatarForExercise(exercise: string, p: number) {
+      // p = 0 (rest/down) → 1 (peak/up)
+      const arms = avatarParts;
+      switch (exercise) {
+        case "bench":
+          // Avatar lying down equivalent — braços empurram pra cima
+          // Como avatar está em pé, simulamos: braços rotation.x lerp pra cima
+          arms.leftArm.rotation.x = -1.2 + p * 0.3; // braços levantados
+          arms.rightArm.rotation.x = -1.2 + p * 0.3;
+          arms.leftArm.rotation.z = -0.3;
+          arms.rightArm.rotation.z = 0.3;
+          break;
+        case "squat":
+          // Pernas dobram (pseudo: rotation.x das pernas)
+          arms.leftLeg.rotation.x = -p * 0.6 + 0.3;
+          arms.rightLeg.rotation.x = -p * 0.6 + 0.3;
+          // Avatar bounce vertical
+          arms.root.position.y = -0.3 * (1 - p);
+          // Bracos pra trás (segurando barra back rack)
+          arms.leftArm.rotation.x = -1.5;
+          arms.rightArm.rotation.x = -1.5;
+          arms.leftArm.rotation.z = -0.5;
+          arms.rightArm.rotation.z = 0.5;
+          break;
+        case "deadlift":
+          // Pernas dobram + torso inclinado
+          arms.leftLeg.rotation.x = 0.3 - p * 0.3;
+          arms.rightLeg.rotation.x = 0.3 - p * 0.3;
+          arms.root.position.y = -0.2 * (1 - p);
+          // Bracos retos pra baixo
+          arms.leftArm.rotation.x = 0;
+          arms.rightArm.rotation.x = 0;
+          arms.leftArm.rotation.z = -0.05;
+          arms.rightArm.rotation.z = 0.05;
+          // Inclina o root (não tem torso bone, então root.rotation.x compensa)
+          arms.root.rotation.x = -(1 - p) * 0.4;
+          break;
+        case "pullup":
+          // Avatar sobe verticalmente (root.position.y) + braços dobram
+          arms.root.position.y = p * 0.4;
+          arms.leftArm.rotation.x = -2.5; // braços pra cima
+          arms.rightArm.rotation.x = -2.5;
+          arms.leftArm.rotation.z = -0.2;
+          arms.rightArm.rotation.z = 0.2;
+          break;
+        case "pushup":
+          // Avatar mantém posição horizontal — só animamos vertical com p
+          arms.root.position.y = -1.2 + p * 0.3;
+          arms.root.rotation.x = -Math.PI / 2;
+          arms.leftArm.rotation.x = 0;
+          arms.rightArm.rotation.x = 0;
+          break;
+        case "boxjump":
+          // Pula vertical
+          arms.root.position.y = p * 0.7;
+          arms.leftLeg.rotation.x = -p * 0.4;
+          arms.rightLeg.rotation.x = -p * 0.4;
+          arms.leftArm.rotation.x = -p * 0.8;
+          arms.rightArm.rotation.x = -p * 0.8;
+          break;
+        case "kbswing":
+          // Bracos balançam de baixo (entre as pernas) pra peito
+          // p=0: braços pra baixo+atrás (entre pernas)
+          // p=1: braços horizontal frente (peito)
+          arms.leftArm.rotation.x = 0.6 - p * 1.2;
+          arms.rightArm.rotation.x = 0.6 - p * 1.2;
+          arms.leftArm.rotation.z = -0.05;
+          arms.rightArm.rotation.z = 0.05;
+          // Torso inclinado quando p baixo
+          arms.root.rotation.x = -(1 - p) * 0.3;
+          break;
+        case "burpee":
+          // Não tem fase contínua, é tap-driven. Por simplicidade: alterna entre pose
+          if (p > 0.5) {
+            arms.root.position.y = 0.3;
+            arms.leftArm.rotation.x = -2.5;
+            arms.rightArm.rotation.x = -2.5;
+          } else {
+            arms.root.position.y = -0.5;
+            arms.leftArm.rotation.x = 0;
+            arms.rightArm.rotation.x = 0;
+          }
+          break;
+      }
+    }
+
     function loop(now: number) {
       const dt = Math.min(0.05, (now - lastT) / 1000);
       lastT = now;
@@ -1856,6 +2110,58 @@ export default function VirtualGym({
         }
       }
       dustGeometry.attributes.position!.needsUpdate = true;
+
+      // === EXERCISE ENGAGEMENT LOOP ===
+      if (engagedEquipment) {
+        // Update progress
+        const eq = engagedEquipment;
+        const isTapDriven = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
+        if (!isTapDriven) {
+          const targetSpeed = exercisePressed ? 1.6 : -1.6;
+          exerciseProgress = Math.max(0, Math.min(1, exerciseProgress + targetSpeed * dt));
+          // Conta rep no peak (>0.92) e volta (<0.08)
+          if (exerciseProgress > 0.92 && !exerciseWasUp) {
+            exerciseWasUp = true;
+            exerciseReps++;
+            if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
+          }
+          if (exerciseProgress < 0.08) exerciseWasUp = false;
+        }
+        animateAvatarForExercise(eq.exercise, exerciseProgress);
+
+        // Camera close-up: posição relativa ao equipamento
+        tmpCamTarget.set(eq.x, 1.2, eq.z);
+        tmpCamPos.copy(tmpCamTarget);
+        // Offset baseado na rotação do equipamento — câmera fica diagonal
+        tmpCamPos.x += Math.sin(eq.rotY + Math.PI / 2) * 2.8;
+        tmpCamPos.y += 0.6;
+        tmpCamPos.z += Math.cos(eq.rotY + Math.PI / 2) * 2.8;
+        camera.position.lerp(tmpCamPos, 0.08);
+        camera.lookAt(tmpCamTarget);
+
+        // Skip movement loop when engaged
+        renderer.render(scene, camera);
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+
+      // === PROXIMITY DETECTION ===
+      // (only when not engaged + not in follow mode + not visit mode)
+      if (!engagedEquipment) {
+        const found = findNearestEquipment();
+        if (found !== nearestEquipment) {
+          nearestEquipment = found;
+          if (promptEl && promptLabelEl) {
+            if (found) {
+              promptLabelEl.textContent =
+                "[E] usar " + (EXERCISE_LABELS[found.exercise] ?? found.exercise);
+              promptEl.classList.remove("hidden");
+            } else {
+              promptEl.classList.add("hidden");
+            }
+          }
+        }
+      }
 
       const inputLocked = inputLockedRef.current;
       let ix = inputLocked ? 0 : (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + jx;
@@ -2030,6 +2336,8 @@ export default function VirtualGym({
       ro.disconnect();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("keydown", onExerciseKeyDown);
+      window.removeEventListener("keyup", onExerciseKeyUp);
       renderer.domElement.removeEventListener("pointerdown", onCanvasDown);
       renderer.domElement.removeEventListener("pointerup", onCanvasUp);
       if (joy) {

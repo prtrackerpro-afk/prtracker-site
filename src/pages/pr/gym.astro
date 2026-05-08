@@ -248,7 +248,41 @@ function shortName(label: string): string {
 
     <BottomNav active="profile" />
 
-    <!-- PR4: PlayMode com canvas — atleta executa o movimento real -->
+    <!-- IN-GYM EXERCISE SYSTEM: prompt de proximidade + HUD durante engagement -->
+
+    <!-- Prompt de proximidade (aparece quando avatar está perto de um equipamento) -->
+    <div id="equipment-prompt" class="hidden fixed bottom-32 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
+      <button class="bg-brand-lime text-navy-900 font-display font-bold rounded-full px-5 py-2.5 text-sm shadow-lg shadow-brand-lime/40 animate-pulse hover:scale-105 transition cursor-pointer">
+        <span id="equipment-prompt-label">[E] usar equipamento</span>
+      </button>
+    </div>
+
+    <!-- HUD durante o exercício -->
+    <div id="exercise-hud" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[min(94vw,420px)]">
+      <div class="bg-navy-900/95 backdrop-blur border-2 border-brand-lime/40 rounded-2xl p-3 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <div class="text-[9px] uppercase tracking-[0.3em] text-brand-lime">EXECUTANDO</div>
+            <div class="font-display text-base text-white" id="exercise-hud-title">Exercício</div>
+          </div>
+          <button id="exercise-hud-exit" class="text-navy-300 hover:text-white text-xl leading-none px-2">✕</button>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="bg-navy-800/60 rounded-lg px-3 py-2 text-center min-w-[60px]">
+            <div class="text-2xl font-display font-bold text-white tabular-nums" id="exercise-hud-reps">0</div>
+            <div class="text-[9px] uppercase tracking-wider text-navy-300">REPS</div>
+          </div>
+          <button id="exercise-hud-action" class="flex-1 bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-3 text-sm hover:opacity-90 active:scale-95 transition select-none touch-none">
+            SEGURA · ESPAÇO
+          </button>
+        </div>
+        <div class="text-[10px] text-navy-400 text-center mt-2">
+          ESC pra sair · Avatar executa o movimento no gym
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGACY MODAL (não usar mais — manter pra não quebrar listeners) -->
     <div id="play-mode-modal" class="hidden fixed inset-0 bg-black/90 z-[60] items-center justify-center p-3">
       <div class="bg-navy-900 border-2 border-brand-lime/40 rounded-2xl p-4 w-full max-w-md shadow-xl">
         <div class="flex items-center justify-between mb-2">
