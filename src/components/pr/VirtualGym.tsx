@@ -2355,32 +2355,45 @@ export default function VirtualGym({
           a.rightHand.rotation.set(0, 0, 0);
           break;
         case "run":
-          // Treadmill run: pernas alternam (hip + knee flex sincronizados)
-          // braços balançam contra-fase
+          // Run REAL (3Hz cadence ~180bpm):
+          // - Drive leg (atrás): hip ext +0.4, knee 0 (perna reta atrás)
+          // - Swing leg (frente): hip flex -0.6, knee 1.5 (recovery dobrado)
+          // - Bracos contralateral, cotovelo 90° fixo (forearm 1.5)
+          // - Bounce vertical sutil (~3cm)
+          // - Lean pra frente +0.1 (postura de corrida)
           {
             const tt = performance.now() / 1000;
-            const phase = tt * 6;
-            const ls = Math.sin(phase);
+            const phase = tt * 6; // 3Hz × 2 (cada perna)
+            // Cycle 0→2π: lerna esquerda full cycle
+            // Posição 0: ground contact (atrás), 0.5: lift-off, π: foot strike (frente)
+            const ls = Math.sin(phase); // 0 → 1 → 0 → -1 → 0
             const rs = Math.sin(phase + Math.PI);
-            // HIP rotation (sobe perna pra frente)
-            a.leftLeg.rotation.x = ls * 0.6;
-            a.rightLeg.rotation.x = rs * 0.6;
-            // KNEE flex (dobra quando perna sobe)
-            a.leftCalf.rotation.x = Math.max(0, ls * 1.0);
-            a.rightCalf.rotation.x = Math.max(0, rs * 1.0);
-            // Bracos opostos das pernas
-            a.leftArm.rotation.x = -rs * 0.7;
-            a.rightArm.rotation.x = -ls * 0.7;
+            // HIP rotation: positivo = perna pra trás, negativo = perna pra frente
+            // Quando ls=1 (peak swing): perna em swing (frente), hip = -0.6
+            // Quando ls=-1 (drive): perna atrás extended, hip = +0.4
+            a.leftLeg.rotation.x = -ls * 0.5;
+            a.rightLeg.rotation.x = -rs * 0.5;
+            // KNEE flex: máximo durante swing (ls > 0)
+            // Drive: 0.1 (quase reta)
+            // Swing: 1.5 (recovery dobrado)
+            a.leftCalf.rotation.x = 0.1 + Math.max(0, ls) * 1.4;
+            a.rightCalf.rotation.x = 0.1 + Math.max(0, rs) * 1.4;
+            // BRAÇOS: contralateral (oposto às pernas)
+            // Quando perna esquerda swing (frente), braço direito vem frente
+            // Arm swing: rotation.x oscila de -0.5 (frente) a +0.4 (atrás)
+            a.leftArm.rotation.x = rs * 0.5; // oposto ao left leg (que é -ls)
+            a.rightArm.rotation.x = ls * 0.5;
             a.leftArm.rotation.z = -0.18;
             a.rightArm.rotation.z = 0.18;
-            // Forearm flex 90° (postura de corrida)
-            a.leftForearm.rotation.x = 1.2;
-            a.rightForearm.rotation.x = 1.2;
+            // Forearm 90° fixo durante corrida
+            a.leftForearm.rotation.x = 1.5;
+            a.rightForearm.rotation.x = 1.5;
             a.leftHand.rotation.set(0, 0, 0);
             a.rightHand.rotation.set(0, 0, 0);
-            // Bounce vertical
-            a.root.position.y = Math.abs(Math.sin(phase * 2)) * 0.04;
-            a.root.rotation.x = 0;
+            // Bounce vertical (3cm peak ground contact)
+            a.root.position.y = 0.18 + Math.abs(Math.sin(phase * 2)) * 0.03;
+            // Lean leve pra frente
+            a.root.rotation.x = -0.1;
           }
           break;
 
