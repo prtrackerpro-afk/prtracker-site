@@ -1,0 +1,141 @@
+---
+export const prerender = false;
+import "../../../styles/global.css";
+import BottomNav from "../../../components/pr/BottomNav.astro";
+import { getServerSupabase } from "../../../lib/supabase/server";
+
+const athlete = Astro.locals.athlete;
+const url = new URL(Astro.request.url);
+const token = url.searchParams.get("t") ?? "";
+
+if (!athlete) {
+  return Astro.redirect(`/pr/login?redirect=${encodeURIComponent("/pr/coach/redeem?t=" + token)}`);
+}
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+// Busca info do convite (sem alterar nada)
+let inviteInfo: {
+  coach_type: "personal_trainer" | "nutritionist";
+  coach_name: string;
+  expired: boolean;
+  redeemed: boolean;
+  notFound: boolean;
+} | null = null;
+
+if (token) {
+  const { data: invite } = await supabase
+    .from("pr_coach_invites")
+    .select("token, coach_id, coach_type, expires_at, redeemed_at, pr_coaches!inner(display_name)")
+    .eq("token", token)
+    .maybeSingle();
+
+  if (!invite) {
+    inviteInfo = { coach_type: "personal_trainer", coach_name: "", expired: false, redeemed: false, notFound: true };
+  } else {
+    inviteInfo = {
+      coach_type: invite.coach_type,
+      coach_name: (invite.pr_coaches as { display_name: string }).display_name,
+      expired: new Date(invite.expires_at) < new Date(),
+      redeemed: !!invite.redeemed_at,
+      notFound: false,
+    };
+  }
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Aceitar convite · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <a href="/pr" class="text-sm text-navy-300 hover:text-white">← Voltar</a>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">CONVITE COACH</div>
+      <h1 class="font-display text-3xl tracking-tight">Aceitar vínculo</h1>
+    </header>
+
+    <main class="max-w-md mx-auto px-4">
+      {!token && (
+        <div class="rounded-2xl border-2 border-red-500/40 bg-red-500/5 p-5">
+          <p class="text-sm">Token de convite não fornecido. Confere o link.</p>
+        </div>
+      )}
+      {inviteInfo?.notFound && (
+        <div class="rounded-2xl border-2 border-red-500/40 bg-red-500/5 p-5">
+          <p class="text-sm">Convite não encontrado. Pede um novo link ao coach.</p>
+        </div>
+      )}
+      {inviteInfo?.expired && (
+        <div class="rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 p-5">
+          <p class="text-sm">Esse convite expirou. Pede um novo ao coach.</p>
+        </div>
+      )}
+      {inviteInfo?.redeemed && (
+        <div class="rounded-2xl border-2 border-navy-600 bg-navy-800/30 p-5">
+          <p class="text-sm">Esse convite já foi usado.</p>
+        </div>
+      )}
+      {inviteInfo && !inviteInfo.notFound && !inviteInfo.expired && !inviteInfo.redeemed && (
+        <div class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">VOCÊ FOI CONVIDADO</div>
+          <h2 class="font-display text-2xl mb-2">{inviteInfo.coach_name}</h2>
+          <p class="text-sm text-navy-300 mb-4">
+            {inviteInfo.coach_type === "personal_trainer" ? "Personal Trainer" : "Nutricionista"} quer te
+            adicionar como atleta. Vai poder mandar planos semanais, ver teu progresso e receber check-ins.
+          </p>
+          <button
+            id="accept-btn"
+            data-token={token}
+            class="w-full bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-3 text-base hover:opacity-90"
+          >
+            Aceitar vínculo
+          </button>
+          <div id="error-msg" class="text-sm text-red-400 mt-3 hidden"></div>
+        </div>
+      )}
+    </main>
+
+    <BottomNav active="profile" />
+
+    <script>
+      const btn = document.getElementById("accept-btn");
+      const errorMsg = document.getElementById("error-msg");
+      btn?.addEventListener("click", async () => {
+        const token = (btn as HTMLButtonElement).dataset.token;
+        if (!token) return;
+        (btn as HTMLButtonElement).disabled = true;
+        (btn as HTMLButtonElement).textContent = "Aceitando...";
+        try {
+          const res = await fetch("/api/pr/coach/redeem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errorMsg!.textContent = data.message || "Erro ao aceitar convite.";
+            errorMsg!.classList.remove("hidden");
+            (btn as HTMLButtonElement).disabled = false;
+            (btn as HTMLButtonElement).textContent = "Aceitar vínculo";
+            return;
+          }
+          window.location.href = "/pr?welcome_coach=1";
+        } catch {
+          errorMsg!.textContent = "Erro de conexão. Tenta de novo.";
+          errorMsg!.classList.remove("hidden");
+          (btn as HTMLButtonElement).disabled = false;
+          (btn as HTMLButtonElement).textContent = "Aceitar vínculo";
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -247,5 +247,139 @@ function shortName(label: string): string {
     </main>
 
     <BottomNav active="profile" />
+
+    <!-- PR2: PlayMode overlay (modo lúdico ao clicar em equipamento 3D) -->
+    <div id="play-mode-modal" class="hidden fixed inset-0 bg-black/85 z-[60] items-center justify-center p-4">
+      <div class="bg-navy-900 border-2 border-brand-lime/40 rounded-2xl p-5 w-full max-w-md shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime">MODO LÚDICO · NÃO VALE XP</div>
+            <h2 class="font-display text-2xl text-white" id="play-title">Exercício</h2>
+          </div>
+          <button id="play-close" class="text-navy-300 hover:text-white text-2xl leading-none">✕</button>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+          <div class="bg-navy-800/40 rounded-lg p-3">
+            <div class="text-3xl font-display font-bold text-white tabular-nums" id="play-reps">0</div>
+            <div class="text-[10px] uppercase tracking-wider text-navy-300">REPS</div>
+          </div>
+          <div class="bg-navy-800/40 rounded-lg p-3">
+            <div class="text-3xl font-display font-bold text-brand-lime tabular-nums" id="play-combo">x0</div>
+            <div class="text-[10px] uppercase tracking-wider text-navy-300">COMBO</div>
+          </div>
+          <div class="bg-navy-800/40 rounded-lg p-3">
+            <div class="text-3xl font-display font-bold text-orange-400 tabular-nums" id="play-score">0</div>
+            <div class="text-[10px] uppercase tracking-wider text-navy-300">SCORE</div>
+          </div>
+        </div>
+        <div class="text-xs text-navy-400 text-center mb-3" id="play-best">Melhor: 0</div>
+        <button id="play-rep-btn" class="w-full bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-6 text-2xl hover:opacity-90 active:scale-95 transition select-none touch-none">
+          REP! (espaço)
+        </button>
+        <div class="flex gap-2 mt-3">
+          <button id="play-reset" class="flex-1 bg-navy-800 text-white text-sm rounded-lg py-2 hover:bg-navy-700">Reset</button>
+          <button id="play-end" class="flex-1 bg-orange-500 text-white text-sm rounded-lg py-2 hover:opacity-90">Encerrar</button>
+        </div>
+        <div class="text-[10px] text-navy-500 text-center mt-3">
+          Combo entre 0.4s e 2s entre reps mantém multiplicador.
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+      (function () {
+        const LABELS = {
+          bench: "🏋️ Bench Press",
+          squat: "🦵 Squat",
+          deadlift: "💪 Deadlift",
+          pullup: "🤸 Pull-up",
+          pushup: "🔽 Push-up",
+          burpee: "💥 Burpee",
+          boxjump: "📦 Box Jump",
+          kbswing: "🪝 KB Swing",
+        };
+        const modal = document.getElementById("play-mode-modal");
+        const titleEl = document.getElementById("play-title");
+        const repsEl = document.getElementById("play-reps");
+        const comboEl = document.getElementById("play-combo");
+        const scoreEl = document.getElementById("play-score");
+        const bestEl = document.getElementById("play-best");
+        const closeBtn = document.getElementById("play-close");
+        const repBtn = document.getElementById("play-rep-btn");
+        const resetBtn = document.getElementById("play-reset");
+        const endBtn = document.getElementById("play-end");
+
+        let currentExercise = null;
+        let reps = 0;
+        let combo = 0;
+        let lastTap = 0;
+
+        function open(exercise) {
+          currentExercise = exercise;
+          reps = 0;
+          combo = 0;
+          lastTap = 0;
+          titleEl.textContent = LABELS[exercise] || "Exercício";
+          repsEl.textContent = "0";
+          comboEl.textContent = "x0";
+          scoreEl.textContent = "0";
+          const best = localStorage.getItem("pr_play_best_" + exercise) || "0";
+          bestEl.textContent = "Melhor: " + best;
+          modal.classList.remove("hidden");
+          modal.classList.add("flex");
+        }
+        function close() {
+          if (currentExercise) {
+            const score = Math.round(reps * (1 + combo / 20));
+            const prevBest = Number(localStorage.getItem("pr_play_best_" + currentExercise) || "0");
+            if (score > prevBest) localStorage.setItem("pr_play_best_" + currentExercise, String(score));
+          }
+          modal.classList.add("hidden");
+          modal.classList.remove("flex");
+          currentExercise = null;
+        }
+        function doRep() {
+          const now = Date.now();
+          const since = now - lastTap;
+          lastTap = now;
+          if (since > 400 && since < 2000) combo++;
+          else combo = 0;
+          reps++;
+          const score = Math.round(reps * (1 + combo / 20));
+          repsEl.textContent = String(reps);
+          comboEl.textContent = "x" + combo;
+          scoreEl.textContent = String(score);
+        }
+        function reset() {
+          reps = 0;
+          combo = 0;
+          repsEl.textContent = "0";
+          comboEl.textContent = "x0";
+          scoreEl.textContent = "0";
+        }
+
+        window.addEventListener("playmode:open", function (ev) {
+          const detail = ev.detail || {};
+          if (detail.exercise) open(detail.exercise);
+        });
+        closeBtn?.addEventListener("click", close);
+        endBtn?.addEventListener("click", close);
+        resetBtn?.addEventListener("click", reset);
+        repBtn?.addEventListener("click", doRep);
+        repBtn?.addEventListener("touchstart", function (e) {
+          e.preventDefault();
+          doRep();
+        });
+        window.addEventListener("keydown", function (e) {
+          if (modal.classList.contains("hidden")) return;
+          if (e.code === "Space") {
+            e.preventDefault();
+            doRep();
+          } else if (e.code === "Escape") {
+            close();
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
