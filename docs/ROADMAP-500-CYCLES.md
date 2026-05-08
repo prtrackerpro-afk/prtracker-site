@@ -21,34 +21,60 @@ Estamos em ciclo **102** (Fase 1 começando).
 
 ## Mapa geral das 24 fases
 
-| Fase | Ciclos | Tema | Total |
-|------|--------|------|------:|
-| 1 | 102-201 | Equipamentos proporcionais + acabamentos | 100 |
-| 2 | 202-301 | Cenário (piso, paredes, iluminação) | 100 |
-| 3 | 302-351 | Sala de cinema premium (projetor, fileiras) | 50 |
-| 4 | 352-451 | Equipamentos funcionais (lúdico, sem XP) | 100 |
-| 5 | 452-501 | Customização avatar (bonés, acessórios) | 50 |
-| 6 | 502-601 | Macros / dieta diária do atleta | 100 |
-| 7 | 602-701 | Tutorial onboarding completo | 100 |
-| 8 | 702-1001 | Fliperama com 3 jogos online | 300 |
-| 9 | 1002-1051 | Planos de treino com Personal | 50 |
-| 10 | 1052-1101 | Planos de dieta com Nutri | 50 |
-| 11 | 1102-1126 | Comunidade e social | 25 |
-| 12 | 1127-1151 | XP avançado + leaderboards | 25 |
-| 13 | 1152-1176 | Sons curados | 25 |
-| 14 | 1177-1201 | Performance + acessibilidade | 25 |
-| 15 | 1202-1226 | E-commerce rebuild Astro | 25 |
-| 16 | 1227-1251 | Admin e operação | 25 |
-| 17 | 1252-1276 | Mobile-first refinements | 25 |
-| 18 | 1277-1301 | Conteúdo + SEO | 25 |
-| 19 | 1302-1326 | Integrações terceiros | 25 |
-| 20 | 1327-1351 | IA e personalização | 25 |
-| 21 | 1352-1376 | Eventos e competições | 25 |
-| 22 | 1377-1401 | Doc + testes + monitoring | 25 |
-| 23 | 1402-1426 | Polish final + bugfix sweep | 25 |
-| 24 | 1427-1451 | Lançamento v1.0 | 25 |
+| Fase | Ciclos | Tema | Total | Status |
+|------|--------|------|------:|:------:|
+| 1 | 102-201 | Equipamentos proporcionais + acabamentos | 100 | 🟡 ~30% |
+| 2 | 202-301 | Cenário (piso, paredes, iluminação) | 100 | 🟡 ~15% |
+| 3 | 302-351 | Sala de cinema premium (projetor, fileiras) | 50 | 🟢 scaffold |
+| 4 | 352-451 | Equipamentos funcionais (lúdico, sem XP) | 100 | 🟢 scaffold |
+| 5 | 452-501 | Customização avatar (bonés, acessórios) | 50 | 🟢 scaffold |
+| 6 | 502-601 | Macros / dieta diária do atleta | 100 | 🟢 scaffold |
+| 7 | 602-701 | Tutorial onboarding completo | 100 | 🟢 scaffold |
+| 8 | 702-1001 | Fliperama com 3 jogos online | 300 | 🟡 jogo 1 |
+| 9 | 1002-1051 | Planos de treino com Personal | 50 | 🟢 schema |
+| 10 | 1052-1101 | Planos de dieta com Nutri | 50 | 🟢 schema |
+| 11 | 1102-1126 | Comunidade e social | 25 | ⚪ pending |
+| 12 | 1127-1151 | XP avançado + leaderboards | 25 | ⚪ pending |
+| 13 | 1152-1176 | Sons curados | 25 | ⚪ pending |
+| 14 | 1177-1201 | Performance + acessibilidade | 25 | ⚪ pending |
+| 15 | 1202-1226 | E-commerce rebuild Astro | 25 | ⚪ pending |
+| 16 | 1227-1251 | Admin e operação | 25 | ⚪ pending |
+| 17 | 1252-1276 | Mobile-first refinements | 25 | ⚪ pending |
+| 18 | 1277-1301 | Conteúdo + SEO | 25 | ⚪ pending |
+| 19 | 1302-1326 | Integrações terceiros | 25 | ⚪ pending |
+| 20 | 1327-1351 | IA e personalização | 25 | ⚪ pending |
+| 21 | 1352-1376 | Eventos e competições | 25 | ⚪ pending |
+| 22 | 1377-1401 | Doc + testes + monitoring | 25 | ⚪ pending |
+| 23 | 1402-1426 | Polish final + bugfix sweep | 25 | ⚪ pending |
+| 24 | 1427-1451 | Lançamento v1.0 | 25 | ⚪ pending |
 
 Total: **1350 ciclos**.
+
+## Status atual (2026-05-07 sessão noite)
+
+**Cycles entregues**: 102-160 + scaffolding de fases 3-10 (cycles ~302, 352, 452, 502, 602, 702, 1002, 1052)
+
+**PRs mergeados**:
+- #128 cycles 102-105 (audit + Power Rack proporções)
+- #129 cycles 106-127 (plates IWF + bench + treadmill + deadlift platform)
+- #130 cycles 136-139 (DB hex + KB cores)
+- #131 cycles 150-200 (acabamentos: parafusos, soldas, sticker + chalk/bottle/towel/belt builders)
+- #132 Fase 2 cenário (WOD board + 3 relógios + 4 espelhos)
+- #133 Fase 5 avatar acessórios (boné, óculos, barba, wristband)
+- #134 Fase 6 macros tracker (migration 0018 + endpoints + página `/pr/diet`)
+- #135 Fase 7 tutorial onboarding (9 steps + overlay React)
+- #136 Fase 8 fliperama scaffold + Jogo 1 Barbell Bounce funcional
+- #137 Fase 9-10 PT/Nutri schema (migration 0021 com 6 tabelas + 2 endpoints)
+- #138 Fase 3 sala de cinema premium
+- #139 Fase 4 PlayMode overlay (modo lúdico)
+
+**Migrations criadas**: 0018 (macros), 0019 (tutorial), 0020 (arcade), 0021 (coaches)
+
+**Builders novos**: Cinema, ChalkBucket, WaterBottle, Towel, LiftingBelt, WODBoard, Clock, Mirror
+
+**Componentes React novos**: TutorialOverlay, BarbellBounceGame, PlayModeOverlay
+
+**Páginas novas**: `/pr/diet`, `/pr/arcade`
 
 ---
 
