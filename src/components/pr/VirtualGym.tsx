@@ -1591,6 +1591,22 @@ export default function VirtualGym({
       z: powerRackPos.z,
       rotY: powerRackPos.rot + Math.PI / 8,
     });
+    // Adiciona ring de proximidade em cada equipamento
+    for (const eq of equipmentRefs) {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.95, 1.1, 32),
+        new THREE.MeshBasicMaterial({
+          color: 0xd8ff2c,
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+        })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(eq.x, 0.02, eq.z);
+      scene.add(ring);
+      eq.mesh.userData.proximityRing = ring;
+    }
 
     // === Avatar ====================================================
     const avatarParts = buildAvatar(avatarPrefs);
@@ -1886,6 +1902,8 @@ export default function VirtualGym({
     const exerciseHudRepsEl = document.getElementById("exercise-hud-reps");
     const exerciseHudActionEl = document.getElementById("exercise-hud-action");
     const exerciseHudExitEl = document.getElementById("exercise-hud-exit");
+    const exerciseHudBestEl = document.getElementById("exercise-hud-best");
+    const exerciseHudProgressEl = document.getElementById("exercise-hud-progress");
 
     const EXERCISE_LABELS: Record<string, string> = {
       bench: "🏋️ Bench Press",
@@ -1922,7 +1940,15 @@ export default function VirtualGym({
       exercisePressed = false;
       exerciseWasUp = false;
       // Posiciona avatar na pose do equipamento
-      avatarParts.root.position.set(eq.x, 0, eq.z);
+      // Pullup: EM CIMA do rig (pendurado)
+      // Squat: dentro do rack (offset 0)
+      // Bench/etc: 0.4m na frente
+      const offset = (eq.exercise === "pullup" || eq.exercise === "squat") ? 0 : 0.4;
+      avatarParts.root.position.set(
+        eq.x + Math.sin(eq.rotY) * offset,
+        0,
+        eq.z + Math.cos(eq.rotY) * offset
+      );
       avatarParts.root.rotation.y = eq.rotY;
       // Esconde prompt, mostra HUD
       if (promptEl) promptEl.classList.add("hidden");
@@ -1930,6 +1956,10 @@ export default function VirtualGym({
         exerciseHudEl.classList.remove("hidden");
         if (exerciseHudTitleEl) exerciseHudTitleEl.textContent = EXERCISE_LABELS[eq.exercise] ?? eq.exercise;
         if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = "0";
+        if (exerciseHudBestEl) {
+          const best = localStorage.getItem("pr_play_best_" + eq.exercise) || "0";
+          exerciseHudBestEl.textContent = best;
+        }
         if (exerciseHudActionEl) {
           const isTap = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
           exerciseHudActionEl.textContent = isTap ? "TAP · ESPAÇO" : "SEGURA · ESPAÇO";
@@ -1937,6 +1967,9 @@ export default function VirtualGym({
       }
       burpeePhase = 0;
       lastTapTime = 0;
+      // Trava o movimento WASD enquanto engagado + limpa estado atual
+      inputLockedRef.current = true;
+      keys.up = keys.down = keys.left = keys.right = false;
     }
 
     function disengageEquipment() {
@@ -1964,6 +1997,7 @@ export default function VirtualGym({
       exercisePressed = false;
       if (exerciseHudEl) exerciseHudEl.classList.add("hidden");
       if (promptEl) promptEl.classList.add("hidden"); // Hide prompt enquanto câmera volta
+      inputLockedRef.current = false;
     }
 
     // Click no prompt → engage
@@ -2206,8 +2240,21 @@ export default function VirtualGym({
             exerciseWasUp = true;
             exerciseReps++;
             if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
+            // Milestone (every 5 reps) = chime + particle burst
+            if (exerciseReps % 5 === 0) {
+              playChime();
+              tmpWorldPos.set(eq.x, 1.6, eq.z);
+              tmpColor.set(0xd8ff2c);
+              particleBurst.burst(tmpWorldPos, 25, tmpColor, 1.0);
+            } else {
+              playClick();
+            }
           }
           if (exerciseProgress < 0.08) exerciseWasUp = false;
+        }
+        // Update progress bar
+        if (exerciseHudProgressEl) {
+          (exerciseHudProgressEl as HTMLElement).style.width = (exerciseProgress * 100) + "%";
         }
         animateAvatarForExercise(eq.exercise, exerciseProgress);
 
@@ -2260,6 +2307,15 @@ export default function VirtualGym({
               promptEl.classList.add("hidden");
             }
           }
+        }
+        // Pulsing highlight no equipamento mais proximo (efeito de "aura")
+        for (const eq of equipmentRefs) {
+          if (!eq.mesh.userData.proximityRing) continue;
+          const ring = eq.mesh.userData.proximityRing as THREE.Mesh;
+          const isNear = eq === found;
+          (ring.material as THREE.MeshBasicMaterial).opacity = isNear
+            ? 0.4 + Math.sin(t * 4) * 0.2
+            : 0;
         }
       }
 
