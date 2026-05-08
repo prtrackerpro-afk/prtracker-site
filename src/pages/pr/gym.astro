@@ -268,13 +268,21 @@ function shortName(label: string): string {
           <button id="exercise-hud-exit" class="text-navy-300 hover:text-white text-xl leading-none px-2">✕</button>
         </div>
         <div class="flex items-center gap-3">
-          <div class="bg-navy-800/60 rounded-lg px-3 py-2 text-center min-w-[60px]">
+          <div class="bg-navy-800/60 rounded-lg px-2 py-2 text-center min-w-[58px]">
             <div class="text-2xl font-display font-bold text-white tabular-nums" id="exercise-hud-reps">0</div>
             <div class="text-[9px] uppercase tracking-wider text-navy-300">REPS</div>
+          </div>
+          <div class="bg-navy-800/60 rounded-lg px-2 py-2 text-center min-w-[58px]">
+            <div class="text-2xl font-display font-bold text-orange-400 tabular-nums" id="exercise-hud-best">0</div>
+            <div class="text-[9px] uppercase tracking-wider text-navy-300">BEST</div>
           </div>
           <button id="exercise-hud-action" class="flex-1 bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-3 text-sm hover:opacity-90 active:scale-95 transition select-none touch-none">
             SEGURA · ESPAÇO
           </button>
+        </div>
+        <!-- Progress bar mostrando exerciseProgress (0→1) -->
+        <div class="h-1.5 bg-navy-800 rounded-full overflow-hidden mt-2">
+          <div id="exercise-hud-progress" class="h-full bg-brand-lime transition-[width] duration-75" style="width: 0%;"></div>
         </div>
         <div class="text-[10px] text-navy-400 text-center mt-2">
           ESC pra sair · Avatar executa o movimento no gym
