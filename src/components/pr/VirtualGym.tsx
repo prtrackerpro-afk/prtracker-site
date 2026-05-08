@@ -916,6 +916,101 @@ export default function VirtualGym({
     arcadeRoom.userData.hotspot = "arcade";
     scene.add(arcadeRoom);
 
+    // V16.8 PR3 cycles 14-20: 5 portais clicáveis no chão pra navegar
+    // Diet (verde), Coach (azul), Achievements (dourado), Eventos (vermelho), Log (lime)
+    const hotspotPortals: THREE.Group[] = [];
+    const PORTAL_DEFS: Array<{
+      id: string;
+      label: string;
+      sublabel: string;
+      color: number;
+      x: number;
+      z: number;
+    }> = [
+      { id: "diet", label: "DIETA", sublabel: "Macros", color: 0x43b02a, x: 8, z: 6 },
+      { id: "coach", label: "COACH", sublabel: "PT/Nutri", color: 0x0057b8, x: 11, z: 6 },
+      { id: "achievements", label: "TROFEUS", sublabel: "Conquistas", color: 0xffc72c, x: 14, z: 6 },
+      { id: "eventos", label: "EVENTOS", sublabel: "Competicoes", color: 0xda291c, x: 8, z: 9 },
+      { id: "log", label: "REGISTRAR", sublabel: "Novo PR", color: 0xd8ff2c, x: 14, z: 9 },
+    ];
+    for (const p of PORTAL_DEFS) {
+      const portal = new THREE.Group();
+      portal.position.set(p.x, 0, p.z);
+      portal.userData.hotspot = p.id;
+
+      // Disco lime no chão (radius 0.7)
+      const disc = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.7, 0.7, 0.04, 24),
+        new THREE.MeshStandardMaterial({
+          color: p.color,
+          roughness: 0.4,
+          emissive: p.color,
+          emissiveIntensity: 0.6,
+          transparent: true,
+          opacity: 0.85,
+        })
+      );
+      disc.position.y = 0.02;
+      portal.add(disc);
+
+      // Anel externo (ring)
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.85, 0.03, 8, 32),
+        new THREE.MeshBasicMaterial({ color: p.color })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.05;
+      portal.add(ring);
+
+      // Beam vertical (cone com aditivo)
+      const beam = new THREE.Mesh(
+        new THREE.ConeGeometry(0.6, 2.5, 16, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: p.color,
+          transparent: true,
+          opacity: 0.18,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        })
+      );
+      beam.position.y = 1.3;
+      beam.rotation.x = Math.PI;
+      portal.add(beam);
+
+      // Sign canvas com label
+      const labelCanvas = document.createElement("canvas");
+      labelCanvas.width = 512;
+      labelCanvas.height = 192;
+      const lctx = labelCanvas.getContext("2d")!;
+      lctx.fillStyle = "rgba(1,0,42,0.9)";
+      lctx.fillRect(0, 0, 512, 192);
+      lctx.strokeStyle = "#" + p.color.toString(16).padStart(6, "0");
+      lctx.lineWidth = 6;
+      lctx.strokeRect(8, 8, 496, 176);
+      lctx.fillStyle = "#" + p.color.toString(16).padStart(6, "0");
+      lctx.font = "900 70px Archivo Black, Inter, sans-serif";
+      lctx.textAlign = "center";
+      lctx.textBaseline = "middle";
+      lctx.fillText(p.label, 256, 75);
+      lctx.fillStyle = "#ffffff";
+      lctx.font = "500 38px Inter, sans-serif";
+      lctx.fillText(p.sublabel, 256, 140);
+      const labelTex = new THREE.CanvasTexture(labelCanvas);
+      labelTex.colorSpace = THREE.SRGBColorSpace;
+      const sign = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.6, 0.6),
+        new THREE.MeshBasicMaterial({ map: labelTex, transparent: true, depthTest: false })
+      );
+      sign.position.y = 2.8;
+      sign.renderOrder = 998;
+      sign.userData.isBillboard = true; // pra animar facing camera
+      portal.add(sign);
+
+      scene.add(portal);
+      hotspotPortals.push(portal);
+    }
+
     // V16.8 cycles 213-216: WOD board + relógio + espelhos na parede esquerda
     const wodBoard = buildWODBoard();
     wodBoard.position.set(-ROOM_W / 2 + 0.06, 2.0, ROOM_D / 4);
@@ -1600,6 +1695,9 @@ export default function VirtualGym({
         streakPillarParts.hitBox,
         skillsBoardParts.hitBox,
         runBoardParts.hitBox,
+        cinemaRoom,
+        arcadeRoom,
+        ...hotspotPortals,
       ];
       const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
@@ -1611,6 +1709,7 @@ export default function VirtualGym({
           !obj.userData.ghostExercise &&
           !obj.userData.sponsorSlot &&
           !obj.userData.npcSlot &&
+          !obj.userData.hotspot &&
           obj.userData.kind !== "projector-screen" &&
           obj.userData.kind !== "streak-pillar" &&
           obj.userData.kind !== "skills-board" &&
@@ -1668,6 +1767,31 @@ export default function VirtualGym({
         } else if (obj?.userData.kind === "run-board") {
           playClick();
           if (!visitMode) setRunsModalOpen(true);
+        } else if (obj?.userData.hotspot) {
+          // PR3 cycles 14-20: hotspots de navegação
+          playClick();
+          const hotspot = obj.userData.hotspot as string;
+          obj.getWorldPosition(tmpWorldPos);
+          tmpWorldPos.y += 0.3;
+          tmpColor.set(0xd8ff2c);
+          particleBurst.burst(tmpWorldPos, 25, tmpColor, 1.0);
+          // Mapeamento hotspot → URL
+          const HOTSPOT_URLS: Record<string, string> = {
+            cinema: "/pr/lab",
+            arcade: "/pr/arcade",
+            diet: "/pr/diet",
+            coach: "/pr/coach",
+            achievements: "/pr/achievements",
+            eventos: "/pr/eventos",
+            log: "/pr/log",
+          };
+          const url = HOTSPOT_URLS[hotspot];
+          if (url) {
+            // pequeno delay pra particles aparecerem
+            setTimeout(() => {
+              window.location.href = url;
+            }, 250);
+          }
         }
       }
     };
