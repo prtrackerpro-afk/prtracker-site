@@ -121,6 +121,23 @@ export const GET: APIRoute = async ({ request, cookies, locals, url }) => {
   });
 };
 
+export const DELETE: APIRoute = async ({ request, cookies, locals, url }) => {
+  if (!locals.athlete) return jsonError(401, "unauthorized");
+  const id = url.searchParams.get("id");
+  if (!id) return jsonError(400, "missing_id");
+  const supabase = getServerSupabase({ headers: request.headers, cookies });
+  const { error } = await supabase
+    .from("pr_meal_log")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", locals.athlete.userId); // RLS extra safety
+  if (error) return jsonError(500, "delete_failed", error.message);
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+};
+
 function jsonError(status: number, code: string, message?: string) {
   return new Response(JSON.stringify({ error: code, message }), {
     status,
