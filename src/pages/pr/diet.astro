@@ -30,9 +30,19 @@ const { data: mealsRaw } = await supabase
 
 const { data: targetRow } = await supabase
   .from("pr_diet_targets")
-  .select("kcal_target, protein_g_target, carbs_g_target, fat_g_target")
+  .select("kcal_target, protein_g_target, carbs_g_target, fat_g_target, water_ml_target")
   .eq("user_id", athlete.userId)
   .maybeSingle();
+
+// Hidratação do dia
+const { data: waterRows = [] } = await supabase
+  .from("pr_water_log")
+  .select("qty_ml")
+  .eq("user_id", athlete.userId)
+  .gte("consumed_at", today.toISOString())
+  .lt("consumed_at", tomorrow.toISOString());
+const waterTotal = (waterRows ?? []).reduce((acc, r) => acc + (r.qty_ml as number), 0);
+const waterTarget = (targetRow as { water_ml_target?: number } | null)?.water_ml_target ?? 2500;
 
 const target = targetRow ?? {
   kcal_target: 2200,
@@ -168,6 +178,23 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
               <div class="h-full bg-purple-400" style={`width: ${Math.min(100, Math.round(totals.f / target.fat_g_target * 100))}%`}></div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- Hidratação -->
+      <section class="rounded-2xl border border-blue-500/40 bg-blue-500/5 p-3">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <div class="text-[10px] uppercase tracking-[0.3em] text-blue-400">💧 HIDRATAÇÃO</div>
+            <div class="text-sm text-white"><span class="font-bold tabular-nums" id="water-total">{waterTotal}</span> / {waterTarget} ml</div>
+          </div>
+          <div class="flex gap-1">
+            <button data-water="200" class="water-btn bg-blue-500/30 hover:bg-blue-500/60 text-white text-xs rounded-full px-2.5 py-1.5">+200ml</button>
+            <button data-water="500" class="water-btn bg-blue-500/30 hover:bg-blue-500/60 text-white text-xs rounded-full px-2.5 py-1.5">+500ml</button>
+          </div>
+        </div>
+        <div class="h-1.5 bg-navy-800 rounded-full overflow-hidden">
+          <div id="water-bar" class="h-full bg-blue-400 transition-all" style={`width: ${Math.min(100, Math.round(waterTotal / waterTarget * 100))}%`}></div>
         </div>
       </section>
 
@@ -407,6 +434,30 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
             resultsBox.appendChild(item);
           });
         }, 200);
+      });
+
+      // Water +/- handlers
+      document.querySelectorAll(".water-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const qty = Number((e.currentTarget as HTMLButtonElement).dataset.water ?? "200");
+          (e.currentTarget as HTMLButtonElement).disabled = true;
+          try {
+            const res = await fetch("/api/pr/diet/water", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ qty_ml: qty }),
+            });
+            if (res.ok) {
+              const totalEl = document.getElementById("water-total");
+              const barEl = document.getElementById("water-bar");
+              const cur = Number(totalEl?.textContent ?? "0");
+              const next = cur + qty;
+              if (totalEl) totalEl.textContent = String(next);
+              if (barEl) (barEl as HTMLElement).style.width = Math.min(100, (next / 2500) * 100) + "%";
+            }
+          } catch {}
+          (e.currentTarget as HTMLButtonElement).disabled = false;
+        });
       });
 
       // Delete handler
