@@ -181,9 +181,15 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
               {(mealsByType[mt] ?? []).map((m) => {
                 const mc = macros(m);
                 return (
-                  <li class="flex justify-between gap-2">
-                    <span class="text-white">{mc.name} <span class="text-navy-400">{m.qty_g}g</span></span>
+                  <li class="flex items-center justify-between gap-2">
+                    <span class="text-white flex-1 min-w-0">{mc.name} <span class="text-navy-400">{m.qty_g}g</span></span>
                     <span class="text-navy-300 tabular-nums text-xs">{Math.round(mc.kcal)}kcal</span>
+                    <button
+                      type="button"
+                      data-meal-id={m.id}
+                      class="delete-meal-btn text-navy-500 hover:text-red-400 text-sm leading-none px-1"
+                      title="Remover"
+                    >×</button>
                   </li>
                 );
               })}
@@ -306,6 +312,39 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
         { match: /azeite/i, portions: [{ label: "1 colher sopa (13g)", g: 13 }] },
         { match: /cafe|café/i, portions: [{ label: "1 xícara (50ml)", g: 50 }, { label: "1 caneca (200ml)", g: 200 }] },
         { match: /cerveja/i, portions: [{ label: "1 long neck (350ml)", g: 350 }, { label: "1 lata (350ml)", g: 350 }] },
+        // Mais portions adicionais
+        { match: /coca|guarana|sprite|fanta|refri/i, portions: [{ label: "1 lata (350ml)", g: 350 }, { label: "1 copo (250ml)", g: 250 }, { label: "1 garrafa (600ml)", g: 600 }] },
+        { match: /vinho/i, portions: [{ label: "1 taça (150ml)", g: 150 }] },
+        { match: /vodka|whisky|cachaca|cachaça/i, portions: [{ label: "1 dose (50ml)", g: 50 }] },
+        { match: /pizza/i, portions: [{ label: "1 fatia (100g)", g: 100 }, { label: "1/4 pizza (200g)", g: 200 }, { label: "1/2 pizza (400g)", g: 400 }] },
+        { match: /big mac|whopper|cheeseburger|x-burger|x-tudo|hamburger/i, portions: [{ label: "1 lanche (170g)", g: 170 }, { label: "1 grande (220g)", g: 220 }] },
+        { match: /coxinha|pastel|esfiha|empada|risole|kibe/i, portions: [{ label: "1 unidade (80g)", g: 80 }, { label: "2 unidades (160g)", g: 160 }] },
+        { match: /sorvete/i, portions: [{ label: "1 bola (60g)", g: 60 }, { label: "2 bolas (120g)", g: 120 }] },
+        { match: /chocolate/i, portions: [{ label: "1 quadrado (5g)", g: 5 }, { label: "1 barra pequena (25g)", g: 25 }, { label: "1 barra (90g)", g: 90 }] },
+        { match: /bombom/i, portions: [{ label: "1 unidade (15g)", g: 15 }] },
+        { match: /brigadeiro|beijinho/i, portions: [{ label: "1 unidade (20g)", g: 20 }] },
+        { match: /granola/i, portions: [{ label: "1 colher sopa (15g)", g: 15 }, { label: "3 colheres (45g)", g: 45 }] },
+        { match: /salame|pepperoni|calabresa|presunto|mortadela/i, portions: [{ label: "1 fatia (15g)", g: 15 }, { label: "3 fatias (45g)", g: 45 }] },
+        { match: /salsicha|linguica|linguiça/i, portions: [{ label: "1 unidade (50g)", g: 50 }, { label: "2 unidades (100g)", g: 100 }] },
+        { match: /bacon/i, portions: [{ label: "1 fatia (8g)", g: 8 }, { label: "3 fatias (24g)", g: 24 }] },
+        { match: /requeijao|requeijão/i, portions: [{ label: "1 colher sopa (15g)", g: 15 }] },
+        { match: /cream cheese/i, portions: [{ label: "1 colher sopa (15g)", g: 15 }] },
+        { match: /manteiga|margarina/i, portions: [{ label: "1 colher chá (5g)", g: 5 }] },
+        { match: /^mel$/i, portions: [{ label: "1 colher sopa (20g)", g: 20 }] },
+        { match: /açucar|açúcar|acucar/i, portions: [{ label: "1 colher chá (5g)", g: 5 }, { label: "1 colher sopa (15g)", g: 15 }] },
+        { match: /quinoa|cuscuz/i, portions: [{ label: "1 escumadeira (60g)", g: 60 }] },
+        { match: /grao de bico|grão de bico|lentilha|ervilha/i, portions: [{ label: "1 concha (80g)", g: 80 }] },
+        { match: /tomate|cenoura|beterraba|pepino|pimentao|cebola/i, portions: [{ label: "1 unidade (100g)", g: 100 }, { label: "1 fatia (15g)", g: 15 }] },
+        { match: /alface|rucula|agriao|espinafre/i, portions: [{ label: "1 prato (50g)", g: 50 }] },
+        { match: /brocolis|couve flor|couve manteiga/i, portions: [{ label: "1 porção (80g)", g: 80 }] },
+        { match: /uva/i, portions: [{ label: "10 bagos (50g)", g: 50 }, { label: "1 cacho (200g)", g: 200 }] },
+        { match: /melancia/i, portions: [{ label: "1 fatia (200g)", g: 200 }] },
+        { match: /melao|melão/i, portions: [{ label: "1 fatia (150g)", g: 150 }] },
+        { match: /morango|framboesa|amora|mirtilo|acerola/i, portions: [{ label: "1 punhado (50g)", g: 50 }] },
+        { match: /pera/i, portions: [{ label: "1 unidade (170g)", g: 170 }] },
+        { match: /abacaxi/i, portions: [{ label: "1 fatia (100g)", g: 100 }] },
+        { match: /coco fresco/i, portions: [{ label: "1 pedaço (40g)", g: 40 }] },
+        { match: /agua de coco/i, portions: [{ label: "1 copo (200ml)", g: 200 }, { label: "1 caixa (1L)", g: 1000 }] },
       ];
 
       function showQuickPortions(foodName: string) {
@@ -358,6 +397,25 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
             resultsBox.appendChild(item);
           });
         }, 200);
+      });
+
+      // Delete handler
+      document.querySelectorAll(".delete-meal-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const mealId = (e.currentTarget as HTMLButtonElement).dataset.mealId;
+          if (!mealId || !confirm("Remover esta refeição?")) return;
+          try {
+            const res = await fetch(`/api/pr/diet/meal-log?id=${mealId}`, { method: "DELETE" });
+            if (res.ok) {
+              window.location.reload();
+            } else {
+              alert("Erro ao remover.");
+            }
+          } catch {
+            alert("Erro de conexão.");
+          }
+        });
       });
 
       saveBtn?.addEventListener("click", async () => {
