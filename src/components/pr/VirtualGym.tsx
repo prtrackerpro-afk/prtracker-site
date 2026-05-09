@@ -1987,6 +1987,8 @@ export default function VirtualGym({
     scene.add(virtualKB);
 
     function engageEquipment(eq: EquipmentRef) {
+      // Cycle 8: log diagnostico pra debugar trava
+      console.log("[gym] engaging:", eq.exercise, "at (x,z):", eq.x, eq.z, "rotY:", eq.rotY);
       engagedEquipment = eq;
       exerciseProgress = 0;
       exerciseReps = 0;
@@ -2211,63 +2213,25 @@ export default function VirtualGym({
       void arms;
       switch (exercise) {
         case "bench": {
-          // BENCH PRESS REAL — avatar deitado em cima do banco
-          // Bench dimensions: SEAT_Y=0.45 (top estofado), BENCH_LEN=1.3,
-          //                   POST_Z=-0.75 (cabeçeira), BAR_Y=0.94, bar.z=-0.69
-          // Avatar local height: 2.0m
-          //
-          // Estratégia: SET root.position e rotation EXATAMENTE pra que:
-          //   - Torso fique sobre estofado (centro do bench)
-          //   - Cabeça aponte em direção dos postes (em -Z local do bench)
-          //   - Pés sobrem do banco em direção +Z local
-          //
-          // Quando root.rotation.x = -PI/2 (sem rotation.y):
-          //   local (0, y, 0) → world (0, 0, -y)
-          //   Avatar com head local (0, 2.0, 0) → world (0, 0, -2.0) RELATIVO ao root
-          //
-          // Considerando eq.rotY: aplica em torno de Y mundo
-          //   rotY=0: head world rel = (0, 0, -2)
-          //   rotY=PI/2: head world rel = (-2, 0, 0)
-          //
-          // Pra head ficar SOB a barbell (z_local_bench = -0.69):
-          //   Se rotY=0: root.z + (-2) = eq.z + (-0.69) → root.z = eq.z + 1.31
-          //   Geral: rot Y do (0,0,-2) por eq.rotY → (sin(rotY)*2, 0, -cos(rotY)*2)
-          //          ROOT direção: -1 vezes essa
-          const rotY = eq.rotY;
-          // Vetor "head local" rotacionado por X primeiro (PI/2): vira (0, 0, -2)
-          // Em mundo (após Y rotation eq.rotY): (sin(rotY)*-2*-1, 0, cos(rotY)*-2*-1)
-          // Simplifying: head_offset_world = (-2*sin(rotY), 0, -2*cos(rotY))
-          // Pra head ficar em (eq.x + sin(rotY)*-0.69, 0.55, eq.z + cos(rotY)*-0.69):
-          //   root.x = eq.x + sin(rotY)*(-0.69) - (-2*sin(rotY)) = eq.x + sin(rotY)*1.31
-          //   root.z = eq.z + cos(rotY)*1.31
-          a.root.position.x = eq.x + Math.sin(rotY) * 1.31;
-          a.root.position.z = eq.z + Math.cos(rotY) * 1.31;
-          a.root.position.y = 0.55;
-          a.root.rotation.set(-Math.PI / 2, rotY, 0, "YXZ"); // Y primeiro, então X
-          // Cabeça neutra
+          // CYCLE 6 SIMPLIFIED: Avatar EM PE de FRENTE pro banco fingindo o supino
+          // (representacao simbolica enquanto debugamos a trava)
+          // root.rotation.x = 0 (em pe), root.position fixed na frente do banco
+          a.root.rotation.set(0, eq.rotY, 0);
+          // Posiciona avatar 0.4m na frente do banco (sai do equipment)
+          a.root.position.x = eq.x + Math.sin(eq.rotY) * 0.4;
+          a.root.position.z = eq.z + Math.cos(eq.rotY) * 0.4;
+          a.root.position.y = 0;
           a.head.rotation.set(0, 0, 0);
-          // PERNAS: precisam descer pro chão. Avatar deitado: leg local +Y (after rot)
-          // vai pra +Z mundo. Pra leg apontar pra -Y mundo (chão), leg rotation.x = -PI/2
-          a.leftLeg.rotation.x = -Math.PI / 2;
-          a.rightLeg.rotation.x = -Math.PI / 2;
-          a.leftCalf.rotation.x = 0.5;
-          a.rightCalf.rotation.x = 0.5;
-          // BRACOS pra cima (lockout):
-          // arm shoulder local = (±shoulderHalfW, 1.62, 0). Após root rot.x=-PI/2:
-          //   arm shoulder world = root + (±shoulderHalfW, 0, -1.62 girado por rotY)
-          // Pra arm apontar pra +Y mundo: arm.rotation.x precisa fazer
-          //   armUp local +Y → +Z LOCAL DO ARM → +Y MUNDO
-          // Solução: rotation.x = -PI/2 do arm faz braço apontar +Z local do braço
-          //   (que após root rot.x=-PI/2 vira... vira -Y mundo se z mundo, +Y mundo)
-          // Vou USAR rotation NEGATIVA pra braços apontarem pra cima
-          a.leftArm.rotation.x = -Math.PI / 2; // braço aponta +Z LOCAL do root
-          a.rightArm.rotation.x = -Math.PI / 2;
-          // Sem cotovelos abertos por enquanto (testando)
-          a.leftArm.rotation.z = 0;
-          a.rightArm.rotation.z = 0;
-          // FOREARM flex 0 (lockout reto) → PI/2 (peito)
-          a.leftForearm.rotation.x = (1 - p) * (Math.PI / 2);
-          a.rightForearm.rotation.x = (1 - p) * (Math.PI / 2);
+          a.leftLeg.rotation.set(0, 0, 0);
+          a.rightLeg.rotation.set(0, 0, 0);
+          a.leftCalf.rotation.set(0, 0, 0);
+          a.rightCalf.rotation.set(0, 0, 0);
+          // Bracos pra frente (rotation.x = -PI/2 = paralelo ao chao apontando frente)
+          a.leftArm.rotation.set(-Math.PI / 2, 0, -0.4);
+          a.rightArm.rotation.set(-Math.PI / 2, 0, 0.4);
+          // Forearm flex 1.6 (peito) → 0 (estendido)
+          a.leftForearm.rotation.set(1.6 - p * 1.6, 0, 0);
+          a.rightForearm.rotation.set(1.6 - p * 1.6, 0, 0);
           a.leftHand.rotation.set(0, 0, 0);
           a.rightHand.rotation.set(0, 0, 0);
           break;
@@ -2640,7 +2604,10 @@ export default function VirtualGym({
       dustGeometry.attributes.position!.needsUpdate = true;
 
       // === EXERCISE ENGAGEMENT LOOP ===
+      // Cycle 3: try/catch global pra trava nunca acontecer (qualquer erro
+      // dispara disengage automatico em vez de matar o loop inteiro)
       if (engagedEquipment) {
+        try {
         // Update progress
         const eq = engagedEquipment;
         const isTapDriven = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
@@ -2727,20 +2694,23 @@ export default function VirtualGym({
         }
 
         // BENCH: move a barbell EXISTENTE do bench mesh pra acompanhar as maos
+        // Cycle 2: GUARD completo + try/catch (era trava silenciosa)
         if (eq.exercise === "bench") {
-          const benchBarbell = eq.mesh.userData.benchBarbell as THREE.Group | undefined;
-          if (benchBarbell) {
-            const lh = new THREE.Vector3();
-            const rh = new THREE.Vector3();
-            avatarParts.leftHand.getWorldPosition(lh);
-            avatarParts.rightHand.getWorldPosition(rh);
-            // Midpoint entre as maos no mundo
-            const midWorld = new THREE.Vector3().lerpVectors(lh, rh, 0.5);
-            // Converter pra LOCAL do bench (que é o parent da barbell)
-            const localMid = eq.mesh.worldToLocal(midWorld.clone());
-            benchBarbell.position.copy(localMid);
-            // Manter rotation Z=PI/2 (bar horizontal) — já está no Group children
-            benchBarbell.rotation.set(0, 0, 0);
+          try {
+            const benchBarbell = eq.mesh?.userData?.benchBarbell as THREE.Group | undefined;
+            if (benchBarbell && avatarParts.leftHand && avatarParts.rightHand && eq.mesh) {
+              const lh = new THREE.Vector3();
+              const rh = new THREE.Vector3();
+              avatarParts.leftHand.getWorldPosition(lh);
+              avatarParts.rightHand.getWorldPosition(rh);
+              const midWorld = new THREE.Vector3().lerpVectors(lh, rh, 0.5);
+              const localMid = eq.mesh.worldToLocal(midWorld.clone());
+              benchBarbell.position.copy(localMid);
+              benchBarbell.rotation.set(0, 0, 0);
+            }
+          } catch (err) {
+            // se algo crashar, nao trava o loop
+            console.warn("[bench] barbell tracking failed:", err);
           }
         }
 
@@ -2794,6 +2764,14 @@ export default function VirtualGym({
         renderer.render(scene, camera);
         raf = requestAnimationFrame(loop);
         return;
+        } catch (err) {
+          // Cycle 3: erro no engagement → auto-disengage + log
+          console.error("[gym engagement] error, auto-disengaging:", err);
+          if (engagedEquipment) {
+            try { disengageEquipment(); } catch {}
+          }
+          // Continue render normal
+        }
       }
 
       // === PROXIMITY DETECTION ===
