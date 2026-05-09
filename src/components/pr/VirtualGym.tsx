@@ -1999,9 +1999,17 @@ export default function VirtualGym({
       let initialRootY = 0;
       let initialRootRotX = 0;
       if (eq.exercise === "bench") {
-        offsetFwd = 0;
-        initialRootY = 0;
-        initialRootRotX = 0; // EM PE (representação simplificada — bench virtual)
+        // Avatar DEITADO no banco. Bench builder dimensions:
+        //   SEAT_Y=0.45, BENCH_LEN=1.3, POST_Z=-0.75, BAR_Y=0.94
+        // Avatar height local: 2.0m (head at y=2.0, feet at y=0)
+        // Após root.rotation.x = -PI/2: head vai pra z=-2.0 do root
+        // Pra cabeça ficar abaixo da barra (z=-0.69):
+        //   root.z + (-2.0 girado pra eixo banco z) = -0.69
+        //   Em frame do banco (rotY=0): root.z_local = -0.69 + 2.0 = +1.31
+        // No frame mundo: aplica eq.rotY ao offset
+        offsetFwd = -1.31; // eu uso "-fwd" pq fwd é direção de saída do banco
+        initialRootY = 0.55; // top do estofado (0.45) + 0.1 corpo
+        initialRootRotX = -Math.PI / 2;
       } else if (eq.exercise === "squat") {
         offsetFwd = 0; // dentro do rack
         initialRootY = 0;
@@ -2106,6 +2114,15 @@ export default function VirtualGym({
       inputLockedRef.current = false;
       virtualBarbell.visible = false;
       virtualKB.visible = false;
+      // Restaurar barbell do bench pra posição rest se foi movida
+      if (eq.exercise === "bench") {
+        const benchBarbell = eq.mesh.userData.benchBarbell as THREE.Group | undefined;
+        const restPos = benchBarbell?.userData.restPosition as THREE.Vector3 | undefined;
+        if (benchBarbell && restPos) {
+          benchBarbell.position.copy(restPos);
+          benchBarbell.rotation.set(0, 0, 0);
+        }
+      }
     }
 
     // Click no prompt → engage
@@ -2194,22 +2211,29 @@ export default function VirtualGym({
       void arms;
       switch (exercise) {
         case "bench":
-          // Bench REPRESENTACIONAL: avatar em pé empurra barbell virtual pra cima
-          // (representacao simplificada — bench virtual à frente do atleta)
-          // Up arm rotation.x = -PI/2 (paralelo ao chão pra frente)
-          // Forearm flex: 1.5 (peito) → 0.1 (estendido frente)
-          a.root.rotation.x = 0;
-          a.root.position.y = 0;
-          a.leftLeg.rotation.x = 0;
-          a.rightLeg.rotation.x = 0;
-          a.leftCalf.rotation.x = 0;
-          a.rightCalf.rotation.x = 0;
-          a.leftArm.rotation.x = -Math.PI / 2; // pra frente paralelo
+          // BENCH PRESS REAL — avatar DEITADO de costas no banco
+          // root.rotation.x = -PI/2 (cabeça pra -Z mundo, peito pra +Y mundo)
+          // BRAÇOS LOCAL: arm.rotation.x = -PI/2 → braço aponta +Z LOCAL = +Y MUNDO
+          //   (braço vertical pra cima — lockout!)
+          // FOREARM FLEX: 0 (lockout) → +PI/2 (peito) — cotovelo dobra naturalmente
+          a.root.rotation.x = -Math.PI / 2;
+          a.root.position.y = 0.55;
+          a.head.rotation.set(0, 0, 0);
+          // Pernas: pra baixo (chão) — leg.rotation.x = -PI/2 aponta +Z LOCAL
+          // após root rotation = -Y MUNDO (pra baixo)
+          a.leftLeg.rotation.x = -Math.PI / 2;
+          a.rightLeg.rotation.x = -Math.PI / 2;
+          // Knee flex pra simular pés no chão (joelho dobrado)
+          a.leftCalf.rotation.x = 0.5;
+          a.rightCalf.rotation.x = 0.5;
+          // BRAÇOS pra cima (lockout)
+          a.leftArm.rotation.x = -Math.PI / 2;
           a.rightArm.rotation.x = -Math.PI / 2;
-          a.leftArm.rotation.z = -0.45; // cotovelos abertos arc natural
-          a.rightArm.rotation.z = 0.45;
-          a.leftForearm.rotation.x = 1.6 - p * 1.6; // 90° (peito) → 0 (lockout)
-          a.rightForearm.rotation.x = 1.6 - p * 1.6;
+          a.leftArm.rotation.z = -0.5;
+          a.rightArm.rotation.z = 0.5;
+          // FOREARM flex 0 (lockout) → PI/2 (peito) — cotovelo dobra correto
+          a.leftForearm.rotation.x = (1 - p) * (Math.PI / 2);
+          a.rightForearm.rotation.x = (1 - p) * (Math.PI / 2);
           a.leftHand.rotation.set(0, 0, 0);
           a.rightHand.rotation.set(0, 0, 0);
           break;
@@ -2627,8 +2651,9 @@ export default function VirtualGym({
         }
         animateAvatarForExercise(eq.exercise, exerciseProgress);
 
-        // Posiciona virtual barbell pros 3 lifts principais
-        const showBarbell = eq.exercise === "bench" || eq.exercise === "squat" || eq.exercise === "deadlift";
+        // Virtual barbell apenas pros lifts SEM barbell propria no equipamento
+        // BENCH ja tem barbell no rack — vou MOVER essa barbell pra acompanhar maos
+        const showBarbell = eq.exercise === "squat" || eq.exercise === "deadlift";
         virtualBarbell.visible = showBarbell;
         // Virtual KB pro swing
         virtualKB.visible = eq.exercise === "kbswing";
@@ -2646,15 +2671,12 @@ export default function VirtualGym({
           );
         }
         if (showBarbell) {
-          // BARBELL SEGUE AS MAOS DO AVATAR (midpoint entre leftHand e rightHand mundo space)
           const lh = new THREE.Vector3();
           const rh = new THREE.Vector3();
           avatarParts.leftHand.getWorldPosition(lh);
           avatarParts.rightHand.getWorldPosition(rh);
           virtualBarbell.position.lerpVectors(lh, rh, 0.5);
-          // Squat: barbell ATRAS da nuca, não nas mãos
           if (eq.exercise === "squat") {
-            // Posiciona logo abaixo do pescoço (trapezios)
             virtualBarbell.position.set(
               avatarParts.root.position.x,
               avatarParts.root.position.y + 1.45,
@@ -2662,7 +2684,6 @@ export default function VirtualGym({
             );
           }
           virtualBarbell.rotation.y = eq.rotY;
-          // Tilt do barbell em deadlift (acompanha lean do torso)
           if (eq.exercise === "deadlift") {
             virtualBarbell.rotation.x = avatarParts.root.rotation.x;
           } else {
@@ -2670,10 +2691,28 @@ export default function VirtualGym({
           }
         }
 
+        // BENCH: move a barbell EXISTENTE do bench mesh pra acompanhar as maos
+        if (eq.exercise === "bench") {
+          const benchBarbell = eq.mesh.userData.benchBarbell as THREE.Group | undefined;
+          if (benchBarbell) {
+            const lh = new THREE.Vector3();
+            const rh = new THREE.Vector3();
+            avatarParts.leftHand.getWorldPosition(lh);
+            avatarParts.rightHand.getWorldPosition(rh);
+            // Midpoint entre as maos no mundo
+            const midWorld = new THREE.Vector3().lerpVectors(lh, rh, 0.5);
+            // Converter pra LOCAL do bench (que é o parent da barbell)
+            const localMid = eq.mesh.worldToLocal(midWorld.clone());
+            benchBarbell.position.copy(localMid);
+            // Manter rotation Z=PI/2 (bar horizontal) — já está no Group children
+            benchBarbell.rotation.set(0, 0, 0);
+          }
+        }
+
         // Camera close-up por exercício (lateral pra lifts, frente pra pullup, etc)
         const lookY =
           eq.exercise === "pullup" ? 2.0 :
-          eq.exercise === "bench" ? 1.4 : // alto pq bracos sobem
+          eq.exercise === "bench" ? 0.9 : // altura da barra do bench
           eq.exercise === "pushup" ? 1.0 :
           eq.exercise === "deadlift" ? 0.8 :
           eq.exercise === "boxjump" ? 1.2 :
