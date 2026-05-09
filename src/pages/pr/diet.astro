@@ -218,6 +218,20 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
         </div>
       </section>
 
+      <!-- Peso corporal — quick log -->
+      <section class="rounded-2xl border border-purple-500/40 bg-purple-500/5 p-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <div class="text-[10px] uppercase tracking-[0.3em] text-purple-400">⚖️ PESO HOJE</div>
+            <div class="text-sm text-white" id="bw-display">{athlete.bodyWeightKg ?? "—"} kg</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="bw-input" type="number" step="0.1" min="30" max="300" placeholder="Kg" class="w-20 bg-navy-800 border border-navy-700 rounded-lg px-2 py-1.5 text-sm text-white text-right" />
+            <button id="bw-save" class="bg-purple-500/30 hover:bg-purple-500/60 text-white text-xs rounded-full px-3 py-1.5 font-bold">Salvar</button>
+          </div>
+        </div>
+      </section>
+
       <!-- Hidratação -->
       <section class="rounded-2xl border border-blue-500/40 bg-blue-500/5 p-3">
         <div class="flex items-center justify-between mb-2">
@@ -471,6 +485,35 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
             resultsBox.appendChild(item);
           });
         }, 200);
+      });
+
+      // Bodyweight save handler
+      const bwInput = document.getElementById("bw-input") as HTMLInputElement | null;
+      const bwSave = document.getElementById("bw-save") as HTMLButtonElement | null;
+      const bwDisplay = document.getElementById("bw-display") as HTMLDivElement | null;
+      bwSave?.addEventListener("click", async () => {
+        const w = Number(bwInput?.value);
+        if (!w || w < 30 || w > 300) {
+          alert("Peso entre 30 e 300 kg");
+          return;
+        }
+        bwSave.disabled = true;
+        try {
+          const res = await fetch("/api/pr/diet/bodyweight", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ weight_kg: w }),
+          });
+          if (res.ok) {
+            if (bwDisplay) bwDisplay.textContent = `${w} kg ✓`;
+            if (bwInput) bwInput.value = "";
+          } else {
+            alert("Erro ao salvar peso.");
+          }
+        } catch {
+          alert("Erro de conexão.");
+        }
+        bwSave.disabled = false;
       });
 
       // Water +/- handlers
