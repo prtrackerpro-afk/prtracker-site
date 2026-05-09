@@ -2050,9 +2050,14 @@ export default function VirtualGym({
         }
         inputLockedRef.current = true;
         keys.up = keys.down = keys.left = keys.right = false;
+        // Dispatch event pra UI mostrar botão emergencia
+        try {
+          window.dispatchEvent(new CustomEvent("gym:engage-state", { detail: { engaged: true } }));
+        } catch {}
       } catch (err) {
         console.error("[gym engage] failed:", err);
         engagedEquipment = null;
+        engagedExerciseRef.current = null;
         inputLockedRef.current = false;
       }
     }
@@ -2088,8 +2093,12 @@ export default function VirtualGym({
       avatarParts.leftCalf.rotation.set(0, 0, 0);
       avatarParts.rightCalf.rotation.set(0, 0, 0);
       engagedEquipment = null;
-      engagedExerciseRef.current = null; // libera trava
+      engagedExerciseRef.current = null;
       savedAvatarPose = null;
+      // Dispatch event pra esconder botão emergencia
+      try {
+        window.dispatchEvent(new CustomEvent("gym:engage-state", { detail: { engaged: false } }));
+      } catch {}
       exerciseProgress = 0;
       exerciseReps = 0;
       exerciseWasUp = false;

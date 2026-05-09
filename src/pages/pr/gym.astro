@@ -257,6 +257,30 @@ function shortName(label: string): string {
       </button>
     </div>
 
+    <!-- Botão de emergência: SAIR do exercício (sempre visivel + topo z-index) -->
+    <button id="emergency-exit" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[70] bg-red-600 text-white font-display font-bold rounded-full px-4 py-2 text-xs shadow-lg shadow-red-900/50 hover:bg-red-700 transition pointer-events-auto">
+      ✕ SAIR DO EXERCÍCIO (ESC)
+    </button>
+    <script is:inline>
+      // Mostra botão emergencia apenas quando avatar está engaged
+      // Listen pra evento custom do VirtualGym
+      window.addEventListener("gym:engage-state", function (e) {
+        const btn = document.getElementById("emergency-exit");
+        if (btn) {
+          if (e.detail && e.detail.engaged) {
+            btn.classList.remove("hidden");
+          } else {
+            btn.classList.add("hidden");
+          }
+        }
+      });
+      // Click no botão tenta sair
+      document.getElementById("emergency-exit")?.addEventListener("click", function () {
+        // Dispatch ESC keydown
+        window.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape" }));
+      });
+    </script>
+
     <!-- HUD durante o exercício -->
     <div id="exercise-hud" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[min(94vw,420px)]">
       <div class="bg-navy-900/95 backdrop-blur border-2 border-brand-lime/40 rounded-2xl p-3 shadow-xl">
