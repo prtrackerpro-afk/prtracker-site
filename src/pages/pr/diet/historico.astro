@@ -1,0 +1,138 @@
+---
+export const prerender = false;
+import "../../../styles/global.css";
+import BottomNav from "../../../components/pr/BottomNav.astro";
+import { getServerSupabase } from "../../../lib/supabase/server";
+
+const athlete = Astro.locals.athlete;
+if (!athlete) return Astro.redirect("/pr/login");
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+// Últimos 7 dias de meal_log + body_log
+const past = new Date();
+past.setDate(past.getDate() - 7);
+past.setHours(0, 0, 0, 0);
+
+const [mealsR, bodyR, waterR] = await Promise.all([
+  supabase
+    .from("pr_meal_log")
+    .select("consumed_at, qty_g, custom_kcal, pr_food_db(kcal)")
+    .eq("user_id", athlete.userId)
+    .gte("consumed_at", past.toISOString())
+    .order("consumed_at", { ascending: true }),
+  supabase
+    .from("pr_body_log")
+    .select("measured_at, weight_kg, body_fat_pct")
+    .eq("user_id", athlete.userId)
+    .gte("measured_at", past.toISOString().slice(0, 10))
+    .order("measured_at", { ascending: true }),
+  supabase
+    .from("pr_water_log")
+    .select("consumed_at, qty_ml")
+    .eq("user_id", athlete.userId)
+    .gte("consumed_at", past.toISOString()),
+]);
+
+type MealRow = { consumed_at: string; qty_g: number; custom_kcal: number | null; pr_food_db: { kcal: number } | null };
+const meals = (mealsR.data ?? []) as MealRow[];
+type BodyRow = { measured_at: string; weight_kg: number | null; body_fat_pct: number | null };
+const bodyLogs = (bodyR.data ?? []) as BodyRow[];
+type WaterRow = { consumed_at: string; qty_ml: number };
+const waterLogs = (waterR.data ?? []) as WaterRow[];
+
+// Agregar por dia
+type DayStats = { day: string; kcal: number; meals: number; water_ml: number; weight_kg: number | null };
+const byDay = new Map<string, DayStats>();
+function getOrInit(day: string): DayStats {
+  let d = byDay.get(day);
+  if (!d) {
+    d = { day, kcal: 0, meals: 0, water_ml: 0, weight_kg: null };
+    byDay.set(day, d);
+  }
+  return d;
+}
+for (const m of meals) {
+  const day = m.consumed_at.slice(0, 10);
+  const d = getOrInit(day);
+  const factor = m.qty_g / 100;
+  const kcal = (m.pr_food_db?.kcal ?? m.custom_kcal ?? 0) * factor;
+  d.kcal += kcal;
+  d.meals += 1;
+}
+for (const w of waterLogs) {
+  const day = w.consumed_at.slice(0, 10);
+  const d = getOrInit(day);
+  d.water_ml += w.qty_ml;
+}
+for (const b of bodyLogs) {
+  const d = getOrInit(b.measured_at);
+  d.weight_kg = b.weight_kg;
+}
+
+// Sort: dias mais recentes primeiro
+const sortedDays = [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day));
+
+function fmtDate(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" });
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Histórico de Dieta · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <a href="/pr/diet" class="text-sm text-navy-300 hover:text-white">← Hoje</a>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">HISTÓRICO</div>
+      <h1 class="font-display text-3xl tracking-tight text-white">Últimos 7 dias</h1>
+    </header>
+
+    <main class="max-w-md mx-auto px-4">
+      {sortedDays.length === 0 ? (
+        <div class="rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 p-5 text-center">
+          <p class="text-sm">Sem dados ainda. Comece a logar refeições em <a href="/pr/diet" class="text-brand-lime hover:underline">/pr/diet</a>.</p>
+        </div>
+      ) : (
+        <ul class="space-y-2">
+          {sortedDays.map((d) => (
+            <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-sm font-display font-semibold capitalize">{fmtDate(d.day)}</div>
+                {d.weight_kg && (
+                  <span class="text-xs bg-purple-500/20 text-purple-300 rounded-full px-2 py-0.5">⚖️ {d.weight_kg}kg</span>
+                )}
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div class="text-lg font-display font-bold text-brand-lime tabular-nums">{Math.round(d.kcal)}</div>
+                  <div class="text-[9px] uppercase tracking-wider text-navy-400">kcal</div>
+                </div>
+                <div>
+                  <div class="text-lg font-display font-bold text-white tabular-nums">{d.meals}</div>
+                  <div class="text-[9px] uppercase tracking-wider text-navy-400">refeições</div>
+                </div>
+                <div>
+                  <div class="text-lg font-display font-bold text-blue-400 tabular-nums">{(d.water_ml / 1000).toFixed(1)}L</div>
+                  <div class="text-[9px] uppercase tracking-wider text-navy-400">água</div>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+
+    <BottomNav active="profile" />
+  </body>
+</html>
