@@ -2,9 +2,50 @@
 export const prerender = false;
 import "../../styles/global.css";
 import BottomNav from "../../components/pr/BottomNav.astro";
+import { getServerSupabase } from "../../lib/supabase/server";
 
 const athlete = Astro.locals.athlete;
 if (!athlete) return Astro.redirect("/pr/login");
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+// Top 5 scores de cada jogo
+async function fetchTop5(gameId: string) {
+  const { data } = await supabase
+    .from("pr_arcade_scores")
+    .select("score, played_at, user_id")
+    .eq("game_id", gameId)
+    .order("score", { ascending: false })
+    .limit(5);
+  return data ?? [];
+}
+
+const [bbTop, psTop, wsTop] = await Promise.all([
+  fetchTop5("barbell_bounce"),
+  fetchTop5("shaker_mixer"),
+  fetchTop5("wod_sprint"),
+]);
+
+// Best do próprio atleta em cada jogo
+async function myBest(gameId: string) {
+  const { data } = await supabase
+    .from("pr_arcade_scores")
+    .select("score")
+    .eq("game_id", gameId)
+    .eq("user_id", athlete.userId)
+    .order("score", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.score ?? 0;
+}
+const [bbMyBest, psMyBest, wsMyBest] = await Promise.all([
+  myBest("barbell_bounce"),
+  myBest("shaker_mixer"),
+  myBest("wod_sprint"),
+]);
 ---
 
 <!doctype html>
@@ -22,6 +63,22 @@ if (!athlete) return Astro.redirect("/pr/login");
       <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">FLIPERAMA</div>
       <h1 class="font-display text-3xl tracking-tight text-white">Pega leve. É só diversão.</h1>
       <p class="text-sm text-navy-300">3 jogos fitness-themed. Score não conta XP no app.</p>
+
+      <!-- Quick stats — meu best em cada jogo -->
+      <div class="grid grid-cols-3 gap-2 mt-3">
+        <div class="bg-navy-800/40 rounded-lg p-2 text-center">
+          <div class="text-[9px] uppercase tracking-wider text-brand-lime">BARBELL BOUNCE</div>
+          <div class="text-lg font-display font-bold text-white tabular-nums">{bbMyBest}</div>
+        </div>
+        <div class="bg-navy-800/40 rounded-lg p-2 text-center">
+          <div class="text-[9px] uppercase tracking-wider text-pink-400">PROTEIN SHAKER</div>
+          <div class="text-lg font-display font-bold text-white tabular-nums">{psMyBest}</div>
+        </div>
+        <div class="bg-navy-800/40 rounded-lg p-2 text-center">
+          <div class="text-[9px] uppercase tracking-wider text-blue-400">WOD SPRINT</div>
+          <div class="text-lg font-display font-bold text-white tabular-nums">{wsMyBest}</div>
+        </div>
+      </div>
     </header>
 
     <main class="max-w-2xl mx-auto px-4 space-y-6">
