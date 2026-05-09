@@ -1999,17 +1999,17 @@ export default function VirtualGym({
       let initialRootY = 0;
       let initialRootRotX = 0;
       if (eq.exercise === "bench") {
-        // Avatar DEITADO no banco. Bench builder dimensions:
-        //   SEAT_Y=0.45, BENCH_LEN=1.3, POST_Z=-0.75, BAR_Y=0.94
-        // Avatar height local: 2.0m (head at y=2.0, feet at y=0)
-        // Após root.rotation.x = -PI/2: head vai pra z=-2.0 do root
-        // Pra cabeça ficar abaixo da barra (z=-0.69):
-        //   root.z + (-2.0 girado pra eixo banco z) = -0.69
-        //   Em frame do banco (rotY=0): root.z_local = -0.69 + 2.0 = +1.31
-        // No frame mundo: aplica eq.rotY ao offset
-        offsetFwd = -1.31; // eu uso "-fwd" pq fwd é direção de saída do banco
-        initialRootY = 0.55; // top do estofado (0.45) + 0.1 corpo
-        initialRootRotX = -Math.PI / 2;
+        // ABORDAGEM NOVA: vou desistir de calcular offset com matemática complexa.
+        // Em vez disso: posiciono avatar EXATAMENTE NO ORIGEM do banco
+        // e uso initial offset como "0" — o avatar vai ficar deitado em CIMA do banco
+        // com o root no centro. Avatar tem cabeça em local (0,2,0); após rotation.x
+        // = -PI/2, cabeça vai pra (0,0,-2) local. Centralizando no bench origin,
+        // cabeça fica em z=-2 do bench, o que é ALÉM dos postes (-0.75).
+        // Solução: SEM rotation.x. Avatar fica em PE no banco, em cima do estofado.
+        offsetFwd = 0;
+        offsetSide = 0;
+        initialRootY = 0.55; // sentado em cima do banco
+        initialRootRotX = 0; // EM PE primeiro — depois animation aplica rotation
       } else if (eq.exercise === "squat") {
         offsetFwd = 0; // dentro do rack
         initialRootY = 0;
@@ -2210,33 +2210,60 @@ export default function VirtualGym({
       // (silencio o noUnusedVars)
       void arms;
       switch (exercise) {
-        case "bench":
-          // BENCH PRESS REAL — avatar DEITADO de costas no banco
-          // root.rotation.x = -PI/2 (cabeça pra -Z mundo, peito pra +Y mundo)
-          // BRAÇOS LOCAL: arm.rotation.x = -PI/2 → braço aponta +Z LOCAL = +Y MUNDO
-          //   (braço vertical pra cima — lockout!)
-          // FOREARM FLEX: 0 (lockout) → +PI/2 (peito) — cotovelo dobra naturalmente
-          a.root.rotation.x = -Math.PI / 2;
+        case "bench": {
+          // BENCH PRESS REAL — avatar deitado em cima do banco
+          // Bench dimensions: SEAT_Y=0.45 (top estofado), BENCH_LEN=1.3,
+          //                   POST_Z=-0.75 (cabeçeira), BAR_Y=0.94, bar.z=-0.69
+          // Avatar local height: 2.0m
+          //
+          // Estratégia: SET root.position e rotation EXATAMENTE pra que:
+          //   - Torso fique sobre estofado (centro do bench)
+          //   - Cabeça aponte em direção dos postes (em -Z local do bench)
+          //   - Pés sobrem do banco em direção +Z local
+          //
+          // Quando root.rotation.x = -PI/2 (sem rotation.y):
+          //   local (0, y, 0) → world (0, 0, -y)
+          //   Avatar com head local (0, 2.0, 0) → world (0, 0, -2.0) RELATIVO ao root
+          //
+          // Considerando eq.rotY: aplica em torno de Y mundo
+          //   rotY=0: head world rel = (0, 0, -2)
+          //   rotY=PI/2: head world rel = (-2, 0, 0)
+          //
+          // Pra head ficar SOB a barbell (z_local_bench = -0.69):
+          //   Se rotY=0: root.z + (-2) = eq.z + (-0.69) → root.z = eq.z + 1.31
+          //   Geral: rot Y do (0,0,-2) por eq.rotY → (sin(rotY)*2, 0, -cos(rotY)*2)
+          //          ROOT direção: -1 vezes essa
+          const rotY = eq.rotY;
+          // Vetor "head local" rotacionado por X primeiro (PI/2): vira (0, 0, -2)
+          // Em mundo (após Y rotation eq.rotY): (sin(rotY)*-2*-1, 0, cos(rotY)*-2*-1)
+          // Simplifying: head_offset_world = (-2*sin(rotY), 0, -2*cos(rotY))
+          // Pra head ficar em (eq.x + sin(rotY)*-0.69, 0.55, eq.z + cos(rotY)*-0.69):
+          //   root.x = eq.x + sin(rotY)*(-0.69) - (-2*sin(rotY)) = eq.x + sin(rotY)*1.31
+          //   root.z = eq.z + cos(rotY)*1.31
+          a.root.position.x = eq.x + Math.sin(rotY) * 1.31;
+          a.root.position.z = eq.z + Math.cos(rotY) * 1.31;
           a.root.position.y = 0.55;
+          a.root.rotation.set(-Math.PI / 2, rotY, 0, "YXZ"); // Y primeiro, então X
+          // Cabeça neutra
           a.head.rotation.set(0, 0, 0);
-          // Pernas: pra baixo (chão) — leg.rotation.x = -PI/2 aponta +Z LOCAL
-          // após root rotation = -Y MUNDO (pra baixo)
+          // PERNAS: precisam descer pro chão. Avatar deitado: leg local +Y (after rot)
+          // vai pra +Z mundo. Pra leg apontar pra -Y mundo (chão), leg rotation.x = -PI/2
           a.leftLeg.rotation.x = -Math.PI / 2;
           a.rightLeg.rotation.x = -Math.PI / 2;
-          // Knee flex pra simular pés no chão (joelho dobrado)
           a.leftCalf.rotation.x = 0.5;
           a.rightCalf.rotation.x = 0.5;
-          // BRAÇOS pra cima (lockout)
+          // BRACOS pra cima (lockout): arm local rotation.x = -PI/2 + correção
           a.leftArm.rotation.x = -Math.PI / 2;
           a.rightArm.rotation.x = -Math.PI / 2;
           a.leftArm.rotation.z = -0.5;
           a.rightArm.rotation.z = 0.5;
-          // FOREARM flex 0 (lockout) → PI/2 (peito) — cotovelo dobra correto
+          // FOREARM flex 0 (lockout) → PI/2 (peito)
           a.leftForearm.rotation.x = (1 - p) * (Math.PI / 2);
           a.rightForearm.rotation.x = (1 - p) * (Math.PI / 2);
           a.leftHand.rotation.set(0, 0, 0);
           a.rightHand.rotation.set(0, 0, 0);
           break;
+        }
 
         case "squat":
           // Back Squat REAL (high bar):
