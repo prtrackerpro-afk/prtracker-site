@@ -2184,293 +2184,135 @@ export default function VirtualGym({
           break;
         }
 
-        case "squat":
-          // Back Squat REAL (high bar):
-          // p=1 standing: torso vertical, pernas retas, barra trapezios
-          // p=0 bottom: hip below parallel, joelhos rastreiam pés, torso lean -0.3
-          // Knee tracking: shin angle ~30° pra frente (calf rotation positive)
-          // Hip rotation negative (perna pra frente angulada porque sit back DESCE)
-          {
-            const depth = 1 - p;
-            // Torso lean leve pra frente (high bar mais vertical que low bar)
-            a.root.rotation.x = -depth * 0.3;
-            // Avatar baixa proporcional ao squat depth
-            a.root.position.y = -depth * 0.55;
-            // Hip rotation: perna FICA RETA absolute mas calf flex traz pés pra trás
-            // Convencao: negative leg.rotation.x = perna sobe na frente
-            // Quando squat, hip nao deve rotacionar muito — só calf flex faz a magia
-            a.leftLeg.rotation.x = -depth * 0.15;
-            a.rightLeg.rotation.x = -depth * 0.15;
-            // Knee flex BIG (calf rotaciona pra frente, joelho dobra)
-            a.leftCalf.rotation.x = depth * 1.6;
-            a.rightCalf.rotation.x = depth * 1.6;
-            // BRACOS: bem pra cima e pra trás (segurando barra HIGH BAR)
-            // rotation.x = -PI = direção pra cima
-            // rotation.z aberto: ombros largos
-            a.leftArm.rotation.x = -Math.PI;
-            a.rightArm.rotation.x = -Math.PI;
-            a.leftArm.rotation.z = -0.6;
-            a.rightArm.rotation.z = 0.6;
-            // Forearm: dobrado segurando barra (cotovelos pra fora)
-            a.leftForearm.rotation.x = 1.3;
-            a.rightForearm.rotation.x = 1.3;
-            a.leftHand.rotation.set(0, 0, 0);
-            a.rightHand.rotation.set(0, 0, 0);
-          }
+        case "squat": {
+          // SQUAT MINIMO: avatar fica em pe, pernas dobram (knee flex), bracos atras
+          // ZERO mexida em root.position/rotation
+          const depth = 1 - p;
+          a.leftCalf.rotation.x = depth * 1.6;
+          a.rightCalf.rotation.x = depth * 1.6;
+          a.leftLeg.rotation.x = -depth * 0.5;
+          a.rightLeg.rotation.x = -depth * 0.5;
+          a.leftArm.rotation.set(-Math.PI, 0, -0.6);
+          a.rightArm.rotation.set(-Math.PI, 0, 0.6);
+          a.leftForearm.rotation.x = 1.3;
+          a.rightForearm.rotation.x = 1.3;
           break;
+        }
 
-        case "deadlift":
-          // Deadlift conventional REAL:
-          // p=1 lockout: standing reto, ombros atrás dos quadris, braços pra baixo
-          // p=0 setup: hip below shoulders/above knees, torso lean -0.7 (~40°),
-          //   shins ~10° pra frente (calf 0.3), braços retos puxando barra
-          {
-            const depth = 1 - p;
-            // Torso lean: HIP HINGE (não squat). Lean dramatico pra frente
-            a.root.rotation.x = -depth * 0.7;
-            // Avatar abaixa pouco (deadlift é mais hip hinge que squat)
-            a.root.position.y = -depth * 0.25;
-            // Hip rotation: pernas continuam retas pro chão (calf compensa lean)
-            a.leftLeg.rotation.x = depth * 0.7; // compensa root lean
-            a.rightLeg.rotation.x = depth * 0.7;
-            // Calf flex: pouco (~30°), shins quase verticais
-            a.leftCalf.rotation.x = depth * 0.3;
-            a.rightCalf.rotation.x = depth * 0.3;
-            // BRACOS: precisam ficar PRA BAIXO no mundo apesar do torso lean
-            // root.rotation.x = -0.7 inclina tudo. Braços precisam compensar
-            // segurando barra ABAIXO do corpo
-            a.leftArm.rotation.x = depth * 0.7; // compensa root lean = vertical mundo
-            a.rightArm.rotation.x = depth * 0.7;
-            a.leftArm.rotation.z = -0.05;
-            a.rightArm.rotation.z = 0.05;
-            // Forearm: 100% reto (segurando barra mid-foot)
-            a.leftForearm.rotation.x = 0;
-            a.rightForearm.rotation.x = 0;
-            a.leftHand.rotation.set(0, 0, 0);
-            a.rightHand.rotation.set(0, 0, 0);
-          }
+        case "deadlift": {
+          // DEADLIFT MINIMO: pernas dobram leve, bracos descem pra baixo
+          const depth = 1 - p;
+          a.leftCalf.rotation.x = depth * 0.5;
+          a.rightCalf.rotation.x = depth * 0.5;
+          a.leftLeg.rotation.x = -depth * 0.3;
+          a.rightLeg.rotation.x = -depth * 0.3;
+          // Bracos pra baixo (rotation.x = +0.5 angula pra frente baixa)
+          a.leftArm.rotation.set(0, 0, -0.05);
+          a.rightArm.rotation.set(0, 0, 0.05);
+          a.leftForearm.rotation.x = 0;
+          a.rightForearm.rotation.x = 0;
           break;
-        case "pullup":
-          // Pull-up REAL: avatar pendurado, mãos AGARRAM a barra fixa (acima)
-          // Forearm flex puxa o corpo PRA CIMA até queixo passar a barra
-          // Pull-up bar power rack y=2.58
-          // Avatar height: root + arm + forearm + hand = root.y + 1.62 + 0.34 + 0.30 = root.y+2.26
-          // Down (p=0): mãos na barra, corpo pendurado: root.y = 0.32 (mãos em 2.58)
-          // Up (p=1): queixo na barra (head em 2.58, root.y + 2.0 = 2.58 → root.y = 0.58)
-          a.root.rotation.x = 0;
-          a.root.position.y = 0.32 + p * 0.26;
-          // Bracos pra cima (rotation.x = -PI = vertical apontando pra cima)
-          a.leftArm.rotation.x = -Math.PI;
-          a.rightArm.rotation.x = -Math.PI;
-          a.leftArm.rotation.z = -0.3;
-          a.rightArm.rotation.z = 0.3;
-          // Forearm flex (cotovelo dobra) — puxa
+        }
+        case "pullup": {
+          // PULLUP MINIMO: bracos pra cima + forearm flex puxa
+          a.leftArm.rotation.set(-Math.PI, 0, -0.3);
+          a.rightArm.rotation.set(-Math.PI, 0, 0.3);
           a.leftForearm.rotation.x = p * 2.0;
           a.rightForearm.rotation.x = p * 2.0;
-          a.leftHand.rotation.set(0, 0, 0);
-          a.rightHand.rotation.set(0, 0, 0);
-          // Pernas dobradas pra trás (cruzadas) — knee flex
           a.leftLeg.rotation.x = 0.3;
           a.rightLeg.rotation.x = 0.3;
-          a.leftCalf.rotation.x = 1.2; // joelhos dobrados ~70°
+          a.leftCalf.rotation.x = 1.2;
           a.rightCalf.rotation.x = 1.2;
           break;
+        }
 
-        case "pushup":
-          // Push-up REPRESENTACIONAL: avatar em pé empurra braços PRA BAIXO/FRENTE
-          // (em vez de deitar horizontal que ficava esquisito)
-          // Bracos: rotation.x = +PI/4 (pra baixo e frente)
-          // Forearm flex: 1.5 (dobrado) → 0.1 (esticado)
-          a.root.rotation.x = 0;
-          a.root.position.y = 0;
-          a.leftArm.rotation.x = Math.PI / 4;
-          a.rightArm.rotation.x = Math.PI / 4;
-          a.leftArm.rotation.z = -0.4;
-          a.rightArm.rotation.z = 0.4;
+        case "pushup": {
+          // PUSHUP MINIMO: bracos pra frente/baixo + forearm flex
+          a.leftArm.rotation.set(Math.PI / 4, 0, -0.4);
+          a.rightArm.rotation.set(Math.PI / 4, 0, 0.4);
           a.leftForearm.rotation.x = 1.5 - p * 1.4;
           a.rightForearm.rotation.x = 1.5 - p * 1.4;
-          a.leftHand.rotation.set(0, 0, 0);
-          a.rightHand.rotation.set(0, 0, 0);
-          a.leftLeg.rotation.x = 0;
-          a.rightLeg.rotation.x = 0;
-          a.leftCalf.rotation.x = 0;
-          a.rightCalf.rotation.x = 0;
           break;
+        }
 
-        case "boxjump":
-          // Box jump: 3 fases internas baseadas em p
-          // p=0: crouch ready (joelhos super dobrados, baixo)
-          // p=1: top of jump (estendido + braços pra cima)
-          a.root.rotation.x = 0;
-          a.root.position.y = p * 0.7;
-          // Pernas: agachado (calf flex 1.2) → estendido (0)
-          a.leftLeg.rotation.x = -(1 - p) * 0.4; // hip hinge atras
-          a.rightLeg.rotation.x = -(1 - p) * 0.4;
-          a.leftCalf.rotation.x = (1 - p) * 1.2;
-          a.rightCalf.rotation.x = (1 - p) * 1.2;
-          // Bracos: pra trás (-0.5 rotation.x) no crouch → pra frente/cima (-1.5) no jump
-          a.leftArm.rotation.x = 0.5 - p * 2.0; // 0.5 (atrás) → -1.5 (cima)
-          a.rightArm.rotation.x = 0.5 - p * 2.0;
-          a.leftArm.rotation.z = -0.3;
-          a.rightArm.rotation.z = 0.3;
+        case "boxjump": {
+          // BOXJUMP MINIMO: pernas dobram + bracos balançam
+          const depth = 1 - p;
+          a.leftCalf.rotation.x = depth * 1.2;
+          a.rightCalf.rotation.x = depth * 1.2;
+          a.leftLeg.rotation.x = -depth * 0.4;
+          a.rightLeg.rotation.x = -depth * 0.4;
+          a.leftArm.rotation.set(0.5 - p * 2.0, 0, -0.3);
+          a.rightArm.rotation.set(0.5 - p * 2.0, 0, 0.3);
           a.leftForearm.rotation.x = 0.18;
           a.rightForearm.rotation.x = 0.18;
-          a.leftHand.rotation.set(0, 0, 0);
-          a.rightHand.rotation.set(0, 0, 0);
           break;
+        }
 
-        case "kbswing":
-          // KB swing REAL: hip hinge agressivo + braços retos balançam
-          // p=0 (down): torso muito inclinado, bracos entre as pernas (atras+abaixo)
-          // p=1 (top): standing reto, bracos esticados pra frente altura peito
-          a.root.position.y = 0;
-          a.root.rotation.x = -(1 - p) * 0.5; // torso inclina
-          // Pernas: leve dobra no bottom
-          a.leftLeg.rotation.x = -(1 - p) * 0.3; // hip hinge
-          a.rightLeg.rotation.x = -(1 - p) * 0.3;
-          a.leftCalf.rotation.x = (1 - p) * 0.4;
-          a.rightCalf.rotation.x = (1 - p) * 0.4;
-          // Bracos: arc de baixo (rot.x +0.8 com torso inclinado = atras pernas)
-          //         pra frente (rot.x -0.7 standing = horizontal frente)
-          a.leftArm.rotation.x = 0.8 - p * 1.5;
-          a.rightArm.rotation.x = 0.8 - p * 1.5;
-          a.leftArm.rotation.z = -0.05;
-          a.rightArm.rotation.z = 0.05;
-          a.leftForearm.rotation.x = 0; // forearm reto (segurando KB)
+        case "kbswing": {
+          // KB SWING MINIMO: bracos balançam de trás pra frente
+          a.leftArm.rotation.set(0.8 - p * 1.5, 0, -0.05);
+          a.rightArm.rotation.set(0.8 - p * 1.5, 0, 0.05);
+          a.leftForearm.rotation.x = 0;
           a.rightForearm.rotation.x = 0;
-          a.leftHand.rotation.set(0, 0, 0);
-          a.rightHand.rotation.set(0, 0, 0);
+          a.leftLeg.rotation.x = -(1 - p) * 0.2;
+          a.rightLeg.rotation.x = -(1 - p) * 0.2;
+          a.leftCalf.rotation.x = (1 - p) * 0.3;
+          a.rightCalf.rotation.x = (1 - p) * 0.3;
           break;
-        case "run":
-          // Run REAL (3Hz cadence ~180bpm):
-          // - Drive leg (atrás): hip ext +0.4, knee 0 (perna reta atrás)
-          // - Swing leg (frente): hip flex -0.6, knee 1.5 (recovery dobrado)
-          // - Bracos contralateral, cotovelo 90° fixo (forearm 1.5)
-          // - Bounce vertical sutil (~3cm)
-          // - Lean pra frente +0.1 (postura de corrida)
-          {
-            const tt = performance.now() / 1000;
-            const phase = tt * 6; // 3Hz × 2 (cada perna)
-            // Cycle 0→2π: lerna esquerda full cycle
-            // Posição 0: ground contact (atrás), 0.5: lift-off, π: foot strike (frente)
-            const ls = Math.sin(phase); // 0 → 1 → 0 → -1 → 0
-            const rs = Math.sin(phase + Math.PI);
-            // HIP rotation: positivo = perna pra trás, negativo = perna pra frente
-            // Quando ls=1 (peak swing): perna em swing (frente), hip = -0.6
-            // Quando ls=-1 (drive): perna atrás extended, hip = +0.4
-            a.leftLeg.rotation.x = -ls * 0.5;
-            a.rightLeg.rotation.x = -rs * 0.5;
-            // KNEE flex: máximo durante swing (ls > 0)
-            // Drive: 0.1 (quase reta)
-            // Swing: 1.5 (recovery dobrado)
-            a.leftCalf.rotation.x = 0.1 + Math.max(0, ls) * 1.4;
-            a.rightCalf.rotation.x = 0.1 + Math.max(0, rs) * 1.4;
-            // BRAÇOS: contralateral (oposto às pernas)
-            // Quando perna esquerda swing (frente), braço direito vem frente
-            // Arm swing: rotation.x oscila de -0.5 (frente) a +0.4 (atrás)
-            a.leftArm.rotation.x = rs * 0.5; // oposto ao left leg (que é -ls)
-            a.rightArm.rotation.x = ls * 0.5;
-            a.leftArm.rotation.z = -0.18;
-            a.rightArm.rotation.z = 0.18;
-            // Forearm 90° fixo durante corrida
-            a.leftForearm.rotation.x = 1.5;
-            a.rightForearm.rotation.x = 1.5;
-            a.leftHand.rotation.set(0, 0, 0);
-            a.rightHand.rotation.set(0, 0, 0);
-            // Bounce vertical (3cm peak ground contact)
-            a.root.position.y = 0.18 + Math.abs(Math.sin(phase * 2)) * 0.03;
-            // Lean leve pra frente
-            a.root.rotation.x = -0.1;
-          }
+        }
+        case "run": {
+          // RUN MINIMO: pernas alternam, bracos contralateral, ZERO root
+          const tt = performance.now() / 1000;
+          const phase = tt * 6;
+          const ls = Math.sin(phase);
+          const rs = Math.sin(phase + Math.PI);
+          a.leftLeg.rotation.x = -ls * 0.5;
+          a.rightLeg.rotation.x = -rs * 0.5;
+          a.leftCalf.rotation.x = 0.1 + Math.max(0, ls) * 1.4;
+          a.rightCalf.rotation.x = 0.1 + Math.max(0, rs) * 1.4;
+          a.leftArm.rotation.set(rs * 0.5, 0, -0.18);
+          a.rightArm.rotation.set(ls * 0.5, 0, 0.18);
+          a.leftForearm.rotation.x = 1.5;
+          a.rightForearm.rotation.x = 1.5;
           break;
+        }
 
-        case "bike":
-          // Assault bike REAL: athlete sentado no saddle (~0.7m)
-          // Pernas: pedalada circular completa
-          //   - Top of pedal stroke: hip mais alto (-1.6 = perna pra cima/frente),
-          //     knee SUPER dobrado (1.6 ~90°)
-          //   - Bottom of stroke: hip mais baixo (-0.4), knee pouco dobrado (0.3)
-          // Bracos: rotation.x = -PI/2 (paralelos pra frente segurando handle)
-          //         forearm flex 1.0 (cotovelo levemente dobrado)
-          {
-            const tt = performance.now() / 1000;
-            const phase = tt * 5;
-            const ls = (Math.sin(phase) + 1) / 2; // 0-1
-            const rs = (Math.sin(phase + Math.PI) + 1) / 2;
-            // Sentado em saddle alto
-            a.root.position.y = 0.5;
-            a.root.rotation.x = -0.2; // leve lean pra frente segurando handle
-            // HIP: -1.6 (perna alta) → -0.4 (perna baixa)
-            a.leftLeg.rotation.x = -0.4 - ls * 1.2;
-            a.rightLeg.rotation.x = -0.4 - rs * 1.2;
-            // KNEE flex: 0.3 (esticado) → 1.6 (dobrado quando perna alta)
-            a.leftCalf.rotation.x = 0.3 + ls * 1.3;
-            a.rightCalf.rotation.x = 0.3 + rs * 1.3;
-            // Bracos: pra frente paralelos, leve queda nos handles
-            a.leftArm.rotation.x = -Math.PI / 2;
-            a.rightArm.rotation.x = -Math.PI / 2;
-            a.leftArm.rotation.z = -0.35;
-            a.rightArm.rotation.z = 0.35;
-            // Forearm: levemente flex (cotovelo macio segurando)
-            a.leftForearm.rotation.x = 0.6;
-            a.rightForearm.rotation.x = 0.6;
-            a.leftHand.rotation.set(0, 0, 0);
-            a.rightHand.rotation.set(0, 0, 0);
-          }
+        case "bike": {
+          // BIKE MINIMO: pernas pedalam, bracos pra frente fixos
+          const tt = performance.now() / 1000;
+          const phase = tt * 5;
+          const ls = (Math.sin(phase) + 1) / 2;
+          const rs = (Math.sin(phase + Math.PI) + 1) / 2;
+          a.leftLeg.rotation.x = -0.4 - ls * 1.2;
+          a.rightLeg.rotation.x = -0.4 - rs * 1.2;
+          a.leftCalf.rotation.x = 0.3 + ls * 1.3;
+          a.rightCalf.rotation.x = 0.3 + rs * 1.3;
+          a.leftArm.rotation.set(-Math.PI / 2, 0, -0.35);
+          a.rightArm.rotation.set(-Math.PI / 2, 0, 0.35);
+          a.leftForearm.rotation.x = 0.6;
+          a.rightForearm.rotation.x = 0.6;
           break;
+        }
 
-        case "row":
-          // Rowing REAL (Concept2 spec):
-          // Avatar SENTADO em y=0.36 (altura do seat). Foot plate na frente.
-          // Catch (rowP=0): joelhos super dobrados (calf colado na coxa),
-          //                 shins verticais, torso lean +20° pra frente,
-          //                 braços estendidos pra FRENTE em direção ao handle
-          // Drive→Finish (rowP=1): pernas estendidas, torso lean back -15°,
-          //                       braços puxados, cotovelos atrás, mãos no peito
-          {
-            const tt = performance.now() / 1000;
-            const phase = tt * 1.6;
-            const rowP = (Math.sin(phase) + 1) / 2;
-            // Avatar SENTADO: y constante, pernas dobradas
-            a.root.position.y = 0.36;
-            // TORSO LEAN: catch +0.35 (pra frente) → finish -0.25 (lean back)
-            a.root.rotation.x = 0.35 - rowP * 0.6;
-            // PERNAS:
-            // - Sentado, hip rotation precisa ser PRA CIMA (calc paralelo ao seat)
-            //   No catch: pernas dobradas em ~90° (joelhos altos)
-            //   No finish: pernas estendidas pra frente
-            // Hip rotation positiva = perna pra TRÁS (não queremos)
-            // Hip rotation negativa = perna pra FRENTE (queremos)
-            // Como avatar está sentado, hip "pra frente" = -PI/2 (perna paralela ao chão)
-            // Catch: hip -1.4 + knee bent muito (calf perpendicular = -1.5 do hip)
-            // Finish: hip -PI/2 + knee 0 (perna estendida)
-            a.leftLeg.rotation.x = -1.4 + rowP * (-Math.PI / 2 + 1.4); // -1.4 → -PI/2
-            a.rightLeg.rotation.x = -1.4 + rowP * (-Math.PI / 2 + 1.4);
-            // Knee: catch (1.7 super dobrado) → finish (0 estendido)
-            a.leftCalf.rotation.x = (1 - rowP) * 1.7;
-            a.rightCalf.rotation.x = (1 - rowP) * 1.7;
-            // BRAÇOS:
-            // Catch: braços estendidos pra FRENTE/cima = upper rotation.x = -1.0,
-            //        forearm reto (0)
-            // Finish: braços PUXADOS — upper rotation.x = +0.3 (cotovelo pra trás),
-            //         forearm flex 2.0 (handle no peito)
-            a.leftArm.rotation.x = -1.0 + rowP * 1.3; // -1.0 → +0.3
-            a.rightArm.rotation.x = -1.0 + rowP * 1.3;
-            a.leftArm.rotation.z = -0.15;
-            a.rightArm.rotation.z = 0.15;
-            // Forearm flex: catch (reto) → finish (dobra puxando)
-            a.leftForearm.rotation.x = rowP * 2.0;
-            a.rightForearm.rotation.x = rowP * 2.0;
-            a.leftHand.rotation.set(0, 0, 0);
-            a.rightHand.rotation.set(0, 0, 0);
-          }
+        case "row": {
+          // ROW MINIMO: pernas oscilam dobrar/esticar, bracos puxam, ZERO root
+          const tt = performance.now() / 1000;
+          const phase = tt * 1.6;
+          const rowP = (Math.sin(phase) + 1) / 2;
+          a.leftCalf.rotation.x = (1 - rowP) * 1.5;
+          a.rightCalf.rotation.x = (1 - rowP) * 1.5;
+          a.leftLeg.rotation.x = -(1 - rowP) * 0.6;
+          a.rightLeg.rotation.x = -(1 - rowP) * 0.6;
+          a.leftArm.rotation.set(-1.0 + rowP * 1.3, 0, -0.15);
+          a.rightArm.rotation.set(-1.0 + rowP * 1.3, 0, 0.15);
+          a.leftForearm.rotation.x = rowP * 2.0;
+          a.rightForearm.rotation.x = rowP * 2.0;
           break;
-        case "burpee":
-          // 4 fases reais com articulações
+        }
+        case "burpee": {
+          // BURPEE MINIMO: 4 fases mas SEM mexer em root
           if (p < 0.25) {
-            // 1. Standing
-            a.root.position.y = 0;
-            a.root.rotation.x = 0;
             a.leftArm.rotation.set(-0.08, 0, -0.18);
             a.rightArm.rotation.set(-0.08, 0, 0.18);
             a.leftForearm.rotation.x = 0.18;
@@ -2480,47 +2322,33 @@ export default function VirtualGym({
             a.leftCalf.rotation.x = 0;
             a.rightCalf.rotation.x = 0;
           } else if (p < 0.5) {
-            // 2. Squat down (deep squat)
-            a.root.position.y = -0.6;
-            a.root.rotation.x = 0;
-            a.leftLeg.rotation.x = -0.5; // hip atras
+            a.leftLeg.rotation.x = -0.5;
             a.rightLeg.rotation.x = -0.5;
-            a.leftCalf.rotation.x = 1.5; // joelhos super dobrados
+            a.leftCalf.rotation.x = 1.5;
             a.rightCalf.rotation.x = 1.5;
-            a.leftArm.rotation.x = -0.6; // bracos pra frente apoiar no chao
-            a.rightArm.rotation.x = -0.6;
+            a.leftArm.rotation.set(-0.6, 0, -0.18);
+            a.rightArm.rotation.set(-0.6, 0, 0.18);
             a.leftForearm.rotation.x = 0;
             a.rightForearm.rotation.x = 0;
           } else if (p < 0.75) {
-            // 3. Plank
-            a.root.rotation.x = -Math.PI / 2;
-            a.root.position.y = 0.4;
+            a.leftArm.rotation.set(0, 0, -0.4);
+            a.rightArm.rotation.set(0, 0, 0.4);
+            a.leftForearm.rotation.x = 1.0;
+            a.rightForearm.rotation.x = 1.0;
             a.leftLeg.rotation.x = 0;
             a.rightLeg.rotation.x = 0;
             a.leftCalf.rotation.x = 0;
             a.rightCalf.rotation.x = 0;
-            a.leftArm.rotation.x = 0;
-            a.rightArm.rotation.x = 0;
-            a.leftArm.rotation.z = -0.4;
-            a.rightArm.rotation.z = 0.4;
-            a.leftForearm.rotation.x = 0;
-            a.rightForearm.rotation.x = 0;
           } else {
-            // 4. Jump up (mãos pra cima)
-            a.root.position.y = 0.4;
-            a.root.rotation.x = 0;
-            a.leftArm.rotation.x = -Math.PI;
-            a.rightArm.rotation.x = -Math.PI;
-            a.leftArm.rotation.z = -0.3;
-            a.rightArm.rotation.z = 0.3;
+            a.leftArm.rotation.set(-Math.PI, 0, -0.3);
+            a.rightArm.rotation.set(-Math.PI, 0, 0.3);
             a.leftForearm.rotation.x = 0;
             a.rightForearm.rotation.x = 0;
             a.leftLeg.rotation.x = -0.2;
             a.rightLeg.rotation.x = -0.2;
-            a.leftCalf.rotation.x = 0;
-            a.rightCalf.rotation.x = 0;
           }
           break;
+        }
       }
     }
 
