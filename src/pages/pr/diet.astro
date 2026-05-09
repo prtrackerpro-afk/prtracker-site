@@ -170,7 +170,10 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
   </head>
   <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
     <header class="px-4 pt-6 pb-4 max-w-md mx-auto">
-      <a href="/pr" class="text-sm text-navy-300 hover:text-white">← Voltar</a>
+      <div class="flex items-center justify-between">
+        <a href="/pr" class="text-sm text-navy-300 hover:text-white">← Voltar</a>
+        <a href="/pr/diet/historico" class="text-sm text-brand-lime hover:underline">Histórico →</a>
+      </div>
       <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">DIETA</div>
       <h1 class="font-display text-3xl tracking-tight text-white">Macros do dia</h1>
       <div class="flex items-center justify-between">
