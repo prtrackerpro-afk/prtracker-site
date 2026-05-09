@@ -98,6 +98,31 @@ type MealRaw = {
 
 const meals = (mealsRaw ?? []) as MealRaw[];
 
+// Top 6 alimentos mais consumidos nos ultimos 30 dias (favorites auto)
+const past30 = new Date();
+past30.setDate(past30.getDate() - 30);
+const { data: recentMealsRaw = [] } = await supabase
+  .from("pr_meal_log")
+  .select("food_id, qty_g, pr_food_db!inner(id, name, kcal)")
+  .eq("user_id", athlete.userId)
+  .gte("consumed_at", past30.toISOString())
+  .not("food_id", "is", null);
+type RecentMeal = { food_id: string; qty_g: number; pr_food_db: { id: string; name: string; kcal: number } };
+const recentList = (recentMealsRaw ?? []) as RecentMeal[];
+const foodCounts = new Map<string, { count: number; food: RecentMeal["pr_food_db"]; avgQty: number; totalQty: number }>();
+for (const m of recentList) {
+  const key = m.food_id;
+  const cur = foodCounts.get(key);
+  if (cur) {
+    cur.count++;
+    cur.totalQty += m.qty_g;
+    cur.avgQty = cur.totalQty / cur.count;
+  } else {
+    foodCounts.set(key, { count: 1, food: m.pr_food_db, avgQty: m.qty_g, totalQty: m.qty_g });
+  }
+}
+const topFoods = [...foodCounts.values()].sort((a, b) => b.count - a.count).slice(0, 6);
+
 // Calcula macros totais do dia
 function macros(m: MealRaw) {
   const factor = m.qty_g / 100;
@@ -237,6 +262,27 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
           </div>
         </div>
       </section>
+
+      <!-- Favoritos / Mais consumidos -->
+      {topFoods.length > 0 && (
+        <section class="rounded-2xl border border-yellow-500/40 bg-yellow-500/5 p-3">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-yellow-300 mb-2">⭐ MAIS CONSUMIDOS (últimos 30 dias)</div>
+          <div class="flex flex-wrap gap-1.5">
+            {topFoods.map((f) => (
+              <button
+                type="button"
+                class="quick-add-fav text-xs bg-navy-800 hover:bg-yellow-500/30 text-white rounded-full px-2.5 py-1 border border-navy-700"
+                data-food-id={f.food.id}
+                data-food-name={f.food.name}
+                data-avg-qty={Math.round(f.avgQty)}
+                title={`${f.count}× consumido • média ${Math.round(f.avgQty)}g`}
+              >
+                {f.food.name} <span class="text-yellow-300">({Math.round(f.avgQty)}g)</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <!-- Hidratação -->
       <section class="rounded-2xl border border-blue-500/40 bg-blue-500/5 p-3">
@@ -491,6 +537,43 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
             resultsBox.appendChild(item);
           });
         }, 200);
+      });
+
+      // Quick-add favorites: clica no chip de food favorito → adiciona direto na ultima refeicao
+      // (default ao café da manhã se não tiver nenhuma)
+      document.querySelectorAll(".quick-add-fav").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const foodId = target.dataset.foodId;
+          const qty = Number(target.dataset.avgQty ?? "100");
+          if (!foodId) return;
+          // Determine meal type baseado na hora do dia
+          const hour = new Date().getHours();
+          const mt =
+            hour < 10 ? "breakfast" :
+            hour < 12 ? "morning_snack" :
+            hour < 14 ? "lunch" :
+            hour < 17 ? "afternoon_snack" :
+            hour < 21 ? "dinner" : "evening_snack";
+          target.disabled = true;
+          target.textContent = "...";
+          try {
+            const res = await fetch("/api/pr/diet/meal-log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ meal_type: mt, food_id: foodId, qty_g: qty }),
+            });
+            if (res.ok) {
+              window.location.reload();
+            } else {
+              alert("Erro ao adicionar.");
+              target.disabled = false;
+            }
+          } catch {
+            alert("Erro de conexão.");
+            target.disabled = false;
+          }
+        });
       });
 
       // Bodyweight save handler
