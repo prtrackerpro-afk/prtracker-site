@@ -1991,17 +1991,15 @@ export default function VirtualGym({
     virtualKB.visible = false;
     scene.add(virtualKB);
 
-    // ENGAGEMENT MÍNIMO V3: NÃO move/teleporta avatar. Apenas:
-    // 1. Marca engagedEquipment (state)
-    // 2. Mostra HUD overlay
-    // 3. Trava input
-    // Animation só mexe em arms/forearms/calf — NUNCA em root.position/rotation.
-    // Garante zero crashes/travas porque transformações sempre relativas.
+    // ENGAGEMENT V4: avatar MOVE pra posicao adequada perto do equipamento
+    // (sem rotation.x complexa — apenas position + rotation.y).
+    // Garante avatar fica AO LADO/EM CIMA do equipamento sem teleportar pra
+    // lugares estranhos. ESC sempre disponivel via window listener.
     function engageEquipment(eq: EquipmentRef) {
       try {
         console.log("[gym] engage:", eq.exercise);
         engagedEquipment = eq;
-        engagedExerciseRef.current = eq.exercise; // travamento persistente
+        engagedExerciseRef.current = eq.exercise;
         exerciseProgress = 0;
         exerciseReps = 0;
         exercisePressed = false;
@@ -2015,6 +2013,23 @@ export default function VirtualGym({
           posZ: avatarParts.root.position.z,
           rotY: avatarParts.root.rotation.y,
         };
+        // Move avatar pra POSICAO adequada (em cima do equipamento, em pe)
+        // Cada exercise tem offset (sem rotation.x complexa)
+        let posOffset = 0; // em frente do equipamento
+        if (eq.exercise === "bench") posOffset = 0; // em cima do banco
+        else if (eq.exercise === "squat") posOffset = 0; // dentro do rack
+        else if (eq.exercise === "pullup") posOffset = 0; // sob a barra
+        else if (eq.exercise === "boxjump") posOffset = -0.6; // a frente do box
+        else if (eq.exercise === "kbswing") posOffset = 0.4;
+        else if (eq.exercise === "run") posOffset = 0; // em cima da esteira
+        else if (eq.exercise === "bike") posOffset = 0; // em cima da bike
+        else if (eq.exercise === "row") posOffset = 0; // em cima do rower
+        avatarParts.root.position.set(
+          eq.x + Math.sin(eq.rotY) * posOffset,
+          0,
+          eq.z + Math.cos(eq.rotY) * posOffset
+        );
+        avatarParts.root.rotation.y = eq.rotY;
         // HUD
         if (promptEl) promptEl.classList.add("hidden");
         if (exerciseHudEl) {
