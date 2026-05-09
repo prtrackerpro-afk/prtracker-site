@@ -46,17 +46,23 @@ const today = new Date().toISOString().slice(0, 10);
 
         <div>
           <label for="weight" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Peso (kg)</label>
-          <input
-            id="weight"
-            name="weight"
-            type="number"
-            step="0.5"
-            min="1"
-            max="999"
-            required
-            inputmode="decimal"
-            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-lg font-display tabular-nums focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
-          />
+          <div class="flex gap-2">
+            <button type="button" data-delta="-5" class="weight-btn shrink-0 rounded-lg bg-navy-800 hover:bg-navy-700 text-white px-3 py-2.5 text-sm font-bold">-5</button>
+            <button type="button" data-delta="-2.5" class="weight-btn shrink-0 rounded-lg bg-navy-800 hover:bg-navy-700 text-white px-3 py-2.5 text-sm font-bold">-2.5</button>
+            <input
+              id="weight"
+              name="weight"
+              type="number"
+              step="0.5"
+              min="1"
+              max="999"
+              required
+              inputmode="decimal"
+              class="flex-1 min-w-0 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-lg font-display tabular-nums focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime text-center"
+            />
+            <button type="button" data-delta="2.5" class="weight-btn shrink-0 rounded-lg bg-navy-800 hover:bg-navy-700 text-white px-3 py-2.5 text-sm font-bold">+2.5</button>
+            <button type="button" data-delta="5" class="weight-btn shrink-0 rounded-lg bg-navy-800 hover:bg-navy-700 text-white px-3 py-2.5 text-sm font-bold">+5</button>
+          </div>
         </div>
 
         <div>
@@ -100,6 +106,17 @@ const today = new Date().toISOString().slice(0, 10);
       const form = document.getElementById("log-form") as HTMLFormElement;
       const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
       const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+      const weightInput = document.getElementById("weight") as HTMLInputElement;
+
+      // Quick +/- weight buttons
+      document.querySelectorAll(".weight-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const delta = Number((btn as HTMLButtonElement).dataset.delta ?? "0");
+          const current = Number(weightInput.value) || 0;
+          const next = Math.max(1, current + delta);
+          weightInput.value = String(next);
+        });
+      });
 
       form?.addEventListener("submit", async (e) => {
         e.preventDefault();
