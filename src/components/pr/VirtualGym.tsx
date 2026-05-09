@@ -2252,12 +2252,20 @@ export default function VirtualGym({
           a.rightLeg.rotation.x = -Math.PI / 2;
           a.leftCalf.rotation.x = 0.5;
           a.rightCalf.rotation.x = 0.5;
-          // BRACOS pra cima (lockout): arm local rotation.x = -PI/2 + correção
-          a.leftArm.rotation.x = -Math.PI / 2;
+          // BRACOS pra cima (lockout):
+          // arm shoulder local = (±shoulderHalfW, 1.62, 0). Após root rot.x=-PI/2:
+          //   arm shoulder world = root + (±shoulderHalfW, 0, -1.62 girado por rotY)
+          // Pra arm apontar pra +Y mundo: arm.rotation.x precisa fazer
+          //   armUp local +Y → +Z LOCAL DO ARM → +Y MUNDO
+          // Solução: rotation.x = -PI/2 do arm faz braço apontar +Z local do braço
+          //   (que após root rot.x=-PI/2 vira... vira -Y mundo se z mundo, +Y mundo)
+          // Vou USAR rotation NEGATIVA pra braços apontarem pra cima
+          a.leftArm.rotation.x = -Math.PI / 2; // braço aponta +Z LOCAL do root
           a.rightArm.rotation.x = -Math.PI / 2;
-          a.leftArm.rotation.z = -0.5;
-          a.rightArm.rotation.z = 0.5;
-          // FOREARM flex 0 (lockout) → PI/2 (peito)
+          // Sem cotovelos abertos por enquanto (testando)
+          a.leftArm.rotation.z = 0;
+          a.rightArm.rotation.z = 0;
+          // FOREARM flex 0 (lockout reto) → PI/2 (peito)
           a.leftForearm.rotation.x = (1 - p) * (Math.PI / 2);
           a.rightForearm.rotation.x = (1 - p) * (Math.PI / 2);
           a.leftHand.rotation.set(0, 0, 0);
@@ -2739,7 +2747,7 @@ export default function VirtualGym({
         // Camera close-up por exercício (lateral pra lifts, frente pra pullup, etc)
         const lookY =
           eq.exercise === "pullup" ? 2.0 :
-          eq.exercise === "bench" ? 0.9 : // altura da barra do bench
+          eq.exercise === "bench" ? 0.7 : // entre estofado (0.55) e barbell (0.94)
           eq.exercise === "pushup" ? 1.0 :
           eq.exercise === "deadlift" ? 0.8 :
           eq.exercise === "boxjump" ? 1.2 :
@@ -2755,9 +2763,12 @@ export default function VirtualGym({
           camHeight = 1.0;
           camDist = 3.5;
         } else if (eq.exercise === "bench") {
-          sideAngle = Math.PI / 2; // side view
-          camHeight = 1.6;
-          camDist = 3.0;
+          // Bench: camera de cima/lado mostrando avatar deitado e barbell descendo
+          // Ponto a olhar: barbell em y=0.94 (= eq.x, 0.94, eq.z - 0.69 girado)
+          // Ângulo lateral perpendicular ao bench
+          sideAngle = Math.PI / 2;
+          camHeight = 1.0;
+          camDist = 3.5;
         } else if (eq.exercise === "pushup") {
           sideAngle = Math.PI / 2;
           camHeight = 1.5;
