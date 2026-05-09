@@ -141,22 +141,32 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
         <div class="flex items-baseline gap-2 mb-3">
           <div class="text-3xl font-display font-bold text-white tabular-nums">{Math.round(totals.kcal)}</div>
           <div class="text-sm text-navy-300">/ {target.kcal_target} kcal</div>
+          <div class="text-xs text-navy-400 ml-auto">{pctKcal}%</div>
         </div>
         <div class="h-2 bg-navy-800 rounded-full overflow-hidden">
-          <div class="h-full bg-brand-lime transition-all" style={`width: ${pctKcal}%`}></div>
+          <div class={`h-full transition-all ${pctKcal > 110 ? "bg-red-500" : pctKcal > 95 ? "bg-orange-400" : "bg-brand-lime"}`} style={`width: ${Math.min(100, pctKcal)}%`}></div>
         </div>
         <div class="grid grid-cols-3 gap-2 mt-4 text-center">
           <div>
             <div class="text-xl font-display font-bold text-white tabular-nums">{Math.round(totals.p)}</div>
             <div class="text-[10px] uppercase tracking-wider text-navy-300">Prot ({target.protein_g_target}g)</div>
+            <div class="h-1 bg-navy-800 rounded-full mt-1 overflow-hidden">
+              <div class="h-full bg-red-400" style={`width: ${Math.min(100, Math.round(totals.p / target.protein_g_target * 100))}%`}></div>
+            </div>
           </div>
           <div>
             <div class="text-xl font-display font-bold text-white tabular-nums">{Math.round(totals.c)}</div>
             <div class="text-[10px] uppercase tracking-wider text-navy-300">Carb ({target.carbs_g_target}g)</div>
+            <div class="h-1 bg-navy-800 rounded-full mt-1 overflow-hidden">
+              <div class="h-full bg-yellow-400" style={`width: ${Math.min(100, Math.round(totals.c / target.carbs_g_target * 100))}%`}></div>
+            </div>
           </div>
           <div>
             <div class="text-xl font-display font-bold text-white tabular-nums">{Math.round(totals.f)}</div>
             <div class="text-[10px] uppercase tracking-wider text-navy-300">Gord ({target.fat_g_target}g)</div>
+            <div class="h-1 bg-navy-800 rounded-full mt-1 overflow-hidden">
+              <div class="h-full bg-purple-400" style={`width: ${Math.min(100, Math.round(totals.f / target.fat_g_target * 100))}%`}></div>
+            </div>
           </div>
         </div>
       </section>
