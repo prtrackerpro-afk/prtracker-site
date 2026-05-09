@@ -44,6 +44,38 @@ const { data: waterRows = [] } = await supabase
 const waterTotal = (waterRows ?? []).reduce((acc, r) => acc + (r.qty_ml as number), 0);
 const waterTarget = (targetRow as { water_ml_target?: number } | null)?.water_ml_target ?? 2500;
 
+// Streak de dias com pelo menos 4 refeições logadas
+const { data: streakDates = [] } = await supabase
+  .from("pr_meal_log")
+  .select("consumed_at")
+  .eq("user_id", athlete.userId)
+  .gte("consumed_at", new Date(today.getTime() - 30 * 86400000).toISOString())
+  .order("consumed_at", { ascending: false });
+
+function computeDietStreak(dates: string[]): number {
+  if (dates.length === 0) return 0;
+  // Conta refeições por dia
+  const byDay = new Map<string, number>();
+  for (const d of dates) {
+    const day = d.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + 1);
+  }
+  // Streak: dias consecutivos com >= 4 refeições terminando hoje (ou ontem)
+  const todayKey = today.toISOString().slice(0, 10);
+  const yesterdayKey = new Date(today.getTime() - 86400000).toISOString().slice(0, 10);
+  let cursor: Date;
+  if ((byDay.get(todayKey) ?? 0) >= 4) cursor = new Date(today);
+  else if ((byDay.get(yesterdayKey) ?? 0) >= 4) cursor = new Date(today.getTime() - 86400000);
+  else return 0;
+  let count = 0;
+  while ((byDay.get(cursor.toISOString().slice(0, 10)) ?? 0) >= 4) {
+    count++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return count;
+}
+const dietStreak = computeDietStreak(((streakDates ?? []) as Array<{ consumed_at: string }>).map(d => d.consumed_at));
+
 const target = targetRow ?? {
   kcal_target: 2200,
   protein_g_target: 150,
@@ -141,7 +173,12 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
       <a href="/pr" class="text-sm text-navy-300 hover:text-white">← Voltar</a>
       <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">DIETA</div>
       <h1 class="font-display text-3xl tracking-tight text-white">Macros do dia</h1>
-      <p class="text-sm text-navy-300">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</p>
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-navy-300">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</p>
+        {dietStreak > 0 && (
+          <div class="text-xs bg-orange-500/20 text-orange-300 rounded-full px-2.5 py-0.5 font-bold">🔥 {dietStreak} dias</div>
+        )}
+      </div>
     </header>
 
     <main class="max-w-md mx-auto px-4 space-y-4">
