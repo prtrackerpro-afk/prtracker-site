@@ -18,6 +18,22 @@ const supabase = getServerSupabase({
 });
 const records = await listOwnRecords(supabase, athlete.userId, 100);
 
+// Plano de treino do dia (se vinculado a PT)
+const todayDateStr = new Date();
+const dayOfWeek = (todayDateStr.getDay() + 6) % 7; // 0=seg, 6=dom
+const weekStart = new Date(todayDateStr);
+weekStart.setDate(weekStart.getDate() - dayOfWeek);
+const weekStartStr = weekStart.toISOString().slice(0, 10);
+
+const { data: plansToday = [] } = await supabase
+  .from("pr_workout_exercises")
+  .select("id, exercise_name, pr_workout_plans!inner(week_start_date, status, athlete_id)")
+  .eq("pr_workout_plans.athlete_id", athlete.userId)
+  .eq("pr_workout_plans.status", "active")
+  .eq("pr_workout_plans.week_start_date", weekStartStr)
+  .eq("day_index", dayOfWeek)
+  .limit(20);
+
 // Strength summary drives the tier pill in the header.
 const bestLiftsRaw = await listBestLifts(supabase, athlete.userId);
 const summary = summarize({
@@ -139,6 +155,15 @@ const { count: unreadCount = 0 } = await supabase
     </header>
 
     <main class="max-w-2xl mx-auto px-4">
+      {/* === PLANO DE TREINO DE HOJE === */}
+      {plansToday.length > 0 && (
+        <section class="mb-4 rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-4">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">TREINO DE HOJE</div>
+          <div class="text-sm text-white mb-2">{plansToday.length} exercício{plansToday.length === 1 ? "" : "s"} programado{plansToday.length === 1 ? "" : "s"}</div>
+          <a href="/pr/plan" class="inline-block text-xs bg-brand-lime text-navy-900 font-bold rounded-lg px-3 py-2">Ver plano →</a>
+        </section>
+      )}
+
       {/* === ACTIVE QUESTS === */}
       {activeQuests.length > 0 && (
         <section class="mb-4">
