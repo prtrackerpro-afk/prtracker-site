@@ -193,6 +193,9 @@ export default function VirtualGym({
   const activeReelRef = useRef<Reel | null>(null);
   activeReelRef.current = activeReel;
   const inputLockedRef = useRef(false);
+  // engagedExerciseRef: ref espelhada pra exercise engaged (permite trava
+  // de input persistir através de re-renders sem React state)
+  const engagedExerciseRef = useRef<string | null>(null);
   inputLockedRef.current =
     selected !== null ||
     selectedGhost !== null ||
@@ -203,7 +206,8 @@ export default function VirtualGym({
     xpModalOpen ||
     reelOpen ||
     showTutorial ||
-    customOpen;
+    customOpen ||
+    engagedExerciseRef.current !== null; // CRÍTICO: trava input enquanto engaged
 
   function dismissTutorial() {
     setShowTutorial(false);
@@ -1997,6 +2001,7 @@ export default function VirtualGym({
       try {
         console.log("[gym] engage:", eq.exercise);
         engagedEquipment = eq;
+        engagedExerciseRef.current = eq.exercise; // travamento persistente
         exerciseProgress = 0;
         exerciseReps = 0;
         exercisePressed = false;
@@ -2068,6 +2073,7 @@ export default function VirtualGym({
       avatarParts.leftCalf.rotation.set(0, 0, 0);
       avatarParts.rightCalf.rotation.set(0, 0, 0);
       engagedEquipment = null;
+      engagedExerciseRef.current = null; // libera trava
       savedAvatarPose = null;
       exerciseProgress = 0;
       exerciseReps = 0;
