@@ -1886,6 +1886,7 @@ export default function VirtualGym({
     const PROXIMITY_RADIUS = 1.6;
     let nearestEquipment: EquipmentRef | null = null;
     let engagedEquipment: EquipmentRef | null = null;
+    let savedAvatarPose: { posX: number; posY: number; posZ: number; rotY: number } | null = null;
     let exerciseProgress = 0; // 0 = down, 1 = up
     let exercisePressed = false;
     let exerciseReps = 0;
@@ -1986,114 +1987,74 @@ export default function VirtualGym({
     virtualKB.visible = false;
     scene.add(virtualKB);
 
+    // ENGAGEMENT MÍNIMO V3: NÃO move/teleporta avatar. Apenas:
+    // 1. Marca engagedEquipment (state)
+    // 2. Mostra HUD overlay
+    // 3. Trava input
+    // Animation só mexe em arms/forearms/calf — NUNCA em root.position/rotation.
+    // Garante zero crashes/travas porque transformações sempre relativas.
     function engageEquipment(eq: EquipmentRef) {
-      // Cycle 8: log diagnostico pra debugar trava
-      console.log("[gym] engaging:", eq.exercise, "at (x,z):", eq.x, eq.z, "rotY:", eq.rotY);
-      engagedEquipment = eq;
-      exerciseProgress = 0;
-      exerciseReps = 0;
-      exercisePressed = false;
-      exerciseWasUp = false;
-      // Posiciona avatar e DETERMINA POSE INICIAL do equipamento
-      // Cada exercise tem (offsetX, offsetZ, rootY, rootRotX) específicos
-      let offsetFwd = 0; // distância na frente do equipamento
-      let offsetSide = 0;
-      let initialRootY = 0;
-      let initialRootRotX = 0;
-      if (eq.exercise === "bench") {
-        // ABORDAGEM NOVA: vou desistir de calcular offset com matemática complexa.
-        // Em vez disso: posiciono avatar EXATAMENTE NO ORIGEM do banco
-        // e uso initial offset como "0" — o avatar vai ficar deitado em CIMA do banco
-        // com o root no centro. Avatar tem cabeça em local (0,2,0); após rotation.x
-        // = -PI/2, cabeça vai pra (0,0,-2) local. Centralizando no bench origin,
-        // cabeça fica em z=-2 do bench, o que é ALÉM dos postes (-0.75).
-        // Solução: SEM rotation.x. Avatar fica em PE no banco, em cima do estofado.
-        offsetFwd = 0;
-        offsetSide = 0;
-        initialRootY = 0.55; // sentado em cima do banco
-        initialRootRotX = 0; // EM PE primeiro — depois animation aplica rotation
-      } else if (eq.exercise === "squat") {
-        offsetFwd = 0; // dentro do rack
-        initialRootY = 0;
-        initialRootRotX = 0;
-      } else if (eq.exercise === "deadlift") {
-        offsetFwd = 0;
-        initialRootY = 0;
-        initialRootRotX = 0;
-      } else if (eq.exercise === "pullup") {
-        offsetFwd = 0; // sob a barra
-        initialRootY = 0;
-        initialRootRotX = 0;
-      } else if (eq.exercise === "pushup") {
-        offsetFwd = 0.4;
-        initialRootY = 0;
-        initialRootRotX = 0;
-      } else if (eq.exercise === "boxjump") {
-        offsetFwd = -0.6; // 60cm na frente do box
-        initialRootY = 0;
-      } else if (eq.exercise === "kbswing") {
-        offsetFwd = 0.5;
-        initialRootY = 0;
-      } else if (eq.exercise === "run") {
-        offsetFwd = 0; // EM CIMA da esteira
-        initialRootY = 0.18; // altura belt
-      } else if (eq.exercise === "bike") {
-        offsetFwd = 0; // sentado na bike
-        initialRootY = -0.1;
-      } else if (eq.exercise === "row") {
-        offsetFwd = 0; // sentado no rower
-        initialRootY = 0;
-      } else {
-        offsetFwd = 0.4;
-      }
-      const fwdX = Math.sin(eq.rotY);
-      const fwdZ = Math.cos(eq.rotY);
-      const sideX = Math.sin(eq.rotY + Math.PI / 2);
-      const sideZ = Math.cos(eq.rotY + Math.PI / 2);
-      avatarParts.root.position.set(
-        eq.x + fwdX * offsetFwd + sideX * offsetSide,
-        initialRootY,
-        eq.z + fwdZ * offsetFwd + sideZ * offsetSide
-      );
-      avatarParts.root.rotation.y = eq.rotY;
-      avatarParts.root.rotation.x = initialRootRotX;
-      // Esconde prompt, mostra HUD
-      if (promptEl) promptEl.classList.add("hidden");
-      if (exerciseHudEl) {
-        exerciseHudEl.classList.remove("hidden");
-        if (exerciseHudTitleEl) exerciseHudTitleEl.textContent = EXERCISE_LABELS[eq.exercise] ?? eq.exercise;
-        if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = "0";
-        if (exerciseHudBestEl) {
-          const best = localStorage.getItem("pr_play_best_" + eq.exercise) || "0";
-          exerciseHudBestEl.textContent = best;
+      try {
+        console.log("[gym] engage:", eq.exercise);
+        engagedEquipment = eq;
+        exerciseProgress = 0;
+        exerciseReps = 0;
+        exercisePressed = false;
+        exerciseWasUp = false;
+        burpeePhase = 0;
+        lastTapTime = 0;
+        // Salva pose inicial do avatar pra restaurar no disengage
+        savedAvatarPose = {
+          posX: avatarParts.root.position.x,
+          posY: avatarParts.root.position.y,
+          posZ: avatarParts.root.position.z,
+          rotY: avatarParts.root.rotation.y,
+        };
+        // HUD
+        if (promptEl) promptEl.classList.add("hidden");
+        if (exerciseHudEl) {
+          exerciseHudEl.classList.remove("hidden");
+          if (exerciseHudTitleEl) exerciseHudTitleEl.textContent = EXERCISE_LABELS[eq.exercise] ?? eq.exercise;
+          if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = "0";
+          if (exerciseHudBestEl) {
+            const best = localStorage.getItem("pr_play_best_" + eq.exercise) || "0";
+            exerciseHudBestEl.textContent = best;
+          }
+          if (exerciseHudActionEl) {
+            const isTap = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
+            const isCardio = eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row";
+            exerciseHudActionEl.textContent = isTap ? "TAP · ESPAÇO" :
+                                              isCardio ? "MANTÉM · ESPAÇO" :
+                                              "SEGURA · ESPAÇO";
+          }
         }
-        if (exerciseHudActionEl) {
-          const isTap = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
-          const isCardio = eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row";
-          exerciseHudActionEl.textContent = isTap ? "TAP · ESPAÇO" :
-                                            isCardio ? "MANTÉM · ESPAÇO" :
-                                            "SEGURA · ESPAÇO";
-        }
+        inputLockedRef.current = true;
+        keys.up = keys.down = keys.left = keys.right = false;
+      } catch (err) {
+        console.error("[gym engage] failed:", err);
+        engagedEquipment = null;
+        inputLockedRef.current = false;
       }
-      burpeePhase = 0;
-      lastTapTime = 0;
-      // Trava o movimento WASD enquanto engagado + limpa estado atual
-      inputLockedRef.current = true;
-      keys.up = keys.down = keys.left = keys.right = false;
     }
 
     function disengageEquipment() {
       if (!engagedEquipment) return;
       const eq = engagedEquipment;
-      // Salvar best
-      const prev = Number(localStorage.getItem("pr_play_best_" + eq.exercise) || "0");
-      if (exerciseReps > prev) {
-        localStorage.setItem("pr_play_best_" + eq.exercise, String(exerciseReps));
-      }
-      // Move avatar 1.6m pra frente do equipamento (sai)
-      avatarParts.root.position.x += Math.sin(eq.rotY) * 1.6;
-      avatarParts.root.position.z += Math.cos(eq.rotY) * 1.6;
-      // Reset COMPLETO da pose (incluindo articulacoes novas)
+      try {
+        // Salvar best
+        const prev = Number(localStorage.getItem("pr_play_best_" + eq.exercise) || "0");
+        if (exerciseReps > prev) {
+          localStorage.setItem("pr_play_best_" + eq.exercise, String(exerciseReps));
+        }
+      } catch {}
+      // RESTAURAR avatar pra pose salva (em vez de teleportar +1.6m fwd)
+      try {
+        if (savedAvatarPose) {
+          avatarParts.root.position.set(savedAvatarPose.posX, savedAvatarPose.posY, savedAvatarPose.posZ);
+          avatarParts.root.rotation.y = savedAvatarPose.rotY;
+        }
+      } catch {}
+      // Reset COMPLETO da pose
       avatarParts.root.position.y = 0;
       avatarParts.root.rotation.x = 0;
       avatarParts.leftArm.rotation.set(-0.08, 0, -0.18);
@@ -2107,16 +2068,16 @@ export default function VirtualGym({
       avatarParts.leftCalf.rotation.set(0, 0, 0);
       avatarParts.rightCalf.rotation.set(0, 0, 0);
       engagedEquipment = null;
+      savedAvatarPose = null;
       exerciseProgress = 0;
       exerciseReps = 0;
       exerciseWasUp = false;
       exercisePressed = false;
       if (exerciseHudEl) exerciseHudEl.classList.add("hidden");
-      if (promptEl) promptEl.classList.add("hidden"); // Hide prompt enquanto câmera volta
+      if (promptEl) promptEl.classList.add("hidden");
       inputLockedRef.current = false;
       virtualBarbell.visible = false;
       virtualKB.visible = false;
-      // Restaurar barbell do bench pra posição rest se foi movida
       if (eq.exercise === "bench") {
         const benchBarbell = eq.mesh.userData.benchBarbell as THREE.Group | undefined;
         const restPos = benchBarbell?.userData.restPosition as THREE.Vector3 | undefined;
@@ -2213,27 +2174,13 @@ export default function VirtualGym({
       void arms;
       switch (exercise) {
         case "bench": {
-          // CYCLE 6 SIMPLIFIED: Avatar EM PE de FRENTE pro banco fingindo o supino
-          // (representacao simbolica enquanto debugamos a trava)
-          // root.rotation.x = 0 (em pe), root.position fixed na frente do banco
-          a.root.rotation.set(0, eq.rotY, 0);
-          // Posiciona avatar 0.4m na frente do banco (sai do equipment)
-          a.root.position.x = eq.x + Math.sin(eq.rotY) * 0.4;
-          a.root.position.z = eq.z + Math.cos(eq.rotY) * 0.4;
-          a.root.position.y = 0;
-          a.head.rotation.set(0, 0, 0);
-          a.leftLeg.rotation.set(0, 0, 0);
-          a.rightLeg.rotation.set(0, 0, 0);
-          a.leftCalf.rotation.set(0, 0, 0);
-          a.rightCalf.rotation.set(0, 0, 0);
-          // Bracos pra frente (rotation.x = -PI/2 = paralelo ao chao apontando frente)
+          // BENCH MINIMO V3: avatar fica ONDE ESTAVA. Apenas flex bracos + forearm
+          // pra simbolizar empurrar. ZERO mexida em root.position/rotation.
+          // Bracos pra frente, forearm flex pra simbolizar.
           a.leftArm.rotation.set(-Math.PI / 2, 0, -0.4);
           a.rightArm.rotation.set(-Math.PI / 2, 0, 0.4);
-          // Forearm flex 1.6 (peito) → 0 (estendido)
-          a.leftForearm.rotation.set(1.6 - p * 1.6, 0, 0);
-          a.rightForearm.rotation.set(1.6 - p * 1.6, 0, 0);
-          a.leftHand.rotation.set(0, 0, 0);
-          a.rightHand.rotation.set(0, 0, 0);
+          a.leftForearm.rotation.x = 1.6 - p * 1.6;
+          a.rightForearm.rotation.x = 1.6 - p * 1.6;
           break;
         }
 
