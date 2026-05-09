@@ -2307,33 +2307,35 @@ export function buildBench(): THREE.Group {
     g.add(hookSeat);
   }
 
-  // === BARBELL CARREGADA APOIADA NOS J-HOOKS ===
-  // Barra horizontal cromada cruzando os 2 postes
+  // === BARBELL CARREGADA — Group separado pra poder mover durante o exercicio ===
   const BAR_Y = POST_H - 0.11;
+  const benchBar = new THREE.Group();
+  benchBar.position.set(0, BAR_Y, POST_Z + 0.06);
+  benchBar.userData.kind = "bench-barbell"; // marker pra mover durante engagement
+  // Posicao inicial salva (pra restaurar ao disengage)
+  benchBar.userData.restPosition = benchBar.position.clone();
+
   const bar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.022, 0.022, 2.2, 14),
     CHROME_MAT
   );
   bar.rotation.z = Math.PI / 2;
-  bar.position.set(0, BAR_Y, POST_Z + 0.06);
   bar.castShadow = true;
-  g.add(bar);
+  benchBar.add(bar);
 
-  // Sleeves (parte mais grossa da barra onde anilhas vão)
   for (const side of [-1, 1]) {
     const sleeve = new THREE.Mesh(
       new THREE.CylinderGeometry(0.05, 0.05, 0.4, 14),
       STEEL_MAT
     );
     sleeve.rotation.z = Math.PI / 2;
-    sleeve.position.set(side * 0.95, BAR_Y, POST_Z + 0.06);
-    g.add(sleeve);
+    sleeve.position.set(side * 0.95, 0, 0);
+    benchBar.add(sleeve);
   }
 
-  // Anilhas IWF nos sleeves (vermelha 25kg + azul 20kg de cada lado)
   const platesPerSide = [
-    { color: 0xda291c, radius: 0.22, offset: 0.78 }, // 25kg
-    { color: 0x0057b8, radius: 0.2, offset: 0.86 }, // 20kg
+    { color: 0xda291c, radius: 0.22, offset: 0.78 },
+    { color: 0x0057b8, radius: 0.2, offset: 0.86 },
   ];
   for (const side of [-1, 1]) {
     for (const p of platesPerSide) {
@@ -2348,19 +2350,22 @@ export function buildBench(): THREE.Group {
         })
       );
       plate.rotation.z = Math.PI / 2;
-      plate.position.set(side * p.offset, BAR_Y, POST_Z + 0.06);
+      plate.position.set(side * p.offset, 0, 0);
       plate.castShadow = true;
-      g.add(plate);
+      benchBar.add(plate);
     }
-    // Clamp na ponta
     const clamp = new THREE.Mesh(
       new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12),
       STEEL_MAT
     );
     clamp.rotation.z = Math.PI / 2;
-    clamp.position.set(side * 1.06, BAR_Y, POST_Z + 0.06);
-    g.add(clamp);
+    clamp.position.set(side * 1.06, 0, 0);
+    benchBar.add(clamp);
   }
+
+  g.add(benchBar);
+  // Expose pra fora poder mover durante engagement
+  g.userData.benchBarbell = benchBar;
 
   return g;
 }
