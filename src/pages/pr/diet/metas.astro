@@ -1,0 +1,155 @@
+---
+export const prerender = false;
+import "../../../styles/global.css";
+import BottomNav from "../../../components/pr/BottomNav.astro";
+import { getServerSupabase } from "../../../lib/supabase/server";
+
+const athlete = Astro.locals.athlete;
+if (!athlete) return Astro.redirect("/pr/login");
+
+const supabase = getServerSupabase({
+  headers: Astro.request.headers,
+  cookies: Astro.cookies,
+});
+
+const { data: targetRow } = await supabase
+  .from("pr_diet_targets")
+  .select("kcal_target, protein_g_target, carbs_g_target, fat_g_target, water_ml_target, goal")
+  .eq("user_id", athlete.userId)
+  .maybeSingle();
+
+const t = targetRow ?? {
+  kcal_target: 2200,
+  protein_g_target: 150,
+  carbs_g_target: 250,
+  fat_g_target: 70,
+  water_ml_target: 2500,
+  goal: "maintain",
+};
+
+// TDEE calculator: Mifflin-St Jeor + activity
+const bw = athlete.bodyWeightKg ?? 75;
+const bmr = athlete.sex === "female"
+  ? 10 * bw + 6.25 * 165 - 5 * 28 - 161
+  : 10 * bw + 6.25 * 175 - 5 * 28 + 5;
+const tdeeMaintain = Math.round(bmr * 1.55); // moderately active
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Metas de Dieta · PR Tracker</title>
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+  </head>
+  <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
+    <header class="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <a href="/pr/diet" class="text-sm text-navy-300 hover:text-white">← Dieta</a>
+      <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">METAS</div>
+      <h1 class="font-display text-3xl tracking-tight text-white">Defina suas metas</h1>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 space-y-4">
+      <section class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-4">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">CALCULADORA TDEE</div>
+        <div class="text-sm text-white mb-2">
+          Baseado no seu peso ({bw}kg): <strong class="text-brand-lime">{tdeeMaintain} kcal/dia</strong> (manutenção)
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+          <button data-preset="cut" data-kcal={tdeeMaintain - 500} class="preset-btn bg-navy-800 hover:bg-navy-700 rounded p-2">
+            <div class="font-bold text-orange-400">CUT</div>
+            <div class="text-[10px] text-navy-300">{tdeeMaintain - 500} kcal</div>
+          </button>
+          <button data-preset="maintain" data-kcal={tdeeMaintain} class="preset-btn bg-navy-800 hover:bg-navy-700 rounded p-2">
+            <div class="font-bold text-brand-lime">MANTER</div>
+            <div class="text-[10px] text-navy-300">{tdeeMaintain} kcal</div>
+          </button>
+          <button data-preset="bulk" data-kcal={tdeeMaintain + 500} class="preset-btn bg-navy-800 hover:bg-navy-700 rounded p-2">
+            <div class="font-bold text-blue-400">BULK</div>
+            <div class="text-[10px] text-navy-300">{tdeeMaintain + 500} kcal</div>
+          </button>
+        </div>
+      </section>
+
+      <form id="metas-form" class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 space-y-3">
+        <div>
+          <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Calorias diárias</label>
+          <input type="number" name="kcal_target" min="800" max="6000" required value={t.kcal_target} class="w-full bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Proteína (g)</label>
+            <input type="number" name="protein_g_target" min="30" max="400" required value={t.protein_g_target} class="w-full bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Carbo (g)</label>
+            <input type="number" name="carbs_g_target" min="0" max="800" required value={t.carbs_g_target} class="w-full bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Gord (g)</label>
+            <input type="number" name="fat_g_target" min="0" max="300" required value={t.fat_g_target} class="w-full bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Água (ml/dia)</label>
+          <input type="number" name="water_ml_target" min="500" max="8000" step="100" required value={t.water_ml_target} class="w-full bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1">Objetivo</label>
+          <select name="goal" class="w-full bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-sm">
+            <option value="cut" selected={t.goal === "cut"}>Cutting (perda)</option>
+            <option value="maintain" selected={t.goal === "maintain"}>Manutenção</option>
+            <option value="bulk" selected={t.goal === "bulk"}>Bulking (ganho)</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-3 text-sm hover:opacity-90">Salvar metas</button>
+        <div id="error-msg" class="text-sm text-red-400 hidden"></div>
+      </form>
+    </main>
+
+    <BottomNav active="profile" />
+
+    <script>
+      // Preset handler — preenche kcal e ajusta macros 30/40/30 split
+      document.querySelectorAll(".preset-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const kcal = Number((btn as HTMLButtonElement).dataset.kcal ?? "2200");
+          const goal = (btn as HTMLButtonElement).dataset.preset ?? "maintain";
+          (document.querySelector("[name=kcal_target]") as HTMLInputElement).value = String(kcal);
+          // Macros split: 30P / 40C / 30F (fast simple)
+          (document.querySelector("[name=protein_g_target]") as HTMLInputElement).value = String(Math.round((kcal * 0.30) / 4));
+          (document.querySelector("[name=carbs_g_target]") as HTMLInputElement).value = String(Math.round((kcal * 0.40) / 4));
+          (document.querySelector("[name=fat_g_target]") as HTMLInputElement).value = String(Math.round((kcal * 0.30) / 9));
+          (document.querySelector("[name=goal]") as HTMLSelectElement).value = goal;
+        });
+      });
+
+      const form = document.getElementById("metas-form") as HTMLFormElement;
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const data = Object.fromEntries(fd.entries());
+        const errorEl = document.getElementById("error-msg") as HTMLDivElement;
+        try {
+          const res = await fetch("/api/pr/diet/targets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          if (res.ok) {
+            window.location.href = "/pr/diet";
+          } else {
+            const j = await res.json();
+            errorEl.textContent = j.message || j.error || "Erro";
+            errorEl.classList.remove("hidden");
+          }
+        } catch {
+          errorEl.textContent = "Erro de conexão";
+          errorEl.classList.remove("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>
