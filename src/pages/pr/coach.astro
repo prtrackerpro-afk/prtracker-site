@@ -91,9 +91,11 @@ for (const b of ownedBoxes ?? []) {
           ))}
         </ul>
       ) : (
-        <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-6 text-center mb-8">
-          <p class="text-sm text-navy-300 mb-3">
-            Você ainda não tem nenhum box. Crie um pra começar a montar o leaderboard dos seus alunos.
+        <div class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-6 text-center mb-8">
+          <div class="text-3xl mb-2">🏛️</div>
+          <p class="text-base text-white font-display mb-1">Crie seu primeiro box e comece a liderar.</p>
+          <p class="text-sm text-navy-300">
+            O leaderboard popula sozinho conforme os atletas vão logando PRs.
           </p>
         </div>
       )}
@@ -117,6 +119,7 @@ for (const b of ownedBoxes ?? []) {
                    pattern="[a-z0-9-]+"
                    placeholder="crossfit-pelican"
                    class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm font-mono focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"/>
+            <div id="slug-help" class="text-[10px] text-navy-400 mt-1">Apenas letras minúsculas, números e hífens.</div>
           </div>
           <div class="grid grid-cols-3 gap-2">
             <div class="col-span-2">
@@ -196,8 +199,33 @@ for (const b of ownedBoxes ?? []) {
       // Auto-suggest slug from name on first interaction
       const nameEl = document.getElementById("box_name") as HTMLInputElement;
       const slugEl = document.getElementById("box_slug") as HTMLInputElement;
+      const slugHelp = document.getElementById("slug-help") as HTMLDivElement | null;
       let slugTouched = false;
-      slugEl?.addEventListener("input", () => { slugTouched = true; });
+      slugEl?.addEventListener("input", () => {
+        slugTouched = true;
+        // Live validation feedback
+        if (!slugEl || !slugHelp) return;
+        const v = slugEl.value;
+        const valid = /^[a-z0-9-]+$/.test(v);
+        if (v.length === 0) {
+          slugHelp.textContent = "Apenas letras minúsculas, números e hífens.";
+          slugHelp.className = "text-[10px] text-navy-400 mt-1";
+          slugEl.classList.remove("border-red-500", "border-brand-lime");
+        } else if (!valid) {
+          slugHelp.textContent = "⚠️ Use apenas a-z, 0-9 e hífens — sem espaços, acentos ou maiúsculas";
+          slugHelp.className = "text-[10px] text-red-400 mt-1";
+          slugEl.classList.add("border-red-500");
+          slugEl.classList.remove("border-brand-lime");
+        } else if (v.length < 3) {
+          slugHelp.textContent = `Mais ${3 - v.length} caractere${3 - v.length === 1 ? "" : "s"} pra ficar válido.`;
+          slugHelp.className = "text-[10px] text-orange-400 mt-1";
+          slugEl.classList.remove("border-red-500", "border-brand-lime");
+        } else {
+          slugHelp.textContent = `✓ prtracker.com.br/pr/box/${v}`;
+          slugHelp.className = "text-[10px] text-brand-lime mt-1";
+          slugEl.classList.remove("border-red-500");
+        }
+      });
       nameEl?.addEventListener("input", () => {
         if (slugTouched || !slugEl) return;
         slugEl.value = nameEl.value
