@@ -168,6 +168,33 @@ function fmtRelative(iso: string): string {
                     </div>
                   </>
                 )}
+
+                {n.type === "athlete_pr" && (() => {
+                  const exId = n.payload.exercise as ExerciseId;
+                  const w = n.payload.weight_kg as number;
+                  const recordId = n.payload.record_id as string;
+                  const boxSlug = n.payload.box_slug as string;
+                  const boxName = n.payload.box_name as string;
+                  const athleteName = (n.payload.athlete_name as string) ?? actor ?? "Atleta";
+                  return (
+                    <>
+                      <span class="text-2xl flex-shrink-0">💪</span>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-sm leading-tight">
+                          <strong>{athleteName}</strong>
+                          <span class="text-navy-300"> bateu PR de </span>
+                          <strong>{exerciseLabel(exId)} {w} kg</strong>
+                        </div>
+                        <div class="text-[11px] text-navy-300 mt-0.5">no <strong>{boxName}</strong></div>
+                        <div class="flex gap-3 mt-1">
+                          <a href={`/pr/celebrate/${recordId}`} class="text-[11px] text-brand-lime">Ver →</a>
+                          <a href={`/pr/box/${boxSlug}`} class="text-[11px] text-brand-lime">Leaderboard →</a>
+                        </div>
+                        <div class="text-[10px] text-navy-300 mt-1">{fmtRelative(n.created_at)}</div>
+                      </div>
+                    </>
+                  );
+                })()}
               </li>
             );
           })}
