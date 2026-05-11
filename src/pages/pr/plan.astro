@@ -123,18 +123,31 @@ if (currentPlan) {
               <span class="text-xs text-navy-400">{dayExercises.length} exercício{dayExercises.length === 1 ? "" : "s"}</span>
             </div>
             {dayExercises.length === 0 ? (
-              <div class="text-xs text-navy-500 italic">Descanso</div>
+              <div class="text-xs text-navy-400 flex items-center gap-1.5">
+                <span>😴</span>
+                <span class="italic">Descanso</span>
+              </div>
             ) : (
               <ul class="space-y-2">
-                {dayExercises.map((ex) => (
-                  <li class="flex items-start gap-2 p-2 bg-navy-900/50 rounded-lg" data-ex-id={ex.id}>
+                {dayExercises.map((ex) => {
+                  const isDone = !!ex.done_at;
+                  return (
+                  <li
+                    class={`flex items-start gap-2 p-2 rounded-lg transition ${isDone ? "bg-brand-lime/8 border border-brand-lime/30" : "bg-navy-900/50"}`}
+                    data-ex-id={ex.id}
+                  >
                     <button
                       type="button"
-                      class="checkin-btn flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 border-brand-lime grid place-items-center hover:bg-brand-lime hover:text-navy-900 transition"
+                      class={`checkin-btn flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 grid place-items-center transition ${
+                        isDone
+                          ? "bg-brand-lime border-brand-lime text-navy-900"
+                          : "border-brand-lime text-brand-lime hover:bg-brand-lime/20"
+                      }`}
                       data-ex-id={ex.id}
-                      data-done={ex.done_at ? "true" : "false"}
+                      data-done={isDone ? "true" : "false"}
+                      aria-label={isDone ? "Desmarcar exercício" : "Marcar como feito"}
                     >
-                      {ex.done_at && <span class="text-brand-lime text-xs">✓</span>}
+                      {isDone && <span class="text-xs leading-none">✓</span>}
                     </button>
                     <div class="flex-1 min-w-0">
                       <div class="text-sm font-semibold text-white">{ex.exercise_name}</div>
@@ -147,7 +160,8 @@ if (currentPlan) {
                       {ex.notes && <div class="text-[10px] text-navy-400 mt-0.5 italic">{ex.notes}</div>}
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </section>
@@ -158,33 +172,51 @@ if (currentPlan) {
     <BottomNav active="profile" />
 
     <script>
-      // Check-in: marca exercício como feito
-      document.querySelectorAll(".checkin-btn").forEach((btn) => {
+      // Check-in: marca exercício como feito + alterna bg da linha pra feedback claro
+      document.querySelectorAll<HTMLButtonElement>(".checkin-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
-          const exId = (btn as HTMLButtonElement).dataset.exId;
-          const isDone = (btn as HTMLButtonElement).dataset.done === "true";
+          const exId = btn.dataset.exId;
+          const isDone = btn.dataset.done === "true";
           if (!exId) return;
           const newDone = !isDone;
+          btn.disabled = true;
+          // Optimistic UI
+          applyDoneState(btn, newDone);
           try {
             const res = await fetch("/api/pr/coach/checkin", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ exercise_id: exId, done: newDone }),
             });
-            if (res.ok) {
-              (btn as HTMLButtonElement).dataset.done = String(newDone);
-              btn.innerHTML = newDone ? '<span class="text-brand-lime text-xs">✓</span>' : "";
-              if (newDone) {
-                btn.classList.add("bg-brand-lime", "text-navy-900");
-              } else {
-                btn.classList.remove("bg-brand-lime", "text-navy-900");
-              }
-            }
+            if (!res.ok) throw new Error("checkin failed");
           } catch {
-            // silencioso
+            // Reverter em erro
+            applyDoneState(btn, isDone);
+          } finally {
+            btn.disabled = false;
           }
         });
       });
+
+      function applyDoneState(btn: HTMLButtonElement, done: boolean): void {
+        btn.dataset.done = String(done);
+        btn.setAttribute("aria-label", done ? "Desmarcar exercício" : "Marcar como feito");
+        btn.innerHTML = done ? '<span class="text-xs leading-none">✓</span>' : "";
+        if (done) {
+          btn.classList.add("bg-brand-lime", "border-brand-lime", "text-navy-900");
+          btn.classList.remove("text-brand-lime", "hover:bg-brand-lime/20");
+        } else {
+          btn.classList.remove("bg-brand-lime", "text-navy-900");
+          btn.classList.add("border-brand-lime", "text-brand-lime", "hover:bg-brand-lime/20");
+        }
+        const row = btn.closest("li") as HTMLLIElement | null;
+        if (row) {
+          row.classList.toggle("bg-brand-lime/8", done);
+          row.classList.toggle("border", done);
+          row.classList.toggle("border-brand-lime/30", done);
+          row.classList.toggle("bg-navy-900/50", !done);
+        }
+      }
     </script>
   </body>
 </html>

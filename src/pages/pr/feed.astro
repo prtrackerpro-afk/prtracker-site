@@ -47,6 +47,21 @@ interface FeedRow {
 
 const rows = (feed ?? []) as FeedRow[];
 
+// Fetch own reactions for visible records so we can pre-fill the "you reacted"
+// state on the buttons. Set keyed by `${recordId}:${emoji}`.
+const ownReactionSet = new Set<string>();
+if (rows.length > 0) {
+  const recordIds = rows.map((r) => r.record_id);
+  const { data: ownReacts = [] } = await supabase
+    .from("pr_reactions")
+    .select("record_id, emoji")
+    .eq("user_id", athlete.userId)
+    .in("record_id", recordIds);
+  for (const r of ownReacts ?? []) {
+    ownReactionSet.add(`${r.record_id}:${r.emoji}`);
+  }
+}
+
 const REACTION_EMOJIS = ["🔥", "💪", "🇧🇷", "👏", "🤘", "⭐"] as const;
 
 function fmtRelative(iso: string): string {
@@ -89,7 +104,14 @@ function fmtRelative(iso: string): string {
       <a href="/pr" class="text-xs text-navy-300 hover:text-white">← Meus PRs</a>
       <h1 class="font-display text-xl tracking-tight flex items-center gap-2 text-brand-lime">
         Feed
-        <span id="live-dot" class="inline-block w-2 h-2 rounded-full bg-navy-700" title="conexão realtime"></span>
+        <span
+          id="live-pill"
+          class="hidden text-[9px] uppercase tracking-[0.2em] rounded-full bg-brand-lime/15 text-brand-lime border border-brand-lime/40 px-1.5 py-0.5 inline-flex items-center gap-1"
+          title="Conectado ao feed em tempo real"
+        >
+          <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-lime animate-pulse"></span>
+          Ao vivo
+        </span>
       </h1>
       <a href="/pr/atletas" class="text-xs text-brand-lime hover:underline">+ Seguir</a>
     </header>
@@ -222,16 +244,25 @@ function fmtRelative(iso: string): string {
               <div class="flex flex-wrap gap-1.5" data-react-row data-record-id={row.record_id}>
                 {REACTION_EMOJIS.map((emoji) => {
                   const count = row.reactions?.[emoji] ?? 0;
+                  const own = ownReactionSet.has(`${row.record_id}:${emoji}`);
                   return (
                     <button
                       type="button"
-                      class="text-base rounded-full border border-navy-600 bg-navy-900/50 px-3 py-1.5 hover:bg-navy-800 hover:border-brand-lime/40 transition flex items-center gap-1.5"
+                      class={`text-base rounded-full border px-3 py-1.5 transition flex items-center gap-1.5 ${
+                        own
+                          ? "border-brand-lime/70 bg-brand-lime/15 text-brand-lime"
+                          : "border-navy-600 bg-navy-900/50 text-white hover:bg-navy-800 hover:border-brand-lime/40"
+                      }`}
                       data-react-btn
                       data-emoji={emoji}
+                      data-own={own ? "1" : "0"}
+                      aria-pressed={own}
                     >
                       <span>{emoji}</span>
                       {count > 0 && (
-                        <span class="text-[10px] tabular-nums text-navy-300">{count}</span>
+                        <span class={`text-[10px] tabular-nums ${own ? "text-brand-lime" : "text-navy-300"}`}>
+                          {count}
+                        </span>
                       )}
                     </button>
                   );
@@ -255,10 +286,10 @@ function fmtRelative(iso: string): string {
       (async () => {
         const cfg = (window as typeof window & { __PR_SUPA__?: { url: string; anon: string } }).__PR_SUPA__;
         if (!cfg?.url || !cfg.anon) return;
-        const liveDot = document.getElementById("live-dot");
+        const livePill = document.getElementById("live-pill");
         const banner = document.getElementById("new-pr-banner");
         const countEl = document.getElementById("new-pr-count");
-        if (!liveDot || !banner || !countEl) return;
+        if (!livePill || !banner || !countEl) return;
 
         let newCount = 0;
         banner.addEventListener("click", () => window.location.reload());
@@ -279,9 +310,7 @@ function fmtRelative(iso: string): string {
               }
             )
             .subscribe((status) => {
-              liveDot.classList.toggle("bg-brand-lime", status === "SUBSCRIBED");
-              liveDot.classList.toggle("animate-pulse", status === "SUBSCRIBED");
-              liveDot.classList.toggle("bg-navy-700", status !== "SUBSCRIBED");
+              livePill.classList.toggle("hidden", status !== "SUBSCRIBED");
             });
           window.addEventListener("beforeunload", () => sb.removeChannel(ch));
         } catch {
@@ -289,8 +318,59 @@ function fmtRelative(iso: string): string {
         }
       })();
 
-      // === Reaction buttons (existing) =================================
-      // Wire up reaction buttons — optimistic UI, revert on error.
+      // === Reaction buttons =============================================
+      // Optimistic UI: click flips the visual state immediately, then the
+      // API confirms or reverts. `data-own` tracks whether the current user
+      // has reacted with this emoji on this record.
+      const OWN_CLASSES = [
+        "border-brand-lime/70",
+        "bg-brand-lime/15",
+        "text-brand-lime",
+      ] as const;
+      const IDLE_CLASSES = [
+        "border-navy-600",
+        "bg-navy-900/50",
+        "text-white",
+        "hover:bg-navy-800",
+        "hover:border-brand-lime/40",
+      ] as const;
+
+      function applyOwnState(btn: HTMLButtonElement, own: boolean): void {
+        btn.dataset.own = own ? "1" : "0";
+        btn.setAttribute("aria-pressed", own ? "true" : "false");
+        for (const c of OWN_CLASSES) btn.classList.toggle(c, own);
+        for (const c of IDLE_CLASSES) btn.classList.toggle(c, !own);
+        const countEl = btn.querySelector("[data-count]") as HTMLSpanElement | null;
+        if (countEl) {
+          countEl.classList.toggle("text-brand-lime", own);
+          countEl.classList.toggle("text-navy-300", !own);
+        }
+      }
+
+      function setCount(btn: HTMLButtonElement, count: number): void {
+        let countEl = btn.querySelector("[data-count]") as HTMLSpanElement | null;
+        if (count <= 0) {
+          countEl?.remove();
+          return;
+        }
+        if (!countEl) {
+          countEl = document.createElement("span");
+          countEl.dataset.count = "1";
+          countEl.className = "text-[10px] tabular-nums";
+          countEl.classList.add(btn.dataset.own === "1" ? "text-brand-lime" : "text-navy-300");
+          btn.appendChild(countEl);
+        }
+        countEl.textContent = String(count);
+      }
+
+      // Tag existing count spans so the helpers can find them.
+      document.querySelectorAll<HTMLButtonElement>("[data-react-btn]").forEach((btn) => {
+        const countEl = btn.querySelector("span:last-child");
+        if (countEl && countEl !== btn.querySelector("span:first-child")) {
+          (countEl as HTMLSpanElement).dataset.count = "1";
+        }
+      });
+
       document.querySelectorAll<HTMLElement>("[data-react-row]").forEach((row) => {
         const recordId = row.dataset.recordId;
         if (!recordId) return;
@@ -298,19 +378,14 @@ function fmtRelative(iso: string): string {
           btn.addEventListener("click", async () => {
             const emoji = btn.dataset.emoji;
             if (!emoji) return;
+            const wasOwn = btn.dataset.own === "1";
+            const willBeOwn = !wasOwn;
+            const countEl = btn.querySelector("[data-count]") as HTMLSpanElement | null;
+            const prevCount = countEl ? parseInt(countEl.textContent ?? "0", 10) || 0 : 0;
+            // Optimistic flip
             btn.disabled = true;
-            const countEl = btn.querySelector("span:last-child");
-            const prev = countEl?.textContent ?? "0";
-            const prevNum = parseInt(prev, 10) || 0;
-            // Optimistic +1
-            if (countEl) {
-              countEl.textContent = String(prevNum + 1);
-            } else {
-              const span = document.createElement("span");
-              span.className = "text-[10px] tabular-nums text-navy-300";
-              span.textContent = "1";
-              btn.appendChild(span);
-            }
+            applyOwnState(btn, willBeOwn);
+            setCount(btn, prevCount + (willBeOwn ? 1 : -1));
             try {
               const res = await fetch(`/api/pr/reactions/${recordId}`, {
                 method: "POST",
@@ -319,18 +394,16 @@ function fmtRelative(iso: string): string {
               });
               if (!res.ok) throw new Error("react failed");
               const body = await res.json().catch(() => ({}));
-              // If the server toggled OFF, decrement back below previous
-              if (body.toggled === "off" && countEl) {
-                const next = Math.max(0, prevNum - 1);
-                countEl.textContent = String(next);
-                if (next === 0) countEl.remove();
+              // Server is the source of truth — sync visual state
+              const finalOwn = body.toggled === "on";
+              if (finalOwn !== willBeOwn) {
+                applyOwnState(btn, finalOwn);
+                setCount(btn, prevCount + (finalOwn ? 1 : -1) + (willBeOwn === finalOwn ? 0 : 0));
               }
             } catch {
-              // Revert
-              if (countEl) {
-                countEl.textContent = String(prevNum);
-                if (prevNum === 0) countEl.remove();
-              }
+              // Revert on network/server error
+              applyOwnState(btn, wasOwn);
+              setCount(btn, prevCount);
             } finally {
               btn.disabled = false;
             }

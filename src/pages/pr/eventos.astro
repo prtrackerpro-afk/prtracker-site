@@ -37,6 +37,9 @@ function fmtFee(cents: number) {
   if (cents === 0) return "Grátis";
   return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
 }
+function isFree(cents: number) {
+  return cents === 0;
+}
 ---
 
 <!doctype html>
@@ -59,8 +62,9 @@ function fmtFee(cents: number) {
     <main class="max-w-2xl mx-auto px-4">
       {list.length === 0 ? (
         <div class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-6 text-center">
-          <p class="text-sm text-navy-300 mb-2">Nenhum evento ativo no momento.</p>
-          <p class="text-xs text-navy-400">Em breve: organize teu próprio evento direto pelo app.</p>
+          <div class="text-3xl mb-2">🏆</div>
+          <p class="text-sm text-white font-display mb-1">Nenhum evento ativo no momento.</p>
+          <p class="text-xs text-navy-300">Em breve: organize teu próprio evento direto pelo app.</p>
         </div>
       ) : (
         <ul class="space-y-3">
@@ -75,7 +79,11 @@ function fmtFee(cents: number) {
                 </div>
                 <div class="text-right">
                   <div class="text-sm font-display font-bold tabular-nums">{fmtDate(e.starts_at)}</div>
-                  <div class="text-[10px] text-navy-400">{fmtFee(e.fee_cents)}</div>
+                  {isFree(e.fee_cents) ? (
+                    <span class="inline-block text-[10px] uppercase tracking-wider rounded-full bg-brand-lime/15 text-brand-lime px-2 py-0.5 mt-0.5">Grátis</span>
+                  ) : (
+                    <div class="text-[10px] text-navy-400">{fmtFee(e.fee_cents)}</div>
+                  )}
                 </div>
               </div>
               {e.description && <p class="text-xs text-navy-300 mb-2">{e.description}</p>}
