@@ -2,6 +2,7 @@
 export const prerender = false;
 import "../../../styles/global.css";
 import { getAdminSupabase } from "../../../lib/supabase/server";
+import { getAuthenticatedAthlete } from "../../../lib/pr/auth";
 import { exerciseLabel, productSlugForExercise, type ExerciseId } from "../../../lib/pr/exercises";
 import { summarize, tierLabel, tierColor, TIER_META, type Tier } from "../../../lib/pr/strength-score";
 import { configuratorQuery } from "../../../lib/pr/plates";
@@ -11,9 +12,20 @@ import TrophyWall from "../../../components/pr/TrophyWall.astro";
 // this is the shareable link an athlete posts in their bio. Renders the
 // Lifter Card + Strength Tier + Trophy Wall (read-only) so visitors can
 // see what the app is and create their own.
+//
+// Squad invite (V18): quando o link tem `?invite=1`, mostramos um banner
+// destacado pra aceitar o convite e seguir o atleta. Se o visitante não
+// estiver logado, manda pro login com retorno + auto-follow.
 
 const handle = (Astro.params.handle ?? "").trim().toLowerCase();
 if (!handle) return new Response("Missing handle", { status: 400 });
+
+const url = new URL(Astro.request.url);
+const inviteMode = url.searchParams.get("invite") === "1";
+const autoAccept = url.searchParams.get("auto") === "1";
+
+// Visitor athlete (pode estar logado mesmo sendo página pública)
+const visitor = await getAuthenticatedAthlete(Astro);
 
 // Service-role read (RLS would block cross-athlete reads). Safe because
 // we only return the columns the athlete chose to make discoverable
@@ -54,6 +66,22 @@ const overallTier: Tier | null = summary.hasBodyData ? summary.overallTier : nul
 const tColor = overallTier ? tierColor(overallTier) : "#D8FF2C";
 const tName = overallTier ? tierLabel(overallTier).toUpperCase() : "ATLETA";
 
+// Squad invite state — só verifica follow se visitante logado e diferente do dono
+let isSelf = false;
+let alreadyFollowing = false;
+if (inviteMode && visitor) {
+  isSelf = visitor.userId === profile.user_id;
+  if (!isSelf) {
+    const { data: existing } = await sb
+      .from("pr_follows")
+      .select("follower_id")
+      .eq("follower_id", visitor.userId)
+      .eq("followee_id", profile.user_id)
+      .maybeSingle();
+    alreadyFollowing = !!existing;
+  }
+}
+
 const SITE = (import.meta.env.PUBLIC_SITE_URL || "https://prtracker.com.br").replace(/\/$/, "");
 const ogImage = `${SITE}/images/brand/logo-lime.png`;
 const pageTitle = `${profile.display_name} · ${tName} · PR Tracker`;
@@ -81,12 +109,63 @@ const pageDesc =
   <body class="min-h-screen bg-navy-900 text-white font-body pb-24">
     <header class="px-4 pt-6 pb-4 max-w-2xl mx-auto flex items-center justify-between">
       <a href="/pr" class="font-display text-base tracking-tight text-brand-lime">PR TRACKER</a>
-      <a href="/pr/login" class="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5">
-        Crie o seu
-      </a>
+      {visitor ? (
+        <a href="/pr" class="text-xs rounded-lg border border-navy-600 text-white font-semibold px-3 py-1.5 hover:bg-navy-800">
+          Voltar pro meu app
+        </a>
+      ) : (
+        <a href="/pr/login" class="text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-1.5">
+          Crie o seu
+        </a>
+      )}
     </header>
 
     <main class="max-w-2xl mx-auto px-4">
+      {inviteMode && !isSelf && (
+        <section
+          id="squad-invite-banner"
+          class="mb-4 rounded-2xl border-2 border-brand-lime/50 bg-gradient-to-r from-brand-lime/15 to-brand-lime/5 p-4 shadow-lg shadow-brand-lime/15"
+          data-target-user-id={profile.user_id}
+          data-visitor-state={visitor ? (alreadyFollowing ? "following" : "logged-in") : "logged-out"}
+          data-auto-accept={autoAccept ? "1" : "0"}
+        >
+          <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-1">CONVITE PRA SQUAD</div>
+          <div class="font-display text-lg text-white leading-tight mb-2">
+            {profile.display_name} te chamou pra treinar junto.
+          </div>
+          {visitor ? (
+            alreadyFollowing ? (
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <p class="text-sm text-navy-200">Você já segue esse atleta.</p>
+                <a href="/pr/feed" class="text-xs bg-brand-lime text-navy-900 font-display font-bold rounded-lg px-3 py-2 hover:opacity-90">
+                  Ver feed →
+                </a>
+              </div>
+            ) : (
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <p class="text-sm text-navy-200">Aceita o squad pra ver os PRs no teu feed em tempo real.</p>
+                <button
+                  type="button"
+                  id="squad-accept-btn"
+                  class="text-sm bg-brand-lime text-navy-900 font-display font-bold rounded-lg px-4 py-2 hover:opacity-90 hover:scale-[1.03] active:scale-100 transition shadow-md shadow-brand-lime/30 disabled:opacity-60"
+                >
+                  ✓ Aceitar squad
+                </button>
+              </div>
+            )
+          ) : (
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <p class="text-sm text-navy-200">Entra no PR Tracker e segue automaticamente.</p>
+              <a
+                href={`/pr/login?next=${encodeURIComponent(`/pr/atleta/${handle}?invite=1&auto=1`)}`}
+                class="text-sm bg-brand-lime text-navy-900 font-display font-bold rounded-lg px-4 py-2 hover:opacity-90 transition shadow-md shadow-brand-lime/30"
+              >
+                Entrar e seguir →
+              </a>
+            </div>
+          )}
+        </section>
+      )}
       {/* === HERO LIFTER CARD === */}
       <section
         class="rounded-2xl p-6 mb-6 border-2 relative overflow-hidden"
@@ -192,5 +271,49 @@ const pageDesc =
         prtracker.com.br · @pr.tracker
       </footer>
     </main>
+
+    <script>
+      // Squad invite handler — POST /api/pr/follows quando o visitante
+      // aceita o convite. Roda também automaticamente quando a página
+      // carrega com `?auto=1` (após login redirect).
+      const banner = document.getElementById("squad-invite-banner");
+      if (banner) {
+        const targetUserId = banner.dataset.targetUserId;
+        const state = banner.dataset.visitorState;
+        const autoAccept = banner.dataset.autoAccept === "1";
+        const btn = document.getElementById("squad-accept-btn") as HTMLButtonElement | null;
+
+        async function acceptSquad(): Promise<void> {
+          if (!targetUserId || !btn) return;
+          btn.disabled = true;
+          const originalText = btn.textContent;
+          btn.textContent = "Seguindo...";
+          try {
+            const res = await fetch("/api/pr/follows", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: targetUserId }),
+            });
+            if (!res.ok) throw new Error("follow failed");
+            btn.textContent = "✓ Squad ativo";
+            // Redirect pro feed após 800ms pra ver os PRs do atleta
+            setTimeout(() => {
+              window.location.href = "/pr/feed";
+            }, 800);
+          } catch {
+            btn.disabled = false;
+            btn.textContent = originalText ?? "Aceitar squad";
+          }
+        }
+
+        btn?.addEventListener("click", acceptSquad);
+
+        // Auto-accept depois do login (caminho do convite logged-out)
+        if (autoAccept && state === "logged-in") {
+          // Pequeno delay pra UI montar e usuário ver o banner
+          setTimeout(() => { acceptSquad(); }, 400);
+        }
+      }
+    </script>
   </body>
 </html>

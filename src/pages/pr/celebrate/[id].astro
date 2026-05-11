@@ -159,29 +159,33 @@ const movement = exerciseLabel(record.exercise as ExerciseId);
       )}
 
       <div class="space-y-3 mb-6">
+        <button
+          type="button"
+          id="share-btn"
+          class="w-full rounded-lg bg-brand-lime px-4 py-3.5 text-base font-display font-bold text-navy-900 hover:opacity-90 hover:scale-[1.02] active:scale-100 transition shadow-lg shadow-brand-lime/30 flex items-center justify-center gap-2"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+          <span id="share-label">Compartilhar como Story</span>
+        </button>
+
         <a
           href={trophyHref}
-          class="block w-full rounded-lg bg-brand-lime px-4 py-3.5 text-base font-semibold text-navy-900 hover:opacity-90 transition text-center"
+          class="block w-full rounded-lg border-2 border-brand-lime/40 bg-brand-lime/5 px-4 py-3 text-sm font-display font-bold text-brand-lime hover:bg-brand-lime/10 transition text-center"
         >
-          Transforme em troféu →
+          🏆 Transforme em troféu físico →
         </a>
 
-        <div class="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            id="share-btn"
-            class="rounded-lg border border-navy-600 px-3 py-2.5 text-sm font-semibold hover:bg-navy-800 transition"
-          >
-            Compartilhar
-          </button>
-          <button
-            type="button"
-            id="download-png-btn"
-            class="rounded-lg border border-navy-600 px-3 py-2.5 text-sm font-semibold hover:bg-navy-800 transition"
-          >
-            Baixar PNG
-          </button>
-        </div>
+        <button
+          type="button"
+          id="download-png-btn"
+          class="block w-full rounded-lg border border-navy-700 px-3 py-2 text-xs font-semibold text-navy-200 hover:bg-navy-800 hover:text-white transition"
+        >
+          Baixar PNG
+        </button>
 
         <a href="/pr" class="block text-center text-xs text-navy-300 hover:text-white pt-1">
           Voltar pros meus PRs
@@ -418,29 +422,36 @@ const movement = exerciseLabel(record.exercise as ExerciseId);
         return lines.join("\n");
       }
       const shareBtn = document.getElementById("share-btn");
+      const shareLabel = document.getElementById("share-label");
+      function setShareLabel(text) {
+        if (shareLabel) shareLabel.textContent = text;
+      }
       shareBtn?.addEventListener("click", async () => {
         const text = buildCaption();
+        const originalLabel = shareLabel?.textContent ?? "Compartilhar como Story";
+        setShareLabel("Gerando...");
         try {
           const blob = await svgToPngBlob();
           if (blob && navigator.canShare && navigator.share) {
             const file = new File([blob], filename, { type: "image/png" });
             if (navigator.canShare({ files: [file] })) {
               await navigator.share({ title: "PR Tracker", text, files: [file] });
+              setShareLabel(originalLabel);
               return;
             }
           }
           if (blob) {
             downloadBlob(blob, filename);
-            shareBtn.textContent = "PNG salvo";
-            setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
+            setShareLabel("✓ PNG salvo");
+            setTimeout(() => setShareLabel(originalLabel), 1500);
           } else {
             const url = `${window.location.origin}/api/pr/card/${recordId}.svg`;
             await navigator.clipboard.writeText(url);
-            shareBtn.textContent = "Link copiado";
-            setTimeout(() => { shareBtn.textContent = "Compartilhar"; }, 1500);
+            setShareLabel("✓ Link copiado");
+            setTimeout(() => setShareLabel(originalLabel), 1500);
           }
         } catch {
-          // user cancelled
+          setShareLabel(originalLabel);
         }
       });
     </script>
