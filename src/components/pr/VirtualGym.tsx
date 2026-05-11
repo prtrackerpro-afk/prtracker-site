@@ -166,6 +166,7 @@ export default function VirtualGym({
   const [selectedGhost, setSelectedGhost] = useState<GhostExercise | null>(null);
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorSlot | null>(null);
   const [selectedProType, setSelectedProType] = useState<ProType | null>(null);
+  const [hallKioskOpen, setHallKioskOpen] = useState(false);
   const [skillsModalOpen, setSkillsModalOpen] = useState(false);
   const [runsModalOpen, setRunsModalOpen] = useState(false);
   const [skillsLocal, setSkillsLocal] = useState<Partial<Record<SkillId, number>>>(skills);
@@ -198,6 +199,7 @@ export default function VirtualGym({
     selectedGhost !== null ||
     selectedSponsor !== null ||
     selectedProType !== null ||
+    hallKioskOpen ||
     skillsModalOpen ||
     runsModalOpen ||
     xpModalOpen ||
@@ -814,6 +816,89 @@ export default function VirtualGym({
     );
     trackRail.position.set(0, WALL_H - 0.02, -ROOM_D / 2 + 1.0);
     scene.add(trackRail);
+
+    // === HALL KIOSK: pedestal clicável centro do Hall of Fame ============
+    // Substitui os portais de chão "Registrar PR" e "Trofeus" — agora a
+    // navegação pra log/achievements rola pela área dos troféus.
+    const hallKiosk = new THREE.Group();
+    {
+      // Pedestal cilíndrico (preto fosco com base lime)
+      const pedBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.4, 1.05, 24),
+        new THREE.MeshStandardMaterial({ color: 0x1c1c2a, roughness: 0.45, metalness: 0.5 })
+      );
+      pedBody.position.y = 0.525;
+      pedBody.castShadow = true;
+      hallKiosk.add(pedBody);
+      // Base anel lime emissive
+      const baseRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.42, 0.025, 8, 32),
+        new THREE.MeshStandardMaterial({
+          color: accentColor,
+          emissive: accentColor,
+          emissiveIntensity: 1.2,
+        })
+      );
+      baseRing.rotation.x = Math.PI / 2;
+      baseRing.position.y = 0.04;
+      hallKiosk.add(baseRing);
+      // Placa frontal com texto
+      const plaqueCanvas = document.createElement("canvas");
+      plaqueCanvas.width = 512;
+      plaqueCanvas.height = 320;
+      const pctx = plaqueCanvas.getContext("2d")!;
+      pctx.fillStyle = "#01002A";
+      pctx.fillRect(0, 0, 512, 320);
+      pctx.strokeStyle = "#D8FF2C";
+      pctx.lineWidth = 6;
+      pctx.strokeRect(8, 8, 496, 304);
+      pctx.fillStyle = "#D8FF2C";
+      pctx.font = "900 56px Archivo Black, Inter, sans-serif";
+      pctx.textAlign = "center";
+      pctx.textBaseline = "middle";
+      pctx.fillText("HALL", 256, 80);
+      pctx.fillText("OF FAME", 256, 145);
+      pctx.fillStyle = "#ffffff";
+      pctx.font = "500 26px Inter, sans-serif";
+      pctx.fillText(`${trophies.length}/${HALL_EXERCISES.length} pedestais`, 256, 210);
+      pctx.fillStyle = "#D8FF2C";
+      pctx.font = "700 22px Inter, sans-serif";
+      pctx.fillText("▶ TOQUE PRA ABRIR", 256, 270);
+      const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
+      plaqueTex.colorSpace = THREE.SRGBColorSpace;
+      const plaqueMat = new THREE.MeshStandardMaterial({
+        map: plaqueTex,
+        emissive: 0x222244,
+        emissiveIntensity: 0.4,
+        roughness: 0.5,
+        metalness: 0.1,
+      });
+      const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.4), plaqueMat);
+      plaque.position.set(0, 0.7, 0.32);
+      hallKiosk.add(plaque);
+      // Back plaque (mirror) pra ser legível dos dois lados
+      const plaqueBack = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.4), plaqueMat);
+      plaqueBack.position.set(0, 0.7, -0.32);
+      plaqueBack.rotation.y = Math.PI;
+      hallKiosk.add(plaqueBack);
+      // Hitbox invisível pra raycast pegar fácil
+      const hitBox = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      hitBox.position.y = 0.75;
+      hitBox.userData.kind = "hall-kiosk";
+      hallKiosk.add(hitBox);
+    }
+    // Posiciona no centro-frente do trophy hall deck (entre o avatar e os pedestais)
+    hallKiosk.position.set(0, 0, -ROOM_D / 2 + 2.6);
+    scene.add(hallKiosk);
+    // Spot light no kiosk pra destaque
+    const kioskSpot = new THREE.SpotLight(0xffffff, 1.4, 6, Math.PI / 8, 0.4, 1.0);
+    kioskSpot.position.set(0, WALL_H - 1.0, -ROOM_D / 2 + 2.6);
+    kioskSpot.target.position.set(0, 0.5, -ROOM_D / 2 + 2.6);
+    scene.add(kioskSpot);
+    scene.add(kioskSpot.target);
 
     // Conta troféus desbloqueados pra gamificação
     const unlockedCount = trophies.length;
@@ -1608,6 +1693,7 @@ export default function VirtualGym({
         runBoardParts.hitBox,
         cinemaRoom,
         arcadeRoom,
+        hallKiosk,
       ];
       const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
@@ -1623,7 +1709,8 @@ export default function VirtualGym({
           obj.userData.kind !== "projector-screen" &&
           obj.userData.kind !== "streak-pillar" &&
           obj.userData.kind !== "skills-board" &&
-          obj.userData.kind !== "run-board"
+          obj.userData.kind !== "run-board" &&
+          obj.userData.kind !== "hall-kiosk"
         ) {
           obj = obj.parent;
         }
@@ -1677,6 +1764,14 @@ export default function VirtualGym({
         } else if (obj?.userData.kind === "run-board") {
           playClick();
           if (!visitMode) setRunsModalOpen(true);
+        } else if (obj?.userData.kind === "hall-kiosk") {
+          // JUICE: chime + particle burst lime
+          playChime();
+          obj.getWorldPosition(tmpWorldPos);
+          tmpWorldPos.y += 1.0;
+          tmpColor.set(0xd8ff2c);
+          particleBurst.burst(tmpWorldPos, 30, tmpColor, 1.0);
+          setHallKioskOpen(true);
         } else if (obj?.userData.hotspot) {
           // Salas físicas (Cinema/Fliperama) — únicas com hotspot clicável.
           playClick();
@@ -2284,6 +2379,83 @@ export default function VirtualGym({
           type={selectedProType}
           onClose={() => setSelectedProType(null)}
         />
+      )}
+
+      {/* Hall of Fame kiosk modal — clique no pedestal central da área de troféus */}
+      {hallKioskOpen && (
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 28 }}
+          className="flex items-end sm:items-center justify-center bg-black/80 p-4"
+          onClick={() => setHallKioskOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border-2 border-brand-lime/50 bg-navy-900 shadow-2xl shadow-brand-lime/15 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-navy-700">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-brand-lime">
+                  HALL OF FAME
+                </div>
+                <div className="font-display text-lg tracking-tight">
+                  {trophies.length}/{HALL_EXERCISES.length} pedestais desbloqueados
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHallKioskOpen(false)}
+                className="text-navy-300 hover:text-white text-lg leading-none px-2"
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden mb-4">
+                <div
+                  className="h-full bg-brand-lime transition-[width] duration-500"
+                  style={{
+                    width: `${
+                      HALL_EXERCISES.length === 0
+                        ? 0
+                        : Math.round((trophies.length / HALL_EXERCISES.length) * 100)
+                    }%`,
+                  }}
+                />
+              </div>
+              <p className="text-sm text-navy-200 mb-3">
+                Cada PR registrado vira um troféu na parede. As conquistas vão acumulando
+                conforme você bate recordes.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href="/pr/log"
+                  className="rounded-xl border-2 border-brand-lime bg-brand-lime/10 hover:bg-brand-lime/20 transition p-3 text-left flex flex-col gap-1"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg leading-none">💪</span>
+                    <span className="font-display font-bold text-sm text-brand-lime">Registrar PR</span>
+                  </div>
+                  <div className="text-[11px] text-navy-300 leading-tight">
+                    Novo recorde de carga
+                  </div>
+                </a>
+                <a
+                  href="/pr/achievements"
+                  className="rounded-xl border border-navy-700 bg-navy-800/40 hover:bg-navy-800 hover:border-brand-lime/40 transition p-3 text-left flex flex-col gap-1"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg leading-none">🏅</span>
+                    <span className="font-display font-semibold text-sm text-white">Conquistas</span>
+                  </div>
+                  <div className="text-[11px] text-navy-300 leading-tight">
+                    Achievements desbloqueadas
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Sponsor booth modal — Nutricionista / PT / Slot vago */}
@@ -3281,12 +3453,10 @@ const PRO_HUB_COPY: Record<
   },
   pt: {
     title: "Seu Personal Trainer",
-    intro: "Bora treinar? Aqui é onde tu registra PR, vê plano e acompanha eventos.",
+    intro: "Bora treinar? Aqui é o teu plano e onde tu fala com o coach.",
     color: "#0057B8",
     actions: [
-      { emoji: "💪", label: "Registrar PR", sub: "Novo recorde de carga", href: "/pr/log" },
       { emoji: "📋", label: "Plano do Dia", sub: "Treino programado", href: "/pr/plan" },
-      { emoji: "🏆", label: "Eventos", sub: "Competições e meetups", href: "/pr/eventos" },
       { emoji: "🤝", label: "Coaching", sub: "Acompanhamento personalizado", href: "/pr/coach" },
     ],
   },
