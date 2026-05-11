@@ -100,22 +100,37 @@ const today = new Date().toISOString().slice(0, 10);
         </button>
 
         <div id="error-msg" class="text-sm text-red-400 hidden"></div>
+
+        <div id="offline-hint" class="hidden mt-3 rounded-lg border border-orange-500/40 bg-orange-500/5 px-3 py-2 text-xs text-orange-200">
+          📡 Sem internet — vamos salvar localmente e sincronizar quando voltar online.
+        </div>
       </form>
     </main>
 
     <script>
+      import { enqueuePR } from "../../lib/pr/offline-queue";
+
       const form = document.getElementById("log-form") as HTMLFormElement;
       const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
       const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
       const submitLabel = document.getElementById("submit-label") as HTMLSpanElement;
       const submitSpinner = document.getElementById("submit-spinner") as HTMLSpanElement;
       const weightInput = document.getElementById("weight") as HTMLInputElement;
+      const offlineHint = document.getElementById("offline-hint") as HTMLDivElement | null;
 
       function setSubmitState(busy: boolean, labelText: string): void {
         submitBtn.disabled = busy;
         submitLabel.textContent = labelText;
         submitSpinner.classList.toggle("hidden", !busy);
       }
+
+      function updateOfflineHint(): void {
+        if (!offlineHint) return;
+        offlineHint.classList.toggle("hidden", navigator.onLine);
+      }
+      updateOfflineHint();
+      window.addEventListener("online", updateOfflineHint);
+      window.addEventListener("offline", updateOfflineHint);
 
       // Quick +/- weight buttons
       document.querySelectorAll(".weight-btn").forEach((btn) => {
@@ -127,12 +142,30 @@ const today = new Date().toISOString().slice(0, 10);
         });
       });
 
+      function saveOffline(data: FormData): void {
+        enqueuePR({
+          exercise: String(data.get("exercise") ?? ""),
+          weight_kg: Number(data.get("weight")),
+          performed_at: String(data.get("date") ?? ""),
+          notes: (data.get("notes") as string) || null,
+        });
+        // Volta pra home com flag pra mostrar toast "PR salvo offline"
+        window.location.href = "/pr?offline_saved=1";
+      }
+
       form?.addEventListener("submit", async (e) => {
         e.preventDefault();
         errorMsg.classList.add("hidden");
         setSubmitState(true, "Salvando...");
 
         const data = new FormData(form);
+
+        // Se está offline, vai direto pra fila
+        if (!navigator.onLine) {
+          saveOffline(data);
+          return;
+        }
+
         try {
           const res = await fetch("/api/pr/records", {
             method: "POST",
@@ -158,9 +191,8 @@ const today = new Date().toISOString().slice(0, 10);
             window.location.href = "/pr";
           }
         } catch {
-          errorMsg.textContent = "Erro de conexão. Tente novamente.";
-          errorMsg.classList.remove("hidden");
-          setSubmitState(false, "🏆 Salvar PR");
+          // Falha de rede (mesmo com navigator.onLine=true): salva offline
+          saveOffline(data);
         }
       });
     </script>
