@@ -8,6 +8,9 @@ import { EXERCISES, exerciseLabel, type ExerciseId } from "../../../lib/pr/exerc
 const slug = Astro.params.slug!;
 const url = new URL(Astro.request.url);
 const exerciseFilter = url.searchParams.get("ex") as ExerciseId | null;
+// Temporal filter: all (default) | week | month
+const periodParam = (url.searchParams.get("period") ?? "all").toLowerCase();
+const period: "all" | "week" | "month" = periodParam === "week" || periodParam === "month" ? periodParam : "all";
 
 const supabase = getServerSupabase({
   headers: Astro.request.headers,
@@ -44,13 +47,7 @@ if (athlete) {
   isMember = !!membership;
 }
 
-const { data: leaderboard } = await supabase.rpc("pr_box_leaderboard", {
-  p_box_slug: slug,
-  p_exercise: exerciseFilter,
-  p_limit: 50,
-});
-
-const rows = (leaderboard ?? []) as Array<{
+type Row = {
   user_id: string;
   display_name: string;
   instagram_handle: string | null;
@@ -58,7 +55,80 @@ const rows = (leaderboard ?? []) as Array<{
   weight_kg: number;
   performed_at: string;
   record_id: string;
-}>;
+};
+
+let rows: Row[];
+if (period === "all") {
+  // Cache existente: melhor PR all-time por (user, exercise)
+  const { data: leaderboard } = await supabase.rpc("pr_box_leaderboard", {
+    p_box_slug: slug,
+    p_exercise: exerciseFilter,
+    p_limit: 50,
+  });
+  rows = (leaderboard ?? []) as Row[];
+} else {
+  // Filtro temporal: PRs registrados na janela. Mostra QUEM bateu PR
+  // novo essa semana/mês (rotina manda atleta voltar pra ver se subiu).
+  const startDate = new Date();
+  if (period === "week") {
+    // Última segunda-feira (ISO week start)
+    const day = startDate.getDay(); // 0=dom, 1=seg, ..., 6=sab
+    const diff = (day + 6) % 7; // dias desde segunda
+    startDate.setDate(startDate.getDate() - diff);
+  } else {
+    // Primeiro dia do mês corrente
+    startDate.setDate(1);
+  }
+  startDate.setHours(0, 0, 0, 0);
+  const startIso = startDate.toISOString().slice(0, 10);
+
+  // Membros do box (IDs)
+  const { data: members } = await supabase
+    .from("pr_box_members")
+    .select("user_id")
+    .eq("box_id", box.id);
+  const memberIds = (members ?? []).map((m) => m.user_id as string);
+
+  if (memberIds.length === 0) {
+    rows = [];
+  } else {
+    let q = supabase
+      .from("pr_records")
+      .select("id, user_id, exercise, weight_kg, performed_at, pr_athletes!inner(display_name, instagram_handle)")
+      .in("user_id", memberIds)
+      .eq("is_personal_record", true)
+      .gte("performed_at", startIso)
+      .order("weight_kg", { ascending: false })
+      .limit(50);
+    if (exerciseFilter) q = q.eq("exercise", exerciseFilter);
+    const { data: recs } = await q;
+    rows = ((recs ?? []) as Array<{
+      id: string;
+      user_id: string;
+      exercise: ExerciseId;
+      weight_kg: number;
+      performed_at: string;
+      pr_athletes: { display_name: string; instagram_handle: string | null };
+    }>).map((r) => ({
+      record_id: r.id,
+      user_id: r.user_id,
+      display_name: r.pr_athletes.display_name,
+      instagram_handle: r.pr_athletes.instagram_handle,
+      exercise: r.exercise,
+      weight_kg: Number(r.weight_kg),
+      performed_at: r.performed_at,
+    }));
+  }
+}
+
+const periodLabel = period === "week" ? "Essa semana" : period === "month" ? "Esse mês" : "Tudo";
+function buildHref(p: "all" | "week" | "month"): string {
+  const params = new URLSearchParams();
+  if (p !== "all") params.set("period", p);
+  if (exerciseFilter) params.set("ex", exerciseFilter);
+  const qs = params.toString();
+  return `/pr/box/${slug}${qs ? "?" + qs : ""}`;
+}
 ---
 
 <!doctype html>
@@ -129,11 +199,33 @@ const rows = (leaderboard ?? []) as Array<{
         )}
       </div>
 
+      {/* Temporal tabs */}
+      <div class="mb-3 flex items-center gap-2 text-xs">
+        {(["all", "week", "month"] as const).map((p) => {
+          const isActive = period === p;
+          const label = p === "all" ? "Tudo" : p === "week" ? "Essa semana" : "Esse mês";
+          return (
+            <a
+              href={buildHref(p)}
+              class:list={[
+                "rounded-full px-3 py-1.5 font-semibold transition",
+                isActive
+                  ? "bg-brand-lime text-navy-900 shadow-md shadow-brand-lime/30"
+                  : "border border-navy-600 text-navy-200 hover:bg-navy-800 hover:text-white"
+              ]}
+            >
+              {label}
+            </a>
+          );
+        })}
+      </div>
+
       <form class="mb-4 flex items-center gap-2" method="get">
-        <label class="text-xs uppercase tracking-wider text-navy-300">Filtrar:</label>
+        {period !== "all" && <input type="hidden" name="period" value={period} />}
+        <label class="text-xs uppercase tracking-wider text-navy-300">Movimento:</label>
         <select
           name="ex"
-          class="rounded-lg border border-navy-600 bg-navy-900 px-2 py-1.5 text-sm"
+          class="rounded-lg border border-navy-600 bg-navy-900 px-2 py-1.5 text-sm flex-1"
           onchange="this.form.submit()"
         >
           <option value="">Todos</option>
@@ -145,26 +237,40 @@ const rows = (leaderboard ?? []) as Array<{
 
       {rows.length === 0 ? (
         <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-8 text-center text-sm text-navy-300">
-          Nenhum PR registrado nesse box ainda.
+          {period === "all"
+            ? "Nenhum PR registrado nesse box ainda."
+            : `Nenhum PR novo ${periodLabel.toLowerCase()}. Bora bater o primeiro?`
+          }
         </div>
       ) : (
         <ol class="space-y-2">
-          {rows.map((row, i) => (
-            <li class="rounded-xl border border-navy-700 bg-navy-800/30 p-3 flex items-center gap-3">
-              <span class="font-display text-lg text-navy-300 w-8 text-center">{i + 1}</span>
-              <div class="min-w-0 flex-1">
-                <div class="font-semibold truncate">{row.display_name}</div>
-                <div class="text-xs text-navy-300 truncate">
-                  {exerciseLabel(row.exercise)}
-                  {row.instagram_handle && <span class="ml-2">@{row.instagram_handle}</span>}
+          {rows.map((row, i) => {
+            const dateLabel = period !== "all"
+              ? new Date(row.performed_at + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+              : null;
+            const isPodium = i < 3;
+            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+            return (
+              <li class={`rounded-xl border bg-navy-800/30 p-3 flex items-center gap-3 ${isPodium ? "border-brand-lime/30" : "border-navy-700"}`}>
+                <span class="font-display text-lg w-8 text-center">
+                  {medal ?? <span class="text-navy-300">{i + 1}</span>}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">{row.display_name}</div>
+                  <div class="text-xs text-navy-300 truncate">
+                    {exerciseLabel(row.exercise)}
+                    {row.instagram_handle && <span class="ml-2">@{row.instagram_handle}</span>}
+                  </div>
                 </div>
-              </div>
-              <div class="text-right">
-                <div class="font-display text-xl tabular-nums">{row.weight_kg}</div>
-                <div class="text-[10px] uppercase tracking-wider text-navy-300">kg</div>
-              </div>
-            </li>
-          ))}
+                <div class="text-right flex-shrink-0">
+                  <div class="font-display text-xl tabular-nums">{row.weight_kg}</div>
+                  <div class="text-[10px] uppercase tracking-wider text-navy-300">
+                    kg{dateLabel && <span class="ml-1 text-brand-lime">· {dateLabel}</span>}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
 
