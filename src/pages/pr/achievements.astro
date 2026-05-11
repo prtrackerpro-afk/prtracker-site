@@ -3,6 +3,10 @@ export const prerender = false;
 import "../../styles/global.css";
 import BottomNav from "../../components/pr/BottomNav.astro";
 import { getServerSupabase } from "../../lib/supabase/server";
+import { listBestLifts } from "../../lib/pr/db";
+import { summarize } from "../../lib/pr/strength-score";
+import { computeAchievements } from "../../lib/pr/achievements";
+import type { ExerciseId } from "../../lib/pr/exercises";
 
 const athlete = Astro.locals.athlete;
 if (!athlete) return Astro.redirect("/pr/login");
@@ -12,20 +16,65 @@ const supabase = getServerSupabase({
   cookies: Astro.cookies,
 });
 
-const { data: allAchievements = [] } = await supabase
-  .from("pr_achievements")
-  .select("id, name, description, icon, xp_reward")
-  .order("xp_reward", { ascending: true });
+// === Dados pra computeAchievements ===
+// Mesma fonte que /pr/profile usa — derivamos on-read em vez de
+// manter uma tabela paralela (pr_achievements). Vantagem: o critério
+// e progresso ficam visíveis pro atleta antes do unlock.
+const bestLiftsRaw = await listBestLifts(supabase, athlete.userId);
+const bestLifts = bestLiftsRaw as Partial<Record<ExerciseId, number>>;
 
-const { data: unlockedRaw = [] } = await supabase
-  .from("pr_athlete_achievements")
-  .select("achievement_id, unlocked_at")
+const summary = summarize({
+  bodyWeightKg: athlete.bodyWeightKg,
+  sex: athlete.sex,
+  bestLifts,
+});
+
+const { count: totalRecords = 0 } = await supabase
+  .from("pr_records")
+  .select("id", { count: "exact", head: true })
   .eq("user_id", athlete.userId);
 
-type Ach = { id: string; name: string; description: string; icon: string; xp_reward: number };
-const unlockedSet = new Set((unlockedRaw ?? []).map((u: { achievement_id: string }) => u.achievement_id));
-const achievements = (allAchievements ?? []) as Ach[];
-const unlockedCount = unlockedSet.size;
+const totalPRs = Object.keys(bestLifts).length;
+
+// Streak de meses com pelo menos 1 PR
+const { data: prDates = [] } = await supabase
+  .from("pr_records")
+  .select("performed_at")
+  .eq("user_id", athlete.userId)
+  .eq("is_personal_record", true)
+  .order("performed_at", { ascending: false });
+
+function computeStreak(dates: string[]): number {
+  if (dates.length === 0) return 0;
+  const months = new Set(dates.map((d) => d.slice(0, 7)));
+  let s = 0;
+  const cur = new Date();
+  for (let i = 0; i < 60; i++) {
+    const ym = cur.toISOString().slice(0, 7);
+    if (months.has(ym)) s++;
+    else if (i > 0) break;
+    cur.setMonth(cur.getMonth() - 1);
+  }
+  return s;
+}
+const streak = computeStreak((prDates ?? []).map((d) => d.performed_at as string));
+
+const achievements = computeAchievements({
+  totalRecords: totalRecords ?? 0,
+  totalPRs,
+  bestLifts,
+  overallTier: summary.hasBodyData ? summary.overallTier : null,
+  liveStreakMonths: streak,
+});
+
+const earned = achievements.filter((a) => a.earned);
+const locked = achievements.filter((a) => !a.earned);
+const unlockedCount = earned.length;
+
+function fmtProgress(p: { current: number; target: number; unit?: string }): string {
+  const c = Number.isInteger(p.current) ? p.current : p.current.toFixed(1);
+  return `${c}/${p.target}${p.unit ? " " + p.unit : ""}`;
+}
 ---
 
 <!doctype html>
@@ -56,43 +105,68 @@ const unlockedCount = unlockedSet.size;
       </div>
     </header>
 
-    {achievements.length === 0 ? (
-      <main class="max-w-2xl mx-auto px-4">
+    <main class="max-w-2xl mx-auto px-4 space-y-4">
+      {/* Desbloqueadas */}
+      {earned.length > 0 && (
+        <section>
+          <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">DESBLOQUEADAS</div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {earned.map((a) => (
+              <div class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-4 text-center shadow-sm shadow-brand-lime/10">
+                <div class="text-4xl mb-2">{a.emoji}</div>
+                <div class="text-sm font-display font-semibold mb-1 text-white">{a.label}</div>
+                <div class="text-xs text-navy-300 leading-tight">{a.description}</div>
+                <div class="text-[10px] uppercase tracking-wider text-brand-lime mt-2">✓ Conquistada</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Em progresso / bloqueadas */}
+      {locked.length > 0 && (
+        <section>
+          <div class="text-[10px] uppercase tracking-[0.3em] text-navy-300 mb-2">PRÓXIMAS METAS</div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {locked.map((a) => {
+              const pct = a.progress
+                ? Math.min(100, Math.round((a.progress.current / a.progress.target) * 100))
+                : 0;
+              return (
+                <div class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 text-center transition opacity-90 hover:opacity-100 hover:border-brand-lime/30">
+                  <div class="text-4xl mb-2 grayscale opacity-50">{a.emoji}</div>
+                  <div class="text-sm font-display font-semibold mb-1 text-navy-200">{a.label}</div>
+                  <div class="text-xs text-navy-300 leading-tight mb-2 min-h-[2lh]">{a.description}</div>
+                  {a.progress ? (
+                    <div>
+                      <div class="h-1.5 bg-navy-900 rounded-full overflow-hidden mb-1">
+                        <div
+                          class="h-full bg-brand-lime/70 transition-[width] duration-500"
+                          style={`width: ${pct}%`}
+                        />
+                      </div>
+                      <div class="text-[10px] uppercase tracking-wider text-brand-lime tabular-nums">
+                        {fmtProgress(a.progress)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div class="text-[10px] uppercase tracking-wider text-navy-400">🔒 Bloqueada</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {achievements.length === 0 && (
         <div class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-6 text-center">
           <div class="text-3xl mb-2">🏅</div>
           <p class="text-sm text-white font-display mb-1">Conquistas em construção.</p>
-          <p class="text-xs text-navy-300">Em breve: rotas de progressão por força, frequência e força relativa.</p>
+          <p class="text-xs text-navy-300">Em breve.</p>
         </div>
-      </main>
-    ) : (
-      <main class="max-w-2xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {achievements.map((a) => {
-          const unlocked = unlockedSet.has(a.id);
-          return (
-            <div
-              class={`rounded-2xl border p-4 text-center transition ${
-                unlocked
-                  ? "border-brand-lime/40 bg-brand-lime/5 shadow-sm shadow-brand-lime/10"
-                  : "border-navy-700 bg-navy-800/30 opacity-60"
-              }`}
-              title={unlocked ? "Desbloqueada" : "Ainda não desbloqueada"}
-            >
-              <div class="text-4xl mb-2">{unlocked ? a.icon : "🔒"}</div>
-              <div class="text-sm font-display font-semibold mb-1">{a.name}</div>
-              <div class="text-xs text-navy-300 mb-2 leading-tight">{a.description}</div>
-              <div
-                class={`text-[10px] uppercase tracking-wider ${
-                  unlocked ? "text-brand-lime" : "text-navy-400"
-                }`}
-                title="XP é o ranking global do seu progresso no app"
-              >
-                +{a.xp_reward} XP
-              </div>
-            </div>
-          );
-        })}
-      </main>
-    )}
+      )}
+    </main>
 
     <BottomNav active="profile" />
   </body>

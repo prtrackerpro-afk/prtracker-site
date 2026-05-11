@@ -350,9 +350,35 @@ const overallTierColor = tierColor(summary.overallTier);
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-navy-300"><path d="m9 18 6-6-6-6"/></svg>
         </div>
       </a>
-      {/* V16: privacidade do ginásio virtual */}
-      <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 mb-6">
-        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">PRIVACIDADE</div>
+      {/* === SQUAD INVITE === */}
+      {handleForShare && (
+        <section class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-5 mb-4 shadow-lg shadow-brand-lime/10">
+          <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">CONVIDAR SQUAD</div>
+          <div class="font-display text-lg mb-1">Treina com tua galera</div>
+          <p class="text-xs text-navy-300 mb-3">
+            Manda o link pros amigos. Quem aceitar te segue automaticamente — vocês veem os PRs um do outro em tempo real no feed.
+          </p>
+          <div class="flex items-center gap-2 mb-3 bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 font-mono text-xs text-navy-200 overflow-hidden">
+            <span class="truncate flex-1" id="squad-link-preview">prtracker.com.br/pr/atleta/{handleForShare}?invite=1</span>
+          </div>
+          <button
+            id="squad-invite-btn"
+            type="button"
+            data-handle={handleForShare}
+            class="w-full bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-2.5 text-sm hover:opacity-90 hover:scale-[1.02] active:scale-100 transition shadow-md shadow-brand-lime/30 flex items-center justify-center gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            <span id="squad-invite-label">Convidar galera</span>
+          </button>
+        </section>
+      )}
+
+      <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-5 mb-4">
+        <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mb-2">VISIBILIDADE DO GINÁSIO</div>
         <div class="font-display text-base mb-3">Quem pode visitar seu ginásio?</div>
         <div class="grid grid-cols-3 gap-2" id="gym-visibility-toggle" data-current={gymVisibility}>
           {(["public", "friends", "private"] as const).map((v) => (
@@ -396,6 +422,28 @@ const overallTierColor = tierColor(summary.overallTier);
     <script>
       // "Compartilhar perfil" — opens native share sheet (mobile) or copies
       // the public profile URL to clipboard (desktop).
+      // === Squad invite — gera link + Web Share / clipboard ===
+      const squadBtn = document.getElementById("squad-invite-btn") as HTMLButtonElement | null;
+      const squadLabel = document.getElementById("squad-invite-label") as HTMLSpanElement | null;
+      squadBtn?.addEventListener("click", async () => {
+        const h = squadBtn.dataset.handle;
+        if (!h) return;
+        const url = `${window.location.origin}/pr/atleta/${h}?invite=1`;
+        const text = `Vem treinar comigo no PR Tracker! Aqui ó:`;
+        const originalLabel = squadLabel?.textContent ?? "Convidar galera";
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: "PR Tracker · Squad", text, url });
+            return;
+          }
+          await navigator.clipboard.writeText(url);
+          if (squadLabel) squadLabel.textContent = "✓ Link copiado";
+          setTimeout(() => { if (squadLabel) squadLabel.textContent = originalLabel; }, 1800);
+        } catch {
+          // user cancelled
+        }
+      });
+
       const shareBtn = document.getElementById("share-profile") as HTMLButtonElement | null;
       shareBtn?.addEventListener("click", async () => {
         const handle = shareBtn.dataset.handle;
