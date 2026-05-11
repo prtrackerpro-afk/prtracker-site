@@ -2,6 +2,7 @@
 export const prerender = false;
 import "../../styles/global.css";
 import { getServerSupabase } from "../../lib/supabase/server";
+import { EXERCISES } from "../../lib/pr/exercises";
 
 const athlete = Astro.locals.athlete!; // gated by middleware
 
@@ -31,6 +32,8 @@ if (editMode) {
     .maybeSingle();
   initialHandle = (row?.instagram_handle as string | undefined) ?? "";
 }
+
+const isFirstTime = !editMode;
 ---
 
 <!doctype html>
@@ -47,99 +50,189 @@ if (editMode) {
       <div class="text-center mb-6">
         <div class="font-display text-3xl tracking-tight text-brand-lime">PR Tracker</div>
         <div class="text-xs uppercase tracking-widest text-navy-300 mt-1">
-          {editMode ? "Editar perfil" : "Configure seu perfil"}
+          {editMode ? "Editar perfil" : "Vamos te conhecer"}
         </div>
       </div>
 
-      <p class="text-sm text-navy-300 text-center mb-6">
-        Esses dados ficam só no seu perfil — usamos pra calcular seu <strong class="text-white">Strength Score</strong> e mostrar seu nível em relação a outros atletas.
-      </p>
+      {isFirstTime && (
+        <div class="mb-4">
+          <div class="flex items-center gap-1.5" id="step-indicator">
+            {[1, 2, 3].map((n) => (
+              <div
+                class="flex-1 h-1.5 rounded-full bg-navy-700 transition-colors duration-300"
+                data-step-bar={n}
+              />
+            ))}
+          </div>
+          <div class="text-[10px] uppercase tracking-widest text-navy-300 mt-2 text-center" id="step-label">
+            Passo 1 de 3
+          </div>
+        </div>
+      )}
 
       <form id="onboarding-form" class="space-y-4 rounded-2xl border border-navy-700 bg-navy-800/50 p-6">
-        <div>
-          <label for="display_name" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Nome <span class="text-red-400">*</span></label>
-          <input
-            id="display_name"
-            name="display_name"
-            type="text"
-            required
-            maxlength="60"
-            autocomplete="name"
-            placeholder="ex: Felipe Laier"
-            value={initialName}
-            class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
-          />
-        </div>
+        {/* STEP 1: Quem é você */}
+        <fieldset class="step space-y-4" data-step="1">
+          {isFirstTime && (
+            <div>
+              <h2 class="font-display text-xl text-white">Quem é você?</h2>
+              <p class="text-xs text-navy-300 mt-1">Como teu nome aparece nos rankings e no feed.</p>
+            </div>
+          )}
 
-        <div>
-          <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Sexo <span class="text-navy-300/60">(pra calibrar o score)</span></label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center justify-center rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-brand-lime has-[:checked]:bg-brand-lime/10">
-              <input type="radio" name="sex" value="male" class="sr-only" checked={initialSex === "male"} />
-              Masculino
-            </label>
-            <label class="flex items-center justify-center rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-brand-lime has-[:checked]:bg-brand-lime/10">
-              <input type="radio" name="sex" value="female" class="sr-only" checked={initialSex === "female"} />
-              Feminino
-            </label>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label for="body_weight_kg" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Peso (kg)</label>
+            <label for="display_name" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Nome <span class="text-red-400">*</span></label>
             <input
-              id="body_weight_kg"
-              name="body_weight_kg"
-              type="number"
-              step="0.1"
-              min="30"
-              max="300"
-              inputmode="decimal"
-              placeholder="80.5"
-              value={initialBw ?? ""}
-              class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
-            />
-          </div>
-          <div>
-            <label for="birth_year" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Nascimento</label>
-            <input
-              id="birth_year"
-              name="birth_year"
-              type="number"
-              min="1920"
-              max="2026"
-              placeholder="1995"
-              value={initialBirthYear ?? ""}
-              class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label for="instagram_handle" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Instagram <span class="text-navy-300/60">(opcional)</span></label>
-          <div class="flex items-center rounded-lg border border-navy-600 bg-navy-900 focus-within:border-brand-lime focus-within:ring-1 focus-within:ring-brand-lime">
-            <span class="pl-3 text-navy-300 text-sm">@</span>
-            <input
-              id="instagram_handle"
-              name="instagram_handle"
+              id="display_name"
+              name="display_name"
               type="text"
-              maxlength="30"
-              pattern="[a-zA-Z0-9._]+"
-              placeholder="seu.handle"
-              value={initialHandle}
-              class="flex-1 bg-transparent px-2 py-2.5 text-sm focus:outline-none"
+              required
+              maxlength="60"
+              autocomplete="name"
+              placeholder="ex: Felipe Laier"
+              value={initialName}
+              class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
             />
           </div>
-        </div>
 
-        <button
-          type="submit"
-          id="submit-btn"
-          class="w-full rounded-lg bg-brand-lime px-4 py-3 text-sm font-semibold text-navy-900 hover:opacity-90 transition disabled:opacity-50"
-        >
-          {editMode ? "Salvar alterações" : "Pronto, vamos começar"}
-        </button>
+          <div>
+            <label for="instagram_handle" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Instagram <span class="text-navy-300/60">(opcional · usado pra perfil público)</span></label>
+            <div class="flex items-center rounded-lg border border-navy-600 bg-navy-900 focus-within:border-brand-lime focus-within:ring-1 focus-within:ring-brand-lime">
+              <span class="pl-3 text-navy-300 text-sm">@</span>
+              <input
+                id="instagram_handle"
+                name="instagram_handle"
+                type="text"
+                maxlength="30"
+                pattern="[a-zA-Z0-9._]+"
+                placeholder="seu.handle"
+                value={initialHandle}
+                class="flex-1 bg-transparent px-2 py-2.5 text-sm focus:outline-none"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        {/* STEP 2: Dados pra calibrar o score */}
+        <fieldset class="step space-y-4 hidden" data-step="2">
+          {isFirstTime && (
+            <div>
+              <h2 class="font-display text-xl text-white">Pra ranquear teu PR</h2>
+              <p class="text-xs text-navy-300 mt-1">A gente compara teu PR com outros atletas do mesmo peso e sexo (top X% Brasil). Sem isso, só vê o número.</p>
+            </div>
+          )}
+
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Sexo</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center justify-center rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-brand-lime has-[:checked]:bg-brand-lime/10 transition">
+                <input type="radio" name="sex" value="male" class="sr-only" checked={initialSex === "male"} />
+                Masculino
+              </label>
+              <label class="flex items-center justify-center rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-brand-lime has-[:checked]:bg-brand-lime/10 transition">
+                <input type="radio" name="sex" value="female" class="sr-only" checked={initialSex === "female"} />
+                Feminino
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="body_weight_kg" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Peso (kg)</label>
+              <input
+                id="body_weight_kg"
+                name="body_weight_kg"
+                type="number"
+                step="0.1"
+                min="30"
+                max="300"
+                inputmode="decimal"
+                placeholder="80.5"
+                value={initialBw ?? ""}
+                class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+              />
+            </div>
+            <div>
+              <label for="birth_year" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Nascimento</label>
+              <input
+                id="birth_year"
+                name="birth_year"
+                type="number"
+                min="1920"
+                max="2026"
+                placeholder="1995"
+                value={initialBirthYear ?? ""}
+                class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        {/* STEP 3: Primeiro PR (apenas first-time) */}
+        {isFirstTime && (
+          <fieldset class="step space-y-4 hidden" data-step="3">
+            <div>
+              <h2 class="font-display text-xl text-white">Seu primeiro PR</h2>
+              <p class="text-xs text-navy-300 mt-1">Bate qualquer recorde que você já fez? Loga agora pra ver teu tier — pode ser pulado.</p>
+            </div>
+
+            <div>
+              <label for="first_pr_exercise" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Movimento</label>
+              <select
+                id="first_pr_exercise"
+                name="first_pr_exercise"
+                class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-sm focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+              >
+                <option value="">— Pular essa etapa —</option>
+                {EXERCISES.map((ex) => (
+                  <option value={ex.id}>{ex.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label for="first_pr_weight" class="block text-xs uppercase tracking-wider text-navy-300 mb-1.5">Peso (kg)</label>
+              <input
+                id="first_pr_weight"
+                name="first_pr_weight"
+                type="number"
+                step="0.5"
+                min="1"
+                max="999"
+                inputmode="decimal"
+                placeholder="100"
+                class="w-full rounded-lg border border-navy-600 bg-navy-900 px-3 py-2.5 text-lg font-display tabular-nums text-center focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
+              />
+            </div>
+          </fieldset>
+        )}
+
+        {/* Navegação */}
+        <div class="flex gap-2 pt-2">
+          {isFirstTime && (
+            <button
+              type="button"
+              id="back-btn"
+              class="hidden flex-1 rounded-lg border border-navy-600 text-navy-200 hover:bg-navy-800 hover:text-white px-4 py-3 text-sm font-semibold transition"
+            >
+              ← Voltar
+            </button>
+          )}
+          <button
+            type="button"
+            id="next-btn"
+            class={`flex-1 rounded-lg bg-brand-lime text-navy-900 font-display font-bold px-4 py-3 text-sm hover:opacity-90 hover:scale-[1.02] active:scale-100 transition shadow-md shadow-brand-lime/20 ${isFirstTime ? "" : "hidden"}`}
+          >
+            Próximo →
+          </button>
+          <button
+            type="submit"
+            id="submit-btn"
+            class={`flex-1 rounded-lg bg-brand-lime text-navy-900 font-display font-bold px-4 py-3 text-sm hover:opacity-90 hover:scale-[1.02] active:scale-100 transition shadow-md shadow-brand-lime/20 disabled:opacity-60 disabled:cursor-wait ${isFirstTime ? "hidden" : ""}`}
+          >
+            {editMode ? "Salvar alterações" : "Pronto, vamos começar"}
+          </button>
+        </div>
 
         {editMode && (
           <a href="/pr/profile" class="block text-center text-xs text-navy-300 hover:text-white">
@@ -151,16 +244,75 @@ if (editMode) {
       </form>
     </main>
 
-    <script define:vars={{ next, editMode }}>
+    <script define:vars={{ next, editMode, isFirstTime }}>
       const form = document.getElementById("onboarding-form");
       const errorMsg = document.getElementById("error-msg");
       const submitBtn = document.getElementById("submit-btn");
-      const defaultLabel = editMode ? "Salvar alterações" : "Pronto, vamos começar";
+      const nextBtn = document.getElementById("next-btn");
+      const backBtn = document.getElementById("back-btn");
+      const stepLabel = document.getElementById("step-label");
+
+      const TOTAL_STEPS = 3;
+      let currentStep = 1;
+
+      function showStep(step) {
+        document.querySelectorAll(".step").forEach((el) => {
+          const s = Number(el.dataset.step);
+          el.classList.toggle("hidden", s !== step);
+        });
+        document.querySelectorAll("[data-step-bar]").forEach((el) => {
+          const n = Number(el.dataset.stepBar);
+          el.classList.toggle("bg-brand-lime", n <= step);
+          el.classList.toggle("bg-navy-700", n > step);
+        });
+        if (stepLabel) stepLabel.textContent = `Passo ${step} de ${TOTAL_STEPS}`;
+        if (backBtn) backBtn.classList.toggle("hidden", step <= 1);
+        if (step >= TOTAL_STEPS) {
+          nextBtn?.classList.add("hidden");
+          submitBtn?.classList.remove("hidden");
+        } else {
+          nextBtn?.classList.remove("hidden");
+          submitBtn?.classList.add("hidden");
+        }
+      }
+
+      function validateStep(step) {
+        if (step === 1) {
+          const name = document.getElementById("display_name")?.value?.trim();
+          if (!name) {
+            errorMsg.textContent = "Coloca o nome pra continuar.";
+            errorMsg.classList.remove("hidden");
+            return false;
+          }
+        }
+        if (step === 2) {
+          // Sexo + peso são opcionais mas recomendados — sem sexo, o score fica bloqueado
+          // Não vamos travar o usuário aqui — só avisamos no UI
+        }
+        errorMsg.classList.add("hidden");
+        return true;
+      }
+
+      nextBtn?.addEventListener("click", () => {
+        if (!validateStep(currentStep)) return;
+        if (currentStep < TOTAL_STEPS) {
+          currentStep++;
+          showStep(currentStep);
+        }
+      });
+
+      backBtn?.addEventListener("click", () => {
+        if (currentStep > 1) {
+          currentStep--;
+          showStep(currentStep);
+        }
+      });
 
       form?.addEventListener("submit", async (e) => {
         e.preventDefault();
         errorMsg.classList.add("hidden");
         submitBtn.disabled = true;
+        const originalLabel = submitBtn.textContent;
         submitBtn.textContent = "Salvando...";
 
         const data = new FormData(form);
@@ -168,9 +320,12 @@ if (editMode) {
         const bw = parseFloat(data.get("body_weight_kg")?.toString() || "");
         const by = parseInt(data.get("birth_year")?.toString() || "", 10);
         const sex = data.get("sex")?.toString() || null;
+        const firstPrExercise = data.get("first_pr_exercise")?.toString() || "";
+        const firstPrWeight = parseFloat(data.get("first_pr_weight")?.toString() || "");
 
         try {
-          const res = await fetch("/api/pr/profile", {
+          // 1. Salva perfil
+          const profileRes = await fetch("/api/pr/profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -181,21 +336,49 @@ if (editMode) {
               birth_year: Number.isFinite(by) ? by : null,
             }),
           });
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
+          if (!profileRes.ok) {
+            const body = await profileRes.json().catch(() => ({}));
             errorMsg.textContent = body.message || "Erro ao salvar.";
             errorMsg.classList.remove("hidden");
             submitBtn.disabled = false;
-            submitBtn.textContent = defaultLabel;
+            submitBtn.textContent = originalLabel;
             return;
           }
-          // Em edit mode volta pro perfil, em onboarding vai pro next padrão.
-          window.location.href = editMode ? "/pr/profile" : next;
+
+          // 2. Em edit mode volta pro perfil
+          if (editMode) {
+            window.location.href = "/pr/profile";
+            return;
+          }
+
+          // 3. First-time: se preencheu primeiro PR, registra
+          if (isFirstTime && firstPrExercise && Number.isFinite(firstPrWeight) && firstPrWeight > 0) {
+            try {
+              const prRes = await fetch("/api/pr/records", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  exercise: firstPrExercise,
+                  weight_kg: firstPrWeight,
+                  performed_at: new Date().toISOString().slice(0, 10),
+                  notes: "Primeiro PR no app",
+                }),
+              });
+              const prBody = await prRes.json().catch(() => ({}));
+              if (prRes.ok && prBody.id) {
+                window.location.href = `/pr/celebrate/${prBody.id}`;
+                return;
+              }
+            } catch {
+              // Se falhar o primeiro PR, segue mesmo — não bloqueia onboarding
+            }
+          }
+          window.location.href = next;
         } catch {
           errorMsg.textContent = "Erro de conexão.";
           errorMsg.classList.remove("hidden");
           submitBtn.disabled = false;
-          submitBtn.textContent = defaultLabel;
+          submitBtn.textContent = originalLabel;
         }
       });
     </script>
