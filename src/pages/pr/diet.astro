@@ -315,7 +315,13 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
             </button>
           </div>
           {(mealsByType[mt] ?? []).length === 0 ? (
-            <div class="text-xs text-navy-400 italic">Nada registrado</div>
+            <button
+              type="button"
+              data-meal-type={mt}
+              class="add-food-btn w-full text-xs text-navy-400 hover:text-brand-lime border border-dashed border-navy-700 hover:border-brand-lime/40 rounded-lg py-2 transition"
+            >
+              + Toque pra adicionar
+            </button>
           ) : (
             <ul class="space-y-1 text-sm">
               {(mealsByType[mt] ?? []).map((m) => {
@@ -371,14 +377,22 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
             value="100"
             min="1"
             max="5000"
-            class="w-full bg-navy-800 border border-navy-700 rounded-lg px-3 py-2 text-sm focus:border-brand-lime focus:outline-none mb-2"
+            class="w-full bg-navy-800 border border-navy-700 rounded-lg px-3 py-2 text-sm focus:border-brand-lime focus:outline-none mb-1"
           />
-          <button id="save-food" class="w-full bg-brand-lime text-navy-900 font-bold rounded-lg py-2.5 text-sm hover:opacity-90">
-            Salvar
+          <div id="qty-help" class="text-[10px] text-navy-400 mb-2 min-h-[14px]"></div>
+          <button id="save-food" class="w-full bg-brand-lime text-navy-900 font-bold rounded-lg py-2.5 text-sm hover:opacity-90 active:scale-[0.99] disabled:opacity-60 disabled:cursor-wait transition flex items-center justify-center gap-2">
+            <span id="save-spinner" class="hidden w-4 h-4 rounded-full border-2 border-navy-900/30 border-t-navy-900 animate-spin"></span>
+            <span id="save-label">Salvar</span>
           </button>
         </div>
       </div>
     </div>
+
+    <!-- Toast pra feedback de saves -->
+    <div
+      id="diet-toast"
+      class="fixed bottom-28 left-1/2 -translate-x-1/2 rounded-full font-display font-bold px-4 py-2 text-sm shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50"
+    ></div>
 
     <script>
       type FoodHit = { id: string; name: string; brand: string | null; kcal: number };
@@ -387,9 +401,45 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
       const searchInput = document.getElementById("food-search") as HTMLInputElement;
       const resultsBox = document.getElementById("search-results") as HTMLDivElement;
       const qtySection = document.getElementById("qty-section") as HTMLDivElement;
+
+      // Toast helper — preferível a alert() que é hostil em mobile.
+      const toastEl = document.getElementById("diet-toast") as HTMLDivElement;
+      let toastTimeout: number | null = null;
+      function showToast(message: string, tone: "success" | "error" = "success"): void {
+        if (!toastEl) return;
+        toastEl.textContent = message;
+        const bgClass = tone === "success" ? "bg-brand-lime text-navy-900 shadow-brand-lime/40" : "bg-red-500 text-white shadow-red-500/40";
+        toastEl.className = `fixed bottom-28 left-1/2 -translate-x-1/2 rounded-full font-display font-bold px-4 py-2 text-sm shadow-lg opacity-100 pointer-events-none transition-opacity duration-300 z-50 ${bgClass}`;
+        if (toastTimeout) window.clearTimeout(toastTimeout);
+        toastTimeout = window.setTimeout(() => {
+          toastEl.classList.add("opacity-0");
+          toastEl.classList.remove("opacity-100");
+        }, 2000);
+      }
       const selectedNameEl = document.getElementById("selected-food-name") as HTMLDivElement;
       const qtyInput = document.getElementById("food-qty") as HTMLInputElement;
+      const qtyHelp = document.getElementById("qty-help") as HTMLDivElement;
       const saveBtn = document.getElementById("save-food") as HTMLButtonElement;
+      const saveSpinner = document.getElementById("save-spinner") as HTMLSpanElement;
+      const saveLabel = document.getElementById("save-label") as HTMLSpanElement;
+
+      function validateQty(): { ok: boolean; qty: number } {
+        const v = Number(qtyInput.value);
+        if (!v || v < 1) {
+          qtyHelp.textContent = "Quantidade deve ser pelo menos 1g.";
+          qtyHelp.className = "text-[10px] text-red-400 mb-2 min-h-[14px]";
+          return { ok: false, qty: 0 };
+        }
+        if (v > 5000) {
+          qtyHelp.textContent = "Máximo 5000g (5kg) por entrada.";
+          qtyHelp.className = "text-[10px] text-red-400 mb-2 min-h-[14px]";
+          return { ok: false, qty: 0 };
+        }
+        qtyHelp.textContent = "";
+        qtyHelp.className = "text-[10px] text-navy-400 mb-2 min-h-[14px]";
+        return { ok: true, qty: v };
+      }
+      qtyInput?.addEventListener("input", validateQty);
 
       let currentMealType: string | null = null;
       let selectedFoodId: string | null = null;
@@ -583,7 +633,7 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
       bwSave?.addEventListener("click", async () => {
         const w = Number(bwInput?.value);
         if (!w || w < 30 || w > 300) {
-          alert("Peso entre 30 e 300 kg");
+          showToast("Peso entre 30 e 300 kg", "error");
           return;
         }
         bwSave.disabled = true;
@@ -596,11 +646,12 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
           if (res.ok) {
             if (bwDisplay) bwDisplay.textContent = `${w} kg ✓`;
             if (bwInput) bwInput.value = "";
+            showToast(`✓ Peso atualizado: ${w} kg`, "success");
           } else {
-            alert("Erro ao salvar peso.");
+            showToast("Erro ao salvar peso", "error");
           }
         } catch {
-          alert("Erro de conexão.");
+          showToast("Sem conexão", "error");
         }
         bwSave.disabled = false;
       });
@@ -640,34 +691,44 @@ const pctKcal = Math.min(100, Math.round((totals.kcal / target.kcal_target) * 10
             if (res.ok) {
               window.location.reload();
             } else {
-              alert("Erro ao remover.");
+              showToast("Erro ao remover", "error");
             }
           } catch {
-            alert("Erro de conexão.");
+            showToast("Sem conexão", "error");
           }
         });
       });
 
       saveBtn?.addEventListener("click", async () => {
         if (!selectedFoodId || !currentMealType) return;
+        const v = validateQty();
+        if (!v.ok) return;
         saveBtn.disabled = true;
-        saveBtn.textContent = "Salvando...";
-        const qty = Number(qtyInput.value);
-        const res = await fetch("/api/pr/diet/meal-log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            meal_type: currentMealType,
-            food_id: selectedFoodId,
-            qty_g: qty,
-          }),
-        });
-        if (res.ok) {
-          window.location.reload();
-        } else {
+        saveSpinner.classList.remove("hidden");
+        saveLabel.textContent = "Salvando...";
+        try {
+          const res = await fetch("/api/pr/diet/meal-log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              meal_type: currentMealType,
+              food_id: selectedFoodId,
+              qty_g: v.qty,
+            }),
+          });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            saveBtn.disabled = false;
+            saveSpinner.classList.add("hidden");
+            saveLabel.textContent = "Salvar";
+            showToast("Erro ao salvar refeição", "error");
+          }
+        } catch {
           saveBtn.disabled = false;
-          saveBtn.textContent = "Salvar";
-          alert("Erro ao salvar.");
+          saveSpinner.classList.add("hidden");
+          saveLabel.textContent = "Salvar";
+          showToast("Sem conexão", "error");
         }
       });
     </script>
