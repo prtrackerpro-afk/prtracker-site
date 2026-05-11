@@ -79,6 +79,19 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       });
     }
 
+    // Notifica coaches dos boxes onde esse atleta é membro — fire-and-forget.
+    // Quando atleta bate PR, todo owner_user_id de pr_boxes onde ele é
+    // membro recebe uma notificação tipo "athlete_pr".
+    if (isPR) {
+      void notifyCoachesOfPR({
+        athleteId: athlete.userId,
+        athleteName: athlete.displayName ?? "Atleta",
+        exercise: body.exercise,
+        weight,
+        recordId: record.id,
+      });
+    }
+
     return new Response(JSON.stringify(record), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -174,6 +187,63 @@ async function grantPRXp(opts: {
     );
   } catch (e) {
     console.warn("[pr:grantPRXp] failed", e);
+  }
+}
+
+async function notifyCoachesOfPR(opts: {
+  athleteId: string;
+  athleteName: string;
+  exercise: import("../../../../lib/pr/exercises").ExerciseId;
+  weight: number;
+  recordId: string;
+}) {
+  try {
+    const admin = getAdminSupabase();
+    // Acha boxes onde o atleta é membro
+    const { data: memberships } = await admin
+      .from("pr_box_members")
+      .select("box_id, pr_boxes!inner(id, slug, name, owner_user_id)")
+      .eq("user_id", opts.athleteId);
+    if (!memberships || memberships.length === 0) return;
+    const rows = memberships as Array<{
+      box_id: string;
+      pr_boxes: { id: string; slug: string; name: string; owner_user_id: string };
+    }>;
+    // Dedupe por coach (atleta pode ser membro de múltiplos boxes do mesmo coach)
+    const seen = new Set<string>();
+    const inserts = [] as Array<{
+      user_id: string;
+      type: string;
+      actor_user_id: string;
+      payload: Record<string, unknown>;
+    }>;
+    for (const m of rows) {
+      const coachId = m.pr_boxes.owner_user_id;
+      // Coach não recebe notificação do próprio PR (caso seja membro do próprio box)
+      if (coachId === opts.athleteId) continue;
+      const key = `${coachId}:${opts.recordId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      inserts.push({
+        user_id: coachId,
+        type: "athlete_pr",
+        actor_user_id: opts.athleteId,
+        payload: {
+          exercise: opts.exercise,
+          weight_kg: opts.weight,
+          record_id: opts.recordId,
+          box_id: m.pr_boxes.id,
+          box_slug: m.pr_boxes.slug,
+          box_name: m.pr_boxes.name,
+          athlete_name: opts.athleteName,
+        },
+      });
+    }
+    if (inserts.length > 0) {
+      await admin.from("pr_notifications").insert(inserts);
+    }
+  } catch (e) {
+    console.warn("[pr:notifyCoachesOfPR] failed", e);
   }
 }
 
