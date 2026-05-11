@@ -382,5 +382,59 @@ const { count: unreadCount = 0 } = await supabase
 
     <BottomNav active="home" unreadCount={Number(unreadCount ?? 0)} />
     <TutorialOverlay client:only="react" />
+
+    {/* Toast container pra mensagens de offline-sync */}
+    <div
+      id="pr-toast"
+      class="fixed bottom-28 left-1/2 -translate-x-1/2 rounded-full font-display font-bold px-4 py-2 text-sm shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50"
+    ></div>
+
+    <script>
+      import { getQueuedPRs, drainQueue } from "../../lib/pr/offline-queue";
+
+      const toastEl = document.getElementById("pr-toast") as HTMLDivElement;
+      let toastTimer: number | null = null;
+      function showToast(message: string, tone: "success" | "info" | "error" = "success") {
+        if (!toastEl) return;
+        toastEl.textContent = message;
+        const cls = tone === "success"
+          ? "bg-brand-lime text-navy-900 shadow-brand-lime/40"
+          : tone === "error"
+          ? "bg-red-500 text-white shadow-red-500/40"
+          : "bg-navy-800 text-white shadow-navy-700/40 border border-navy-600";
+        toastEl.className = `fixed bottom-28 left-1/2 -translate-x-1/2 rounded-full font-display font-bold px-4 py-2 text-sm shadow-lg opacity-100 pointer-events-none transition-opacity duration-300 z-50 ${cls}`;
+        if (toastTimer) window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+          toastEl.classList.add("opacity-0");
+          toastEl.classList.remove("opacity-100");
+        }, 2800);
+      }
+
+      // 1. Se acabamos de chegar de log offline, mostra confirmação
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("offline_saved") === "1") {
+        showToast("📡 PR salvo offline · vai sincronizar", "info");
+        // Limpa query string sem reload
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+
+      // 2. Se a fila tem PRs pendentes e estamos online, dreina
+      async function tryDrainQueue(): Promise<void> {
+        if (!navigator.onLine) return;
+        const pending = getQueuedPRs();
+        if (pending.length === 0) return;
+        const { synced, failed } = await drainQueue();
+        if (synced > 0) {
+          showToast(`✓ ${synced} PR${synced > 1 ? "s" : ""} sincronizado${synced > 1 ? "s" : ""}`, "success");
+          // Recarrega a página depois do toast pra mostrar PRs no histórico
+          setTimeout(() => window.location.reload(), 1500);
+        } else if (failed > 0) {
+          showToast(`⚠️ ${failed} PR${failed > 1 ? "s" : ""} aguardando rede`, "error");
+        }
+      }
+      tryDrainQueue();
+      window.addEventListener("online", tryDrainQueue);
+    </script>
   </body>
 </html>
