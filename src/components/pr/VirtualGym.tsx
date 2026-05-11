@@ -166,6 +166,7 @@ export default function VirtualGym({
   const [selectedGhost, setSelectedGhost] = useState<GhostExercise | null>(null);
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorSlot | null>(null);
   const [selectedProType, setSelectedProType] = useState<ProType | null>(null);
+  const [hallKioskOpen, setHallKioskOpen] = useState(false);
   const [skillsModalOpen, setSkillsModalOpen] = useState(false);
   const [runsModalOpen, setRunsModalOpen] = useState(false);
   const [skillsLocal, setSkillsLocal] = useState<Partial<Record<SkillId, number>>>(skills);
@@ -193,21 +194,18 @@ export default function VirtualGym({
   const activeReelRef = useRef<Reel | null>(null);
   activeReelRef.current = activeReel;
   const inputLockedRef = useRef(false);
-  // engagedExerciseRef: ref espelhada pra exercise engaged (permite trava
-  // de input persistir através de re-renders sem React state)
-  const engagedExerciseRef = useRef<string | null>(null);
   inputLockedRef.current =
     selected !== null ||
     selectedGhost !== null ||
     selectedSponsor !== null ||
     selectedProType !== null ||
+    hallKioskOpen ||
     skillsModalOpen ||
     runsModalOpen ||
     xpModalOpen ||
     reelOpen ||
     showTutorial ||
-    customOpen ||
-    engagedExerciseRef.current !== null; // CRÍTICO: trava input enquanto engaged
+    customOpen;
 
   function dismissTutorial() {
     setShowTutorial(false);
@@ -819,6 +817,89 @@ export default function VirtualGym({
     trackRail.position.set(0, WALL_H - 0.02, -ROOM_D / 2 + 1.0);
     scene.add(trackRail);
 
+    // === HALL KIOSK: pedestal clicável centro do Hall of Fame ============
+    // Substitui os portais de chão "Registrar PR" e "Trofeus" — agora a
+    // navegação pra log/achievements rola pela área dos troféus.
+    const hallKiosk = new THREE.Group();
+    {
+      // Pedestal cilíndrico (preto fosco com base lime)
+      const pedBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.4, 1.05, 24),
+        new THREE.MeshStandardMaterial({ color: 0x1c1c2a, roughness: 0.45, metalness: 0.5 })
+      );
+      pedBody.position.y = 0.525;
+      pedBody.castShadow = true;
+      hallKiosk.add(pedBody);
+      // Base anel lime emissive
+      const baseRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.42, 0.025, 8, 32),
+        new THREE.MeshStandardMaterial({
+          color: accentColor,
+          emissive: accentColor,
+          emissiveIntensity: 1.2,
+        })
+      );
+      baseRing.rotation.x = Math.PI / 2;
+      baseRing.position.y = 0.04;
+      hallKiosk.add(baseRing);
+      // Placa frontal com texto
+      const plaqueCanvas = document.createElement("canvas");
+      plaqueCanvas.width = 512;
+      plaqueCanvas.height = 320;
+      const pctx = plaqueCanvas.getContext("2d")!;
+      pctx.fillStyle = "#01002A";
+      pctx.fillRect(0, 0, 512, 320);
+      pctx.strokeStyle = "#D8FF2C";
+      pctx.lineWidth = 6;
+      pctx.strokeRect(8, 8, 496, 304);
+      pctx.fillStyle = "#D8FF2C";
+      pctx.font = "900 56px Archivo Black, Inter, sans-serif";
+      pctx.textAlign = "center";
+      pctx.textBaseline = "middle";
+      pctx.fillText("HALL", 256, 80);
+      pctx.fillText("OF FAME", 256, 145);
+      pctx.fillStyle = "#ffffff";
+      pctx.font = "500 26px Inter, sans-serif";
+      pctx.fillText(`${trophies.length}/${HALL_EXERCISES.length} pedestais`, 256, 210);
+      pctx.fillStyle = "#D8FF2C";
+      pctx.font = "700 22px Inter, sans-serif";
+      pctx.fillText("▶ TOQUE PRA ABRIR", 256, 270);
+      const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
+      plaqueTex.colorSpace = THREE.SRGBColorSpace;
+      const plaqueMat = new THREE.MeshStandardMaterial({
+        map: plaqueTex,
+        emissive: 0x222244,
+        emissiveIntensity: 0.4,
+        roughness: 0.5,
+        metalness: 0.1,
+      });
+      const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.4), plaqueMat);
+      plaque.position.set(0, 0.7, 0.32);
+      hallKiosk.add(plaque);
+      // Back plaque (mirror) pra ser legível dos dois lados
+      const plaqueBack = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.4), plaqueMat);
+      plaqueBack.position.set(0, 0.7, -0.32);
+      plaqueBack.rotation.y = Math.PI;
+      hallKiosk.add(plaqueBack);
+      // Hitbox invisível pra raycast pegar fácil
+      const hitBox = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      hitBox.position.y = 0.75;
+      hitBox.userData.kind = "hall-kiosk";
+      hallKiosk.add(hitBox);
+    }
+    // Posiciona no centro-frente do trophy hall deck (entre o avatar e os pedestais)
+    hallKiosk.position.set(0, 0, -ROOM_D / 2 + 2.6);
+    scene.add(hallKiosk);
+    // Spot light no kiosk pra destaque
+    const kioskSpot = new THREE.SpotLight(0xffffff, 1.4, 6, Math.PI / 8, 0.4, 1.0);
+    kioskSpot.position.set(0, WALL_H - 1.0, -ROOM_D / 2 + 2.6);
+    kioskSpot.target.position.set(0, 0.5, -ROOM_D / 2 + 2.6);
+    scene.add(kioskSpot);
+    scene.add(kioskSpot.target);
+
     // Conta troféus desbloqueados pra gamificação
     const unlockedCount = trophies.length;
     const showLedPulse = unlockedCount >= UNLOCK_THRESHOLDS.ledPulse;
@@ -872,7 +953,6 @@ export default function VirtualGym({
     const powerRack = buildPowerRack(accent);
     powerRack.position.set(powerRackPos.x, 0, powerRackPos.z);
     powerRack.rotation.y = powerRackPos.rot + Math.PI / 8;
-    powerRack.userData.playExercise = "squat";
     scene.add(powerRack);
     colliders.push({ cx: powerRackPos.x, cz: powerRackPos.z, hw: 1.0, hd: 1.0 });
 
@@ -921,100 +1001,9 @@ export default function VirtualGym({
     arcadeRoom.userData.hotspot = "arcade";
     scene.add(arcadeRoom);
 
-    // V16.8 PR3 cycles 14-20: 5 portais clicáveis no chão pra navegar
-    // Diet (verde), Coach (azul), Achievements (dourado), Eventos (vermelho), Log (lime)
-    const hotspotPortals: THREE.Group[] = [];
-    const PORTAL_DEFS: Array<{
-      id: string;
-      label: string;
-      sublabel: string;
-      color: number;
-      x: number;
-      z: number;
-    }> = [
-      { id: "diet", label: "DIETA", sublabel: "Macros", color: 0x43b02a, x: 8, z: 6 },
-      { id: "coach", label: "COACH", sublabel: "PT/Nutri", color: 0x0057b8, x: 11, z: 6 },
-      { id: "achievements", label: "TROFEUS", sublabel: "Conquistas", color: 0xffc72c, x: 14, z: 6 },
-      { id: "eventos", label: "EVENTOS", sublabel: "Competicoes", color: 0xda291c, x: 8, z: 9 },
-      { id: "log", label: "REGISTRAR", sublabel: "Novo PR", color: 0xd8ff2c, x: 14, z: 9 },
-    ];
-    for (const p of PORTAL_DEFS) {
-      const portal = new THREE.Group();
-      portal.position.set(p.x, 0, p.z);
-      portal.userData.hotspot = p.id;
-
-      // Disco lime no chão (radius 0.7)
-      const disc = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.7, 0.7, 0.04, 24),
-        new THREE.MeshStandardMaterial({
-          color: p.color,
-          roughness: 0.4,
-          emissive: p.color,
-          emissiveIntensity: 0.6,
-          transparent: true,
-          opacity: 0.85,
-        })
-      );
-      disc.position.y = 0.02;
-      portal.add(disc);
-
-      // Anel externo (ring)
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.85, 0.03, 8, 32),
-        new THREE.MeshBasicMaterial({ color: p.color })
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.05;
-      portal.add(ring);
-
-      // Beam vertical (cone com aditivo)
-      const beam = new THREE.Mesh(
-        new THREE.ConeGeometry(0.6, 2.5, 16, 1, true),
-        new THREE.MeshBasicMaterial({
-          color: p.color,
-          transparent: true,
-          opacity: 0.18,
-          side: THREE.DoubleSide,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        })
-      );
-      beam.position.y = 1.3;
-      beam.rotation.x = Math.PI;
-      portal.add(beam);
-
-      // Sign canvas com label
-      const labelCanvas = document.createElement("canvas");
-      labelCanvas.width = 512;
-      labelCanvas.height = 192;
-      const lctx = labelCanvas.getContext("2d")!;
-      lctx.fillStyle = "rgba(1,0,42,0.9)";
-      lctx.fillRect(0, 0, 512, 192);
-      lctx.strokeStyle = "#" + p.color.toString(16).padStart(6, "0");
-      lctx.lineWidth = 6;
-      lctx.strokeRect(8, 8, 496, 176);
-      lctx.fillStyle = "#" + p.color.toString(16).padStart(6, "0");
-      lctx.font = "900 70px Archivo Black, Inter, sans-serif";
-      lctx.textAlign = "center";
-      lctx.textBaseline = "middle";
-      lctx.fillText(p.label, 256, 75);
-      lctx.fillStyle = "#ffffff";
-      lctx.font = "500 38px Inter, sans-serif";
-      lctx.fillText(p.sublabel, 256, 140);
-      const labelTex = new THREE.CanvasTexture(labelCanvas);
-      labelTex.colorSpace = THREE.SRGBColorSpace;
-      const sign = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.6, 0.6),
-        new THREE.MeshBasicMaterial({ map: labelTex, transparent: true, depthTest: false })
-      );
-      sign.position.y = 2.8;
-      sign.renderOrder = 998;
-      sign.userData.isBillboard = true; // pra animar facing camera
-      portal.add(sign);
-
-      scene.add(portal);
-      hotspotPortals.push(portal);
-    }
+    // Floor portals foram removidos — navegação agora rola pelos NPCs
+    // (Nutricionista + Personal Trainer) na lateral do gym. Salas físicas
+    // (Cinema, Fliperama) continuam clicáveis.
 
     // V16.8 cycles 213-216: WOD board + relógio + espelhos na parede esquerda
     const wodBoard = buildWODBoard();
@@ -1551,17 +1540,8 @@ export default function VirtualGym({
       "spawn",
     ]);
 
-    // Equipamentos com playExercise - registrados pra proximity check
-    type EquipmentRef = {
-      mesh: THREE.Object3D;
-      type: string;
-      exercise: string;
-      x: number;
-      z: number;
-      rotY: number;
-    };
-    const equipmentRefs: EquipmentRef[] = [];
-    const playableEquipments: THREE.Group[] = [];
+    // Equipamentos extras do layout — apenas cenário decorativo. Não há
+    // mais interação por clique/proximidade; o gym é ambiente, não jogo.
     for (const obj of layout.objects) {
       if (SINGLETON_HANDLED.has(obj.type)) continue;
       const built = buildExtraEquipment(obj.type, accent);
@@ -1569,47 +1549,11 @@ export default function VirtualGym({
       built.position.set(obj.x, 0, obj.z);
       built.rotation.y = obj.rot;
       scene.add(built);
-      if (built.userData.playExercise) {
-        playableEquipments.push(built);
-        equipmentRefs.push({
-          mesh: built,
-          type: obj.type,
-          exercise: built.userData.playExercise,
-          x: obj.x,
-          z: obj.z,
-          rotY: obj.rot,
-        });
-      }
       // Collider aproximado pro AABB do equipamento
       const bbox = new THREE.Box3().setFromObject(built);
       const sx = (bbox.max.x - bbox.min.x) / 2;
       const sz = (bbox.max.z - bbox.min.z) / 2;
       colliders.push({ cx: obj.x, cz: obj.z, hw: Math.max(0.3, sx * 0.85), hd: Math.max(0.3, sz * 0.85) });
-    }
-    // Power rack tambem entra no proximity check
-    equipmentRefs.push({
-      mesh: powerRack,
-      type: "power_rack",
-      exercise: "squat",
-      x: powerRackPos.x,
-      z: powerRackPos.z,
-      rotY: powerRackPos.rot + Math.PI / 8,
-    });
-    // Adiciona ring de proximidade em cada equipamento
-    for (const eq of equipmentRefs) {
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.95, 1.1, 32),
-        new THREE.MeshBasicMaterial({
-          color: 0xd8ff2c,
-          transparent: true,
-          opacity: 0,
-          side: THREE.DoubleSide,
-        })
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(eq.x, 0.02, eq.z);
-      scene.add(ring);
-      eq.mesh.userData.proximityRing = ring;
     }
 
     // === Avatar ====================================================
@@ -1749,9 +1693,7 @@ export default function VirtualGym({
         runBoardParts.hitBox,
         cinemaRoom,
         arcadeRoom,
-        powerRack,
-        ...hotspotPortals,
-        ...playableEquipments,
+        hallKiosk,
       ];
       const hits = raycaster.intersectObjects(targets, true);
       const first = hits[0];
@@ -1764,11 +1706,11 @@ export default function VirtualGym({
           !obj.userData.sponsorSlot &&
           !obj.userData.npcSlot &&
           !obj.userData.hotspot &&
-          !obj.userData.playExercise &&
           obj.userData.kind !== "projector-screen" &&
           obj.userData.kind !== "streak-pillar" &&
           obj.userData.kind !== "skills-board" &&
-          obj.userData.kind !== "run-board"
+          obj.userData.kind !== "run-board" &&
+          obj.userData.kind !== "hall-kiosk"
         ) {
           obj = obj.parent;
         }
@@ -1822,42 +1764,28 @@ export default function VirtualGym({
         } else if (obj?.userData.kind === "run-board") {
           playClick();
           if (!visitMode) setRunsModalOpen(true);
-        } else if (obj?.userData.playExercise) {
-          // V2: ao invés de abrir modal, usa o sistema in-gym engagement.
-          // Se estiver perto, engage direto. Senão, ignora (athlete precisa andar até lá).
-          playClick();
+        } else if (obj?.userData.kind === "hall-kiosk") {
+          // JUICE: chime + particle burst lime
+          playChime();
           obj.getWorldPosition(tmpWorldPos);
-          tmpWorldPos.y += 0.6;
+          tmpWorldPos.y += 1.0;
           tmpColor.set(0xd8ff2c);
-          particleBurst.burst(tmpWorldPos, 18, tmpColor, 0.8);
-          // Engage só se estiver perto
-          const dx = tmpWorldPos.x - avatarParts.root.position.x;
-          const dz = tmpWorldPos.z - avatarParts.root.position.z;
-          if (dx * dx + dz * dz < PROXIMITY_RADIUS * PROXIMITY_RADIUS * 1.5) {
-            const eq = equipmentRefs.find((e) => e.mesh === obj || e.mesh.children.includes(obj));
-            if (eq && !engagedEquipment) engageEquipment(eq);
-          }
+          particleBurst.burst(tmpWorldPos, 30, tmpColor, 1.0);
+          setHallKioskOpen(true);
         } else if (obj?.userData.hotspot) {
-          // PR3 cycles 14-20: hotspots de navegação
+          // Salas físicas (Cinema/Fliperama) — únicas com hotspot clicável.
           playClick();
           const hotspot = obj.userData.hotspot as string;
           obj.getWorldPosition(tmpWorldPos);
           tmpWorldPos.y += 0.3;
           tmpColor.set(0xd8ff2c);
           particleBurst.burst(tmpWorldPos, 25, tmpColor, 1.0);
-          // Mapeamento hotspot → URL
           const HOTSPOT_URLS: Record<string, string> = {
             cinema: "/pr/lab",
             arcade: "/pr/arcade",
-            diet: "/pr/diet",
-            coach: "/pr/coach",
-            achievements: "/pr/achievements",
-            eventos: "/pr/eventos",
-            log: "/pr/log",
           };
           const url = HOTSPOT_URLS[hotspot];
           if (url) {
-            // pequeno delay pra particles aparecerem
             setTimeout(() => {
               window.location.href = url;
             }, 250);
@@ -1882,505 +1810,6 @@ export default function VirtualGym({
     const startT = performance.now();
     let lastT = startT;
     let walkPhase = 0;
-
-    // === IN-GYM EXERCISE SYSTEM ===
-    // Quando atleta chega < PROXIMITY_RADIUS de um equipamento, prompt aparece.
-    // Click no prompt (ou tecla E) "engages" — câmera muda pra close-up + avatar
-    // anima fazendo o movimento. Solta espaço/release pra descer.
-    const PROXIMITY_RADIUS = 1.6;
-    let nearestEquipment: EquipmentRef | null = null;
-    let engagedEquipment: EquipmentRef | null = null;
-    let savedAvatarPose: { posX: number; posY: number; posZ: number; rotY: number } | null = null;
-    let exerciseProgress = 0; // 0 = down, 1 = up
-    let exercisePressed = false;
-    let exerciseReps = 0;
-    let exerciseWasUp = false;
-    const cinematicOffset = new THREE.Vector3(2.5, 1.6, 2.5);
-    const tmpCamPos = new THREE.Vector3();
-    const tmpCamTarget = new THREE.Vector3();
-
-    // Prompt UI (HTML overlay manipulated via DOM)
-    const promptEl = document.getElementById("equipment-prompt");
-    const promptLabelEl = document.getElementById("equipment-prompt-label");
-    const exerciseHudEl = document.getElementById("exercise-hud");
-    const exerciseHudTitleEl = document.getElementById("exercise-hud-title");
-    const exerciseHudRepsEl = document.getElementById("exercise-hud-reps");
-    const exerciseHudActionEl = document.getElementById("exercise-hud-action");
-    const exerciseHudExitEl = document.getElementById("exercise-hud-exit");
-    const exerciseHudBestEl = document.getElementById("exercise-hud-best");
-    const exerciseHudProgressEl = document.getElementById("exercise-hud-progress");
-
-    const EXERCISE_LABELS: Record<string, string> = {
-      bench: "🏋️ Bench Press",
-      squat: "🦵 Back Squat",
-      deadlift: "💪 Deadlift",
-      pullup: "🤸 Pull-up",
-      pushup: "🔽 Push-up",
-      burpee: "💥 Burpee",
-      boxjump: "📦 Box Jump",
-      kbswing: "🪝 KB Swing",
-      run: "🏃 Treadmill Run",
-      bike: "🚴 Assault Bike",
-      row: "🚣 Rowing",
-    };
-
-    function findNearestEquipment(): EquipmentRef | null {
-      const ax = avatarParts.root.position.x;
-      const az = avatarParts.root.position.z;
-      let best: EquipmentRef | null = null;
-      let bestD = PROXIMITY_RADIUS * PROXIMITY_RADIUS;
-      for (const eq of equipmentRefs) {
-        const dx = eq.x - ax;
-        const dz = eq.z - az;
-        const d2 = dx * dx + dz * dz;
-        if (d2 < bestD) {
-          bestD = d2;
-          best = eq;
-        }
-      }
-      return best;
-    }
-
-    // Barbell virtual nas mãos do avatar (mostrado apenas durante engagement
-    // de bench/squat/deadlift)
-    const virtualBarbell = new THREE.Group();
-    {
-      const bar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.025, 0.025, 1.5, 8),
-        new THREE.MeshStandardMaterial({ color: 0xdfe2e8, roughness: 0.15, metalness: 0.95 })
-      );
-      bar.rotation.z = Math.PI / 2;
-      virtualBarbell.add(bar);
-      // Plates IWF nos lados
-      for (const side of [-1, 1]) {
-        const plate1 = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.18, 0.18, 0.04, 16),
-          new THREE.MeshStandardMaterial({ color: 0xda291c, roughness: 0.5 })
-        );
-        plate1.rotation.z = Math.PI / 2;
-        plate1.position.set(side * 0.65, 0, 0);
-        virtualBarbell.add(plate1);
-        const plate2 = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.16, 0.16, 0.04, 16),
-          new THREE.MeshStandardMaterial({ color: 0x0057b8, roughness: 0.5 })
-        );
-        plate2.rotation.z = Math.PI / 2;
-        plate2.position.set(side * 0.7, 0, 0);
-        virtualBarbell.add(plate2);
-      }
-    }
-    virtualBarbell.visible = false;
-    scene.add(virtualBarbell);
-
-    // Virtual KB (kettlebell) pro KB swing
-    const virtualKB = new THREE.Group();
-    {
-      const ball = new THREE.Mesh(
-        new THREE.SphereGeometry(0.13, 16, 12),
-        new THREE.MeshStandardMaterial({ color: 0x141420, roughness: 0.5 })
-      );
-      virtualKB.add(ball);
-      const handle = new THREE.Mesh(
-        new THREE.TorusGeometry(0.07, 0.012, 8, 16, Math.PI),
-        new THREE.MeshStandardMaterial({ color: 0xc0c5cc, roughness: 0.3, metalness: 0.7 })
-      );
-      handle.rotation.x = Math.PI / 2;
-      handle.position.y = 0.13;
-      virtualKB.add(handle);
-    }
-    virtualKB.visible = false;
-    scene.add(virtualKB);
-
-    // ENGAGEMENT V4: avatar MOVE pra posicao adequada perto do equipamento
-    // (sem rotation.x complexa — apenas position + rotation.y).
-    // Garante avatar fica AO LADO/EM CIMA do equipamento sem teleportar pra
-    // lugares estranhos. ESC sempre disponivel via window listener.
-    function engageEquipment(eq: EquipmentRef) {
-      try {
-        console.log("[gym] engage:", eq.exercise);
-        engagedEquipment = eq;
-        engagedExerciseRef.current = eq.exercise;
-        exerciseProgress = 0;
-        exerciseReps = 0;
-        exercisePressed = false;
-        exerciseWasUp = false;
-        burpeePhase = 0;
-        lastTapTime = 0;
-        // Salva pose inicial do avatar pra restaurar no disengage
-        savedAvatarPose = {
-          posX: avatarParts.root.position.x,
-          posY: avatarParts.root.position.y,
-          posZ: avatarParts.root.position.z,
-          rotY: avatarParts.root.rotation.y,
-        };
-        // Move avatar pra POSICAO adequada (em cima do equipamento, em pe)
-        // Cada exercise tem offset (sem rotation.x complexa)
-        let posOffset = 0; // em frente do equipamento
-        if (eq.exercise === "bench") posOffset = 0; // em cima do banco
-        else if (eq.exercise === "squat") posOffset = 0; // dentro do rack
-        else if (eq.exercise === "pullup") posOffset = 0; // sob a barra
-        else if (eq.exercise === "boxjump") posOffset = -0.6; // a frente do box
-        else if (eq.exercise === "kbswing") posOffset = 0.4;
-        else if (eq.exercise === "run") posOffset = 0; // em cima da esteira
-        else if (eq.exercise === "bike") posOffset = 0; // em cima da bike
-        else if (eq.exercise === "row") posOffset = 0; // em cima do rower
-        avatarParts.root.position.set(
-          eq.x + Math.sin(eq.rotY) * posOffset,
-          0,
-          eq.z + Math.cos(eq.rotY) * posOffset
-        );
-        avatarParts.root.rotation.y = eq.rotY;
-        // HUD
-        if (promptEl) promptEl.classList.add("hidden");
-        if (exerciseHudEl) {
-          exerciseHudEl.classList.remove("hidden");
-          if (exerciseHudTitleEl) exerciseHudTitleEl.textContent = EXERCISE_LABELS[eq.exercise] ?? eq.exercise;
-          if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = "0";
-          if (exerciseHudBestEl) {
-            const best = localStorage.getItem("pr_play_best_" + eq.exercise) || "0";
-            exerciseHudBestEl.textContent = best;
-          }
-          if (exerciseHudActionEl) {
-            const isTap = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
-            const isCardio = eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row";
-            exerciseHudActionEl.textContent = isTap ? "TAP · ESPAÇO" :
-                                              isCardio ? "MANTÉM · ESPAÇO" :
-                                              "SEGURA · ESPAÇO";
-          }
-        }
-        inputLockedRef.current = true;
-        keys.up = keys.down = keys.left = keys.right = false;
-        // Dispatch event pra UI mostrar botão emergencia
-        try {
-          window.dispatchEvent(new CustomEvent("gym:engage-state", { detail: { engaged: true } }));
-        } catch {}
-      } catch (err) {
-        console.error("[gym engage] failed:", err);
-        engagedEquipment = null;
-        engagedExerciseRef.current = null;
-        inputLockedRef.current = false;
-      }
-    }
-
-    function disengageEquipment() {
-      if (!engagedEquipment) return;
-      const eq = engagedEquipment;
-      try {
-        // Salvar best
-        const prev = Number(localStorage.getItem("pr_play_best_" + eq.exercise) || "0");
-        if (exerciseReps > prev) {
-          localStorage.setItem("pr_play_best_" + eq.exercise, String(exerciseReps));
-        }
-      } catch {}
-      // RESTAURAR avatar pra pose salva (em vez de teleportar +1.6m fwd)
-      try {
-        if (savedAvatarPose) {
-          avatarParts.root.position.set(savedAvatarPose.posX, savedAvatarPose.posY, savedAvatarPose.posZ);
-          avatarParts.root.rotation.y = savedAvatarPose.rotY;
-        }
-      } catch {}
-      // Reset COMPLETO da pose
-      avatarParts.root.position.y = 0;
-      avatarParts.root.rotation.x = 0;
-      avatarParts.leftArm.rotation.set(-0.08, 0, -0.18);
-      avatarParts.rightArm.rotation.set(-0.08, 0, 0.18);
-      avatarParts.leftForearm.rotation.set(0.18, 0, 0);
-      avatarParts.rightForearm.rotation.set(0.18, 0, 0);
-      avatarParts.leftHand.rotation.set(0, 0, 0);
-      avatarParts.rightHand.rotation.set(0, 0, 0);
-      avatarParts.leftLeg.rotation.set(0, 0, 0);
-      avatarParts.rightLeg.rotation.set(0, 0, 0);
-      avatarParts.leftCalf.rotation.set(0, 0, 0);
-      avatarParts.rightCalf.rotation.set(0, 0, 0);
-      engagedEquipment = null;
-      engagedExerciseRef.current = null;
-      savedAvatarPose = null;
-      // Dispatch event pra esconder botão emergencia
-      try {
-        window.dispatchEvent(new CustomEvent("gym:engage-state", { detail: { engaged: false } }));
-      } catch {}
-      exerciseProgress = 0;
-      exerciseReps = 0;
-      exerciseWasUp = false;
-      exercisePressed = false;
-      if (exerciseHudEl) exerciseHudEl.classList.add("hidden");
-      if (promptEl) promptEl.classList.add("hidden");
-      inputLockedRef.current = false;
-      virtualBarbell.visible = false;
-      virtualKB.visible = false;
-      if (eq.exercise === "bench") {
-        const benchBarbell = eq.mesh.userData.benchBarbell as THREE.Group | undefined;
-        const restPos = benchBarbell?.userData.restPosition as THREE.Vector3 | undefined;
-        if (benchBarbell && restPos) {
-          benchBarbell.position.copy(restPos);
-          benchBarbell.rotation.set(0, 0, 0);
-        }
-      }
-    }
-
-    // Click no prompt → engage
-    function onPromptClick() {
-      if (nearestEquipment && !engagedEquipment) {
-        engageEquipment(nearestEquipment);
-      }
-    }
-    if (promptEl) promptEl.addEventListener("click", onPromptClick);
-    if (exerciseHudExitEl) exerciseHudExitEl.addEventListener("click", disengageEquipment);
-
-    let lastTapTime = 0;
-    let burpeePhase = 0; // 0=stand, 1=squat, 2=plank, 3=jump (volta a 0 = +1 rep)
-    function pressExercise() {
-      if (!engagedEquipment) return;
-      const eq = engagedEquipment;
-      if (eq.exercise === "burpee") {
-        // 4-phase tap
-        burpeePhase = (burpeePhase + 1) % 4;
-        if (burpeePhase === 0) {
-          exerciseReps++;
-          if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
-        }
-        // Define progress based on phase pra animação
-        exerciseProgress = burpeePhase / 4;
-      } else if (eq.exercise === "boxjump") {
-        exerciseProgress = 1;
-        exerciseReps++;
-        if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
-        setTimeout(() => { exerciseProgress = 0; }, 600);
-      } else if (eq.exercise === "kbswing") {
-        const now = performance.now();
-        const delta = now - lastTapTime;
-        lastTapTime = now;
-        if (delta > 500 && delta < 1500) {
-          exerciseReps++;
-          if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
-        }
-        exerciseProgress = 1;
-        setTimeout(() => { exerciseProgress = 0; }, 400);
-      } else {
-        exercisePressed = true;
-      }
-    }
-    function releaseExercise() {
-      exercisePressed = false;
-    }
-    if (exerciseHudActionEl) {
-      exerciseHudActionEl.addEventListener("pointerdown", function (e) { e.preventDefault(); pressExercise(); });
-      exerciseHudActionEl.addEventListener("pointerup", function (e) { e.preventDefault(); releaseExercise(); });
-      exerciseHudActionEl.addEventListener("pointercancel", releaseExercise);
-      exerciseHudActionEl.addEventListener("pointerleave", releaseExercise);
-    }
-
-    // Keyboard handlers
-    function onExerciseKeyDown(e: KeyboardEvent) {
-      if (e.code === "KeyE" && nearestEquipment && !engagedEquipment) {
-        e.preventDefault();
-        engageEquipment(nearestEquipment);
-      } else if (e.code === "Escape" && engagedEquipment) {
-        e.preventDefault();
-        disengageEquipment();
-      } else if (e.code === "Space" && engagedEquipment) {
-        e.preventDefault();
-        if (!exercisePressed) pressExercise();
-      }
-    }
-    function onExerciseKeyUp(e: KeyboardEvent) {
-      if (e.code === "Space" && engagedEquipment) {
-        e.preventDefault();
-        releaseExercise();
-      }
-    }
-    window.addEventListener("keydown", onExerciseKeyDown);
-    window.addEventListener("keyup", onExerciseKeyUp);
-
-    function animateAvatarForExercise(exercise: string, p: number) {
-      // p = 0 (rest/down) → 1 (peak/up)
-      // Convencao: rotation.x positivo = perna/braco gira PRA TRAS (do quadril/ombro)
-      //            rotation.x negativo = PRA FRENTE
-      // Calf/Forearm: rotation.x positivo = flexiona JUNTAS (joelho/cotovelo dobra)
-      const a = avatarParts;
-      // (alias arms variavel removida — usar 'a' pra todos)
-      const arms = a;
-      // (silencio o noUnusedVars)
-      void arms;
-      switch (exercise) {
-        case "bench": {
-          // BENCH MINIMO V3: avatar fica ONDE ESTAVA. Apenas flex bracos + forearm
-          // pra simbolizar empurrar. ZERO mexida em root.position/rotation.
-          // Bracos pra frente, forearm flex pra simbolizar.
-          a.leftArm.rotation.set(-Math.PI / 2, 0, -0.4);
-          a.rightArm.rotation.set(-Math.PI / 2, 0, 0.4);
-          a.leftForearm.rotation.x = 1.6 - p * 1.6;
-          a.rightForearm.rotation.x = 1.6 - p * 1.6;
-          break;
-        }
-
-        case "squat": {
-          // SQUAT MINIMO: avatar fica em pe, pernas dobram (knee flex), bracos atras
-          // ZERO mexida em root.position/rotation
-          const depth = 1 - p;
-          a.leftCalf.rotation.x = depth * 1.6;
-          a.rightCalf.rotation.x = depth * 1.6;
-          a.leftLeg.rotation.x = -depth * 0.5;
-          a.rightLeg.rotation.x = -depth * 0.5;
-          a.leftArm.rotation.set(-Math.PI, 0, -0.6);
-          a.rightArm.rotation.set(-Math.PI, 0, 0.6);
-          a.leftForearm.rotation.x = 1.3;
-          a.rightForearm.rotation.x = 1.3;
-          break;
-        }
-
-        case "deadlift": {
-          // DEADLIFT MINIMO: pernas dobram leve, bracos descem pra baixo
-          const depth = 1 - p;
-          a.leftCalf.rotation.x = depth * 0.5;
-          a.rightCalf.rotation.x = depth * 0.5;
-          a.leftLeg.rotation.x = -depth * 0.3;
-          a.rightLeg.rotation.x = -depth * 0.3;
-          // Bracos pra baixo (rotation.x = +0.5 angula pra frente baixa)
-          a.leftArm.rotation.set(0, 0, -0.05);
-          a.rightArm.rotation.set(0, 0, 0.05);
-          a.leftForearm.rotation.x = 0;
-          a.rightForearm.rotation.x = 0;
-          break;
-        }
-        case "pullup": {
-          // PULLUP MINIMO: bracos pra cima + forearm flex puxa
-          a.leftArm.rotation.set(-Math.PI, 0, -0.3);
-          a.rightArm.rotation.set(-Math.PI, 0, 0.3);
-          a.leftForearm.rotation.x = p * 2.0;
-          a.rightForearm.rotation.x = p * 2.0;
-          a.leftLeg.rotation.x = 0.3;
-          a.rightLeg.rotation.x = 0.3;
-          a.leftCalf.rotation.x = 1.2;
-          a.rightCalf.rotation.x = 1.2;
-          break;
-        }
-
-        case "pushup": {
-          // PUSHUP MINIMO: bracos pra frente/baixo + forearm flex
-          a.leftArm.rotation.set(Math.PI / 4, 0, -0.4);
-          a.rightArm.rotation.set(Math.PI / 4, 0, 0.4);
-          a.leftForearm.rotation.x = 1.5 - p * 1.4;
-          a.rightForearm.rotation.x = 1.5 - p * 1.4;
-          break;
-        }
-
-        case "boxjump": {
-          // BOXJUMP MINIMO: pernas dobram + bracos balançam
-          const depth = 1 - p;
-          a.leftCalf.rotation.x = depth * 1.2;
-          a.rightCalf.rotation.x = depth * 1.2;
-          a.leftLeg.rotation.x = -depth * 0.4;
-          a.rightLeg.rotation.x = -depth * 0.4;
-          a.leftArm.rotation.set(0.5 - p * 2.0, 0, -0.3);
-          a.rightArm.rotation.set(0.5 - p * 2.0, 0, 0.3);
-          a.leftForearm.rotation.x = 0.18;
-          a.rightForearm.rotation.x = 0.18;
-          break;
-        }
-
-        case "kbswing": {
-          // KB SWING MINIMO: bracos balançam de trás pra frente
-          a.leftArm.rotation.set(0.8 - p * 1.5, 0, -0.05);
-          a.rightArm.rotation.set(0.8 - p * 1.5, 0, 0.05);
-          a.leftForearm.rotation.x = 0;
-          a.rightForearm.rotation.x = 0;
-          a.leftLeg.rotation.x = -(1 - p) * 0.2;
-          a.rightLeg.rotation.x = -(1 - p) * 0.2;
-          a.leftCalf.rotation.x = (1 - p) * 0.3;
-          a.rightCalf.rotation.x = (1 - p) * 0.3;
-          break;
-        }
-        case "run": {
-          // RUN MINIMO: pernas alternam, bracos contralateral, ZERO root
-          const tt = performance.now() / 1000;
-          const phase = tt * 6;
-          const ls = Math.sin(phase);
-          const rs = Math.sin(phase + Math.PI);
-          a.leftLeg.rotation.x = -ls * 0.5;
-          a.rightLeg.rotation.x = -rs * 0.5;
-          a.leftCalf.rotation.x = 0.1 + Math.max(0, ls) * 1.4;
-          a.rightCalf.rotation.x = 0.1 + Math.max(0, rs) * 1.4;
-          a.leftArm.rotation.set(rs * 0.5, 0, -0.18);
-          a.rightArm.rotation.set(ls * 0.5, 0, 0.18);
-          a.leftForearm.rotation.x = 1.5;
-          a.rightForearm.rotation.x = 1.5;
-          break;
-        }
-
-        case "bike": {
-          // BIKE MINIMO: pernas pedalam, bracos pra frente fixos
-          const tt = performance.now() / 1000;
-          const phase = tt * 5;
-          const ls = (Math.sin(phase) + 1) / 2;
-          const rs = (Math.sin(phase + Math.PI) + 1) / 2;
-          a.leftLeg.rotation.x = -0.4 - ls * 1.2;
-          a.rightLeg.rotation.x = -0.4 - rs * 1.2;
-          a.leftCalf.rotation.x = 0.3 + ls * 1.3;
-          a.rightCalf.rotation.x = 0.3 + rs * 1.3;
-          a.leftArm.rotation.set(-Math.PI / 2, 0, -0.35);
-          a.rightArm.rotation.set(-Math.PI / 2, 0, 0.35);
-          a.leftForearm.rotation.x = 0.6;
-          a.rightForearm.rotation.x = 0.6;
-          break;
-        }
-
-        case "row": {
-          // ROW MINIMO: pernas oscilam dobrar/esticar, bracos puxam, ZERO root
-          const tt = performance.now() / 1000;
-          const phase = tt * 1.6;
-          const rowP = (Math.sin(phase) + 1) / 2;
-          a.leftCalf.rotation.x = (1 - rowP) * 1.5;
-          a.rightCalf.rotation.x = (1 - rowP) * 1.5;
-          a.leftLeg.rotation.x = -(1 - rowP) * 0.6;
-          a.rightLeg.rotation.x = -(1 - rowP) * 0.6;
-          a.leftArm.rotation.set(-1.0 + rowP * 1.3, 0, -0.15);
-          a.rightArm.rotation.set(-1.0 + rowP * 1.3, 0, 0.15);
-          a.leftForearm.rotation.x = rowP * 2.0;
-          a.rightForearm.rotation.x = rowP * 2.0;
-          break;
-        }
-        case "burpee": {
-          // BURPEE MINIMO: 4 fases mas SEM mexer em root
-          if (p < 0.25) {
-            a.leftArm.rotation.set(-0.08, 0, -0.18);
-            a.rightArm.rotation.set(-0.08, 0, 0.18);
-            a.leftForearm.rotation.x = 0.18;
-            a.rightForearm.rotation.x = 0.18;
-            a.leftLeg.rotation.x = 0;
-            a.rightLeg.rotation.x = 0;
-            a.leftCalf.rotation.x = 0;
-            a.rightCalf.rotation.x = 0;
-          } else if (p < 0.5) {
-            a.leftLeg.rotation.x = -0.5;
-            a.rightLeg.rotation.x = -0.5;
-            a.leftCalf.rotation.x = 1.5;
-            a.rightCalf.rotation.x = 1.5;
-            a.leftArm.rotation.set(-0.6, 0, -0.18);
-            a.rightArm.rotation.set(-0.6, 0, 0.18);
-            a.leftForearm.rotation.x = 0;
-            a.rightForearm.rotation.x = 0;
-          } else if (p < 0.75) {
-            a.leftArm.rotation.set(0, 0, -0.4);
-            a.rightArm.rotation.set(0, 0, 0.4);
-            a.leftForearm.rotation.x = 1.0;
-            a.rightForearm.rotation.x = 1.0;
-            a.leftLeg.rotation.x = 0;
-            a.rightLeg.rotation.x = 0;
-            a.leftCalf.rotation.x = 0;
-            a.rightCalf.rotation.x = 0;
-          } else {
-            a.leftArm.rotation.set(-Math.PI, 0, -0.3);
-            a.rightArm.rotation.set(-Math.PI, 0, 0.3);
-            a.leftForearm.rotation.x = 0;
-            a.rightForearm.rotation.x = 0;
-            a.leftLeg.rotation.x = -0.2;
-            a.rightLeg.rotation.x = -0.2;
-          }
-          break;
-        }
-      }
-    }
 
     function loop(now: number) {
       const dt = Math.min(0.05, (now - lastT) / 1000);
@@ -2407,204 +1836,6 @@ export default function VirtualGym({
         }
       }
       dustGeometry.attributes.position!.needsUpdate = true;
-
-      // === EXERCISE ENGAGEMENT LOOP ===
-      // Cycle 3: try/catch global pra trava nunca acontecer (qualquer erro
-      // dispara disengage automatico em vez de matar o loop inteiro)
-      if (engagedEquipment) {
-        try {
-        // Update progress
-        const eq = engagedEquipment;
-        const isTapDriven = eq.exercise === "burpee" || eq.exercise === "boxjump" || eq.exercise === "kbswing";
-        const isCardio = eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row";
-        // Cardio: count reps based on time pressed (1 rep / 0.6s)
-        if (isCardio && exercisePressed) {
-          const now = performance.now();
-          if (!exerciseWasUp || now - lastTapTime > 600) {
-            exerciseReps++;
-            if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
-            lastTapTime = now;
-            exerciseWasUp = true;
-            if (exerciseReps % 10 === 0) playChime();
-          }
-        }
-        if (isCardio) {
-          // Cardio anima continuamente quando pressed, para quando solta
-          exerciseProgress = exercisePressed ? 1 : Math.max(0, exerciseProgress - dt * 2);
-        }
-        if (!isTapDriven && !isCardio) {
-          const targetSpeed = exercisePressed ? 1.6 : -1.6;
-          exerciseProgress = Math.max(0, Math.min(1, exerciseProgress + targetSpeed * dt));
-          // Conta rep no peak (>0.92) e volta (<0.08)
-          if (exerciseProgress > 0.92 && !exerciseWasUp) {
-            exerciseWasUp = true;
-            exerciseReps++;
-            if (exerciseHudRepsEl) exerciseHudRepsEl.textContent = String(exerciseReps);
-            // Milestone (every 5 reps) = chime + particle burst
-            if (exerciseReps % 5 === 0) {
-              playChime();
-              tmpWorldPos.set(eq.x, 1.6, eq.z);
-              tmpColor.set(0xd8ff2c);
-              particleBurst.burst(tmpWorldPos, 25, tmpColor, 1.0);
-            } else {
-              playClick();
-            }
-          }
-          if (exerciseProgress < 0.08) exerciseWasUp = false;
-        }
-        // Update progress bar
-        if (exerciseHudProgressEl) {
-          (exerciseHudProgressEl as HTMLElement).style.width = (exerciseProgress * 100) + "%";
-        }
-        animateAvatarForExercise(eq.exercise, exerciseProgress);
-
-        // Virtual barbell apenas pros lifts SEM barbell propria no equipamento
-        // BENCH ja tem barbell no rack — vou MOVER essa barbell pra acompanhar maos
-        const showBarbell = eq.exercise === "squat" || eq.exercise === "deadlift";
-        virtualBarbell.visible = showBarbell;
-        // Virtual KB pro swing
-        virtualKB.visible = eq.exercise === "kbswing";
-        if (eq.exercise === "kbswing") {
-          // KB descreve arco entre as pernas (p=0) ate peito (p=1)
-          const angle = -Math.PI / 2 - (1 - exerciseProgress) * Math.PI / 2;
-          const ax = avatarParts.root.position.x;
-          const az = avatarParts.root.position.z;
-          // Posicao relativa frente do avatar (rotY)
-          const fwd = new THREE.Vector3(Math.sin(eq.rotY), 0, Math.cos(eq.rotY));
-          virtualKB.position.set(
-            ax + fwd.x * Math.cos(angle) * 0.6,
-            1.0 + Math.sin(angle) * 0.6,
-            az + fwd.z * Math.cos(angle) * 0.6
-          );
-        }
-        if (showBarbell) {
-          const lh = new THREE.Vector3();
-          const rh = new THREE.Vector3();
-          avatarParts.leftHand.getWorldPosition(lh);
-          avatarParts.rightHand.getWorldPosition(rh);
-          virtualBarbell.position.lerpVectors(lh, rh, 0.5);
-          if (eq.exercise === "squat") {
-            virtualBarbell.position.set(
-              avatarParts.root.position.x,
-              avatarParts.root.position.y + 1.45,
-              avatarParts.root.position.z - Math.cos(eq.rotY) * 0.05
-            );
-          }
-          virtualBarbell.rotation.y = eq.rotY;
-          if (eq.exercise === "deadlift") {
-            virtualBarbell.rotation.x = avatarParts.root.rotation.x;
-          } else {
-            virtualBarbell.rotation.x = 0;
-          }
-        }
-
-        // BENCH: move a barbell EXISTENTE do bench mesh pra acompanhar as maos
-        // Cycle 2: GUARD completo + try/catch (era trava silenciosa)
-        if (eq.exercise === "bench") {
-          try {
-            const benchBarbell = eq.mesh?.userData?.benchBarbell as THREE.Group | undefined;
-            if (benchBarbell && avatarParts.leftHand && avatarParts.rightHand && eq.mesh) {
-              const lh = new THREE.Vector3();
-              const rh = new THREE.Vector3();
-              avatarParts.leftHand.getWorldPosition(lh);
-              avatarParts.rightHand.getWorldPosition(rh);
-              const midWorld = new THREE.Vector3().lerpVectors(lh, rh, 0.5);
-              const localMid = eq.mesh.worldToLocal(midWorld.clone());
-              benchBarbell.position.copy(localMid);
-              benchBarbell.rotation.set(0, 0, 0);
-            }
-          } catch (err) {
-            // se algo crashar, nao trava o loop
-            console.warn("[bench] barbell tracking failed:", err);
-          }
-        }
-
-        // Camera close-up por exercício (lateral pra lifts, frente pra pullup, etc)
-        const lookY =
-          eq.exercise === "pullup" ? 2.0 :
-          eq.exercise === "bench" ? 0.7 : // entre estofado (0.55) e barbell (0.94)
-          eq.exercise === "pushup" ? 1.0 :
-          eq.exercise === "deadlift" ? 0.8 :
-          eq.exercise === "boxjump" ? 1.2 :
-          eq.exercise === "row" ? 0.8 :
-          eq.exercise === "bike" ? 0.9 :
-          1.2;
-        tmpCamTarget.set(eq.x, lookY, eq.z);
-        let camDist = 3.5;
-        let sideAngle = Math.PI / 2;
-        let camHeight = 1.2;
-        if (eq.exercise === "pullup") {
-          sideAngle = 0;
-          camHeight = 1.0;
-          camDist = 3.5;
-        } else if (eq.exercise === "bench") {
-          // Bench: camera de cima/lado mostrando avatar deitado e barbell descendo
-          // Ponto a olhar: barbell em y=0.94 (= eq.x, 0.94, eq.z - 0.69 girado)
-          // Ângulo lateral perpendicular ao bench
-          sideAngle = Math.PI / 2;
-          camHeight = 1.0;
-          camDist = 3.5;
-        } else if (eq.exercise === "pushup") {
-          sideAngle = Math.PI / 2;
-          camHeight = 1.5;
-          camDist = 3.0;
-        } else if (eq.exercise === "boxjump" || eq.exercise === "burpee" || eq.exercise === "kbswing") {
-          sideAngle = Math.PI / 3;
-          camHeight = 1.6;
-          camDist = 3.5;
-        } else if (eq.exercise === "run" || eq.exercise === "bike" || eq.exercise === "row") {
-          sideAngle = Math.PI / 3;
-          camHeight = 1.4;
-          camDist = 4.0;
-        }
-        tmpCamPos.set(
-          eq.x + Math.sin(eq.rotY + sideAngle) * camDist,
-          Math.max(0.6, lookY + camHeight), // nunca abaixo de y=0.6
-          eq.z + Math.cos(eq.rotY + sideAngle) * camDist
-        );
-        camera.position.lerp(tmpCamPos, 0.08);
-        camera.lookAt(tmpCamTarget);
-
-        // Skip movement loop when engaged
-        renderer.render(scene, camera);
-        raf = requestAnimationFrame(loop);
-        return;
-        } catch (err) {
-          // Cycle 3: erro no engagement → auto-disengage + log
-          console.error("[gym engagement] error, auto-disengaging:", err);
-          if (engagedEquipment) {
-            try { disengageEquipment(); } catch {}
-          }
-          // Continue render normal
-        }
-      }
-
-      // === PROXIMITY DETECTION ===
-      // (only when not engaged + not in follow mode + not visit mode)
-      if (!engagedEquipment) {
-        const found = findNearestEquipment();
-        if (found !== nearestEquipment) {
-          nearestEquipment = found;
-          if (promptEl && promptLabelEl) {
-            if (found) {
-              promptLabelEl.textContent =
-                "[E] usar " + (EXERCISE_LABELS[found.exercise] ?? found.exercise);
-              promptEl.classList.remove("hidden");
-            } else {
-              promptEl.classList.add("hidden");
-            }
-          }
-        }
-        // Pulsing highlight no equipamento mais proximo (efeito de "aura")
-        for (const eq of equipmentRefs) {
-          if (!eq.mesh.userData.proximityRing) continue;
-          const ring = eq.mesh.userData.proximityRing as THREE.Mesh;
-          const isNear = eq === found;
-          (ring.material as THREE.MeshBasicMaterial).opacity = isNear
-            ? 0.4 + Math.sin(t * 4) * 0.2
-            : 0;
-        }
-      }
 
       const inputLocked = inputLockedRef.current;
       let ix = inputLocked ? 0 : (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + jx;
@@ -2789,8 +2020,6 @@ export default function VirtualGym({
       ro.disconnect();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("keydown", onExerciseKeyDown);
-      window.removeEventListener("keyup", onExerciseKeyUp);
       renderer.domElement.removeEventListener("pointerdown", onCanvasDown);
       renderer.domElement.removeEventListener("pointerup", onCanvasUp);
       if (joy) {
@@ -3144,84 +2373,86 @@ export default function VirtualGym({
         </div>
       )}
 
-      {/* Pro directory list modal — quando clica NPC sem contratante */}
+      {/* Hub modal — NPC Nutri/PT é a porta de entrada pras features */}
       {selectedProType && (
+        <ProHubModal
+          type={selectedProType}
+          onClose={() => setSelectedProType(null)}
+        />
+      )}
+
+      {/* Hall of Fame kiosk modal — clique no pedestal central da área de troféus */}
+      {hallKioskOpen && (
         <div
           style={{ position: "absolute", inset: 0, zIndex: 28 }}
           className="flex items-end sm:items-center justify-center bg-black/80 p-4"
-          onClick={() => setSelectedProType(null)}
+          onClick={() => setHallKioskOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border-2 border-brand-lime/50 bg-navy-900 shadow-2xl shadow-brand-lime/15 overflow-hidden"
+            className="w-full max-w-md rounded-2xl border-2 border-brand-lime/50 bg-navy-900 shadow-2xl shadow-brand-lime/15 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-navy-700">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] text-brand-lime">
-                  PROFISSIONAIS DISPONÍVEIS
+                  HALL OF FAME
                 </div>
                 <div className="font-display text-lg tracking-tight">
-                  {selectedProType === "nutri" ? "Nutricionistas" : "Personal Trainers"}
+                  {trophies.length}/{HALL_EXERCISES.length} pedestais desbloqueados
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedProType(null)}
-                className="text-navy-300 hover:text-white text-lg leading-none"
+                onClick={() => setHallKioskOpen(false)}
+                className="text-navy-300 hover:text-white text-lg leading-none px-2"
                 aria-label="Fechar"
               >
                 ✕
               </button>
             </div>
-            <div className="p-3">
-              <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
-                {getProsByType(selectedProType).map((p) => (
-                  <li
-                    key={p.id}
-                    className="rounded-xl border border-navy-700 bg-navy-800/40 p-3"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div
-                        className="w-12 h-12 rounded-full grid place-items-center font-display text-xl flex-shrink-0"
-                        style={{ background: p.avatarColor, color: "#01002A" }}
-                      >
-                        {p.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-sm leading-tight">{p.name}</div>
-                        <div className="text-[11px] text-navy-300 leading-tight">
-                          {p.city} · {p.state}
-                        </div>
-                        <div className="text-[10px] text-brand-lime mt-0.5">{p.specialty}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`https://wa.me/${p.whatsapp}`}
-                        target="_blank"
-                        rel="noopener"
-                        className="flex-1 text-center text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-2 hover:opacity-90 transition"
-                      >
-                        💬 WhatsApp
-                      </a>
-                      <a
-                        href={`https://instagram.com/${p.instagram}`}
-                        target="_blank"
-                        rel="noopener"
-                        className="flex-1 text-center text-xs rounded-lg border border-navy-600 text-white px-3 py-2 hover:bg-navy-800 transition"
-                      >
-                        📷 Instagram
-                      </a>
-                    </div>
-                    <div className="text-[10px] text-navy-300 mt-2 text-right">
-                      {p.credential}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[10px] text-navy-300 mt-3 text-center">
-                PR Tracker valida CREF / CRN antes de aprovar cada profissional
+            <div className="p-4">
+              <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden mb-4">
+                <div
+                  className="h-full bg-brand-lime transition-[width] duration-500"
+                  style={{
+                    width: `${
+                      HALL_EXERCISES.length === 0
+                        ? 0
+                        : Math.round((trophies.length / HALL_EXERCISES.length) * 100)
+                    }%`,
+                  }}
+                />
+              </div>
+              <p className="text-sm text-navy-200 mb-3">
+                Cada PR registrado vira um troféu na parede. As conquistas vão acumulando
+                conforme você bate recordes.
               </p>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href="/pr/log"
+                  className="rounded-xl border-2 border-brand-lime bg-brand-lime/10 hover:bg-brand-lime/20 transition p-3 text-left flex flex-col gap-1"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg leading-none">💪</span>
+                    <span className="font-display font-bold text-sm text-brand-lime">Registrar PR</span>
+                  </div>
+                  <div className="text-[11px] text-navy-300 leading-tight">
+                    Novo recorde de carga
+                  </div>
+                </a>
+                <a
+                  href="/pr/achievements"
+                  className="rounded-xl border border-navy-700 bg-navy-800/40 hover:bg-navy-800 hover:border-brand-lime/40 transition p-3 text-left flex flex-col gap-1"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg leading-none">🏅</span>
+                    <span className="font-display font-semibold text-sm text-white">Conquistas</span>
+                  </div>
+                  <div className="text-[11px] text-navy-300 leading-tight">
+                    Achievements desbloqueadas
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -4134,59 +3365,20 @@ function buildExtraEquipment(
   type: GymObjectType,
   accentHex: string
 ): THREE.Group | null {
-  let g: THREE.Group | null = null;
-  let playExercise: string | null = null;
   switch (type) {
-    case "bench":
-      g = buildBench();
-      playExercise = "bench";
-      break;
-    case "squat_rack":
-      g = buildSquatRack(accentHex);
-      playExercise = "squat";
-      break;
-    case "dumbbell_rack":
-      g = buildDumbbellRack();
-      playExercise = "pushup";
-      break;
-    case "kettlebell":
-      g = buildKettlebell(0.18);
-      playExercise = "kbswing";
-      break;
-    case "plate_tree":
-      g = buildPlateTree();
-      break;
-    case "cable_machine":
-      g = buildCableMachine(accentHex);
-      playExercise = "pullup";
-      break;
-    case "treadmill":
-      g = buildTreadmill(accentHex);
-      playExercise = "run";
-      break;
-    case "assault_bike":
-      g = buildAssaultBike(accentHex);
-      playExercise = "bike";
-      break;
-    case "rowing_machine":
-      g = buildRowingMachine(accentHex);
-      playExercise = "row";
-      break;
-    case "plyo_box":
-      g = buildPlyoBox(0.6);
-      playExercise = "boxjump";
-      break;
-    case "crossfit_rig":
-      g = buildCrossFitRig(4.0, 2.0).group;
-      playExercise = "pullup";
-      break;
-    default:
-      return null;
+    case "bench": return buildBench();
+    case "squat_rack": return buildSquatRack(accentHex);
+    case "dumbbell_rack": return buildDumbbellRack();
+    case "kettlebell": return buildKettlebell(0.18);
+    case "plate_tree": return buildPlateTree();
+    case "cable_machine": return buildCableMachine(accentHex);
+    case "treadmill": return buildTreadmill(accentHex);
+    case "assault_bike": return buildAssaultBike(accentHex);
+    case "rowing_machine": return buildRowingMachine(accentHex);
+    case "plyo_box": return buildPlyoBox(0.6);
+    case "crossfit_rig": return buildCrossFitRig(4.0, 2.0).group;
+    default: return null;
   }
-  if (g && playExercise) {
-    g.userData.playExercise = playExercise;
-  }
-  return g;
 }
 
 function lerpAngle(a: number, b: number, t: number): number {
@@ -4225,6 +3417,169 @@ function SwatchRow({ label, colors, value, onChange }: SwatchRowProps) {
             />
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ProHubModal — modal de NPC (Nutri ou PT) que combina:
+// 1) Quick actions pras features principais (substitui os portais de chão).
+// 2) Diretório de profissionais pra contratar (CRN/CREF validados).
+// Aberto quando o atleta clica num NPC dentro do ginásio virtual.
+interface ProHubModalProps {
+  type: ProType;
+  onClose: () => void;
+}
+
+const PRO_HUB_COPY: Record<
+  ProType,
+  {
+    title: string;
+    intro: string;
+    color: string;
+    actions: Array<{ emoji: string; label: string; sub: string; href: string }>;
+  }
+> = {
+  nutri: {
+    title: "Sua Nutricionista",
+    intro: "Oi! Vamos cuidar da tua dieta? Escolhe abaixo o que você quer fazer agora.",
+    color: "#43B02A",
+    actions: [
+      { emoji: "🍽️", label: "Hoje", sub: "Logar refeições, água e peso", href: "/pr/diet" },
+      { emoji: "🎯", label: "Metas", sub: "Calorias, macros, objetivo", href: "/pr/diet/metas" },
+      { emoji: "📊", label: "Histórico", sub: "Últimos 7 dias agregados", href: "/pr/diet/historico" },
+      { emoji: "📥", label: "Exportar", sub: "CSV dos últimos 30 dias", href: "/api/pr/diet/export.csv?days=30" },
+    ],
+  },
+  pt: {
+    title: "Seu Personal Trainer",
+    intro: "Bora treinar? Aqui é o teu plano e onde tu fala com o coach.",
+    color: "#0057B8",
+    actions: [
+      { emoji: "📋", label: "Plano do Dia", sub: "Treino programado", href: "/pr/plan" },
+      { emoji: "🤝", label: "Coaching", sub: "Acompanhamento personalizado", href: "/pr/coach" },
+    ],
+  },
+};
+
+function ProHubModal({ type, onClose }: ProHubModalProps) {
+  const copy = PRO_HUB_COPY[type];
+  const pros = getProsByType(type);
+  const [showDirectory, setShowDirectory] = useState(false);
+  return (
+    <div
+      style={{ position: "absolute", inset: 0, zIndex: 28 }}
+      className="flex items-end sm:items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border-2 bg-navy-900 shadow-2xl overflow-hidden"
+        style={{ borderColor: copy.color + "80" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-navy-700">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-11 h-11 rounded-full grid place-items-center font-display text-xl flex-shrink-0"
+              style={{ background: copy.color, color: "#01002A" }}
+            >
+              {type === "nutri" ? "🥗" : "💪"}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.3em]" style={{ color: copy.color }}>
+                {type === "nutri" ? "NUTRICIONISTA" : "PERSONAL TRAINER"}
+              </div>
+              <div className="font-display text-lg tracking-tight">{copy.title}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-navy-300 hover:text-white text-lg leading-none px-2"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-4 max-h-[70vh] overflow-y-auto">
+          <p className="text-sm text-navy-200 mb-3">{copy.intro}</p>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {copy.actions.map((a) => (
+              <a
+                key={a.href}
+                href={a.href}
+                className="rounded-xl border border-navy-700 bg-navy-800/40 hover:bg-navy-800 hover:border-brand-lime/40 transition p-3 text-left flex flex-col gap-1"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg leading-none">{a.emoji}</span>
+                  <span className="font-display font-semibold text-sm text-white">{a.label}</span>
+                </div>
+                <div className="text-[11px] text-navy-300 leading-tight">{a.sub}</div>
+              </a>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDirectory((v) => !v)}
+            className="w-full text-xs rounded-lg border border-navy-600 text-navy-200 hover:text-white hover:bg-navy-800 px-3 py-2 transition flex items-center justify-between"
+          >
+            <span>
+              {showDirectory ? "Esconder" : "Ver"} profissionais para contratar
+              <span className="text-navy-400 ml-1">({pros.length})</span>
+            </span>
+            <span>{showDirectory ? "▴" : "▾"}</span>
+          </button>
+          {showDirectory && (
+            <ul className="mt-3 space-y-2">
+              {pros.map((p) => (
+                <li
+                  key={p.id}
+                  className="rounded-xl border border-navy-700 bg-navy-800/40 p-3"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-10 h-10 rounded-full grid place-items-center font-display flex-shrink-0"
+                      style={{ background: p.avatarColor, color: "#01002A" }}
+                    >
+                      {p.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm leading-tight truncate">{p.name}</div>
+                      <div className="text-[11px] text-navy-300 leading-tight truncate">
+                        {p.city} · {p.state}
+                      </div>
+                      <div className="text-[10px] mt-0.5" style={{ color: copy.color }}>{p.specialty}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://wa.me/${p.whatsapp}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="flex-1 text-center text-xs rounded-lg bg-brand-lime text-navy-900 font-semibold px-3 py-2 hover:opacity-90 transition"
+                    >
+                      💬 WhatsApp
+                    </a>
+                    <a
+                      href={`https://instagram.com/${p.instagram}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="flex-1 text-center text-xs rounded-lg border border-navy-600 text-white px-3 py-2 hover:bg-navy-800 transition"
+                    >
+                      📷 Instagram
+                    </a>
+                  </div>
+                  <div className="text-[10px] text-navy-300 mt-2 text-right">{p.credential}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {showDirectory && (
+            <p className="text-[10px] text-navy-300 mt-3 text-center">
+              PR Tracker valida CREF / CRN antes de aprovar cada profissional
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
