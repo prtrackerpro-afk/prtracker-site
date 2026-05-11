@@ -96,13 +96,24 @@ function fmtDate(iso: string) {
       <a href="/pr/diet" class="text-sm text-navy-300 hover:text-white">← Hoje</a>
       <div class="text-[10px] uppercase tracking-[0.3em] text-brand-lime mt-3">HISTÓRICO</div>
       <h1 class="font-display text-3xl tracking-tight text-white">Últimos 7 dias</h1>
-      <a href="/api/pr/diet/export.csv?days=30" class="inline-block text-xs bg-navy-800 hover:bg-navy-700 text-brand-lime rounded-full px-3 py-1.5 mt-2">📥 Exportar 30 dias (CSV)</a>
+      <a
+        href="/api/pr/diet/export.csv?days=30"
+        class="inline-flex items-center gap-1.5 text-xs bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-lime border border-brand-lime/30 rounded-full px-3 py-1.5 mt-2 transition"
+      >
+        <span>📥</span>
+        <span>Exportar 30 dias (CSV)</span>
+      </a>
     </header>
 
     <main class="max-w-md mx-auto px-4">
       {sortedDays.length === 0 ? (
-        <div class="rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 p-5 text-center">
-          <p class="text-sm">Sem dados ainda. Comece a logar refeições em <a href="/pr/diet" class="text-brand-lime hover:underline">/pr/diet</a>.</p>
+        <div class="rounded-2xl border-2 border-brand-lime/40 bg-brand-lime/5 p-6 text-center">
+          <div class="text-3xl mb-2">🗓️</div>
+          <p class="text-sm text-white font-display mb-1">Histórico vazio.</p>
+          <p class="text-xs text-navy-300 mb-3">Loga tua primeira refeição pra começar a acompanhar.</p>
+          <a href="/pr/diet" class="inline-block text-xs bg-brand-lime text-navy-900 font-semibold rounded-full px-3 py-1.5 hover:opacity-90 transition">
+            Ir pra Dieta de Hoje →
+          </a>
         </div>
       ) : (
         <ul class="space-y-2">

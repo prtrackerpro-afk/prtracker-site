@@ -104,10 +104,25 @@ const tdeeMaintain = Math.round(bmr * 1.55); // moderately active
             <option value="bulk" selected={t.goal === "bulk"}>Bulking (ganho)</option>
           </select>
         </div>
-        <button type="submit" class="w-full bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-3 text-sm hover:opacity-90">Salvar metas</button>
+        <button
+          type="submit"
+          id="save-btn"
+          class="w-full bg-brand-lime text-navy-900 font-display font-bold rounded-lg py-3 text-sm hover:opacity-90 active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2"
+        >
+          <span id="save-spinner" class="hidden w-4 h-4 rounded-full border-2 border-navy-900/30 border-t-navy-900 animate-spin"></span>
+          <span id="save-label">Salvar metas</span>
+        </button>
         <div id="error-msg" class="text-sm text-red-400 hidden"></div>
       </form>
     </main>
+
+    <!-- Toast -->
+    <div
+      id="toast"
+      class="fixed bottom-28 left-1/2 -translate-x-1/2 bg-brand-lime text-navy-900 font-display font-bold rounded-full px-4 py-2 text-sm shadow-lg shadow-brand-lime/40 opacity-0 pointer-events-none transition-opacity duration-300 z-50"
+    >
+      ✓ Metas salvas
+    </div>
 
     <BottomNav active="profile" />
 
@@ -127,11 +142,24 @@ const tdeeMaintain = Math.round(bmr * 1.55); // moderately active
       });
 
       const form = document.getElementById("metas-form") as HTMLFormElement;
+      const saveBtn = document.getElementById("save-btn") as HTMLButtonElement;
+      const saveLabel = document.getElementById("save-label") as HTMLSpanElement;
+      const saveSpinner = document.getElementById("save-spinner") as HTMLSpanElement;
+      const toast = document.getElementById("toast") as HTMLDivElement;
+      const errorEl = document.getElementById("error-msg") as HTMLDivElement;
+
+      function setBusy(busy: boolean, label: string): void {
+        saveBtn.disabled = busy;
+        saveLabel.textContent = label;
+        saveSpinner.classList.toggle("hidden", !busy);
+      }
+
       form?.addEventListener("submit", async (e) => {
         e.preventDefault();
+        errorEl.classList.add("hidden");
+        setBusy(true, "Salvando...");
         const fd = new FormData(form);
         const data = Object.fromEntries(fd.entries());
-        const errorEl = document.getElementById("error-msg") as HTMLDivElement;
         try {
           const res = await fetch("/api/pr/diet/targets", {
             method: "POST",
@@ -139,15 +167,21 @@ const tdeeMaintain = Math.round(bmr * 1.55); // moderately active
             body: JSON.stringify(data),
           });
           if (res.ok) {
-            window.location.href = "/pr/diet";
+            toast.classList.remove("opacity-0");
+            toast.classList.add("opacity-100");
+            setTimeout(() => {
+              window.location.href = "/pr/diet";
+            }, 850);
           } else {
             const j = await res.json();
             errorEl.textContent = j.message || j.error || "Erro";
             errorEl.classList.remove("hidden");
+            setBusy(false, "Salvar metas");
           }
         } catch {
           errorEl.textContent = "Erro de conexão";
           errorEl.classList.remove("hidden");
+          setBusy(false, "Salvar metas");
         }
       });
     </script>

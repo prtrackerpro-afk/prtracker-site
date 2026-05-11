@@ -93,9 +93,10 @@ const today = new Date().toISOString().slice(0, 10);
         <button
           type="submit"
           id="submit-btn"
-          class="w-full rounded-lg bg-brand-lime px-4 py-4 text-base font-display font-bold text-navy-900 hover:opacity-90 hover:scale-[1.02] transition disabled:opacity-50 shadow-lg shadow-brand-lime/30"
+          class="w-full rounded-lg bg-brand-lime px-4 py-4 text-base font-display font-bold text-navy-900 hover:opacity-90 hover:scale-[1.02] active:scale-100 transition disabled:opacity-60 disabled:cursor-wait shadow-lg shadow-brand-lime/30 flex items-center justify-center gap-2"
         >
-          🏆 Salvar PR
+          <span id="submit-spinner" class="hidden w-4 h-4 rounded-full border-2 border-navy-900/30 border-t-navy-900 animate-spin"></span>
+          <span id="submit-label">🏆 Salvar PR</span>
         </button>
 
         <div id="error-msg" class="text-sm text-red-400 hidden"></div>
@@ -106,7 +107,15 @@ const today = new Date().toISOString().slice(0, 10);
       const form = document.getElementById("log-form") as HTMLFormElement;
       const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
       const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+      const submitLabel = document.getElementById("submit-label") as HTMLSpanElement;
+      const submitSpinner = document.getElementById("submit-spinner") as HTMLSpanElement;
       const weightInput = document.getElementById("weight") as HTMLInputElement;
+
+      function setSubmitState(busy: boolean, labelText: string): void {
+        submitBtn.disabled = busy;
+        submitLabel.textContent = labelText;
+        submitSpinner.classList.toggle("hidden", !busy);
+      }
 
       // Quick +/- weight buttons
       document.querySelectorAll(".weight-btn").forEach((btn) => {
@@ -121,8 +130,7 @@ const today = new Date().toISOString().slice(0, 10);
       form?.addEventListener("submit", async (e) => {
         e.preventDefault();
         errorMsg.classList.add("hidden");
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Salvando...";
+        setSubmitState(true, "Salvando...");
 
         const data = new FormData(form);
         try {
@@ -140,8 +148,7 @@ const today = new Date().toISOString().slice(0, 10);
           if (!res.ok) {
             errorMsg.textContent = body.message || "Erro ao salvar.";
             errorMsg.classList.remove("hidden");
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Salvar PR";
+            setSubmitState(false, "🏆 Salvar PR");
             return;
           }
           // If it was a PR, go to celebration; otherwise back to dashboard.
@@ -153,8 +160,7 @@ const today = new Date().toISOString().slice(0, 10);
         } catch {
           errorMsg.textContent = "Erro de conexão. Tente novamente.";
           errorMsg.classList.remove("hidden");
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Salvar PR";
+          setSubmitState(false, "🏆 Salvar PR");
         }
       });
     </script>
