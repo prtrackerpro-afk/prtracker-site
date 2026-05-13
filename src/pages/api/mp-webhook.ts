@@ -9,6 +9,7 @@ import {
 import { sendCapiPurchase, sendGa4Purchase } from "~/lib/tracking-server";
 import { getAdminSupabase } from "~/lib/supabase/server";
 import { paymentToSaleRow } from "~/lib/admin/mp-ingest";
+import { getMpUserId } from "~/lib/admin/mp-api";
 import { syncOrderToBling } from "~/lib/bling/sync";
 
 export const prerender = false;
@@ -163,6 +164,32 @@ export const POST: APIRoute = async ({ request }) => {
   // Only approved payments trigger label generation. Pending Pix payments
   // will fire another webhook when confirmed, so we'll handle them then.
   if (payment.status !== "approved") {
+    return new Response("ok", { status: 200 });
+  }
+
+  // Descarta payments outbound (compras nossas com saldo MP). O MP dispara
+  // webhook tanto pra payments inbound (vendas, collector=nós) quanto pra
+  // outbound (collector=outro vendedor, payer=nós). Sem esse guard, compras
+  // de embalagens etc viram falsas "vendas" no `sales` table.
+  try {
+    const ourMpUserId = await getMpUserId();
+    const paymentCollectorId = (payment as unknown as { collector_id?: number })
+      .collector_id;
+    if (
+      typeof paymentCollectorId === "number" &&
+      paymentCollectorId !== ourMpUserId
+    ) {
+      console.log("[mp-webhook] outbound payment ignored", {
+        paymentId: payment.id,
+        collector_id: paymentCollectorId,
+        our_id: ourMpUserId,
+      });
+      return new Response("ok", { status: 200 });
+    }
+  } catch (err) {
+    // Se /users/me falhar, fail-closed: rejeita o webhook em vez de processar
+    // sem saber se é venda real.
+    console.error("[mp-webhook] could not verify collector_id — skipping:", err);
     return new Response("ok", { status: 200 });
   }
 
