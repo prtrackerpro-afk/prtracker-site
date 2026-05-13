@@ -36,8 +36,17 @@ import Loader from "@lucide/astro/icons/loader";
               </div>
             </div>
             <div class="field">
-              <label for="cpf">CPF</label>
-              <input type="text" id="cpf" name="cpf" inputmode="numeric" required placeholder="000.000.000-00" />
+              <label for="cpf">CPF <span class="field__req" aria-hidden="true">*</span></label>
+              <input
+                type="text"
+                id="cpf"
+                name="cpf"
+                inputmode="numeric"
+                required
+                placeholder="000.000.000-00"
+                aria-describedby="cpf-hint"
+              />
+              <small id="cpf-hint" class="field__hint">CPF válido obrigatório — usado pra emissão da NF-e.</small>
             </div>
           </fieldset>
 
@@ -232,6 +241,11 @@ import Loader from "@lucide/astro/icons/loader";
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--color-brand-navy);
+  }
+  .field__req {
+    color: #dc2626;
+    margin-left: 0.15em;
+    font-weight: 700;
   }
   .field input {
     padding: 0.75rem 0.875rem;
