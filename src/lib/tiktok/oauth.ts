@@ -36,6 +36,7 @@
  * if Felipe only has 1 shop). Service-role only.
  */
 
+import crypto from "node:crypto";
 import { getAdminSupabase } from "~/lib/supabase/server";
 
 // Brasil/Sudamerica usa o endpoint global. TikTok Shop ainda não cria endpoint
@@ -44,6 +45,7 @@ import { getAdminSupabase } from "~/lib/supabase/server";
 const AUTHORIZE_URL = "https://services.us.tiktokshop.com/open/authorize";
 const TOKEN_URL = "https://auth.tiktok-shops.com/api/v2/token/get";
 const REFRESH_TOKEN_URL = "https://auth.tiktok-shops.com/api/v2/token/refresh";
+const OPEN_API_BASE = "https://open-api.tiktokglobalshop.com";
 
 // Refresh proativamente quando faltar < 1 dia pra expirar (access dura 7d).
 const REFRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
@@ -184,6 +186,9 @@ async function tokenRequest<T>(
  * Exchange the `code` returned on /callback for the initial access_token.
  * Persists token + shop info to Supabase. Returns the shop_id Felipe is
  * authenticated as.
+ *
+ * TikTok v2 separa user-level tokens (este endpoint) de shop list — se a
+ * resposta vier sem `shop_list`, busca via /authorization/202309/shops.
  */
 export async function exchangeCodeForToken(code: string): Promise<StoredToken> {
   const cfg = getOAuthConfig();
@@ -193,7 +198,98 @@ export async function exchangeCodeForToken(code: string): Promise<StoredToken> {
     auth_code: code,
     grant_type: "authorized_code",
   });
+  if (!tok.shop_list || tok.shop_list.length === 0) {
+    tok.shop_list = await fetchAuthorizedShops(tok.access_token);
+  }
   return await persistToken(tok);
+}
+
+/**
+ * Lista as shops que o seller autorizou pro app. Chamada signed (HMAC-SHA256)
+ * — não usa tiktokFetch porque ainda não temos shop_cipher no momento dessa
+ * chamada (bootstrap).
+ */
+async function fetchAuthorizedShops(
+  accessToken: string,
+): Promise<NonNullable<TikTokTokenResponse["shop_list"]>> {
+  const cfg = getOAuthConfig();
+  const path = "/authorization/202309/shops";
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+
+  const queryForSig: Record<string, string> = {
+    app_key: cfg.appKey,
+    timestamp,
+  };
+  const sortedKeys = Object.keys(queryForSig).sort();
+  const concatenated = sortedKeys.map((k) => `${k}${queryForSig[k]}`).join("");
+  const raw = `${cfg.appSecret}${path}${concatenated}${cfg.appSecret}`;
+  const sign = crypto
+    .createHmac("sha256", cfg.appSecret)
+    .update(raw)
+    .digest("hex");
+
+  const url = new URL(path, OPEN_API_BASE);
+  url.searchParams.set("app_key", cfg.appKey);
+  url.searchParams.set("timestamp", timestamp);
+  url.searchParams.set("sign", sign);
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "x-tts-access-token": accessToken,
+    },
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new TikTokOAuthError(
+      `TikTok /authorization/202309/shops failed: ${res.status}`,
+      res.status,
+      text,
+    );
+  }
+  let parsed: {
+    code?: number;
+    message?: string;
+    data?: {
+      shops?: Array<{
+        id?: string;
+        name?: string;
+        region?: string;
+        cipher?: string;
+      }>;
+    };
+  };
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new TikTokOAuthError(
+      "TikTok shops response was not JSON",
+      res.status,
+      text,
+    );
+  }
+  if (parsed.code !== 0 && parsed.code != null) {
+    throw new TikTokOAuthError(
+      `TikTok shops error code=${parsed.code}: ${parsed.message ?? "unknown"}`,
+      res.status,
+      text,
+    );
+  }
+  const shops = parsed.data?.shops ?? [];
+  if (shops.length === 0) {
+    throw new TikTokOAuthError(
+      "TikTok /authorization/202309/shops retornou lista vazia — seller não autorizou nenhuma loja?",
+    );
+  }
+  return shops
+    .map((s) => ({
+      id: s.id ?? "",
+      name: s.name ?? "",
+      region: s.region ?? "BR",
+      cipher: s.cipher ?? "",
+    }))
+    .filter((s) => s.id && s.cipher);
 }
 
 /**
@@ -210,6 +306,9 @@ export async function refreshAccessToken(
     refresh_token: currentRefreshToken,
     grant_type: "refresh_token",
   });
+  if (!tok.shop_list || tok.shop_list.length === 0) {
+    tok.shop_list = await fetchAuthorizedShops(tok.access_token);
+  }
   return await persistToken(tok);
 }
 
