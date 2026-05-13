@@ -1,0 +1,173 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import KpiCard from "../../components/admin/KpiCard.astro";
+import DateRangeSelect from "../../components/admin/DateRangeSelect.astro";
+import TrendChart from "../../components/admin/TrendChart";
+import { getAdminSupabase } from "../../lib/supabase/server";
+import {
+  aggregateInsights,
+  daysAgoIso,
+  fmtBRL,
+  fmtInt,
+  fmtNumber,
+  fmtPct,
+  todayIso,
+} from "../../lib/admin/format";
+
+const url = new URL(Astro.request.url);
+const days = Math.max(1, Math.min(90, Number(url.searchParams.get("days") || 7)));
+
+const sb = getAdminSupabase();
+const since = daysAgoIso(days);
+const today = todayIso();
+
+const insightsRes = await sb
+  .from("tiktok_ads_insights_daily")
+  .select(
+    "date,spend,impressions,clicks,purchases,add_to_cart,initiate_checkout,view_content,landing_page_view,revenue,reach",
+  )
+  .gte("date", since)
+  .lte("date", today)
+  .order("date", { ascending: true });
+
+const rows = (insightsRes.data ?? []) as Array<{
+  date: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  purchases: number;
+  add_to_cart: number;
+  initiate_checkout: number;
+  view_content: number;
+  landing_page_view: number;
+  revenue: number;
+  reach: number;
+}>;
+
+const totals = aggregateInsights(rows);
+
+const chartData = rows.map((r) => ({
+  date: r.date.slice(5),
+  Spend: Number(r.spend ?? 0),
+  Revenue: Number(r.revenue ?? 0),
+}));
+
+const dailyTable = [...rows].reverse(); // mais recente primeiro
+
+const admin = (Astro.locals as any).admin;
+
+const { count: alertCount } = await sb
+  .from("alerts")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "open");
+---
+
+<AdminLayout title="TikTok Ads" active="tiktok-ads" user={admin} alertCount={alertCount ?? 0}>
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">TikTok Ads</h1>
+      <p class="text-sm text-navy-300 mt-0.5">
+        Conta <span class="text-navy-100">PR Tracker_adv</span> · web-pixel attribution (paridade c/ Meta)
+      </p>
+    </div>
+    <DateRangeSelect current={days} />
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+    <KpiCard label="Spend" value={fmtBRL(totals.spend)} icon="spend" spark={chartData.map((d) => d.Spend)} />
+    <KpiCard label="Revenue" value={fmtBRL(totals.revenue)} icon="revenue" accent="lime" spark={chartData.map((d) => d.Revenue)} />
+    <KpiCard label="ROAS" value={totals.spend > 0 ? fmtNumber(totals.roas) : "—"} icon="roas" />
+    <KpiCard label="Purchases" value={fmtInt(totals.purchases)} icon="conversions" hint={`CPA ${totals.purchases > 0 ? fmtBRL(totals.cpa) : "—"}`} />
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+    <KpiCard label="Impressões" value={fmtInt(totals.impressions)} icon="impressions" />
+    <KpiCard label="CTR" value={fmtPct(totals.ctr)} icon="ctr" />
+    <KpiCard label="CPM" value={fmtBRL(totals.cpm)} icon="cpm" />
+    <KpiCard label="CPC" value={fmtBRL(totals.cpc)} icon="cpc" />
+  </div>
+
+  {chartData.length > 0 && (
+    <section class="rounded-2xl border border-navy-700 bg-navy-800/30 p-4 md:p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold">Spend × Revenue</h2>
+          <p class="text-xs text-navy-300 mt-0.5">Diário, conta inteira</p>
+        </div>
+      </div>
+      <div class="h-64 md:h-72">
+        <TrendChart
+          client:only="react"
+          data={chartData}
+          xKey="date"
+          series={[
+            { key: "Spend", label: "Spend", color: "#f87171" },
+            { key: "Revenue", label: "Revenue", color: "#d8ff2c" },
+          ]}
+        />
+      </div>
+    </section>
+  )}
+
+  <section class="rounded-2xl border border-navy-700 bg-navy-800/30 overflow-hidden">
+    <div class="px-5 py-4 border-b border-navy-700">
+      <h2 class="text-base font-semibold">Performance diária</h2>
+      <p class="text-xs text-navy-300">
+        Web-pixel attribution.
+        <span class="md:hidden text-navy-400"> · Deslize horizontalmente pra ver as métricas →</span>
+      </p>
+    </div>
+    <div class="relative">
+      <div class="overflow-x-auto admin-scroll-x">
+      <table class="w-full text-sm">
+        <thead class="bg-navy-800/60 text-xs uppercase tracking-wider text-navy-300">
+          <tr>
+            <th class="text-left px-5 py-3">Data</th>
+            <th class="text-right px-3 py-3">Spend</th>
+            <th class="text-right px-3 py-3">Revenue</th>
+            <th class="text-right px-3 py-3">ROAS</th>
+            <th class="text-right px-3 py-3">Purchases</th>
+            <th class="text-right px-3 py-3">CTR</th>
+            <th class="text-right px-3 py-3">CPM</th>
+            <th class="text-right px-3 py-3">Impr.</th>
+            <th class="text-right px-3 py-3">Clicks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dailyTable.length === 0 && (
+            <tr>
+              <td colspan="9" class="px-5 py-8 text-center text-navy-300">
+                Sem dados ingeridos. Rode o cron <code class="text-brand-lime">/api/cron/ingest</code> ou aguarde o próximo run diário.
+              </td>
+            </tr>
+          )}
+          {dailyTable.map((r) => {
+            const spend = Number(r.spend ?? 0);
+            const revenue = Number(r.revenue ?? 0);
+            const impressions = Number(r.impressions ?? 0);
+            const clicks = Number(r.clicks ?? 0);
+            const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+            const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+            const roas = spend > 0 ? revenue / spend : 0;
+            return (
+              <tr class="border-t border-navy-700 hover:bg-navy-800/40">
+                <td class="px-5 py-3 text-navy-100">{r.date}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{fmtBRL(spend)}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{fmtBRL(revenue)}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{spend > 0 ? fmtNumber(roas) : "—"}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{fmtInt(Number(r.purchases ?? 0))}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{fmtPct(ctr)}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{fmtBRL(cpm)}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{fmtInt(impressions)}</td>
+                <td class="px-3 py-3 text-right tabular-nums">{fmtInt(clicks)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      </div>
+      <div class="md:hidden pointer-events-none absolute top-12 right-0 bottom-0 w-12 bg-gradient-to-l from-navy-900 to-transparent" aria-hidden="true"></div>
+    </div>
+  </section>
+</AdminLayout>

@@ -13,7 +13,7 @@ import {
 
 interface Props {
   title: string;
-  active?: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "amazon" | "alerts" | "settings";
+  active?: "overview" | "meta" | "tiktok-ads" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "amazon" | "alerts" | "settings";
   user?: { email: string };
   alertCount?: number;
 }
@@ -23,6 +23,7 @@ const { title, active = "overview", user, alertCount = 0 } = Astro.props;
 const navItems = [
   { id: "overview", label: "Overview", href: "/admin", icon: iconLayout },
   { id: "meta", label: "Meta Ads", href: "/admin/meta", icon: iconChartBar },
+  { id: "tiktok-ads", label: "TikTok Ads", href: "/admin/tiktok-ads", icon: iconChartBar },
   { id: "ga4", label: "GA4 / Site", href: "/admin/ga4", icon: iconGlobe },
   { id: "sales", label: "Vendas", href: "/admin/sales", icon: iconShoppingBag },
   { id: "bling", label: "Bling", href: "/admin/bling", icon: iconBox },

@@ -9,7 +9,7 @@ import {
 } from "./icons";
 
 interface Props {
-  active: "overview" | "meta" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "amazon" | "alerts" | "settings";
+  active: "overview" | "meta" | "tiktok-ads" | "ga4" | "sales" | "bling" | "tiktok" | "ml" | "shopee" | "amazon" | "alerts" | "settings";
   alertCount?: number;
 }
 const { active, alertCount = 0 } = Astro.props;
@@ -21,6 +21,7 @@ const { active, alertCount = 0 } = Astro.props;
 const allItems: Array<{ id: Props["active"]; href: string; label: string; icon: string }> = [
   { id: "overview", href: "/admin", label: "Overview", icon: iconLayout },
   { id: "meta", href: "/admin/meta", label: "Meta", icon: iconChartBar },
+  { id: "tiktok-ads", href: "/admin/tiktok-ads", label: "TikTok Ads", icon: iconChartBar },
   { id: "ga4", href: "/admin/ga4", label: "GA4", icon: iconGlobe },
   { id: "sales", href: "/admin/sales", label: "Vendas", icon: iconShoppingBag },
   { id: "bling", href: "/admin/bling", label: "Bling", icon: iconBox },
