@@ -8,8 +8,10 @@
  *      with app_key + redirect_uri + state.
  *   2. TikTok redirects back to redirect_uri with `code` (NOT `auth_code` — older
  *      docs may say auth_code, the latest v2 uses `code` query param).
- *   3. Exchange code for access_token via POST to /api/v2/token/get with
- *      app_key + app_secret + auth_code + grant_type=authorized_code.
+ *   3. Exchange code for access_token via GET /api/v2/token/get com
+ *      app_key + app_secret + auth_code + grant_type=authorized_code como
+ *      query params (TikTok usa GET nos endpoints de auth, não POST — uma
+ *      peculiaridade vs OAuth padrão).
  *      → returns access_token + refresh_token + open_id + seller_name + shop_id.
  *   4. Tokens scoped per shop_cipher (encrypted shop ID). All subsequent API
  *      calls must pass shop_cipher as a query param.
@@ -134,17 +136,17 @@ export function buildAuthorizeUrl(state: string): string {
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
-async function postJson<T>(
+async function tokenRequest<T>(
   url: string,
-  body: Record<string, unknown>,
+  params: Record<string, string | number>,
 ): Promise<T> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+  const u = new URL(url);
+  for (const [k, v] of Object.entries(params)) {
+    u.searchParams.set(k, String(v));
+  }
+  const res = await fetch(u.toString(), {
+    method: "GET",
+    headers: { Accept: "application/json" },
   });
   const text = await res.text();
   if (!res.ok) {
@@ -185,7 +187,7 @@ async function postJson<T>(
  */
 export async function exchangeCodeForToken(code: string): Promise<StoredToken> {
   const cfg = getOAuthConfig();
-  const tok = await postJson<TikTokTokenResponse>(TOKEN_URL, {
+  const tok = await tokenRequest<TikTokTokenResponse>(TOKEN_URL, {
     app_key: cfg.appKey,
     app_secret: cfg.appSecret,
     auth_code: code,
@@ -202,7 +204,7 @@ export async function refreshAccessToken(
   currentRefreshToken: string,
 ): Promise<StoredToken> {
   const cfg = getOAuthConfig();
-  const tok = await postJson<TikTokTokenResponse>(REFRESH_TOKEN_URL, {
+  const tok = await tokenRequest<TikTokTokenResponse>(REFRESH_TOKEN_URL, {
     app_key: cfg.appKey,
     app_secret: cfg.appSecret,
     refresh_token: currentRefreshToken,
