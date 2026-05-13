@@ -18,6 +18,7 @@ import { z } from "astro:content";
 import { applyPix } from "./format";
 import { PIX_DISCOUNT } from "./catalog";
 import { recomputeLine } from "./pricing";
+import { validCpf } from "./cpf";
 import { validateCoupon } from "./coupons";
 import type { PickupLocation } from "./coupons";
 import type { CartItem } from "./cart-types";
@@ -57,7 +58,13 @@ export const orderPayloadSchema = z.object({
     name: z.string().min(3).max(120),
     email: z.string().email().max(120),
     phone: z.string().regex(/^\d{10,11}$/),
-    cpf: z.string().regex(/^\d{11}$/),
+    // Formato 11 dígitos + algoritmo dos DV. Rejeita "99999999999",
+    // "11111111111", e qualquer string com checksum inválido. Mesmo
+    // helper usado client-side em checkout.astro pra evitar drift.
+    cpf: z
+      .string()
+      .regex(/^\d{11}$/, "CPF precisa ter 11 dígitos")
+      .refine(validCpf, "CPF inválido — verifique os dígitos"),
   }),
   shipping: z.object({
     cep: z.string().regex(/^\d{8}$/),
