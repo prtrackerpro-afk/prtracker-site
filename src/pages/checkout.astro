@@ -510,6 +510,7 @@ import Loader from "@lucide/astro/icons/loader";
   import { formatBRL } from "~/lib/format";
   import { formatCartItemDisplay, escapeHtml } from "~/lib/cart-format";
   import type { CartSnapshot } from "~/lib/cart-types";
+  import { validCpf } from "~/lib/cpf";
 
   if (cart.snapshot().items.length === 0) {
     window.location.replace("/cart");
@@ -961,20 +962,8 @@ import Loader from "@lucide/astro/icons/loader";
     });
   }
 
-  function validCpf(raw: string): boolean {
-    const d = raw.replace(/\D/g, "");
-    if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
-    let s = 0;
-    for (let i = 0; i < 9; i++) s += Number(d[i]) * (10 - i);
-    let r = (s * 10) % 11;
-    if (r === 10) r = 0;
-    if (r !== Number(d[9])) return false;
-    s = 0;
-    for (let i = 0; i < 10; i++) s += Number(d[i]) * (11 - i);
-    r = (s * 10) % 11;
-    if (r === 10) r = 0;
-    return r === Number(d[10]);
-  }
+  // validCpf importado de ~/lib/cpf — mesma implementação usada no
+  // server (order-build.ts via Zod refine).
 
   const form = document.querySelector<HTMLFormElement>("#checkoutForm")!;
   const submitBtn = document.querySelector<HTMLButtonElement>("#submitBtn")!;
