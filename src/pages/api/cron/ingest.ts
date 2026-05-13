@@ -3,6 +3,7 @@ import { ingestMeta } from "../../../lib/admin/meta-ingest";
 import { ingestWindsor } from "../../../lib/admin/windsor-ingest";
 import { ingestMercadoPago } from "../../../lib/admin/mp-ingest";
 import { ingestTikTokShop } from "../../../lib/admin/tiktok-shop-ingest";
+import { ingestTikTokAds } from "../../../lib/admin/tiktok-ads-ingest";
 import { evaluateAlerts } from "../../../lib/admin/alerts-engine";
 import { getAdminSupabase } from "../../../lib/supabase/server";
 import { isEmailConfigured, sendAdminEmail } from "../../../lib/admin/email";
@@ -61,7 +62,14 @@ export const GET: APIRoute = async ({ request }) => {
     result.tiktok_shop = { error: (e as Error).message };
   }
 
-  // 5) Alerts
+  // 5) TikTok Ads — daily insights via Windsor
+  try {
+    result.tiktok_ads = await ingestTikTokAds({ daysBack });
+  } catch (e) {
+    result.tiktok_ads = { error: (e as Error).message };
+  }
+
+  // 6) Alerts
   try {
     result.alerts = await evaluateAlerts({ dateRangeDays: 1 });
   } catch (e) {
