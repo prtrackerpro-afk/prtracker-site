@@ -257,7 +257,7 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
   const pixEl = summary.querySelector<HTMLElement>("[data-cart-pix-total]")!;
   const installmentEl = summary.querySelector<HTMLElement>("[data-cart-installment]")!;
   const freeProgressEl = summary.querySelector<HTMLElement>("[data-cart-free-progress]")!;
-  const FREE_SHIPPING_MIN_CENTS = 25_000;
+  const FREE_SHIPPING_MIN_CENTS = 10_000;
 
   let snap: CartSnapshot = cart.snapshot();
 

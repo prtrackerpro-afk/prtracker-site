@@ -1,0 +1,375 @@
+---
+/**
+ * Modal "Notifique-me quando lançar" usado pelo produto My PR Gym.
+ *
+ * Abre via `document.dispatchEvent(new CustomEvent("notifyme:open"))`
+ * (chamado pelo TripleBarbellConfigurator). Coleta e-mail e/ou telefone
+ * — ao menos um precisa estar preenchido — e envia para `/api/notify-me`,
+ * que dispara um email para `contato@prtracker.com.br` com a configuração
+ * atual das 3 barras (se houver).
+ */
+import X from "@lucide/astro/icons/x";
+import Bell from "@lucide/astro/icons/bell";
+import Check from "@lucide/astro/icons/check";
+---
+
+<div
+  class="nmf"
+  data-notify-modal
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="notify-modal-title"
+  hidden
+>
+  <button type="button" class="nmf__backdrop" aria-label="Fechar" data-nmf-close></button>
+
+  <div class="nmf__card" role="document">
+    <button type="button" class="nmf__close" aria-label="Fechar" data-nmf-close>
+      <X size={18} aria-hidden="true" />
+    </button>
+
+    <div class="nmf__view" data-nmf-view="form">
+      <div class="nmf__icon" aria-hidden="true">
+        <Bell size={22} />
+      </div>
+      <h2 id="notify-modal-title" class="nmf__title">Te avisamos do lançamento</h2>
+      <p class="nmf__sub">
+        O <strong>My PR Gym</strong> está em produção. Deixe um contato e te chamamos quando estiver disponível.
+      </p>
+
+      <form class="nmf__form" data-nmf-form novalidate>
+        <label class="nmf__field">
+          <span>E-mail</span>
+          <input
+            type="email"
+            name="email"
+            inputmode="email"
+            autocomplete="email"
+            placeholder="seu@email.com"
+            data-nmf-email
+          />
+        </label>
+
+        <div class="nmf__divider"><span>e/ou</span></div>
+
+        <label class="nmf__field">
+          <span>WhatsApp</span>
+          <input
+            type="tel"
+            name="phone"
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="(51) 99999-9999"
+            data-nmf-phone
+          />
+        </label>
+
+        <p class="nmf__error" data-nmf-error hidden></p>
+
+        <button type="submit" class="nmf__submit" data-nmf-submit>
+          <span data-nmf-submit-label>Quero ser avisado</span>
+        </button>
+
+        <p class="nmf__legal">
+          Sem spam. Avisamos no lançamento e arquivamos. Pode pedir remoção pelo WhatsApp <a href="https://wa.me/5551982061914">(51) 98206-1914</a>.
+        </p>
+      </form>
+    </div>
+
+    <div class="nmf__view nmf__view--success" data-nmf-view="success" hidden>
+      <div class="nmf__icon nmf__icon--success" aria-hidden="true">
+        <Check size={24} />
+      </div>
+      <h2 class="nmf__title">Pronto. Vamos te avisar.</h2>
+      <p class="nmf__sub">
+        Seu cadastro foi registrado. Quando o <strong>My PR Gym</strong> estiver disponível, você é um dos primeiros a saber.
+      </p>
+      <button type="button" class="nmf__submit" data-nmf-close>Fechar</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .nmf {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    animation: nmf-in 240ms ease-out;
+  }
+  .nmf[hidden] { display: none !important; }
+  .nmf__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(1 0 42 / 0.78);
+    backdrop-filter: blur(2px);
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+  .nmf__card {
+    position: relative;
+    width: min(440px, 100%);
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
+    background: var(--color-brand-white, #fff);
+    color: var(--color-brand-navy, #01002a);
+    border: 2px solid var(--color-brand-navy, #01002a);
+    border-radius: 14px;
+    padding: 1.8rem 1.4rem 1.4rem;
+    text-align: center;
+    background-image: linear-gradient(
+      to bottom,
+      var(--color-brand-lime, #d8ff2c) 0,
+      var(--color-brand-lime, #d8ff2c) 6px,
+      var(--color-brand-white, #fff) 6px
+    );
+    box-shadow: 0 24px 60px rgb(1 0 42 / 0.35);
+  }
+  .nmf__close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgb(1 0 42 / 0.18);
+    color: var(--color-brand-navy, #01002a);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .nmf__icon {
+    margin: 0.5rem auto 0.8rem;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    background: var(--color-brand-navy, #01002a);
+    color: var(--color-brand-lime, #d8ff2c);
+    border-radius: 50%;
+  }
+  .nmf__icon--success { background: #43b02a; color: #fff; }
+
+  .nmf__title {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 1.45rem;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--color-brand-navy, #01002a);
+  }
+  .nmf__sub {
+    margin: 0 0 1.1rem;
+    color: var(--color-brand-navy, #01002a);
+    opacity: 0.78;
+    font-size: 0.94rem;
+    line-height: 1.45;
+  }
+
+  .nmf__form { display: grid; gap: 0.6rem; text-align: left; }
+  .nmf__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .nmf__field span {
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-navy, #01002a);
+    opacity: 0.7;
+  }
+  .nmf__field input {
+    padding: 0.7rem 0.85rem;
+    border: 1px solid rgb(1 0 42 / 0.2);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--color-brand-navy, #01002a);
+    background: #fff;
+  }
+  .nmf__field input:focus-visible {
+    outline: 2px solid var(--color-brand-lime, #d8ff2c);
+    outline-offset: 2px;
+    border-color: var(--color-brand-navy, #01002a);
+  }
+
+  .nmf__divider {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-align: center;
+    color: var(--color-brand-gray, #4d4d51);
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0.2rem 0;
+  }
+  .nmf__divider::before,
+  .nmf__divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgb(1 0 42 / 0.12);
+  }
+
+  .nmf__error {
+    margin: 0;
+    padding: 0.5rem 0.7rem;
+    background: rgb(218 41 28 / 0.1);
+    color: #da291c;
+    border: 1px solid rgb(218 41 28 / 0.4);
+    border-radius: 5px;
+    font-size: 0.82rem;
+  }
+
+  .nmf__submit {
+    margin-top: 0.4rem;
+    padding: 0.9rem 1rem;
+    background: var(--color-brand-lime, #d8ff2c);
+    color: var(--color-brand-navy, #01002a);
+    border: 2px solid var(--color-brand-navy, #01002a);
+    border-radius: 8px;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .nmf__submit:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 0 var(--color-brand-navy, #01002a);
+  }
+  .nmf__submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .nmf__legal {
+    margin: 0.6rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--color-brand-gray, #4d4d51);
+    text-align: center;
+  }
+  .nmf__legal a {
+    color: var(--color-brand-navy, #01002a);
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  .nmf__view--success { display: grid; gap: 0; }
+
+  @keyframes nmf-in { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .nmf { animation: none; } }
+</style>
+
+<script is:inline>
+  (function () {
+    const modal = document.querySelector("[data-notify-modal]");
+    if (!modal) return;
+    const closeBtns = modal.querySelectorAll("[data-nmf-close]");
+    const form = modal.querySelector("[data-nmf-form]");
+    const emailEl = modal.querySelector("[data-nmf-email]");
+    const phoneEl = modal.querySelector("[data-nmf-phone]");
+    const errorEl = modal.querySelector("[data-nmf-error]");
+    const submitBtn = modal.querySelector("[data-nmf-submit]");
+    const submitLabel = modal.querySelector("[data-nmf-submit-label]");
+    const formView = modal.querySelector('[data-nmf-view="form"]');
+    const successView = modal.querySelector('[data-nmf-view="success"]');
+
+    function show() {
+      modal.hidden = false;
+      document.body.style.overflow = "hidden";
+      if (formView) formView.hidden = false;
+      if (successView) successView.hidden = true;
+      setTimeout(function () { if (emailEl) emailEl.focus(); }, 30);
+    }
+    function hide() {
+      modal.hidden = true;
+      document.body.style.overflow = "";
+      if (errorEl) { errorEl.hidden = true; errorEl.textContent = ""; }
+    }
+
+    closeBtns.forEach(function (b) { b.addEventListener("click", hide); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !modal.hidden) hide();
+    });
+    document.addEventListener("notifyme:open", show);
+
+    function showError(msg) {
+      if (!errorEl) return;
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+    }
+
+    if (form) {
+      form.addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        const email = (emailEl && emailEl.value ? emailEl.value : "").trim();
+        const phone = (phoneEl && phoneEl.value ? phoneEl.value : "").trim();
+        if (errorEl) errorEl.hidden = true;
+
+        if (!email && !phone) {
+          showError("Informe pelo menos um contato — e-mail ou WhatsApp.");
+          return;
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showError("E-mail inválido.");
+          return;
+        }
+        if (phone && phone.replace(/\D/g, "").length < 8) {
+          showError("Telefone inválido.");
+          return;
+        }
+
+        let config = "";
+        try {
+          if (typeof window.__getMyPRGymConfig === "function") {
+            config = window.__getMyPRGymConfig();
+          }
+        } catch (e) {}
+
+        if (submitBtn) submitBtn.disabled = true;
+        if (submitLabel) submitLabel.textContent = "Enviando…";
+
+        fetch("/api/notify-me", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, phone: phone, config: config }),
+        })
+          .then(function (res) {
+            if (!res.ok) return res.json().then(function (data) {
+              throw new Error((data && data.error) ? data.error : "Erro ao enviar.");
+            });
+            return res.json();
+          })
+          .then(function () {
+            if (formView) formView.hidden = true;
+            if (successView) successView.hidden = false;
+          })
+          .catch(function (err) {
+            showError(err && err.message ? err.message : "Erro ao enviar. Tente de novo.");
+          })
+          .finally(function () {
+            if (submitBtn) submitBtn.disabled = false;
+            if (submitLabel) submitLabel.textContent = "Quero ser avisado";
+          });
+      });
+    }
+  })();
+</script>

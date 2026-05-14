@@ -63,8 +63,24 @@ const products = defineCollection({
         enabled: z.boolean().default(false),
         isAnilhasOnly: z.boolean().default(false),
         hasExerciseSelector: z.boolean().default(false),
+        /**
+         * "tripleBarbell": três barras independentes lado-a-lado
+         * (Supino, Agachamento, Levantamento Terra). Exclusivo do
+         * My PR Gym — renderiza o `TripleBarbellConfigurator`.
+         */
+        isTripleBarbell: z.boolean().default(false),
       })
-      .default({ enabled: false, isAnilhasOnly: false, hasExerciseSelector: false }),
+      .default({
+        enabled: false,
+        isAnilhasOnly: false,
+        hasExerciseSelector: false,
+        isTripleBarbell: false,
+      }),
+    /**
+     * Marca o produto como "EM BREVE". O `[slug].astro` substitui o
+     * botão de Adicionar ao carrinho por um formulário Notify-me.
+     */
+    comingSoon: z.boolean().default(false),
     featured: z.boolean().default(false),
     priority: z.number().int().default(100),
     seo: z

@@ -5,6 +5,8 @@ import Footer from "~/components/Footer.astro";
 import CartDrawer from "~/components/CartDrawer.astro";
 import CookieBanner from "~/components/CookieBanner.astro";
 import FloatingActions from "~/components/FloatingActions.astro";
+import FreteGratisBanner from "~/components/FreteGratisBanner.astro";
+import FreteGratisPopup from "~/components/FreteGratisPopup.astro";
 import SEO from "~/components/SEO.astro";
 import Analytics from "~/components/Analytics.astro";
 
@@ -131,6 +133,7 @@ const {
   </head>
 
   <body>
+    {!hideHeader && <FreteGratisBanner />}
     {!hideHeader && <Header transparent={transparentHeader} />}
 
     <main id="main">
@@ -141,6 +144,7 @@ const {
 
     <CartDrawer />
     <CookieBanner />
+    {!hideHeader && <FreteGratisPopup />}
     {!hideFloatingActions && <FloatingActions />}
 
     <!-- Preload the cart script so badge renders from localStorage on first paint -->

@@ -6,6 +6,8 @@ import SpecsTable from "~/components/SpecsTable.astro";
 import FAQAccordion from "~/components/FAQAccordion.astro";
 import AddToCartSimple from "~/components/AddToCartSimple.astro";
 import BarbellConfigurator from "~/components/BarbellConfigurator.astro";
+import TripleBarbellConfigurator from "~/components/TripleBarbellConfigurator.astro";
+import NotifyMeForm from "~/components/NotifyMeForm.astro";
 import TrackViewContent from "~/components/TrackViewContent.astro";
 import { formatBRL, centsToReaisString } from "~/lib/format";
 import { CATEGORY_LABELS } from "~/lib/catalog";
@@ -38,6 +40,7 @@ const {
   faq,
   sizes,
   configurator,
+  comingSoon,
   seo,
 } = product.data;
 
@@ -56,7 +59,9 @@ const jsonLd = {
     "@type": "Offer",
     priceCurrency: "BRL",
     price: centsToReaisString(priceBase),
-    availability: "https://schema.org/InStock",
+    availability: comingSoon
+      ? "https://schema.org/PreOrder"
+      : "https://schema.org/InStock",
     url: `${SITE_URL}/product/${slug}`,
     seller: { "@type": "Organization", name: "PR Tracker" },
     // Pré-requisitos do Google Merchant Center pra eligibilidade em
@@ -147,12 +152,19 @@ const metaDescription = seo.metaDescription ?? shortDescription;
 
       <div class="product__info">
         <p class="product__category">{categoryLabel}</p>
+        {comingSoon && <span class="product__coming-soon">EM BREVE</span>}
         <h1 class="product__title">{title}</h1>
         {tagline && <p class="product__tagline">{tagline}</p>}
         <p class="product__short">{shortDescription}</p>
 
         <div class="product__buy">
-          {configurator.enabled ? (
+          {configurator.isTripleBarbell ? (
+            <TripleBarbellConfigurator
+              slug={slug}
+              title={title}
+              basePriceCents={priceBase}
+            />
+          ) : configurator.enabled ? (
             <BarbellConfigurator
               slug={slug}
               title={title}
@@ -176,6 +188,8 @@ const metaDescription = seo.metaDescription ?? shortDescription;
       </div>
     </div>
   </section>
+
+  {comingSoon && <NotifyMeForm />}
 
   <!-- Long description + specs + FAQ -->
   <section class="product-details">
@@ -249,6 +263,19 @@ const metaDescription = seo.metaDescription ?? shortDescription;
     text-transform: uppercase;
     color: var(--color-brand-gray);
     margin: 0 0 0.75rem;
+  }
+  .product__coming-soon {
+    display: inline-block;
+    margin: 0 0 0.65rem;
+    padding: 0.28rem 0.7rem;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    border: 1px solid var(--color-brand-navy);
+    border-radius: 3px;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
   }
   .product__title {
     font-size: clamp(1.875rem, 2.5vw + 1rem, 2.75rem);

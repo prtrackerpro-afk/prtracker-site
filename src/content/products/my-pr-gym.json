@@ -1,0 +1,38 @@
+{
+  "slug": "my-pr-gym",
+  "title": "My PR Gym",
+  "tagline": "O gym inteiro virou troféu.",
+  "category": "pr-trackers",
+  "priceBase": 37900,
+  "priceFrom": true,
+  "comingSoon": true,
+  "shipping": { "weight_g": 900, "length_cm": 30, "width_cm": 22, "height_cm": 14 },
+  "shortDescription": "Power rack + banco de supino + plataforma de deadlift em uma única peça. Três barras independentes que você configura com o peso de cada PR — Supino, Agachamento e Levantamento Terra.",
+  "longDescriptionHtml": "<p>O <strong>My PR Gym</strong> é a maior expressão da PR Tracker: um gym completo em miniatura, com <strong>3 barras independentes</strong> para representar os três grandes do treino — Supino, Agachamento e Levantamento Terra.</p><p>Cada barra é configurável separadamente. Você pode reproduzir três PRs distintos em uma única peça e atualizar à medida que evolui no treino.</p><p>A base inclui power rack em alumínio usinado, banco de supino e plataforma de deadlift com acabamento MDF + borracha. Tudo proporcional, sem parecer brinquedo, sem parecer souvenir.</p><p><strong>Em breve disponível.</strong> Deixe seu contato para ser um dos primeiros a saber do lançamento.</p>",
+  "images": [
+    { "src": "/images/products/my-pr-gym/hero.jpg", "alt": "My PR Gym — power rack + banco de supino + plataforma de deadlift" },
+    { "src": "/images/products/my-pr-gym/diagonal.jpg", "alt": "My PR Gym — vista diagonal" }
+  ],
+  "specs": [
+    { "label": "Power rack", "value": "Alumínio · 150 × 100 × 100 mm" },
+    { "label": "Banco de supino", "value": "Alumínio · 85 × 100 × 100 mm" },
+    { "label": "Plataforma de deadlift", "value": "MDF + borracha" },
+    { "label": "Barras", "value": "3 × aço inoxidável usinado · 220 × Ø 5 mm" },
+    { "label": "Anilhas", "value": "Plástico ABS · Ø 42 mm · padrão olímpico" },
+    { "label": "Presilhas", "value": "Aço (mini)" }
+  ],
+  "faq": [
+    { "question": "Quando o My PR Gym vai estar disponível?", "answer": "Está em produção. Clique em \"Notifique-me quando lançar\" e a gente te avisa pelo seu e-mail ou WhatsApp assim que o produto entrar em estoque." },
+    { "question": "Posso configurar as 3 barras com PRs diferentes?", "answer": "Sim. Cada barra é independente — você escolhe o peso (anilhas) de cada uma separadamente para representar Supino, Agachamento e Levantamento Terra." },
+    { "question": "O kit inclui as 3 barras e as anilhas?", "answer": "Sim. O My PR Gym é vendido como peça completa: power rack + banco de supino + plataforma de deadlift + 3 barras + jogo de anilhas para configurar cada uma." },
+    { "question": "Quanto tempo leva para receber depois do lançamento?", "answer": "Despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." }
+  ],
+  "configurator": {
+    "enabled": true,
+    "isAnilhasOnly": false,
+    "hasExerciseSelector": false,
+    "isTripleBarbell": true
+  },
+  "featured": true,
+  "priority": 5
+}

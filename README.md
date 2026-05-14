@@ -135,7 +135,7 @@ Os produtos vivem como JSONs em `src/content/products/`. Cada arquivo é validad
 Para **editar um produto** (preço, descrição, imagens):
 
 1. Abra `src/content/products/<slug>.json`
-2. Ajuste os campos. **Preços são em centavos** (14990 = R$ 149,90).
+2. Ajuste os campos. **Preços são em centavos** (16900 = R$ 169,00).
 3. Salve — hot-reload atualiza a página.
 
 Para **adicionar um produto novo**:
@@ -203,10 +203,10 @@ Para Pix, aplica o desconto de 5% como um item negativo na preferência MP (o MP
 
 ### Configurador (checklist do BRIEF)
 
-- Power Rack Set com 2 pares de 25 kg → peso total **120 kg** (20 barra + 4 × 25), preço **R$ 179,90**, Pix **R$ 170,91**.
+- Power Rack Set com 2 pares de 25 kg → peso total **120 kg** (20 barra + 4 × 25), preço **R$ 183,00**, Pix **R$ 173,85**.
 - Adicionar mais de 45mm de anilhas por lado → botão desabilita com "Remova anilhas".
 - My PR Set → dropdown mostra os 20 exercícios.
-- Anilhas Avulsas → sem barra renderizada; preço começa em R$ 10,00 após selecionar o primeiro par; botão "Selecione anilhas" até ter seleção válida.
+- Anilhas Avulsas → sem barra renderizada; preço começa em R$ 7,00 após selecionar o primeiro par; botão "Selecione anilhas" até ter seleção válida.
 
 ### Cart / checkout
 

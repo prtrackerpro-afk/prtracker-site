@@ -1,0 +1,397 @@
+---
+/**
+ * Pop-up de boas-vindas que distribui o cupom `fretegratis`.
+ *
+ * Aparece UMA vez por janela de 2 h por máquina (controlado pelo mesmo
+ * `prt_fretegratis_started_at` em localStorage que o FreteGratisBanner
+ * usa).
+ *
+ * Fluxo:
+ *   1. Página carrega.
+ *   2. Se não existe timestamp em localStorage OU o timestamp expirou
+ *      (> 2 h), o pop-up aparece após ~700 ms (tempo curto pra UX não
+ *      sentir bloqueio imediato, mas rápido o bastante pra capturar
+ *      atenção antes de scroll).
+ *   3. Usuário fecha (X, ESC, clique no backdrop ou no CTA "Quero") →
+ *      gravamos `Date.now()` no localStorage.
+ *   4. O banner do topo passa a mostrar o countdown e o pop-up não
+ *      reaparece até o timer zerar.
+ *
+ * NÃO aparece em /checkout (usuário já em conversão; popup só atrapalha).
+ */
+import Sparkles from "@lucide/astro/icons/sparkles";
+import X from "@lucide/astro/icons/x";
+import Truck from "@lucide/astro/icons/truck";
+import Copy from "@lucide/astro/icons/copy";
+---
+
+<div
+  class="fg-popup"
+  data-fretegratis-popup
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="fretegratis-popup-title"
+  hidden
+>
+  <button
+    type="button"
+    class="fg-popup__backdrop"
+    aria-label="Fechar"
+    data-fg-close
+  ></button>
+
+  <div class="fg-popup__card" role="document">
+    <button
+      type="button"
+      class="fg-popup__close"
+      aria-label="Fechar"
+      data-fg-close
+    >
+      <X size={18} aria-hidden="true" />
+    </button>
+
+    <p class="fg-popup__eyebrow">
+      <Sparkles size={14} aria-hidden="true" />
+      <span>OFERTA POR TEMPO LIMITADO</span>
+    </p>
+
+    <h2 id="fretegratis-popup-title" class="fg-popup__title">
+      Frete grátis pra você
+    </h2>
+    <p class="fg-popup__subtitle">
+      <Truck size={16} aria-hidden="true" />
+      <span>Em compras acima de <strong>R$ 100</strong> · qualquer canto do Brasil</span>
+    </p>
+
+    <div class="fg-popup__coupon">
+      <span class="fg-popup__coupon-label">CUPOM</span>
+      <code class="fg-popup__coupon-code" data-fg-coupon>FRETEGRATIS</code>
+      <button
+        type="button"
+        class="fg-popup__coupon-copy"
+        data-fg-copy
+        aria-label="Copiar cupom"
+      >
+        <Copy size={14} aria-hidden="true" />
+        <span data-fg-copy-text>copiar</span>
+      </button>
+    </div>
+
+    <p class="fg-popup__small">
+      Use no checkout. Aplica frete grátis na modalidade mais barata. Validade do timer: <strong>2 horas</strong>.
+    </p>
+
+    <button type="button" class="fg-popup__cta" data-fg-claim>
+      Quero o frete grátis
+    </button>
+
+    <p class="fg-popup__legal">
+      Cupom de cortesia — não cumulativo com outros descontos de frete.
+    </p>
+  </div>
+</div>
+
+<style>
+  /* The modal sits *above* everything else but uses pointer-events: none
+     on the wrapper, so clicks fall through when hidden. */
+  .fg-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    animation: fg-popup-in 240ms ease-out;
+  }
+  .fg-popup[hidden] { display: none !important; }
+
+  .fg-popup__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(1 0 42 / 0.78);
+    backdrop-filter: blur(2px);
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .fg-popup__card {
+    position: relative;
+    width: min(420px, 100%);
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
+    background: var(--color-brand-white, #fff);
+    color: var(--color-brand-navy, #01002a);
+    border-radius: 14px;
+    padding: 2rem 1.6rem 1.5rem;
+    box-shadow: 0 24px 60px rgb(1 0 42 / 0.35);
+    text-align: center;
+    border: 2px solid var(--color-brand-navy, #01002a);
+    /* Slight lime band at top */
+    background-image: linear-gradient(
+      to bottom,
+      var(--color-brand-lime, #d8ff2c) 0,
+      var(--color-brand-lime, #d8ff2c) 6px,
+      var(--color-brand-white, #fff) 6px
+    );
+  }
+
+  .fg-popup__close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgb(1 0 42 / 0.18);
+    color: var(--color-brand-navy, #01002a);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 120ms ease, transform 120ms ease;
+  }
+  .fg-popup__close:hover {
+    background: rgb(1 0 42 / 0.06);
+    transform: scale(1.06);
+  }
+
+  .fg-popup__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.4rem 0 0.9rem;
+    padding: 0.25rem 0.7rem;
+    background: var(--color-brand-navy, #01002a);
+    color: var(--color-brand-lime, #d8ff2c);
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 800;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-radius: 4px;
+  }
+
+  .fg-popup__title {
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: clamp(1.65rem, 2.5vw + 0.8rem, 2.1rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.6rem;
+    color: var(--color-brand-navy, #01002a);
+    text-transform: uppercase;
+  }
+
+  .fg-popup__subtitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1.25rem;
+    color: var(--color-brand-navy, #01002a);
+    opacity: 0.78;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+  .fg-popup__subtitle strong { font-weight: 800; opacity: 1; }
+
+  .fg-popup__coupon {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    background: var(--color-brand-navy, #01002a);
+    color: var(--color-brand-white, #fff);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    text-align: left;
+  }
+  .fg-popup__coupon-label {
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    color: var(--color-brand-lime, #d8ff2c);
+    text-transform: uppercase;
+  }
+  .fg-popup__coupon-code {
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 1.15rem;
+    letter-spacing: 0.12em;
+    text-align: center;
+  }
+  .fg-popup__coupon-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.65rem;
+    background: var(--color-brand-lime, #d8ff2c);
+    color: var(--color-brand-navy, #01002a);
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: filter 120ms ease;
+  }
+  .fg-popup__coupon-copy:hover { filter: brightness(1.05); }
+  .fg-popup__coupon-copy[data-copied="true"] {
+    background: #43b02a;
+    color: #fff;
+  }
+
+  .fg-popup__small {
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--color-brand-navy, #01002a);
+    opacity: 0.65;
+    margin: 0 0 1.1rem;
+  }
+  .fg-popup__small strong { opacity: 1; font-weight: 800; }
+
+  .fg-popup__cta {
+    display: block;
+    width: 100%;
+    padding: 0.95rem 1rem;
+    background: var(--color-brand-lime, #d8ff2c);
+    color: var(--color-brand-navy, #01002a);
+    border: 2px solid var(--color-brand-navy, #01002a);
+    border-radius: 8px;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+    margin-bottom: 0.85rem;
+  }
+  .fg-popup__cta:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 0 var(--color-brand-navy, #01002a);
+    filter: brightness(1.03);
+  }
+  .fg-popup__cta:active { transform: translate(0, 0); box-shadow: none; }
+
+  .fg-popup__legal {
+    margin: 0;
+    font-size: 0.7rem;
+    color: var(--color-brand-navy, #01002a);
+    opacity: 0.45;
+    line-height: 1.4;
+  }
+
+  @keyframes fg-popup-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fg-popup { animation: none; }
+  }
+
+  @media (max-width: 480px) {
+    .fg-popup__card {
+      padding: 1.6rem 1.2rem 1.2rem;
+    }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const STORAGE_KEY = "prt_fretegratis_started_at";
+    const DURATION_MS = 2 * 60 * 60 * 1000;
+    const SHOW_DELAY_MS = 700;
+
+    function isTimerActive() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const ts = parseInt(raw, 10);
+        if (!Number.isFinite(ts)) return false;
+        return ts + DURATION_MS > Date.now();
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function startTimer() {
+      try {
+        localStorage.setItem(STORAGE_KEY, String(Date.now()));
+        document.dispatchEvent(new CustomEvent("fretegratis:started"));
+      } catch (e) {
+        // localStorage blocked (private mode) — banner just won't persist.
+      }
+    }
+
+    function init() {
+      const popup = document.querySelector("[data-fretegratis-popup]");
+      if (!popup) return;
+
+      // Skip popup on the checkout flow — user is converting, don't interrupt.
+      if (location.pathname.startsWith("/checkout")) {
+        popup.remove();
+        return;
+      }
+
+      const closeBtns = popup.querySelectorAll("[data-fg-close]");
+      const claimBtn = popup.querySelector("[data-fg-claim]");
+      const copyBtn = popup.querySelector("[data-fg-copy]");
+      const copyText = popup.querySelector("[data-fg-copy-text]");
+      const couponEl = popup.querySelector("[data-fg-coupon]");
+
+      function show() {
+        popup.hidden = false;
+        document.body.style.overflow = "hidden";
+      }
+      function hide() {
+        popup.hidden = true;
+        document.body.style.overflow = "";
+        startTimer();
+      }
+
+      closeBtns.forEach(function (btn) { btn.addEventListener("click", hide); });
+      if (claimBtn) claimBtn.addEventListener("click", hide);
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape" && !popup.hidden) hide();
+      });
+
+      if (copyBtn) {
+        copyBtn.addEventListener("click", function () {
+          const code = (couponEl && couponEl.textContent ? couponEl.textContent : "FRETEGRATIS").trim();
+          const done = function () {
+            copyBtn.dataset.copied = "true";
+            if (copyText) copyText.textContent = "copiado";
+            setTimeout(function () {
+              copyBtn.dataset.copied = "false";
+              if (copyText) copyText.textContent = "copiar";
+            }, 1800);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(done).catch(function () {});
+          }
+        });
+      }
+
+      if (!isTimerActive()) {
+        setTimeout(show, SHOW_DELAY_MS);
+      } else {
+        popup.remove();
+      }
+
+      document.addEventListener("fretegratis:expired", function () {
+        if (popup.isConnected) show();
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  })();
+</script>
