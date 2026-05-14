@@ -15,14 +15,15 @@ const products = await getCollection("products");
 const prTrackersAll = products
   .filter((p) => p.data.category === "pr-trackers")
   .sort((a, b) => a.data.priority - b.data.priority);
-// Home carousel loop order (Bench Press ← Deadlift → My PR Set → Power Rack → …).
-// Deadlift is index 1 so it lands centred on load; Bench Press peeks to the
-// left, My PR Set peeks to the right.
+// Home carousel loop order. Adicionado My PR Gym ao final para ancorar
+// visualmente o preço dos outros (R$ 379 EM BREVE faz Power Rack a
+// R$ 169 parecer mais acessível).
 const carouselOrder = [
   "bench-press-set",
   "deadlift-set",
   "my-pr-set",
   "power-rack-set",
+  "my-pr-gym",
 ] as const;
 const prTrackers = carouselOrder.map(
   (slug) => prTrackersAll.find((p) => p.data.slug === slug)!,
@@ -778,8 +779,11 @@ const jsonLd = [
     .product-carousel .pc-slide { flex-basis: calc(50% - 0.625rem); }
   }
   @media (min-width: 1024px) {
-    /* Desktop: all 4 cards fit, no peeks, no arrows. */
-    .product-carousel .pc-slide { flex-basis: calc(25% - 0.9375rem); }
+    /* Desktop: todos os 5 cards do catálogo (4 sets + My PR Gym EM BREVE)
+       cabem na mesma linha. Anteriormente era 25% (4 cards) — quando o
+       My PR Gym entrou, o 5º ficava fora da viewport sem nav arrow visível
+       no desktop. */
+    .product-carousel .pc-slide { flex-basis: calc(20% - 1rem); }
     .product-carousel .carousel__track { padding: 1rem 0.25rem 1.5rem; }
     .product-carousel .carousel__nav { display: none; }
     .product-carousel .carousel__dots { display: none; }

@@ -192,6 +192,42 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
       </section>
     )}
 
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Sincronização de preços</div>
+            <p class="mt-1 text-sm text-navy-200">
+              Compara o preço-base canônico do site
+              (<code class="text-brand-lime">src/content/products/*.json</code> +
+              <code class="text-brand-lime">catalog.PLATES</code>) com o preço cadastrado em
+              cada produto Bling. Reajustes no site NÃO se propagam ao Bling
+              automaticamente — use este botão sempre que mudar a tabela de preços.
+            </p>
+          </div>
+          <div class="flex flex-col gap-2 items-end">
+            <button
+              id="audit-prices-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg border border-brand-lime text-brand-lime hover:bg-brand-lime/10 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+            >
+              Auditar preços
+            </button>
+            <button
+              id="sync-prices-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50 hidden"
+            >
+              Aplicar no Bling
+            </button>
+          </div>
+        </div>
+        <div id="audit-prices-result" class="mt-4 text-sm text-navy-300">
+          <span class="text-navy-400">Clica em "Auditar preços" pra ver divergências antes de aplicar.</span>
+        </div>
+      </section>
+    )}
+
     <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
         <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Sincronizados</div>
@@ -633,6 +669,155 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
         } finally {
           auditBtn.disabled = false;
           auditBtn.textContent = "Auditar produtos";
+        }
+      });
+    }
+
+    // ============================================================
+    // Sincronização de preços site → Bling (audit + apply)
+    // ============================================================
+    const auditPricesBtn = document.getElementById("audit-prices-btn") as HTMLButtonElement | null;
+    const syncPricesBtn = document.getElementById("sync-prices-btn") as HTMLButtonElement | null;
+    const pricesResult = document.getElementById("audit-prices-result");
+
+    if (auditPricesBtn && syncPricesBtn && pricesResult) {
+      type PriceRow = {
+        blingId: number;
+        codigo: string;
+        nome: string;
+        sourceLabel: string;
+        sitePriceBRL: number;
+        blingPriceBRL: number | null;
+        drifted: boolean;
+        diffBRL: number | null;
+      };
+
+      function escapeHtml2(s: string): string {
+        return s.replace(/[&<>"]/g, (c) =>
+          c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+        );
+      }
+      function fmtBRL(n: number | null | undefined): string {
+        if (n == null) return "—";
+        return `R$ ${n.toFixed(2).replace(".", ",")}`;
+      }
+      function fmtDiff(n: number | null): string {
+        if (n == null) return "—";
+        const sign = n > 0 ? "+" : "";
+        const cls = n > 0 ? "text-green-300" : n < 0 ? "text-red-300" : "text-navy-300";
+        return `<span class="${cls}">${sign}${fmtBRL(n)}</span>`;
+      }
+      function renderPricesTable(rows: PriceRow[], missingInBling: string[]): string {
+        const rowsHtml = rows.map((r) => {
+          const driftBadge = r.drifted
+            ? '<span class="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">drift</span>'
+            : '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">ok</span>';
+          return `
+            <tr class="hover:bg-navy-700/30">
+              <td class="px-3 py-2">${driftBadge}</td>
+              <td class="px-3 py-2"><span class="font-mono text-brand-lime">${escapeHtml2(r.codigo)}</span></td>
+              <td class="px-3 py-2 text-navy-200">${escapeHtml2(r.nome)}<div class="mt-0.5 text-[10px] text-navy-500 font-mono">${escapeHtml2(r.sourceLabel)}</div></td>
+              <td class="px-3 py-2 text-right text-navy-300">${fmtBRL(r.blingPriceBRL)}</td>
+              <td class="px-3 py-2 text-right font-medium">${fmtBRL(r.sitePriceBRL)}</td>
+              <td class="px-3 py-2 text-right">${fmtDiff(r.diffBRL)}</td>
+            </tr>
+          `;
+        }).join("");
+        const missingHtml = missingInBling.length > 0
+          ? `<p class="mt-3 text-xs text-amber-300">⚠️ SKUs canônicos que ainda não existem no Bling (nunca foram vendidos): <code class="font-mono">${missingInBling.map(escapeHtml2).join(", ")}</code></p>`
+          : "";
+        return `
+          <div class="overflow-x-auto rounded border border-navy-700">
+            <table class="w-full text-sm">
+              <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
+                <tr>
+                  <th class="text-left px-3 py-2">Status</th>
+                  <th class="text-left px-3 py-2">SKU</th>
+                  <th class="text-left px-3 py-2">Nome / Fonte</th>
+                  <th class="text-right px-3 py-2">Bling agora</th>
+                  <th class="text-right px-3 py-2">Site (alvo)</th>
+                  <th class="text-right px-3 py-2">Δ</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-navy-700/60">${rowsHtml}</tbody>
+            </table>
+          </div>
+          ${missingHtml}
+        `;
+      }
+
+      auditPricesBtn.addEventListener("click", async () => {
+        auditPricesBtn.disabled = true;
+        auditPricesBtn.textContent = "Auditando…";
+        pricesResult.innerHTML = '<span class="text-navy-400">Buscando todos os produtos do Bling…</span>';
+        syncPricesBtn.classList.add("hidden");
+        try {
+          const res = await fetch("/api/admin/bling/audit-prices");
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            pricesResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml2(data.error ?? res.statusText)}</span>`;
+            return;
+          }
+          const rows: PriceRow[] = data.rows ?? [];
+          const summary = data.summary ?? {};
+          const missing: string[] = data.missingInBling ?? [];
+          if (rows.length === 0) {
+            pricesResult.innerHTML = '<span class="text-amber-300">Nenhum produto canônico encontrado no Bling.</span>';
+            return;
+          }
+          pricesResult.innerHTML = `
+            <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
+              <span class="rounded bg-navy-700 px-2 py-0.5">${summary.total_canonical ?? rows.length} canônicos</span>
+              <span class="rounded bg-amber-500/20 text-amber-300 px-2 py-0.5">${summary.drifted ?? 0} com drift</span>
+              <span class="rounded bg-green-500/20 text-green-300 px-2 py-0.5">${summary.aligned ?? 0} alinhados</span>
+              ${missing.length ? `<span class="rounded bg-navy-700 text-navy-300 px-2 py-0.5">${missing.length} ainda não no Bling</span>` : ""}
+            </div>
+            ${renderPricesTable(rows, missing)}
+          `;
+          const driftedCount = summary.drifted ?? 0;
+          if (driftedCount > 0) {
+            syncPricesBtn.classList.remove("hidden");
+            syncPricesBtn.textContent = `Aplicar ${driftedCount} preço${driftedCount === 1 ? "" : "s"} no Bling`;
+          }
+        } catch (e) {
+          pricesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml2(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          auditPricesBtn.disabled = false;
+          auditPricesBtn.textContent = "Auditar preços";
+        }
+      });
+
+      syncPricesBtn.addEventListener("click", async () => {
+        const proceed = window.confirm(
+          "Vai atualizar o preço cadastrado dos produtos drifted no Bling.\nIsso pode propagar pra marketplaces integrados via Bling.\nConfirma?"
+        );
+        if (!proceed) return;
+        syncPricesBtn.disabled = true;
+        const orig = syncPricesBtn.textContent;
+        syncPricesBtn.textContent = "Aplicando…";
+        try {
+          const res = await fetch("/api/admin/bling/sync-prices", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            pricesResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml2(data.error ?? res.statusText)}</span>` + (pricesResult.innerHTML || "");
+            return;
+          }
+          const applied = data.applied?.length ?? 0;
+          const errors = data.errors?.length ?? 0;
+          const summary = errors === 0
+            ? `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ ${applied} preço${applied === 1 ? "" : "s"} sincronizado${applied === 1 ? "" : "s"} no Bling. Rode "Auditar preços" de novo pra confirmar.</div>`
+            : `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} aplicado(s), ${errors} erro(s): <code>${escapeHtml2(JSON.stringify(data.errors))}</code></div>`;
+          pricesResult.innerHTML = summary + pricesResult.innerHTML;
+          syncPricesBtn.classList.add("hidden");
+        } catch (e) {
+          pricesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml2(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          syncPricesBtn.disabled = false;
+          syncPricesBtn.textContent = orig ?? "Aplicar no Bling";
         }
       });
     }
