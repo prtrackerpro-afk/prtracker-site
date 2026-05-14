@@ -155,6 +155,14 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    /* Quando o countdown está ativo, "FRETE GRÁTIS ACIMA DE R$ 100"
+       não cabe junto com "EXPIRA EM 01:59:10" em telas estreitas.
+       O usuário já viu o "acima de R$ 100" no pop-up; o banner só
+       precisa do code + timer pra ser informativo. */
+    .fg-banner.is-counting .fg-banner__main .fg-banner__sep,
+    .fg-banner.is-counting .fg-banner__copy {
+      display: none;
+    }
   }
 </style>
 
@@ -189,6 +197,7 @@
         if (!Number.isFinite(startedAt)) {
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
+          banner.classList.remove("is-counting");
           copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
           return;
         }
@@ -197,11 +206,13 @@
           try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
+          banner.classList.remove("is-counting");
           copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
           document.dispatchEvent(new CustomEvent("fretegratis:expired"));
           return;
         }
         countdownEl.hidden = false;
+        banner.classList.add("is-counting");
         copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100 ·";
         countdownValueEl.textContent = format(remaining);
       }
