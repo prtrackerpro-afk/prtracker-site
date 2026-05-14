@@ -21,6 +21,7 @@ import { getCollection } from "astro:content";
 import { listAllProducts, type BlingProduct } from "~/lib/bling/products";
 import { isConnected } from "~/lib/bling/oauth";
 import { PLATES } from "~/lib/catalog";
+import { evaluateBlingPriceDrift } from "~/lib/admin/alerts-engine";
 
 export const prerender = false;
 
@@ -163,6 +164,15 @@ export const GET: APIRoute = async () => {
       aligned: rows.filter((r) => !r.drifted).length,
       missing_in_bling: missingInBling.length,
     };
+
+    // Side-effect: ao auditar, sincronizamos os alerts proativos.
+    // Cria alerts pros SKUs drifted (idempotente) e auto-resolve os que
+    // voltaram a bater. Falha aqui não bloqueia a resposta (read-only).
+    try {
+      await evaluateBlingPriceDrift();
+    } catch (alertErr) {
+      console.warn("[audit-prices] evaluateBlingPriceDrift failed:", alertErr);
+    }
 
     return new Response(
       JSON.stringify({ summary, rows, missingInBling }),

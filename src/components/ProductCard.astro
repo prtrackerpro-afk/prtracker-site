@@ -31,7 +31,11 @@ const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
 
 <a href={`/product/${slug}`} class="product-card" aria-label={`${title} — ver produto`}>
   <div class="product-card__media">
-    {comingSoon && <span class="product-card__badge">EM BREVE</span>}
+    {comingSoon && (
+      <span class="product-card__badge-anchor" aria-hidden="true">
+        <span class="product-card__badge">EM BREVE</span>
+      </span>
+    )}
     <picture>
       {hasVariants && <source type="image/avif" srcset={`${variantBase}.avif`} />}
       {hasVariants && <source type="image/webp" srcset={`${variantBase}.webp`} />}
@@ -50,17 +54,21 @@ const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
 
   <div class="product-card__body">
     <h3 class="product-card__title">{title}</h3>
-    {tagline && <p class="product-card__tagline">{tagline}</p>}
+    <div class="product-card__tagline-slot">
+      {tagline && <p class="product-card__tagline">{tagline}</p>}
+    </div>
 
-    <p class="product-card__price">
-      {priceFrom && <span class="product-card__price-prefix">A partir de</span>}
-      <span class="product-card__price-value">{formatBRL(priceBase)}</span>
-    </p>
+    <div class="product-card__footer">
+      <p class="product-card__price">
+        {priceFrom && <span class="product-card__price-prefix">A partir de</span>}
+        <span class="product-card__price-value">{formatBRL(priceBase)}</span>
+      </p>
 
-    <span class="product-card__cta" aria-hidden="true">
-      <span>{comingSoon ? "NOTIFIQUE-ME" : "SAIBA MAIS"}</span>
-      <ArrowRight size={16} />
-    </span>
+      <span class="product-card__cta" aria-hidden="true">
+        <span>{comingSoon ? "NOTIFIQUE-ME" : "SAIBA MAIS"}</span>
+        <ArrowRight size={16} />
+      </span>
+    </div>
   </div>
 </a>
 
@@ -99,22 +107,38 @@ const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
     overflow: hidden;
     border-bottom: 1px solid rgb(1 0 42 / 0.08);
   }
+  /* Badge "EM BREVE" rotacionado 45° no canto inferior direito.
+     Wrapper de 90×90px ancorado no canto, com `overflow: hidden` próprio,
+     pra a faixa rotacionada nunca extrapolar a media area. */
+  .product-card__badge-anchor {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 90px;
+    height: 90px;
+    overflow: hidden;
+    z-index: 2;
+    pointer-events: none;
+  }
   .product-card__badge {
     position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 2;
-    padding: 0.28rem 0.6rem;
+    bottom: 18px;
+    right: -26px;
+    width: 140px;
+    padding: 0.32rem 0;
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
-    border: 1px solid var(--color-brand-navy);
-    border-radius: 3px;
+    border-top: 1px solid var(--color-brand-navy);
+    border-bottom: 1px solid var(--color-brand-navy);
     font-family: var(--font-display);
     font-weight: 900;
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     letter-spacing: 0.16em;
     line-height: 1;
     text-transform: uppercase;
+    text-align: center;
+    transform: rotate(-45deg);
+    box-shadow: 0 2px 6px rgb(1 0 42 / 0.18);
   }
   .product-card__img {
     width: 100%;
@@ -132,6 +156,26 @@ const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
     gap: 0.35rem;
     text-align: center;
     flex: 1;
+  }
+  /* Tagline ocupa altura fixa de 2 linhas pra alinhar verticalmente os
+     blocos `A partir de / preço / CTA` entre todos os cards da grid,
+     mesmo quando uma tagline quebra (ex: "Seu LPO favorito está aqui."
+     vs "O mais bruto dos PRs."). */
+  .product-card__tagline-slot {
+    min-height: calc(2 * 1.4em);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+  /* Bloco preço + CTA empurrado pro fim do card; alinha bottom em todos. */
+  .product-card__footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
   }
   .product-card__title {
     font-family: var(--font-display);

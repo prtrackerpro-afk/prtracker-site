@@ -27,6 +27,7 @@ import {
 } from "~/lib/bling/products";
 import { isConnected } from "~/lib/bling/oauth";
 import { PLATES } from "~/lib/catalog";
+import { evaluateBlingPriceDrift } from "~/lib/admin/alerts-engine";
 
 export const prerender = false;
 
@@ -170,6 +171,16 @@ export const POST: APIRoute = async ({ request }) => {
           status: "error",
           error: msg,
         });
+      }
+    }
+
+    // Após aplicar, re-avalia os alerts pra auto-resolver os que
+    // ficaram alinhados. Skip em dryRun (nada mudou no Bling).
+    if (!dryRun) {
+      try {
+        await evaluateBlingPriceDrift();
+      } catch (alertErr) {
+        console.warn("[sync-prices] evaluateBlingPriceDrift failed:", alertErr);
       }
     }
 
