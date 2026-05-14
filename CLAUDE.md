@@ -59,6 +59,7 @@ Miniaturas em formato de equipamentos e movimentos de musculação/força, repre
 - **My PR Set** — "Seu LPO favorito está aqui!" (o mais personalizável — 20 exercícios)
 - **Power Rack Set** — "Para quem ama agachamento!"
 - **Bench Press Set** — "Supino que virou troféu!"
+- **My PR Gym** — EM BREVE. Gym completo em miniatura: power rack + bench + plataforma de deadlift + 3 barras (Supino, Agachamento, Levantamento Terra) configuráveis. Cadastro de interesse para aviso de lançamento.
 - **Anilhas Avulsas** — pares adicionais para atualizar qualquer set
 - **Camisetas** — linha de vestuário (Masculina e Feminina Baby Look)
 
@@ -97,28 +98,31 @@ A combinação de materiais resulta em uma peça com aparência premium, proporc
 
 ---
 
-## Preços oficiais (site rebuild — abril 2026)
+## Preços oficiais (reprecificação — maio 2026)
+
+> Estratégia: aumentamos o preço-base dos kits e reduzimos o preço das anilhas avulsas (para baixar friction no add-to-cart de upgrade), além de zerar o frete acima de R$ 100 — embutido na margem do kit. Cria âncora psicológica forte: anilhas baratas, kits "premium" e o novo **My PR Gym** (R$ 379) faz os outros parecerem ainda mais acessíveis.
 
 ### Kits (preço base, sistema "Monte sua barra")
 
 | Produto | A partir de |
 |---------|------------:|
-| Deadlift Set | R$ 119,90 |
-| My PR Set | R$ 134,90 |
-| Power Rack Set | R$ 149,90 |
-| Bench Press Set | R$ 169,90 |
+| Deadlift Set | R$ 149,00 |
+| My PR Set | R$ 159,00 |
+| Power Rack Set | R$ 169,00 |
+| Bench Press Set | R$ 189,00 |
+| **My PR Gym** (EM BREVE) | R$ 379,00 |
 
 ### Anilhas avulsas (tabela única — mesmo preço em qualquer set)
 
 | Peso | Preço/par | Máx. pares |
 |------|----------:|:----------:|
-| 25 kg | R$ 15,00 | 4 |
-| 20 kg | R$ 10,00 | 4 |
-| 15 kg | R$ 10,00 | 4 |
-| 10 kg | R$ 10,00 | 4 |
-| 5 kg | R$ 10,00 | 4 |
-| 2.5 kg | R$ 10,00 | 1 |
-| 1.25 kg | R$ 10,00 | 1 |
+| 25 kg | R$ 7,00 | 4 |
+| 20 kg | R$ 7,00 | 4 |
+| 15 kg | R$ 7,00 | 4 |
+| 10 kg | R$ 7,00 | 4 |
+| 5 kg | R$ 7,00 | 4 |
+| 2.5 kg | R$ 7,00 | 1 |
+| 1.25 kg | R$ 7,00 | 1 |
 
 ### Camisetas
 
@@ -128,6 +132,11 @@ R$ 80,00 (Masculina e Feminina Baby Look) — tamanhos P/M/G/GG.
 
 - **Pix**: 5 % de desconto automático no total.
 - **Cartão de crédito**: até **6× sem juros**.
+
+### Frete grátis (cupom `fretegratis`, sempre ativo)
+
+- Compras com subtotal de produtos **≥ R$ 100** → **frete grátis automático** na modalidade mais barata (PAC). SEDEX/expressas continuam pagas se o cliente quiser entrega rápida.
+- Pop-up de boas-vindas mostra o benefício na primeira visita; um banner com timer de 2h fica fixo no topo até zerar (depois o pop-up pode reaparecer).
 
 Sempre usar os preços desta tabela. Não inventar valores.
 

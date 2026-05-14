@@ -127,6 +127,65 @@ function escapeHtml(raw: string): string {
 }
 
 /**
+ * Notify-me form do produto "My PR Gym" (em breve). Envia alerta para
+ * contato@prtracker.com.br com os dados do interessado para que o time
+ * comercial entre em contato quando o produto for lançado.
+ */
+export async function sendGymInterestAlert(args: {
+  email?: string;
+  phone?: string;
+  config?: string;
+  userAgent?: string;
+}): Promise<void> {
+  const owner = import.meta.env.OWNER_EMAIL ?? DEFAULT_OWNER;
+  const to = "contato@prtracker.com.br";
+  const safeEmail = args.email ? escapeHtml(args.email) : "—";
+  const safePhone = args.phone ? escapeHtml(args.phone) : "—";
+  const safeConfig = args.config ? escapeHtml(args.config) : "—";
+  const safeUA = args.userAgent ? escapeHtml(args.userAgent.slice(0, 200)) : "—";
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#01002a;color:#fff;padding:24px;border-radius:12px;max-width:560px;margin:0 auto">
+      <h1 style="margin:0 0 8px;font-size:20px;color:#d8ff2c;letter-spacing:0.04em;text-transform:uppercase">
+        Novo Interessado no MY PR Gym
+      </h1>
+      <p style="margin:0 0 16px;font-size:13px;opacity:0.7">
+        Alguém pediu pra ser avisado quando o My PR Gym lançar.
+      </p>
+
+      <table style="width:100%;border-collapse:collapse;background:#fff;color:#01002a;border-radius:6px;overflow:hidden">
+        <tr>
+          <td style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:700;width:120px">E-mail</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #eee">${safeEmail}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:700">Telefone</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #eee">${safePhone}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:700;vertical-align:top">Configuração</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;white-space:pre-wrap">${safeConfig}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px;font-weight:700">User-Agent</td>
+          <td style="padding:10px 14px;font-family:monospace;font-size:11px;color:#555">${safeUA}</td>
+        </tr>
+      </table>
+    </div>
+  `.trim();
+
+  try {
+    await send({
+      to: [to, owner],
+      subject: "Novo Interessado no MY PR Gym",
+      html,
+      replyTo: args.email,
+    });
+  } catch (err) {
+    console.error("[email] sendGymInterestAlert failed:", err);
+  }
+}
+
+/**
  * Owner alert — shows up in contato@prtracker.com.br when a payment is
  * approved. Everything needed to ship manually from ME dashboard if the
  * automatic label generation failed.

@@ -5,7 +5,7 @@
 
 import { PIX_DISCOUNT } from "./catalog";
 
-/** Convert integer cents to a formatted BRL string (e.g. 14990 -> "R$ 149,90"). */
+/** Convert integer cents to a formatted BRL string (e.g. 16900 -> "R$ 169,00"). */
 export function formatBRL(cents: number): string {
   const reais = cents / 100;
   return reais.toLocaleString("pt-BR", {

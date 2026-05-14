@@ -1,0 +1,228 @@
+---
+/**
+ * Banner promocional do topo + countdown do cupom fretegratis.
+ *
+ * Substitui o antigo promo strip estático do Header. Comportamento:
+ *
+ * - Sempre visível como faixa lime no topo (acima do header navy).
+ * - Se o usuário NUNCA viu o pop-up `fretegratis` ainda: mostra
+ *   versão padrão ("CUPOM FRETEGRATIS · FRETE GRÁTIS ACIMA DE R$ 100 ·
+ *   PIX 5 % OFF · 6× SEM JUROS").
+ * - Quando o pop-up é fechado, salva um timestamp em
+ *   `localStorage["prt_fretegratis_started_at"]` e o banner passa a
+ *   mostrar o COUNTDOWN ao vivo: "CUPOM FRETEGRATIS · 01:59:43".
+ * - Quando faltar < 0 ms, removemos o timestamp do localStorage — assim,
+ *   se o usuário voltar mais tarde, o pop-up reaparece e o ciclo
+ *   recomeça. Como ninguém fica online por > 2 h, isso só acontece em
+ *   sessões posteriores.
+ *
+ * O JS é vanilla, embutido no próprio componente. Sem dependências.
+ */
+---
+
+<aside
+  class="fg-banner"
+  data-fretegratis-banner
+  role="region"
+  aria-label="Cupom de frete grátis"
+>
+  <div class="container-page fg-banner__inner">
+    <div class="fg-banner__main">
+      <span class="fg-banner__tag" aria-hidden="true">CUPOM</span>
+      <strong class="fg-banner__code">FRETEGRATIS</strong>
+      <span class="fg-banner__sep" aria-hidden="true">·</span>
+      <span class="fg-banner__copy" data-fg-copy>
+        FRETE GRÁTIS ACIMA DE R$ 100
+      </span>
+    </div>
+
+    <div class="fg-banner__countdown" data-fg-countdown hidden>
+      <span class="fg-banner__countdown-label">expira em</span>
+      <span class="fg-banner__countdown-value" data-fg-countdown-value>02:00:00</span>
+    </div>
+
+    <div class="fg-banner__secondary" aria-hidden="true">
+      <span>PIX 5 % OFF</span>
+      <span class="fg-banner__sep">·</span>
+      <span>6× SEM JUROS</span>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .fg-banner {
+    background: var(--color-brand-lime, #d8ff2c);
+    color: var(--color-brand-navy, #01002a);
+    border-bottom: 1px solid rgb(1 0 42 / 0.15);
+  }
+  .fg-banner__inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding-block: 0.5rem;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .fg-banner__main {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-self: start;
+  }
+
+  .fg-banner__tag {
+    display: inline-block;
+    padding: 0.18rem 0.4rem;
+    background: var(--color-brand-navy, #01002a);
+    color: var(--color-brand-lime, #d8ff2c);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    border-radius: 3px;
+  }
+  .fg-banner__code {
+    font-weight: 900;
+    letter-spacing: 0.1em;
+  }
+  .fg-banner__sep { opacity: 0.45; }
+  .fg-banner__copy { font-weight: 700; }
+
+  .fg-banner__countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.7rem;
+    background: var(--color-brand-navy, #01002a);
+    color: var(--color-brand-lime, #d8ff2c);
+    border-radius: 4px;
+    justify-self: center;
+    line-height: 1;
+  }
+  .fg-banner__countdown-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    opacity: 0.85;
+  }
+  .fg-banner__countdown-value {
+    font-family: var(--font-mono, "JetBrains Mono", monospace);
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fg-banner__secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-self: end;
+    font-weight: 700;
+    font-size: 0.74rem;
+  }
+
+  /* Tablet/mobile: stack and hide secondary line below 640px */
+  @media (max-width: 899px) {
+    .fg-banner__inner {
+      grid-template-columns: 1fr auto;
+      gap: 0.4rem 0.7rem;
+      padding-block: 0.45rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+    }
+    .fg-banner__main { gap: 0.35rem; }
+    .fg-banner__secondary { display: none; }
+    .fg-banner__countdown { padding: 0.2rem 0.55rem; }
+    .fg-banner__countdown-value { font-size: 0.85rem; }
+    .fg-banner__countdown-label { font-size: 0.55rem; }
+  }
+  @media (max-width: 480px) {
+    .fg-banner__inner {
+      grid-template-columns: 1fr auto;
+      gap: 0.35rem 0.55rem;
+    }
+    .fg-banner__main {
+      flex-wrap: nowrap;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .fg-banner__copy {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const STORAGE_KEY = "prt_fretegratis_started_at";
+    const DURATION_MS = 2 * 60 * 60 * 1000;
+
+    function pad(n) { return n.toString().padStart(2, "0"); }
+    function format(ms) {
+      const total = Math.max(0, Math.floor(ms / 1000));
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      return pad(h) + ":" + pad(m) + ":" + pad(s);
+    }
+
+    function init() {
+      const banner = document.querySelector("[data-fretegratis-banner]");
+      if (!banner) return;
+      const countdownEl = banner.querySelector("[data-fg-countdown]");
+      const countdownValueEl = banner.querySelector("[data-fg-countdown-value]");
+      const copyEl = banner.querySelector("[data-fg-copy]");
+      if (!countdownEl || !countdownValueEl || !copyEl) return;
+
+      let timer = null;
+
+      function tick() {
+        let raw = null;
+        try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+        const startedAt = raw ? parseInt(raw, 10) : NaN;
+        if (!Number.isFinite(startedAt)) {
+          if (timer) { clearInterval(timer); timer = null; }
+          countdownEl.hidden = true;
+          copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
+          return;
+        }
+        const remaining = startedAt + DURATION_MS - Date.now();
+        if (remaining <= 0) {
+          try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+          if (timer) { clearInterval(timer); timer = null; }
+          countdownEl.hidden = true;
+          copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
+          document.dispatchEvent(new CustomEvent("fretegratis:expired"));
+          return;
+        }
+        countdownEl.hidden = false;
+        copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100 ·";
+        countdownValueEl.textContent = format(remaining);
+      }
+
+      function start() {
+        tick();
+        if (timer) clearInterval(timer);
+        timer = setInterval(tick, 1000);
+      }
+
+      start();
+      window.addEventListener("storage", function (e) {
+        if (e.key === STORAGE_KEY) tick();
+      });
+      document.addEventListener("fretegratis:started", function () { start(); });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  })();
+</script>

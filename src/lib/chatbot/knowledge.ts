@@ -45,10 +45,11 @@ Não é souvenir, não é brinquedo. É um troféu que materializa um Personal R
 
 ## Sets (preço base — o cliente monta a barra com anilhas no configurador)
 
-- **Deadlift Set** — a partir de **R$ 119,90**. Base MDF + borracha. "O mais bruto dos PRs."
-- **My PR Set** — a partir de **R$ 134,90**. Base de acrílico. O mais personalizável: o cliente escolhe entre 20 exercícios. "Seu LPO favorito está aqui."
-- **Power Rack Set** — a partir de **R$ 149,90**. Base alumínio (rack de agachamento). "Para quem ama agachamento."
-- **Bench Press Set** — a partir de **R$ 169,90**. Base alumínio (banco de supino). "Supino que virou troféu."
+- **Deadlift Set** — a partir de **R$ 149,00**. Base MDF + borracha. "O mais bruto dos PRs."
+- **My PR Set** — a partir de **R$ 159,00**. Base de acrílico. O mais personalizável: o cliente escolhe entre 20 exercícios. "Seu LPO favorito está aqui."
+- **Power Rack Set** — a partir de **R$ 169,00**. Base alumínio (rack de agachamento). "Para quem ama agachamento."
+- **Bench Press Set** — a partir de **R$ 189,00**. Base alumínio (banco de supino). "Supino que virou troféu."
+- **My PR Gym** — **EM BREVE — a partir de R$ 379,00**. Gym completo em miniatura: power rack + banco de supino + plataforma de deadlift + 3 barras (Supino, Agachamento, Levantamento Terra) configuráveis. Cadastro para aviso de lançamento na página do produto.
 
 Componentes comuns aos 4 sets:
 - Barra: aço inoxidável usinado com alto relevo, 220 mm × Ø 5 mm.
@@ -59,13 +60,13 @@ Componentes comuns aos 4 sets:
 
 Vendidas SEMPRE em pares.
 
-- 25 kg (vermelho) — **R$ 15,00 / par** — máximo 4 pares
-- 20 kg (azul) — **R$ 10,00 / par** — máximo 4 pares
-- 15 kg (amarelo) — **R$ 10,00 / par** — máximo 4 pares
-- 10 kg (verde) — **R$ 10,00 / par** — máximo 4 pares
-- 5 kg (preto) — **R$ 10,00 / par** — máximo 4 pares
-- 2,5 kg (azul claro) — **R$ 10,00 / par** — máximo 1 par
-- 1,25 kg (cinza) — **R$ 10,00 / par** — máximo 1 par
+- 25 kg (vermelho) — **R$ 7,00 / par** — máximo 4 pares
+- 20 kg (azul) — **R$ 7,00 / par** — máximo 4 pares
+- 15 kg (amarelo) — **R$ 7,00 / par** — máximo 4 pares
+- 10 kg (verde) — **R$ 7,00 / par** — máximo 4 pares
+- 5 kg (preto) — **R$ 7,00 / par** — máximo 4 pares
+- 2,5 kg (azul claro) — **R$ 7,00 / par** — máximo 1 par
+- 1,25 kg (cinza) — **R$ 7,00 / par** — máximo 1 par
 
 Limite físico: 45 mm de anilhas por lado da barra. Se o cliente passar do limite, o configurador mostra "Espaço esgotado" e bloqueia o botão de comprar.
 
@@ -112,8 +113,8 @@ Tecido respirável de alta durabilidade. Lavar em água fria, do avesso, secar n
 
 Cálculo de exemplo (Power Rack Set + 2 pares de 25 kg):
 - Peso visual: 20 kg (barra) + 4 × 25 kg = **120 kg**.
-- Preço: R$ 149,90 + 2 × R$ 15,00 = **R$ 179,90** (cartão).
-- Pix: R$ 179,90 × 0,95 = **R$ 170,91**.
+- Preço: R$ 169,00 + 2 × R$ 7,00 = **R$ 183,00** (cartão).
+- Pix: R$ 183,00 × 0,95 = **R$ 173,85**.
 
 # Parcerias
 

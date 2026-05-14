@@ -54,6 +54,10 @@ const sources = [
     src: "public/images/products/my-pr-set/hero.jpg",
     outBase: "public/images/products/my-pr-set/hero",
   },
+  {
+    src: "public/images/products/my-pr-gym/hero.jpg",
+    outBase: "public/images/products/my-pr-gym/hero",
+  },
   // Card-sized variants (~800×592) for the home grid, which displays at
   // 394×292. 2× retina is enough; the full 1800×1333 is wasted bandwidth.
   {
@@ -74,6 +78,11 @@ const sources = [
   {
     src: "public/images/products/my-pr-set/hero.jpg",
     outBase: "public/images/products/my-pr-set/hero.card",
+    resize: { width: 800, height: 592, fit: "cover" },
+  },
+  {
+    src: "public/images/products/my-pr-gym/hero.jpg",
+    outBase: "public/images/products/my-pr-gym/hero.card",
     resize: { width: 800, height: 592, fit: "cover" },
   },
   // Camisetas (PNG sources — emit JPG fallback + modern variants)

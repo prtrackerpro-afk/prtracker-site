@@ -41,7 +41,10 @@ const payloadSchema = z.object({
 // Subtotal de produtos a partir do qual o frete mais barato vira grátis.
 // Custo absorvido na margem da venda; SEDEX/expressas continuam pagas se
 // o cliente quiser entrega mais rápida.
-const FREE_SHIPPING_MIN_CENTS = 25_000; // R$ 250,00
+// Estratégia "fretegratis": baixamos o teto pra R$ 100 e aumentamos preço
+// base dos kits — psicologicamente o cliente percebe frete grátis como
+// ganho, e o custo é diluído no preço do produto.
+const FREE_SHIPPING_MIN_CENTS = 10_000; // R$ 100,00
 
 type MeCarrier = {
   id: number;

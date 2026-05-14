@@ -5,6 +5,8 @@ import Footer from "~/components/Footer.astro";
 import CartDrawer from "~/components/CartDrawer.astro";
 import CookieBanner from "~/components/CookieBanner.astro";
 import FloatingActions from "~/components/FloatingActions.astro";
+import FreteGratisBanner from "~/components/FreteGratisBanner.astro";
+import FreteGratisPopup from "~/components/FreteGratisPopup.astro";
 import SEO from "~/components/SEO.astro";
 import Analytics from "~/components/Analytics.astro";
 
@@ -131,16 +133,33 @@ const {
   </head>
 
   <body>
-    {!hideHeader && <Header transparent={transparentHeader} />}
+    {!hideHeader && (
+      <div class="site-topbar-stack">
+        <FreteGratisBanner />
+        <Header transparent={transparentHeader} />
+      </div>
+    )}
 
     <main id="main">
       <slot />
     </main>
 
+    <style>
+      /* Sticky wrapper que mantém banner do cupom + header de navegação
+         colados no topo da viewport quando o usuário scrolla. Antes os
+         dois eram sticky individualmente e se sobrepunham. */
+      .site-topbar-stack {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+      }
+    </style>
+
     {!hideFooter && <Footer />}
 
     <CartDrawer />
     <CookieBanner />
+    {!hideHeader && <FreteGratisPopup />}
     {!hideFloatingActions && <FloatingActions />}
 
     <!-- Preload the cart script so badge renders from localStorage on first paint -->

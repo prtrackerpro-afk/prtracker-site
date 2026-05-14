@@ -68,29 +68,38 @@ Tom de voz: direto, motivacional, brasileiro, premium — "Sua marca. Seu PR." /
 
 ---
 
-## Catálogo de produtos (7 SKUs — preços oficiais — tabela única)
+## Catálogo de produtos (8 SKUs — preços oficiais — tabela única)
+
+Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grátis (≥ R$ 100) e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379).
 
 | # | Produto | Categoria | Preço base | Configurador | Obs. |
 |---|---------|-----------|-----------:|:------------:|------|
-| 1 | Power Rack Set | pr-trackers | **R$ 149,90** | Sim | Rack de agachamento em alumínio + barra + anilhas |
-| 2 | Bench Press Set | pr-trackers | **R$ 169,90** | Sim | Banco de supino em alumínio |
-| 3 | Deadlift Set | pr-trackers | **R$ 119,90** | Sim | Base MDF + borracha |
-| 4 | My PR Set | pr-trackers | **R$ 134,90** | Sim + seletor de 20 exercícios | Base em acrílico |
-| 5 | Anilhas Avulsas | anilhas | **a partir de R$ 10,00** | Sim (modo anilhas-only) | Sem barra, só pares |
-| 6 | Camiseta Masculina | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
-| 7 | Camiseta Feminina Baby Look | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
+| 1 | Power Rack Set | pr-trackers | **R$ 169,00** | Sim | Rack de agachamento em alumínio + barra + anilhas |
+| 2 | Bench Press Set | pr-trackers | **R$ 189,00** | Sim | Banco de supino em alumínio |
+| 3 | Deadlift Set | pr-trackers | **R$ 149,00** | Sim | Base MDF + borracha |
+| 4 | My PR Set | pr-trackers | **R$ 159,00** | Sim + seletor de 20 exercícios | Base em acrílico |
+| 5 | **My PR Gym** *(EM BREVE)* | pr-trackers | **R$ 379,00** | Sim — **3 barras independentes** (Supino, Agachamento, Levantamento Terra) | Gym completo em miniatura. Compra bloqueada; botão "Notifique-me quando lançar" (email + telefone) — envia email pra `contato@prtracker.com.br` com assunto "Novo Interessado no MY PR Gym". |
+| 6 | Anilhas Avulsas | anilhas | **a partir de R$ 7,00** | Sim (modo anilhas-only) | Sem barra, só pares |
+| 7 | Camiseta Masculina | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
+| 8 | Camiseta Feminina Baby Look | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
 
 ### Preços de anilhas (tabela única — sem preço diferenciado por kit)
 
-| Peso | Preço por par | Máx. pares |
-|------|--------------:|:----------:|
-| 25 kg | R$ 15,00 | 4 |
-| 20 kg | R$ 10,00 | 4 |
-| 15 kg | R$ 10,00 | 4 |
-| 10 kg | R$ 10,00 | 4 |
-| 5 kg | R$ 10,00 | 4 |
-| 2.5 kg | R$ 10,00 | 1 |
-| 1.25 kg | R$ 10,00 | 1 |
+| Peso | Preço por par | Máx. pares (por barra) |
+|------|--------------:|:----------------------:|
+| 25 kg | R$ 7,00 | 4 |
+| 20 kg | R$ 7,00 | 4 |
+| 15 kg | R$ 7,00 | 4 |
+| 10 kg | R$ 7,00 | 4 |
+| 5 kg | R$ 7,00 | 4 |
+| 2.5 kg | R$ 7,00 | 1 |
+| 1.25 kg | R$ 7,00 | 1 |
+
+### Frete grátis (cupom `fretegratis`)
+
+- Aplica automaticamente no checkout quando o **subtotal de produtos ≥ R$ 100,00**.
+- Só zera a modalidade mais barata (geralmente PAC); SEDEX/expressas continuam pagas.
+- Pop-up de boas-vindas mostra o benefício na 1ª visita ao domínio; banner com countdown de **2h** fica fixo no topo até zerar. Pop-up só reaparece após o timer expirar — não a cada navegação.
 
 ### Lista de exercícios do My PR Set (20 opções)
 
@@ -352,8 +361,8 @@ PUBLIC_SITE_URL=https://prtracker.com.br
 - `npm run build` gera output estático sem erros.
 - Home abre em < 1 s em conexão rápida (Lighthouse).
 - Configurador Power Rack Set: 2 pares de 25 kg → "Peso total: 120 kg" (barra 20 + 4 × 25) e barra visualmente preenchida.
-- Preço Power Rack Set com 2 pares de 25 kg = R$ 149,90 + 2 × R$ 15,00 = **R$ 179,90**.
-- Preço com Pix = R$ 179,90 × 0,95 = **R$ 170,91**.
+- Preço Power Rack Set com 2 pares de 25 kg = R$ 169,00 + 2 × R$ 7,00 = **R$ 183,00**.
+- Preço com Pix = R$ 183,00 × 0,95 = **R$ 173,85**.
 - Configurador bloqueia ao passar de 45 mm por lado.
 - My PR Set mostra 20 exercícios no dropdown.
 - Anilhas Avulsas NÃO mostra a barra, só os seletores. Preço começa em R$ 10,00.

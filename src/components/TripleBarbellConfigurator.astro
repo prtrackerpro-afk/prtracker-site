@@ -1,0 +1,636 @@
+---
+/**
+ * Configurador de TRÊS barras independentes — exclusivo do produto
+ * "My PR Gym".
+ *
+ * Layout:
+ *   - Desktop (≥ 900 px): 3 colunas lado-a-lado.
+ *   - Mobile (< 900 px): tabs verticais; só a barra ativa renderiza o
+ *     painel detalhado para evitar poluição na tela.
+ *
+ * Cada barra é um BLOCO independente: SVG da barra + 7 dropdowns de
+ * pares de anilhas + peso total. Os limites (`maxPairs`) são os mesmos
+ * do `catalog.ts` (4 pares 25–5 kg, 1 par 2,5 e 1,25 kg) aplicados POR
+ * BARRA — uma não consome o limite das outras.
+ *
+ * O produto está "EM BREVE" — não há `Adicionar ao carrinho`. O botão
+ * de ação é "Notifique-me quando lançar", que abre o NotifyMeForm.
+ *
+ * O usuário pode configurar livremente as 3 barras só pra visualizar
+ * (espelha o que o produto vai entregar). O resultado é enviado como
+ * string descritiva no email do notify-me para o time saber quais
+ * exercícios pintam mais.
+ */
+import {
+  PLATES,
+  BARBELL_WEIGHT_KG,
+  MAX_SIDE_SPACE_MM,
+} from "~/lib/catalog";
+import { formatBRL } from "~/lib/format";
+
+interface Props {
+  slug: string;
+  title: string;
+  /** Preço base em centavos (mostrado como "a partir de"). */
+  basePriceCents: number;
+}
+
+const { slug, title, basePriceCents } = Astro.props;
+
+const BARBELLS = [
+  { id: "bench",     label: "Supino",              short: "BENCH" },
+  { id: "squat",     label: "Agachamento",         short: "SQUAT" },
+  { id: "deadlift",  label: "Levantamento Terra",  short: "DEAD" },
+] as const;
+
+const CONFIG_JSON = JSON.stringify({
+  slug,
+  title,
+  basePriceCents,
+  barbellWeightKg: BARBELL_WEIGHT_KG,
+  maxSideSpaceMm: MAX_SIDE_SPACE_MM,
+  plates: PLATES,
+  barbells: BARBELLS,
+});
+---
+
+<div class="tcfg" data-triple-configurator data-config={CONFIG_JSON}>
+  <div class="tcfg__header">
+    <span class="tcfg__badge">EM BREVE</span>
+    <h2 class="tcfg__title">Monte seu gym</h2>
+    <p class="tcfg__sub">
+      3 barras independentes — Supino, Agachamento e Levantamento Terra. Configure cada uma com o peso do seu PR.
+    </p>
+  </div>
+
+  <!-- MOBILE TABS — visíveis abaixo de 900 px via CSS -->
+  <div class="tcfg__tabs" role="tablist" aria-label="Selecionar barra">
+    {BARBELLS.map((b, i) => (
+      <button
+        type="button"
+        role="tab"
+        class="tcfg__tab"
+        data-tab={b.id}
+        aria-selected={i === 0 ? "true" : "false"}
+        aria-controls={`tcfg-panel-${b.id}`}
+        id={`tcfg-tab-${b.id}`}
+      >
+        <span class="tcfg__tab-label">{b.label}</span>
+        <span class="tcfg__tab-weight" data-tab-weight={b.id}>20 kg</span>
+      </button>
+    ))}
+  </div>
+
+  <!-- 3 PAINÉIS — desktop renderiza tudo em grid, mobile só mostra o ativo -->
+  <div class="tcfg__grid">
+    {BARBELLS.map((b, i) => (
+      <section
+        class="tcfg__panel"
+        data-panel={b.id}
+        id={`tcfg-panel-${b.id}`}
+        role="tabpanel"
+        aria-labelledby={`tcfg-tab-${b.id}`}
+        data-active={i === 0 ? "true" : "false"}
+      >
+        <header class="tcfg__panel-head">
+          <h3 class="tcfg__panel-title">{b.label}</h3>
+          <p class="tcfg__panel-weight">
+            <span data-panel-weight={b.id}>20</span><span class="tcfg__panel-weight-unit"> kg</span>
+          </p>
+        </header>
+
+        <!-- SVG da barra -->
+        <div class="tcfg__barbell">
+          <svg
+            viewBox="0 0 600 200"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label={`Barra olímpica configurada para ${b.label}`}
+            data-svg={b.id}
+          >
+            <defs>
+              <linearGradient id={`tcfg-shaft-${b.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#E4E8ED" />
+                <stop offset="50%" stop-color="#B0B6BF" />
+                <stop offset="100%" stop-color="#7A7F88" />
+              </linearGradient>
+              <linearGradient id={`tcfg-sleeve-${b.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#D5D9E0" />
+                <stop offset="50%" stop-color="#9AA0AA" />
+                <stop offset="100%" stop-color="#5A5F68" />
+              </linearGradient>
+            </defs>
+            <rect x="156" y="94" width="288" height="12" rx="3" fill={`url(#tcfg-shaft-${b.id})`} />
+            <rect x="36"  y="89" width="120" height="22" rx="3" fill={`url(#tcfg-sleeve-${b.id})`} />
+            <rect x="444" y="89" width="120" height="22" rx="3" fill={`url(#tcfg-sleeve-${b.id})`} />
+            <rect x="152" y="85" width="8" height="30" rx="1.5" fill="#3E434B" />
+            <rect x="440" y="85" width="8" height="30" rx="1.5" fill="#3E434B" />
+            <rect x="30"  y="90" width="8" height="20" rx="1.5" fill="#2C3036" />
+            <rect x="562" y="90" width="8" height="20" rx="1.5" fill="#2C3036" />
+            <g data-plates-left={b.id} transform="translate(156, 100)"></g>
+            <g data-plates-right={b.id} transform="translate(444, 100)"></g>
+          </svg>
+        </div>
+
+        <!-- Plate selectors compactos: grid 2 colunas no mobile, 1 no desktop -->
+        <div class="tcfg__plates" role="group" aria-label={`Anilhas — ${b.label}`}>
+          {PLATES.map((plate) => (
+            <label class="tcfg__plate">
+              <span class="tcfg__plate-dot" style={`background:${plate.color}`} aria-hidden="true"></span>
+              <span class="tcfg__plate-kg">{plate.label}</span>
+              <select
+                class="tcfg__plate-select"
+                data-plate-select
+                data-barbell={b.id}
+                data-plate-id={plate.id}
+                aria-label={`${plate.label} para ${b.label}`}
+              >
+                {Array.from({ length: plate.maxPairs + 1 }, (_, i) => (
+                  <option value={i}>{i}p</option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+
+        <p class="tcfg__warn" data-warn={b.id} hidden>
+          Espaço esgotado nesta barra
+        </p>
+      </section>
+    ))}
+  </div>
+
+  <!-- TOTAL + CTA -->
+  <div class="tcfg__total">
+    <div class="tcfg__total-block">
+      <span class="tcfg__total-label">Peso somado</span>
+      <strong class="tcfg__total-kg" data-total-kg>60 kg</strong>
+    </div>
+    <div class="tcfg__total-block">
+      <span class="tcfg__total-label">A partir de</span>
+      <strong class="tcfg__total-price">{formatBRL(basePriceCents)}</strong>
+    </div>
+  </div>
+
+  <button type="button" class="tcfg__cta" data-notify-open>
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    <span>Notifique-me quando lançar</span>
+  </button>
+  <p class="tcfg__cta-hint">
+    Avisamos você por e-mail/WhatsApp assim que o My PR Gym estiver disponível.
+  </p>
+</div>
+
+<style>
+  .tcfg {
+    display: grid;
+    gap: 1.1rem;
+    padding: 1.25rem;
+    border: 1px solid rgb(1 0 42 / 0.12);
+    border-radius: var(--radius-card, 10px);
+    background: var(--color-paper, #fafafa);
+  }
+  @media (min-width: 768px) { .tcfg { padding: 1.6rem; } }
+
+  /* Header */
+  .tcfg__header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px dashed rgb(1 0 42 / 0.15);
+  }
+  .tcfg__badge {
+    display: inline-block;
+    padding: 0.22rem 0.6rem;
+    background: var(--color-brand-lime, #d8ff2c);
+    color: var(--color-brand-navy, #01002a);
+    border: 1px solid var(--color-brand-navy, #01002a);
+    border-radius: 3px;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .tcfg__title {
+    margin: 0;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 1.35rem;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    text-transform: uppercase;
+    color: var(--color-brand-navy, #01002a);
+  }
+  .tcfg__sub {
+    margin: 0;
+    color: var(--color-brand-gray, #4d4d51);
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  /* Tabs (mobile) */
+  .tcfg__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    padding: 0.3rem;
+    background: var(--color-brand-navy, #01002a);
+    border-radius: 8px;
+  }
+  .tcfg__tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    background: transparent;
+    border: 0;
+    border-radius: 5px;
+    padding: 0.55rem 0.4rem;
+    color: rgb(255 255 255 / 0.6);
+    cursor: pointer;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .tcfg__tab[aria-selected="true"] {
+    background: var(--color-brand-lime, #d8ff2c);
+    color: var(--color-brand-navy, #01002a);
+  }
+  .tcfg__tab-label {
+    font-weight: 800;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .tcfg__tab-weight {
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+  }
+  @media (min-width: 900px) {
+    .tcfg__tabs { display: none; }
+  }
+
+  /* Grid de painéis */
+  .tcfg__grid {
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 900px) {
+    .tcfg__grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.9rem;
+    }
+  }
+
+  .tcfg__panel {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.9rem;
+    background: var(--color-brand-white, #fff);
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: 8px;
+  }
+  /* No mobile, só o painel ativo aparece */
+  @media (max-width: 899px) {
+    .tcfg__panel[data-active="false"] { display: none; }
+  }
+
+  .tcfg__panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgb(1 0 42 / 0.08);
+  }
+  .tcfg__panel-title {
+    margin: 0;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 0.92rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-brand-navy, #01002a);
+  }
+  .tcfg__panel-weight {
+    margin: 0;
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: var(--color-brand-navy, #01002a);
+    font-variant-numeric: tabular-nums;
+  }
+  .tcfg__panel-weight-unit {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    margin-left: 0.1rem;
+  }
+
+  .tcfg__barbell {
+    background: var(--color-paper, #fafafa);
+    border-radius: 6px;
+    padding: 0.4rem;
+  }
+  .tcfg__barbell svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Plates: grid 2 colunas em mobile (compacto), 1 coluna full em desktop */
+  .tcfg__plates {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.35rem;
+  }
+  @media (min-width: 900px) {
+    .tcfg__plates { grid-template-columns: 1fr; gap: 0.3rem; }
+  }
+  .tcfg__plate {
+    display: grid;
+    grid-template-columns: 12px 1fr 56px;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.32rem 0.5rem;
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: 5px;
+    background: var(--color-paper, #fafafa);
+    transition: border-color 120ms ease;
+  }
+  .tcfg__plate:focus-within { border-color: var(--color-brand-navy, #01002a); }
+  .tcfg__plate-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid var(--color-brand-navy, #01002a);
+  }
+  .tcfg__plate-kg {
+    font-family: var(--font-product, "Archivo Black"), var(--font-display, "Inter"), sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--color-brand-navy, #01002a);
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .tcfg__plate-select {
+    width: 100%;
+    padding: 0.25rem 1.1rem 0.25rem 0.4rem;
+    border: 1px solid rgb(1 0 42 / 0.12);
+    border-radius: 4px;
+    background: #fff;
+    color: var(--color-brand-navy, #01002a);
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2301002a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.3rem center;
+  }
+
+  .tcfg__warn {
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    background: var(--color-brand-navy, #01002a);
+    color: var(--color-brand-lime, #d8ff2c);
+    border-radius: 4px;
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  /* Total + CTA */
+  .tcfg__total {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 0.8rem 0;
+    border-top: 2px solid var(--color-brand-navy, #01002a);
+    border-bottom: 1px dashed rgb(1 0 42 / 0.15);
+  }
+  .tcfg__total-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    text-align: center;
+  }
+  .tcfg__total-block + .tcfg__total-block {
+    border-left: 1px dashed rgb(1 0 42 / 0.15);
+  }
+  .tcfg__total-label {
+    font-family: var(--font-mono, "JetBrains Mono"), monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-brand-gray, #4d4d51);
+  }
+  .tcfg__total-kg,
+  .tcfg__total-price {
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: clamp(1.35rem, 2vw + 0.4rem, 1.85rem);
+    color: var(--color-brand-navy, #01002a);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tcfg__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.95rem 1.1rem;
+    background: var(--color-brand-navy, #01002a);
+    color: var(--color-brand-lime, #d8ff2c);
+    border: 2px solid var(--color-brand-navy, #01002a);
+    border-radius: 8px;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .tcfg__cta:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 0 var(--color-brand-navy, #01002a);
+  }
+  .tcfg__cta:active { transform: translate(0, 0); box-shadow: none; }
+  .tcfg__cta-hint {
+    margin: -0.2rem 0 0;
+    text-align: center;
+    color: var(--color-brand-gray, #4d4d51);
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const root = document.querySelector("[data-triple-configurator]");
+    if (!root) return;
+    const config = JSON.parse(root.dataset.config);
+    const platesById = new Map(config.plates.map((p) => [p.id, p]));
+    const platesOrdered = [...config.plates].sort((a, b) => b.kg - a.kg);
+
+    // Estado: { [barbellId]: { [plateId]: pairs } }
+    const state = {};
+    for (const b of config.barbells) {
+      state[b.id] = {};
+      for (const p of config.plates) state[b.id][p.id] = 0;
+    }
+
+    // ===== TABS (mobile) =====
+    const tabs = root.querySelectorAll("[data-tab]");
+    const panels = root.querySelectorAll("[data-panel]");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        const id = tab.dataset.tab;
+        tabs.forEach(function (t) { t.setAttribute("aria-selected", t === tab ? "true" : "false"); });
+        panels.forEach(function (p) { p.dataset.active = p.dataset.panel === id ? "true" : "false"; });
+      });
+    });
+
+    // ===== Selects =====
+    const selects = root.querySelectorAll("[data-plate-select]");
+    selects.forEach(function (sel) {
+      sel.addEventListener("change", function () {
+        const bId = sel.dataset.barbell;
+        const pId = sel.dataset.plateId;
+        const spec = platesById.get(pId);
+        const max = spec ? spec.maxPairs : 4;
+        const pairs = Math.max(0, Math.min(parseInt(sel.value, 10) || 0, max));
+        state[bId][pId] = pairs;
+        renderBarbell(bId);
+        renderTotals();
+      });
+    });
+
+    function renderBarbell(bId) {
+      // Calcula peso + espaço da barra
+      let kg = config.barbellWeightKg;
+      let spaceMm = 0;
+      for (const p of platesOrdered) {
+        const pairs = state[bId][p.id] || 0;
+        kg += pairs * 2 * p.kg;
+        spaceMm += pairs * p.thicknessMm;
+      }
+
+      // Atualiza painel
+      const panelWeightEl = root.querySelector('[data-panel-weight="' + bId + '"]');
+      if (panelWeightEl) panelWeightEl.textContent = String(kg);
+      const tabWeightEl = root.querySelector('[data-tab-weight="' + bId + '"]');
+      if (tabWeightEl) tabWeightEl.textContent = kg + " kg";
+
+      // Renderiza SVG
+      const leftG = root.querySelector('[data-plates-left="' + bId + '"]');
+      const rightG = root.querySelector('[data-plates-right="' + bId + '"]');
+      if (leftG && rightG) {
+        drawSide(leftG, "left", bId);
+        drawSide(rightG, "right", bId);
+      }
+
+      // Warning
+      const warn = root.querySelector('[data-warn="' + bId + '"]');
+      if (warn) warn.hidden = spaceMm <= config.maxSideSpaceMm;
+    }
+
+    function drawSide(group, side, bId) {
+      while (group.firstChild) group.removeChild(group.firstChild);
+      const NS = "http://www.w3.org/2000/svg";
+      const pxPerMm = 2.4;
+      const PLATE_DIAMETER_PX = 100;
+      const HUB_HEIGHT_PX = 14;
+      let offset = 0;
+      let cumulativeMm = 0;
+      const direction = side === "left" ? -1 : 1;
+      for (const p of platesOrdered) {
+        const pairs = state[bId][p.id] || 0;
+        if (!pairs) continue;
+        for (let i = 0; i < pairs; i++) {
+          if (cumulativeMm + p.thicknessMm > config.maxSideSpaceMm) break;
+          const widthPx = p.thicknessMm * pxPerMm;
+          const x = side === "left" ? offset - widthPx : offset;
+          const y = -PLATE_DIAMETER_PX / 2;
+          const rect = document.createElementNS(NS, "rect");
+          rect.setAttribute("x", String(x));
+          rect.setAttribute("y", String(y));
+          rect.setAttribute("width", String(widthPx));
+          rect.setAttribute("height", String(PLATE_DIAMETER_PX));
+          rect.setAttribute("rx", "2");
+          rect.setAttribute("fill", p.color);
+          rect.setAttribute("stroke", "#01002a");
+          rect.setAttribute("stroke-width", "0.8");
+          group.appendChild(rect);
+          const hub = document.createElementNS(NS, "rect");
+          hub.setAttribute("x", String(x));
+          hub.setAttribute("y", String(-HUB_HEIGHT_PX / 2));
+          hub.setAttribute("width", String(widthPx));
+          hub.setAttribute("height", String(HUB_HEIGHT_PX));
+          hub.setAttribute("fill", "#1a1c22");
+          group.appendChild(hub);
+          cumulativeMm += p.thicknessMm;
+          offset += direction * widthPx;
+        }
+      }
+    }
+
+    function renderTotals() {
+      let totalKg = 0;
+      for (const b of config.barbells) {
+        totalKg += config.barbellWeightKg;
+        for (const p of platesOrdered) {
+          totalKg += (state[b.id][p.id] || 0) * 2 * p.kg;
+        }
+      }
+      const totalEl = root.querySelector("[data-total-kg]");
+      if (totalEl) totalEl.textContent = totalKg + " kg";
+    }
+
+    // Expose configuração serializada para o form de notify-me
+    function getConfigString() {
+      const lines = [];
+      for (const b of config.barbells) {
+        const parts = [];
+        let kg = config.barbellWeightKg;
+        for (const p of platesOrdered) {
+          const pairs = state[b.id][p.id] || 0;
+          if (pairs > 0) {
+            parts.push(pairs + "x " + p.label);
+            kg += pairs * 2 * p.kg;
+          }
+        }
+        lines.push(b.label + " (" + kg + " kg): " + (parts.length ? parts.join(", ") : "barra vazia"));
+      }
+      return lines.join("\n");
+    }
+    window.__getMyPRGymConfig = getConfigString;
+
+    // Initial render
+    for (const b of config.barbells) renderBarbell(b.id);
+    renderTotals();
+
+    // Open notify-me modal (button is wired by NotifyMeForm component)
+    const openBtn = root.querySelector("[data-notify-open]");
+    if (openBtn) {
+      openBtn.addEventListener("click", function () {
+        document.dispatchEvent(new CustomEvent("notifyme:open"));
+      });
+    }
+  })();
+</script>

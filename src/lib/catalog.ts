@@ -29,13 +29,13 @@ export interface PlateSpec {
 
 // Real product: all plates share the same 42mm diameter. Only thickness varies.
 export const PLATES: PlateSpec[] = [
-  { id: "25",   label: "25 kg",   kg: 25,   color: "#DA291C", thicknessMm: 8, pricePerPairCents: 1500, maxPairs: 4 },
-  { id: "20",   label: "20 kg",   kg: 20,   color: "#0057B8", thicknessMm: 8, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "15",   label: "15 kg",   kg: 15,   color: "#FFC72C", thicknessMm: 7, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "10",   label: "10 kg",   kg: 10,   color: "#43B02A", thicknessMm: 6, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "5",    label: "5 kg",    kg: 5,    color: "#111111", thicknessMm: 5, pricePerPairCents: 1000, maxPairs: 4 },
-  { id: "2_5",  label: "2.5 kg",  kg: 2.5,  color: "#2563EB", thicknessMm: 4, pricePerPairCents: 1000, maxPairs: 1 },
-  { id: "1_25", label: "1.25 kg", kg: 1.25, color: "#C0C5CC", thicknessMm: 4, pricePerPairCents: 1000, maxPairs: 1 },
+  { id: "25",   label: "25 kg",   kg: 25,   color: "#DA291C", thicknessMm: 8, pricePerPairCents: 700, maxPairs: 4 },
+  { id: "20",   label: "20 kg",   kg: 20,   color: "#0057B8", thicknessMm: 8, pricePerPairCents: 700, maxPairs: 4 },
+  { id: "15",   label: "15 kg",   kg: 15,   color: "#FFC72C", thicknessMm: 7, pricePerPairCents: 700, maxPairs: 4 },
+  { id: "10",   label: "10 kg",   kg: 10,   color: "#43B02A", thicknessMm: 6, pricePerPairCents: 700, maxPairs: 4 },
+  { id: "5",    label: "5 kg",    kg: 5,    color: "#111111", thicknessMm: 5, pricePerPairCents: 700, maxPairs: 4 },
+  { id: "2_5",  label: "2.5 kg",  kg: 2.5,  color: "#2563EB", thicknessMm: 4, pricePerPairCents: 700, maxPairs: 1 },
+  { id: "1_25", label: "1.25 kg", kg: 1.25, color: "#C0C5CC", thicknessMm: 4, pricePerPairCents: 700, maxPairs: 1 },
 ];
 
 export function plateById(id: PlateId): PlateSpec {

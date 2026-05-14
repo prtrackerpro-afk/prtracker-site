@@ -4,7 +4,7 @@ import { ingestWindsor } from "../../../lib/admin/windsor-ingest";
 import { ingestMercadoPago } from "../../../lib/admin/mp-ingest";
 import { ingestTikTokShop } from "../../../lib/admin/tiktok-shop-ingest";
 import { ingestTikTokAds } from "../../../lib/admin/tiktok-ads-ingest";
-import { evaluateAlerts } from "../../../lib/admin/alerts-engine";
+import { evaluateAlerts, evaluateBlingPriceDrift } from "../../../lib/admin/alerts-engine";
 import { getAdminSupabase } from "../../../lib/supabase/server";
 import { isEmailConfigured, sendAdminEmail } from "../../../lib/admin/email";
 
@@ -74,6 +74,14 @@ export const GET: APIRoute = async ({ request }) => {
     result.alerts = await evaluateAlerts({ dateRangeDays: 1 });
   } catch (e) {
     result.alerts = { error: (e as Error).message };
+  }
+
+  // 7) Bling price drift — só dispara alerta se há divergência entre o
+  //    preço-base canônico do site e o preço cadastrado no Bling.
+  try {
+    result.bling_price_drift = await evaluateBlingPriceDrift();
+  } catch (e) {
+    result.bling_price_drift = { error: (e as Error).message };
   }
 
   // 4) Send email if critical alerts
