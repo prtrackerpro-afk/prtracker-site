@@ -10,8 +10,8 @@
   "shortDescription": "Power rack + banco de supino + plataforma de deadlift em uma única peça. Três barras independentes que você configura com o peso de cada PR — Supino, Agachamento e Levantamento Terra.",
   "longDescriptionHtml": "<p>O <strong>My PR Gym</strong> é a maior expressão da PR Tracker: um gym completo em miniatura, com <strong>3 barras independentes</strong> para representar os três grandes do treino — Supino, Agachamento e Levantamento Terra.</p><p>Cada barra é configurável separadamente. Você pode reproduzir três PRs distintos em uma única peça e atualizar à medida que evolui no treino.</p><p>A base inclui power rack em alumínio usinado, banco de supino e plataforma de deadlift com acabamento MDF + borracha. Tudo proporcional, sem parecer brinquedo, sem parecer souvenir.</p><p><strong>Em breve disponível.</strong> Deixe seu contato para ser um dos primeiros a saber do lançamento.</p>",
   "images": [
-    { "src": "/images/products/my-pr-gym/hero.jpg", "alt": "My PR Gym — power rack + banco de supino + plataforma de deadlift" },
-    { "src": "/images/products/my-pr-gym/diagonal.jpg", "alt": "My PR Gym — vista diagonal" }
+    { "src": "/images/products/my-pr-gym/hero.jpg", "alt": "My PR Gym — vista diagonal (power rack + banco de supino + plataforma de deadlift)" },
+    { "src": "/images/products/my-pr-gym/diagonal.jpg", "alt": "My PR Gym — vista frontal" }
   ],
   "specs": [
     { "label": "Power rack", "value": "Alumínio · 150 × 100 × 100 mm" },
