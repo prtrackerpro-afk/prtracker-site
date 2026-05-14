@@ -147,11 +147,20 @@ const {
     <style>
       /* Sticky wrapper que mantém banner do cupom + header de navegação
          colados no topo da viewport quando o usuário scrolla. Antes os
-         dois eram sticky individualmente e se sobrepunham. */
+         dois eram sticky individualmente e se sobrepunham.
+
+         O `transform: translateZ(0)` força uma compositor layer GPU
+         dedicada — workaround pra bug do iOS Safari onde `position:
+         sticky` falha (ou colapsa parcialmente) quando o conteúdo do
+         elemento sticky usa CSS Grid com row-span. Sem isso, ao
+         scrollar, a faixa lime sumia e o header navy ficava meio
+         cortado no iPhone. */
       .site-topbar-stack {
         position: sticky;
         top: 0;
         z-index: 50;
+        transform: translateZ(0);
+        backface-visibility: hidden;
       }
     </style>
 

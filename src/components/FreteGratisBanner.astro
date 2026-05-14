@@ -153,6 +153,8 @@
   @media (max-width: 480px) {
     .fg-banner__inner {
       grid-template-columns: 1fr auto;
+      /* Rows explicit pra evitar bug de auto-flow + sticky no iOS. */
+      grid-template-rows: auto auto;
       /* Countdown ocupa as 2 linhas — fica verticalmente centralizado
          entre o "CUPOM FRETEGRATIS" (linha 1) e o "FRETE GRÁTIS ACIMA
          DE R$ 100" (linha 2). */
