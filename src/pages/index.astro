@@ -15,15 +15,16 @@ const products = await getCollection("products");
 const prTrackersAll = products
   .filter((p) => p.data.category === "pr-trackers")
   .sort((a, b) => a.data.priority - b.data.priority);
-// Home carousel loop order. Adicionado My PR Gym ao final para ancorar
-// visualmente o preço dos outros (R$ 379 EM BREVE faz Power Rack a
-// R$ 169 parecer mais acessível).
+// Home carousel order — preço crescente (menor entrada → âncora premium
+// no final). Deadlift (R$ 149) abre por ser o produto-pôster da marca.
+// My PR Gym (R$ 379 EM BREVE) fecha como âncora visual que faz os outros
+// parecerem mais acessíveis.
 const carouselOrder = [
-  "bench-press-set",
-  "deadlift-set",
-  "my-pr-set",
-  "power-rack-set",
-  "my-pr-gym",
+  "deadlift-set",   // R$ 149
+  "my-pr-set",      // R$ 159
+  "power-rack-set", // R$ 169
+  "bench-press-set",// R$ 189
+  "my-pr-gym",      // R$ 379 (EM BREVE)
 ] as const;
 const prTrackers = carouselOrder.map(
   (slug) => prTrackersAll.find((p) => p.data.slug === slug)!,
