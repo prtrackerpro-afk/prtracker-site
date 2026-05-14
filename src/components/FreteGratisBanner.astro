@@ -153,11 +153,14 @@
   @media (max-width: 480px) {
     .fg-banner__inner {
       grid-template-columns: 1fr auto;
+      /* Countdown ocupa as 2 linhas — fica verticalmente centralizado
+         entre o "CUPOM FRETEGRATIS" (linha 1) e o "FRETE GRÁTIS ACIMA
+         DE R$ 100" (linha 2). */
       grid-template-areas:
         "lead countdown"
-        "copy copy";
-      gap: 0.15rem 0.55rem;
-      padding-block: 0.4rem;
+        "copy countdown";
+      gap: 0.15rem 0.7rem;
+      padding-block: 0.45rem;
     }
     .fg-banner__lead { justify-self: start; }
     .fg-banner__copy {
@@ -170,6 +173,12 @@
     }
     /* Na 2ª linha o "·" inicial fica solto sem o code antes — esconder. */
     .fg-banner__copy::before { display: none; }
+    /* Timer maior e centralizado nas 2 linhas. */
+    .fg-banner__countdown {
+      align-self: center;
+      padding: 0.32rem 0.75rem;
+    }
+    .fg-banner__countdown-value { font-size: 1.05rem; }
     /* Sem timer (estado inicial): copy vira inline com lead pra economizar
        altura, e a 2ª linha do grid não é usada porque copy ocupa cell 2. */
     .fg-banner:not(.is-counting) .fg-banner__inner {
