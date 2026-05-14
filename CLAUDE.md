@@ -135,8 +135,9 @@ R$ 80,00 (Masculina e Feminina Baby Look) — tamanhos P/M/G/GG.
 
 ### Frete grátis (cupom `fretegratis`, sempre ativo)
 
-- Compras com subtotal de produtos **≥ R$ 100** → **frete grátis automático** na modalidade mais barata (PAC). SEDEX/expressas continuam pagas se o cliente quiser entrega rápida.
-- Pop-up de boas-vindas mostra o benefício na primeira visita; um banner com timer de 2h fica fixo no topo até zerar (depois o pop-up pode reaparecer).
+- Compras com subtotal de produtos **≥ R$ 100** podem aplicar o cupom `FRETEGRATIS` no checkout para liberar **frete grátis** na opção mais barata (geralmente PAC). SEDEX/expressas continuam pagas se o cliente quiser entrega rápida.
+- O cupom **não é automático** — o cliente precisa digitar/colar no campo de cupom do checkout. O pop-up de boas-vindas distribui o código com botão "copiar" e o banner do topo lembra o cupom o tempo todo.
+- Pop-up de boas-vindas mostra o benefício na primeira visita; um banner com countdown de 2h fica fixo no topo até zerar (depois o pop-up pode reaparecer).
 
 Sempre usar os preços desta tabela. Não inventar valores.
 

@@ -97,9 +97,10 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grát
 
 ### Frete grátis (cupom `fretegratis`)
 
-- Aplica automaticamente no checkout quando o **subtotal de produtos ≥ R$ 100,00**.
-- Só zera a modalidade mais barata (geralmente PAC); SEDEX/expressas continuam pagas.
-- Pop-up de boas-vindas mostra o benefício na 1ª visita ao domínio; banner com countdown de **2h** fica fixo no topo até zerar. Pop-up só reaparece após o timer expirar — não a cada navegação.
+- Cliente precisa **aplicar o cupom `FRETEGRATIS`** no campo de cupom do checkout. Não é automático.
+- Só desbloqueia quando **subtotal de produtos ≥ R$ 100,00**; abaixo disso o `/api/validate-coupon` rejeita com "Valor mínimo R$ 100,00".
+- Quando aplicado, o `/api/frete` retorna a opção mais barata (geralmente PAC) com `price_cents=0`. SEDEX/expressas continuam pagas.
+- Pop-up de boas-vindas mostra o cupom com botão "copiar" na 1ª visita ao domínio; banner com countdown de **2h** fica fixo no topo até zerar. Pop-up só reaparece após o timer expirar — não a cada navegação.
 
 ### Lista de exercícios do My PR Set (20 opções)
 

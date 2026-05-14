@@ -591,6 +591,7 @@ import Loader from "@lucide/astro/icons/loader";
     discountCents: number;
     creditedTo: string;
     pickupLocation: PickupLocation | null;
+    freeShipping: boolean;
   } | null = null;
 
   function renderSummary(snap: CartSnapshot) {
@@ -616,17 +617,24 @@ import Loader from "@lucide/astro/icons/loader";
       .join("");
     subtotalEl.textContent = formatBRL(snap.subtotalCents);
 
+    const hasFreeShippingCoupon = appliedCoupon?.freeShipping === true;
     if (snap.subtotalCents <= 0) {
       freteProgressEl.hidden = true;
     } else if (snap.subtotalCents >= FREE_SHIPPING_MIN_CENTS) {
       freteProgressEl.hidden = false;
-      freteProgressEl.dataset.unlocked = "true";
-      freteProgressEl.textContent = "🎉 Frete grátis aplicado neste pedido.";
+      if (hasFreeShippingCoupon) {
+        freteProgressEl.dataset.unlocked = "true";
+        freteProgressEl.textContent = "🎉 Frete grátis aplicado neste pedido.";
+      } else {
+        freteProgressEl.dataset.unlocked = "false";
+        freteProgressEl.textContent =
+          "Aplique o cupom FRETEGRATIS pra liberar frete grátis.";
+      }
     } else {
       const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
       freteProgressEl.hidden = false;
       freteProgressEl.dataset.unlocked = "false";
-      freteProgressEl.textContent = `Faltam ${formatBRL(missing)} pra frete grátis.`;
+      freteProgressEl.textContent = `Faltam ${formatBRL(missing)} pra desbloquear o cupom FRETEGRATIS.`;
     }
 
     const couponCents = appliedCoupon?.discountCents ?? 0;
@@ -702,7 +710,7 @@ import Loader from "@lucide/astro/icons/loader";
   async function applyCoupon() {
     const code = couponInput.value.trim();
     if (!code) {
-      clearCoupon();
+      await clearCoupon();
       return;
     }
     couponBtn.disabled = true;
@@ -727,16 +735,25 @@ import Loader from "@lucide/astro/icons/loader";
         discountCents: data.discountCents,
         creditedTo: data.creditedTo,
         pickupLocation: data.pickupLocation ?? null,
+        freeShipping: data.freeShipping === true,
       };
+      // Cupom "free shipping" muda os preços retornados pelo /api/frete
+      // (zera a opção mais barata), pra fica claro no UI quanto o
+      // cliente vai pagar. Discount-only ou pickup-only não mudam preço
+      // de frete, mas o `discountLabel` cobre isso na sequência abaixo.
       const discountLabel =
-        data.discountType === "percent"
-          ? `${data.amount}% OFF`
-          : `R$ ${data.amount} OFF`;
+        appliedCoupon.freeShipping && data.discountCents === 0
+          ? "FRETE GRÁTIS"
+          : data.discountType === "percent"
+            ? `${data.amount}% OFF`
+            : `R$ ${data.amount} OFF`;
       couponStatus.dataset.state = "ok";
       couponStatus.textContent = `✓ Cupom aplicado · ${discountLabel}`;
-      // Cupom com pickup_location adiciona "Retirar na <unidade>" como
-      // mais uma opção de frete, lado a lado com as transportadoras do
-      // Melhor Envio. Re-renderiza a lista pra refletir.
+      // Re-cota frete passando o cupom — se for free-shipping, server
+      // retorna a opção mais barata com price_cents=0. Se for pickup-only
+      // ou discount-only, a lista volta inalterada e o rebuildFreteList()
+      // abaixo prepended o pickup quando aplicável.
+      if (lastFreteCep) await refetchFrete();
       rebuildFreteList();
       renderSummary(cart.snapshot());
     } catch (err) {
@@ -746,10 +763,14 @@ import Loader from "@lucide/astro/icons/loader";
       couponBtn.disabled = false;
     }
   }
-  function clearCoupon() {
+  async function clearCoupon() {
+    const had = appliedCoupon;
     appliedCoupon = null;
     couponStatus.dataset.state = "";
     couponStatus.textContent = "";
+    // Se o cupom anterior tinha freeShipping, precisa re-cotar pra
+    // restaurar o preço original do frete mais barato.
+    if (had?.freeShipping && lastFreteCep) await refetchFrete();
     rebuildFreteList();
     renderSummary(cart.snapshot());
   }
@@ -873,6 +894,17 @@ import Loader from "@lucide/astro/icons/loader";
   async function fetchFrete(cep: string) {
     if (cep === lastFreteCep) return;
     lastFreteCep = cep;
+    await runFreteFetch();
+  }
+
+  /** Força re-fetch do CEP atual (cupom mudou, por exemplo). */
+  async function refetchFrete() {
+    if (!lastFreteCep) return;
+    await runFreteFetch();
+  }
+
+  async function runFreteFetch() {
+    const cep = lastFreteCep;
     selectedFrete = null;
     renderSummary(cart.snapshot());
 
@@ -897,6 +929,7 @@ import Loader from "@lucide/astro/icons/loader";
             plates: i.plates,
           })),
           subtotalCents: snap.subtotalCents,
+          coupon: appliedCoupon?.code,
         }),
         signal: freteAbort.signal,
       });

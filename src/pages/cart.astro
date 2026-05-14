@@ -314,12 +314,13 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
     if (snap.subtotalCents >= FREE_SHIPPING_MIN_CENTS) {
       freeProgressEl.hidden = false;
       freeProgressEl.dataset.unlocked = "true";
-      freeProgressEl.textContent = "🎉 Frete grátis liberado neste pedido.";
+      freeProgressEl.textContent =
+        "🎉 Cupom FRETEGRATIS disponível — aplique no checkout pra frete grátis.";
     } else {
       const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
       freeProgressEl.hidden = false;
       freeProgressEl.dataset.unlocked = "false";
-      freeProgressEl.textContent = `Faltam ${formatBRL(missing)} pra frete grátis.`;
+      freeProgressEl.textContent = `Faltam ${formatBRL(missing)} pra desbloquear o cupom FRETEGRATIS.`;
     }
   }
 
