@@ -136,6 +136,28 @@ function fmtDate(iso: string | null) {
 
     {status.connected && (
       <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <header class="flex items-center justify-between mb-4 gap-4 flex-wrap">
+          <div>
+            <h2 class="text-lg font-display tracking-tight">Sincronização de pedidos com Bling</h2>
+            <p class="text-sm text-navy-300 mt-1">
+              Pedidos TikTok dos últimos 30 dias + status de sync com Bling/NF-e.
+            </p>
+          </div>
+          <button
+            id="btn-load-orders"
+            class="rounded-lg border border-navy-600 hover:bg-navy-700/60 px-3 py-1.5 text-xs"
+          >
+            Carregar pedidos
+          </button>
+        </header>
+        <div id="orders-result" class="text-sm text-navy-200">
+          Clica em "Carregar pedidos" pra listar.
+        </div>
+      </section>
+    )}
+
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
         <header class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-lg font-display tracking-tight">Auditoria de SKUs</h2>
@@ -242,4 +264,168 @@ function fmtDate(iso: string | null) {
   }
 
   btn?.addEventListener("click", runAudit);
+
+  // ===== Sincronização de pedidos com Bling =====
+
+  const btnLoad = document.getElementById("btn-load-orders");
+  const ordersOut = document.getElementById("orders-result");
+
+  function fmtBRL(amount, currency) {
+    if (!amount) return "—";
+    const n = Number(amount);
+    if (!Number.isFinite(n)) return amount;
+    const c = currency === "BRL" || !currency ? "BRL" : currency;
+    try {
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: c }).format(n);
+    } catch {
+      return `${c} ${n.toFixed(2)}`;
+    }
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString("pt-BR", {
+        day: "2-digit", month: "2-digit", year: "2-digit",
+        hour: "2-digit", minute: "2-digit",
+      });
+    } catch {
+      return iso;
+    }
+  }
+
+  function blingBadge(row) {
+    const { bling_status, nfe_status, bling_pedido_numero } = row;
+    if (bling_status === "synced" && nfe_status === "emitted") {
+      return `<span class="inline-flex items-center rounded-full bg-green-500/20 text-green-300 px-2 py-0.5 text-[10px] font-medium">✓ Sincronizado · NF #${escapeHtml(bling_pedido_numero ?? "")}</span>`;
+    }
+    if (bling_status === "synced") {
+      return `<span class="inline-flex items-center rounded-full bg-amber-500/20 text-amber-300 px-2 py-0.5 text-[10px] font-medium">⚠ Pedido OK · NF-e ${escapeHtml(nfe_status ?? "pendente")}</span>`;
+    }
+    if (bling_status === "failed") {
+      return `<span class="inline-flex items-center rounded-full bg-red-500/20 text-red-300 px-2 py-0.5 text-[10px] font-medium">✗ Falhou</span>`;
+    }
+    if (bling_status === "pending") {
+      return `<span class="inline-flex items-center rounded-full bg-amber-500/20 text-amber-300 px-2 py-0.5 text-[10px] font-medium">… Pendente</span>`;
+    }
+    return `<span class="inline-flex items-center rounded-full bg-navy-600/40 text-navy-200 px-2 py-0.5 text-[10px] font-medium">— Não sincronizado</span>`;
+  }
+
+  function syncBtnLabel(row) {
+    if (row.bling_status === "synced" && row.nfe_status === "emitted") return "Re-sincronizar";
+    if (row.bling_status === "synced") return "Re-emitir NF-e";
+    if (row.bling_status === "failed") return "Tentar de novo";
+    return "Sincronizar com Bling";
+  }
+
+  function orderRow(o) {
+    return `
+      <tr class="border-t border-navy-700/60" data-order-id="${escapeHtml(o.order_id)}">
+        <td class="px-3 py-2"><code class="text-xs">${escapeHtml(o.order_id)}</code></td>
+        <td class="px-3 py-2 text-xs text-navy-300">${escapeHtml(fmtDate(o.created_at))}</td>
+        <td class="px-3 py-2 text-xs">${escapeHtml(o.status ?? "—")}</td>
+        <td class="px-3 py-2 text-xs text-right">${escapeHtml(fmtBRL(o.total, o.currency))}</td>
+        <td class="px-3 py-2 text-xs text-center">${o.items_count ?? 0}</td>
+        <td class="px-3 py-2">${blingBadge(o)}</td>
+        <td class="px-3 py-2 text-right">
+          <button
+            class="btn-sync rounded-lg bg-lime-500 hover:bg-lime-400 text-navy-900 font-medium px-2.5 py-1 text-xs"
+            data-id="${escapeHtml(o.order_id)}"
+          >${syncBtnLabel(o)}</button>
+        </td>
+      </tr>
+      ${o.error ? `<tr class="bg-red-500/5"><td colspan="7" class="px-3 py-2 text-[11px] text-red-300 whitespace-pre-line">${escapeHtml(o.error)}</td></tr>` : ""}
+    `;
+  }
+
+  function renderOrders(data) {
+    if (!ordersOut) return;
+    const orders = data.orders ?? [];
+    if (orders.length === 0) {
+      ordersOut.innerHTML = `<p class="text-navy-300">Nenhum pedido nos últimos ${data.window_days} dias.</p>`;
+      return;
+    }
+    ordersOut.innerHTML = `
+      <div class="overflow-x-auto rounded-lg border border-navy-700/60">
+        <table class="w-full text-sm">
+          <thead class="bg-navy-800/40 text-xs text-navy-300">
+            <tr>
+              <th class="px-3 py-2 text-left">order_id</th>
+              <th class="px-3 py-2 text-left">data</th>
+              <th class="px-3 py-2 text-left">status TT</th>
+              <th class="px-3 py-2 text-right">total</th>
+              <th class="px-3 py-2 text-center">itens</th>
+              <th class="px-3 py-2 text-left">status Bling</th>
+              <th class="px-3 py-2 text-right">ação</th>
+            </tr>
+          </thead>
+          <tbody>${orders.map(orderRow).join("")}</tbody>
+        </table>
+      </div>
+    `;
+    ordersOut.querySelectorAll(".btn-sync").forEach((b) => {
+      b.addEventListener("click", onSyncClick);
+    });
+  }
+
+  async function loadOrders() {
+    if (!btnLoad || !ordersOut) return;
+    btnLoad.disabled = true;
+    btnLoad.textContent = "Carregando…";
+    ordersOut.innerHTML = '<p class="text-navy-300">Buscando pedidos no TikTok…</p>';
+    try {
+      const res = await fetch("/api/admin/tiktok/orders-list?days=30", {
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      renderOrders(json);
+    } catch (err) {
+      ordersOut.innerHTML = `<p class="text-red-300 text-sm">Falha: ${escapeHtml(err.message ?? err)}</p>`;
+    } finally {
+      btnLoad.disabled = false;
+      btnLoad.textContent = "Carregar pedidos";
+    }
+  }
+
+  async function onSyncClick(ev) {
+    const target = ev.currentTarget;
+    if (!(target instanceof HTMLButtonElement)) return;
+    const orderId = target.dataset.id;
+    if (!orderId) return;
+    const originalLabel = target.textContent ?? "Sincronizar";
+    target.disabled = true;
+    target.textContent = "Sincronizando…";
+    try {
+      const res = await fetch(`/api/admin/tiktok/sync-order/${encodeURIComponent(orderId)}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (res.ok && (json.status === "synced" || json.status === "skipped")) {
+        target.textContent = "✓ Pronto — recarregando…";
+        target.classList.remove("bg-lime-500", "hover:bg-lime-400");
+        target.classList.add("bg-green-600");
+        setTimeout(() => loadOrders(), 700);
+      } else {
+        const msg = json.error ?? json.message ?? `HTTP ${res.status}`;
+        target.textContent = "✗ Falhou";
+        target.classList.remove("bg-lime-500", "hover:bg-lime-400");
+        target.classList.add("bg-red-600");
+        alert(`Sync falhou:\n\n${msg}`);
+        setTimeout(() => {
+          target.textContent = originalLabel;
+          target.classList.remove("bg-red-600");
+          target.classList.add("bg-lime-500", "hover:bg-lime-400");
+          target.disabled = false;
+        }, 2500);
+      }
+    } catch (err) {
+      alert(`Erro de rede: ${(err && err.message) || err}`);
+      target.textContent = originalLabel;
+      target.disabled = false;
+    }
+  }
+
+  btnLoad?.addEventListener("click", loadOrders);
 </script>
