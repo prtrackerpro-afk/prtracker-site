@@ -397,9 +397,14 @@ function fmtDate(iso: string | null) {
     target.disabled = true;
     target.textContent = "Sincronizando…";
     try {
+      // Content-Type application/json + body explícito pra escapar do CSRF
+      // check do Astro (que bloqueia POST com content-type "simples" /
+      // form-like). Endpoint não lê o body, mas precisa do header pra passar.
       const res = await fetch(`/api/admin/tiktok/sync-order/${encodeURIComponent(orderId)}`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
       });
       const json = await res.json();
       if (res.ok && (json.status === "synced" || json.status === "skipped")) {
