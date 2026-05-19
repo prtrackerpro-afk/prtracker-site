@@ -24,7 +24,9 @@ import {
 } from "./oauth";
 import { getAdminSupabase } from "~/lib/supabase/server";
 
-const BASE_URL = "https://www.bling.com.br/Api/v3";
+// Bling baniu `www.bling.com.br` para chamadas API em 2026 — só aceita
+// `api.bling.com.br` agora. Path /Api/v3 preservado.
+const BASE_URL = "https://api.bling.com.br/Api/v3";
 const USER_AGENT = "PR Tracker (contato@prtracker.com.br)";
 
 // Bling free plan = 3 req/s. We pace at ~350ms between calls (~2.85 req/s)

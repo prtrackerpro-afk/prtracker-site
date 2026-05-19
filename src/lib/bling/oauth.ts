@@ -4,8 +4,12 @@
  * Bling docs: https://developer.bling.com.br/aplicativos#fluxo-de-autoriza%C3%A7%C3%A3o
  *
  * Endpoints:
- *   GET  https://www.bling.com.br/Api/v3/oauth/authorize  ← user consent
- *   POST https://www.bling.com.br/Api/v3/oauth/token      ← token exchange + refresh
+ *   GET  https://www.bling.com.br/Api/v3/oauth/authorize  ← user consent (página)
+ *   POST https://api.bling.com.br/Api/v3/oauth/token       ← token exchange + refresh (API)
+ *
+ * Em 2026 Bling baniu chamadas API em `www.bling.com.br` — token endpoint
+ * agora vive em `api.bling.com.br`. AUTHORIZE_URL fica em `www` porque é
+ * redirect de browser (página de consentimento do usuário), não chamada API.
  *
  * Tokens:
  *   - access_token  expires in 6h
@@ -21,7 +25,7 @@
 import { getAdminSupabase } from "~/lib/supabase/server";
 
 const AUTHORIZE_URL = "https://www.bling.com.br/Api/v3/oauth/authorize";
-const TOKEN_URL = "https://www.bling.com.br/Api/v3/oauth/token";
+const TOKEN_URL = "https://api.bling.com.br/Api/v3/oauth/token";
 
 // Refresh proactively when less than 10 min remain. Bling access_token is 6h,
 // so this gives plenty of buffer for slow webhook chains.
