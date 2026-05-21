@@ -27,6 +27,14 @@ const rawBase = primary.src.replace(/\.(jpe?g|png)$/i, "");
 const isHeroShot = /\/hero$/.test(rawBase);
 const variantBase = isHeroShot ? `${rawBase}.card` : rawBase;
 const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
+
+// "PR Board N Exercícios" → renderiza em 2 linhas no card ("PR Board" /
+// "N Exercícios") pra ficar visualmente igual ao layout dos demais cards
+// (que naturalmente quebram em 2 linhas). Match restrito pra não quebrar
+// outros títulos por engano.
+const prBoardMatch = title.match(/^(PR Board) (\d.*)$/);
+const titleLine1 = prBoardMatch ? prBoardMatch[1] : title;
+const titleLine2 = prBoardMatch ? prBoardMatch[2] : null;
 ---
 
 <a href={`/product/${slug}`} class="product-card" aria-label={`${title} — ver produto`}>
@@ -53,7 +61,9 @@ const hasVariants = /\.(jpe?g|png)$/i.test(primary.src);
   </div>
 
   <div class="product-card__body">
-    <h3 class="product-card__title">{title}</h3>
+    <h3 class="product-card__title">
+      {titleLine2 ? (<>{titleLine1}<br />{titleLine2}</>) : title}
+    </h3>
     <div class="product-card__tagline-slot">
       {tagline && <p class="product-card__tagline">{tagline}</p>}
     </div>
