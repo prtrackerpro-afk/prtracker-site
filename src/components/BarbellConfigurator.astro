@@ -170,7 +170,7 @@ const CONFIG_JSON = JSON.stringify({
         <span class="cfg__price-pix-label">5 % OFF</span>
       </div>
       <div class="cfg__price-installments">
-        ou 6× de <span data-installment-price>{formatBRL(Math.round(basePriceCents / 6))}</span> sem juros
+        ou 3× de <span data-installment-price>{formatBRL(Math.round(basePriceCents / 3))}</span> sem juros
       </div>
     </div>
     <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn>
@@ -684,7 +684,7 @@ const CONFIG_JSON = JSON.stringify({
       usedSpaceEl.textContent = `${spaceMm}mm`;
       totalPriceEl.textContent = formatBRL(totalCents);
       pixPriceEl.textContent = formatBRL(applyPix(totalCents));
-      installmentPriceEl.textContent = formatBRL(Math.round(totalCents / 6));
+      installmentPriceEl.textContent = formatBRL(Math.round(totalCents / 3));
 
       const overLimit = spaceMm > config.maxSideSpaceMm;
       const needsPlates = config.isAnilhasOnly && platesCents === 0;

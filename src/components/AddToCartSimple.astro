@@ -29,7 +29,7 @@ const { slug, title, image, priceCents, sizes = [], category } = Astro.props;
       <span class="atc__price-pix-value">{formatBRL(applyPix(priceCents))}</span>
       <span class="atc__price-pix-label">5 % OFF</span>
     </div>
-    <div class="atc__price-installments">ou 6× de {formatBRL(Math.round(priceCents / 6))} sem juros</div>
+    <div class="atc__price-installments">ou 3× de {formatBRL(Math.round(priceCents / 3))} sem juros</div>
   </div>
 
   {sizes.length > 0 && (

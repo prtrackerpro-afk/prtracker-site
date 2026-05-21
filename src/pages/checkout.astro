@@ -5,7 +5,7 @@ import Loader from "@lucide/astro/icons/loader";
 
 <BaseLayout
   title="Checkout — PR Tracker"
-  description="Finalize sua compra com segurança. Pagamento via Pix (5 % OFF) ou cartão em até 6× sem juros."
+  description="Finalize sua compra com segurança. Pagamento via Pix (5 % OFF) ou cartão em até 3× sem juros."
   noindex
   hideFooter
   hideFloatingActions
@@ -110,7 +110,7 @@ import Loader from "@lucide/astro/icons/loader";
                 <input type="radio" name="paymentMethod" value="credit" />
                 <span class="pay-method__inner">
                   <span class="pay-method__title">Cartão de crédito</span>
-                  <span class="pay-method__desc">Até 6× sem juros</span>
+                  <span class="pay-method__desc">Até 3× sem juros</span>
                 </span>
               </label>
             </div>
@@ -170,7 +170,7 @@ import Loader from "@lucide/astro/icons/loader";
             <dd data-checkout-pix>R$ 0,00</dd>
           </div>
           <div class="checkout__row checkout__row--highlight" data-credit-row hidden>
-            <dt>Total cartão (6×)</dt>
+            <dt>Total cartão (3×)</dt>
             <dd data-checkout-credit>R$ 0,00</dd>
           </div>
         </dl>

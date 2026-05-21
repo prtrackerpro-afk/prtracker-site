@@ -84,7 +84,7 @@ Tecido respirável de alta durabilidade. Lavar em água fria, do avesso, secar n
 # Pagamento
 
 - **Pix** — **5% de desconto automático** no total.
-- **Cartão de crédito** — em até **6× sem juros**.
+- **Cartão de crédito** — em até **3× sem juros**.
 - Processado via Mercado Pago.
 
 # Prazo de despacho e entrega

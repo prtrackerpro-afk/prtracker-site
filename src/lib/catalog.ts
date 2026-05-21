@@ -54,7 +54,7 @@ export const MAX_SIDE_SPACE_MM = 45;
 export const PIX_DISCOUNT = 0.05;
 
 /** Max installments on credit card (no interest). */
-export const MAX_INSTALLMENTS = 6;
+export const MAX_INSTALLMENTS = 3;
 
 /** My PR Set exercise list (20). Alphabetical. */
 export const EXERCISES = [
