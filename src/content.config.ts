@@ -40,7 +40,12 @@ const shippingSchema = z.object({
   insurance_value_cents: z.number().int().nonnegative().optional(),
 });
 
-export const categoryEnum = z.enum(["pr-trackers", "anilhas", "camisetas"]);
+export const categoryEnum = z.enum([
+  "pr-trackers",
+  "pr-runners",
+  "anilhas",
+  "camisetas",
+]);
 
 const products = defineCollection({
   loader: glob({ pattern: "**/*.json", base: "./src/content/products" }),
@@ -69,12 +74,29 @@ const products = defineCollection({
          * My PR Gym — renderiza o `TripleBarbellConfigurator`.
          */
         isTripleBarbell: z.boolean().default(false),
+        /**
+         * "Meus RPs" (PR Runners): 4 inputs de tempo (5/10/21/42 km)
+         * com preview SVG ao vivo. Sem barra, sem anilhas.
+         */
+        isMeusRPs: z.boolean().default(false),
+        /**
+         * "PR Tracker Board" — placa colorida com N exercícios
+         * configuráveis (cor + lista de exercícios + N barras de
+         * anilhas independentes). `boardExerciseCount` define N
+         * (2 ou 3). Defaults vêm de `boardDefaultExercises` (lista
+         * de `value`s da BOARD_EXERCISES, ordem top→bottom).
+         */
+        isBoard: z.boolean().default(false),
+        boardExerciseCount: z.number().int().min(2).max(3).optional(),
+        boardDefaultExercises: z.array(z.string()).optional(),
       })
       .default({
         enabled: false,
         isAnilhasOnly: false,
         hasExerciseSelector: false,
         isTripleBarbell: false,
+        isMeusRPs: false,
+        isBoard: false,
       }),
     /**
      * Marca o produto como "EM BREVE". O `[slug].astro` substitui o

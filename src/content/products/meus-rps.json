@@ -1,0 +1,37 @@
+{
+  "slug": "meus-rps",
+  "title": "Meus RPs",
+  "tagline": "O troféu de quem mede a vida em quilômetros.",
+  "category": "pr-runners",
+  "priceBase": 13990,
+  "priceFrom": false,
+  "shipping": { "weight_g": 280, "length_cm": 22, "width_cm": 16, "height_cm": 4 },
+  "shortDescription": "Primeira peça da linha PR Runners. Quatro distâncias clássicas — 5, 10, 21 e 42 km — esperando o seu tempo. Sem tempo? Vem com cadeado. Bateu o RP? É só anotar.",
+  "longDescriptionHtml": "<p>O <strong>Meus RPs</strong> é o primeiro produto da linha <strong>PR Runners</strong>. Quatro recordes pessoais (RPs) em corrida — 5 km, 10 km, 21 km e 42 km — exibidos em uma única peça premium.</p><p>Você escolhe os tempos no momento da compra. Se ainda não bateu uma distância (e a maratona é sempre a última a cair), aquela linha fica com o <strong>cadeado fechado</strong> — pronta pra ser desbloqueada quando a hora chegar.</p><p>A placa é impressa em 3D em PLA premium preto fosco, com lettering branco em alto relevo. Tipografia Archivo Black. Suporte com pés de apoio integrados pra apoiar em mesa, prateleira ou home office.</p>",
+  "images": [
+    { "src": "/images/products/meus-rps/photo-01.jpg", "alt": "Meus RPs — placa preta com 4 tempos de corrida (5, 10, 21, 42 km)", "width": 1200, "height": 1600 },
+    { "src": "/images/products/meus-rps/photo-02.jpg", "alt": "Meus RPs — vista lateral da placa em corrida", "width": 1200, "height": 1600 }
+  ],
+  "specs": [
+    { "label": "Placa", "value": "PLA premium · Preto fosco · 150 × 150 mm" },
+    { "label": "Lettering", "value": "Archivo Black · Branco em alto relevo" },
+    { "label": "Distâncias", "value": "5 km · 10 km · 21 km · 42 km" },
+    { "label": "Personalização", "value": "Tempo digitado (hh:mm:ss) por distância · cadeado quando vazio" }
+  ],
+  "faq": [
+    { "question": "O que é RP?", "answer": "RP = Recorde Pessoal, o termo brasileiro do mundo da corrida. É o seu melhor tempo em uma distância específica. No CrossFit/musculação a gente usa PR (Personal Record), mas pra corrida no Brasil o consagrado é RP." },
+    { "question": "Posso comprar mesmo sem ter feito as 4 distâncias?", "answer": "Pode. Distâncias sem tempo digitado vêm com o cadeado fechado, esperando você bater o recorde. Quando bater, é só pedir outro Meus RPs pra atualizar (ou guardar este como memória do antes/depois)." },
+    { "question": "Como meu tempo é registrado?", "answer": "Você digita o tempo no formato hh:mm:ss (horas:minutos:segundos) durante a compra. A gente recebe junto com o pedido e produz a placa com os tempos exatos que você informou." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." }
+  ],
+  "configurator": {
+    "enabled": true,
+    "isAnilhasOnly": false,
+    "hasExerciseSelector": false,
+    "isTripleBarbell": false,
+    "isMeusRPs": true,
+    "isBoard": false
+  },
+  "featured": true,
+  "priority": 8
+}

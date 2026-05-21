@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="PR Tracker Board 3 exercícios — placa cobre com Supino, Agachamento e Levantamento Terra">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="80%">
+      <stop offset="0%" stop-color="#fafafc"/>
+      <stop offset="100%" stop-color="#dfe0e5"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+
+  <!-- Placa centralizada — anilhas podem extrapolar bordas (gridview overflow OK no Astro) -->
+  <g transform="translate(160, 130)">
+    <rect x="0" y="0" width="480" height="540" rx="20" fill="#B87333"/>
+
+    <!-- Logo PR Tracker oficial -->
+    <image href="/images/brand/logo-pr-tracker-branco.svg" x="120" y="34" width="240" height="68" preserveAspectRatio="xMidYMid meet"/>
+
+    <!-- ROW 1: SUPINO — 25kg vermelhas × 2 pares cada lado -->
+    <g transform="translate(0, 142)">
+      <rect x="100" y="0" width="280" height="42" rx="3" fill="#111111"/>
+      <text x="240" y="29" text-anchor="middle" font-family="Archivo Black, Inter, sans-serif" font-size="18" font-weight="900" fill="#FFFFFF" letter-spacing="1">SUPINO</text>
+      <!-- Bar -->
+      <rect x="10" y="83" width="460" height="3.5" rx="0.6" fill="#8e94a0"/>
+      <rect x="10" y="83" width="460" height="1.2" fill="#c4c8cf"/>
+      <rect x="4" y="81" width="6" height="7" rx="0.8" fill="#3e434b"/>
+      <rect x="470" y="81" width="6" height="7" rx="0.8" fill="#3e434b"/>
+      <!-- Collar holders -->
+      <rect x="86" y="78" width="9" height="15" fill="#1a1c22"/>
+      <rect x="385" y="78" width="9" height="15" fill="#1a1c22"/>
+      <!-- Plates LEFT (25kg × 2) — espessura 12px, diâmetro 48px -->
+      <rect x="74" y="60" width="12" height="48" rx="1.6" fill="#DA291C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="74" y="83" width="12" height="5" fill="#1a1c22"/>
+      <rect x="62" y="60" width="12" height="48" rx="1.6" fill="#DA291C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="62" y="83" width="12" height="5" fill="#1a1c22"/>
+      <!-- Plates RIGHT (25kg × 2) -->
+      <rect x="394" y="60" width="12" height="48" rx="1.6" fill="#DA291C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="394" y="83" width="12" height="5" fill="#1a1c22"/>
+      <rect x="406" y="60" width="12" height="48" rx="1.6" fill="#DA291C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="406" y="83" width="12" height="5" fill="#1a1c22"/>
+    </g>
+
+    <!-- ROW 2: AGACHAMENTO — 20kg azuis × 2 + 10kg verdes × 1 -->
+    <g transform="translate(0, 280)">
+      <rect x="100" y="0" width="280" height="42" rx="3" fill="#111111"/>
+      <text x="240" y="29" text-anchor="middle" font-family="Archivo Black, Inter, sans-serif" font-size="17" font-weight="900" fill="#FFFFFF" letter-spacing="1">AGACHAMENTO</text>
+      <rect x="10" y="83" width="460" height="3.5" rx="0.6" fill="#8e94a0"/>
+      <rect x="10" y="83" width="460" height="1.2" fill="#c4c8cf"/>
+      <rect x="4" y="81" width="6" height="7" rx="0.8" fill="#3e434b"/>
+      <rect x="470" y="81" width="6" height="7" rx="0.8" fill="#3e434b"/>
+      <rect x="86" y="78" width="9" height="15" fill="#1a1c22"/>
+      <rect x="385" y="78" width="9" height="15" fill="#1a1c22"/>
+      <!-- Plates LEFT (20kg × 2 + 10kg × 1) -->
+      <rect x="76" y="62" width="10" height="44" rx="1.5" fill="#43B02A" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="76" y="83" width="10" height="5" fill="#1a1c22"/>
+      <rect x="64" y="60" width="12" height="48" rx="1.6" fill="#0057B8" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="64" y="83" width="12" height="5" fill="#1a1c22"/>
+      <rect x="52" y="60" width="12" height="48" rx="1.6" fill="#0057B8" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="52" y="83" width="12" height="5" fill="#1a1c22"/>
+      <!-- Plates RIGHT -->
+      <rect x="394" y="62" width="10" height="44" rx="1.5" fill="#43B02A" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="394" y="83" width="10" height="5" fill="#1a1c22"/>
+      <rect x="404" y="60" width="12" height="48" rx="1.6" fill="#0057B8" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="404" y="83" width="12" height="5" fill="#1a1c22"/>
+      <rect x="416" y="60" width="12" height="48" rx="1.6" fill="#0057B8" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="416" y="83" width="12" height="5" fill="#1a1c22"/>
+    </g>
+
+    <!-- ROW 3: LEVANTAMENTO TERRA — 15kg amarelas × 3 cada lado -->
+    <g transform="translate(0, 418)">
+      <rect x="100" y="0" width="280" height="42" rx="3" fill="#111111"/>
+      <text x="240" y="29" text-anchor="middle" font-family="Archivo Black, Inter, sans-serif" font-size="15" font-weight="900" fill="#FFFFFF" letter-spacing="0.8">LEVANTAMENTO TERRA</text>
+      <rect x="10" y="83" width="460" height="3.5" rx="0.6" fill="#8e94a0"/>
+      <rect x="10" y="83" width="460" height="1.2" fill="#c4c8cf"/>
+      <rect x="4" y="81" width="6" height="7" rx="0.8" fill="#3e434b"/>
+      <rect x="470" y="81" width="6" height="7" rx="0.8" fill="#3e434b"/>
+      <rect x="86" y="78" width="9" height="15" fill="#1a1c22"/>
+      <rect x="385" y="78" width="9" height="15" fill="#1a1c22"/>
+      <!-- Plates LEFT (15kg × 3 — thickness 10.5 ≈ 11) -->
+      <rect x="75" y="62" width="11" height="44" rx="1.5" fill="#FFC72C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="75" y="83" width="11" height="5" fill="#1a1c22"/>
+      <rect x="64" y="62" width="11" height="44" rx="1.5" fill="#FFC72C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="64" y="83" width="11" height="5" fill="#1a1c22"/>
+      <rect x="53" y="62" width="11" height="44" rx="1.5" fill="#FFC72C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="53" y="83" width="11" height="5" fill="#1a1c22"/>
+      <!-- Plates RIGHT -->
+      <rect x="394" y="62" width="11" height="44" rx="1.5" fill="#FFC72C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="394" y="83" width="11" height="5" fill="#1a1c22"/>
+      <rect x="405" y="62" width="11" height="44" rx="1.5" fill="#FFC72C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="405" y="83" width="11" height="5" fill="#1a1c22"/>
+      <rect x="416" y="62" width="11" height="44" rx="1.5" fill="#FFC72C" stroke="#01002a" stroke-width="0.8"/>
+      <rect x="416" y="83" width="11" height="5" fill="#1a1c22"/>
+    </g>
+  </g>
+</svg>

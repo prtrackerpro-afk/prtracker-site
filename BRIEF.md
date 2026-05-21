@@ -68,9 +68,9 @@ Tom de voz: direto, motivacional, brasileiro, premium — "Sua marca. Seu PR." /
 
 ---
 
-## Catálogo de produtos (8 SKUs — preços oficiais — tabela única)
+## Catálogo de produtos (11 SKUs — preços oficiais — tabela única)
 
-Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grátis (≥ R$ 100) e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379).
+Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grátis (≥ R$ 100) e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379). **Linha PR Runners** estreia em mai/2026 com o Meus RPs (R$ 139,90) — primeira expansão para corrida.
 
 | # | Produto | Categoria | Preço base | Configurador | Obs. |
 |---|---------|-----------|-----------:|:------------:|------|
@@ -78,10 +78,28 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grát
 | 2 | Bench Press Set | pr-trackers | **R$ 189,00** | Sim | Banco de supino em alumínio |
 | 3 | Deadlift Set | pr-trackers | **R$ 149,00** | Sim | Base MDF + borracha |
 | 4 | My PR Set | pr-trackers | **R$ 159,00** | Sim + seletor de 20 exercícios | Base em acrílico |
-| 5 | **My PR Gym** *(EM BREVE)* | pr-trackers | **R$ 379,00** | Sim — **3 barras independentes** (Supino, Agachamento, Levantamento Terra) | Gym completo em miniatura. Compra bloqueada; botão "Notifique-me quando lançar" (email + telefone) — envia email pra `contato@prtracker.com.br` com assunto "Novo Interessado no MY PR Gym". |
-| 6 | Anilhas Avulsas | anilhas | **a partir de R$ 7,00** | Sim (modo anilhas-only) | Sem barra, só pares |
-| 7 | Camiseta Masculina | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
-| 8 | Camiseta Feminina Baby Look | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
+| 5 | **PR Tracker Board — 3 Exercícios** | pr-trackers | **R$ 199,90** | Sim — cor (Cobre/Preto/Rosa) + 3 exercícios + 3 barras | Placa PLA com 3 exercícios escolhidos (default Supino/Agachamento/LT). Inclui Arranco/Arremesso no dropdown (bilíngue). |
+| 6 | **PR Tracker Board — 2 Exercícios** | pr-trackers | **R$ 179,90** | Sim — cor (Cobre/Preto/Rosa) + 2 exercícios + 2 barras | Placa PLA com 2 exercícios escolhidos (default Arranco/Arremesso). |
+| 7 | **My PR Gym** *(EM BREVE)* | pr-trackers | **R$ 379,00** | Sim — **3 barras independentes** (Supino, Agachamento, Levantamento Terra) | Gym completo em miniatura. Compra bloqueada; botão "Notifique-me quando lançar" (email + telefone) — envia email pra `contato@prtracker.com.br` com assunto "Novo Interessado no MY PR Gym". |
+| 8 | **Meus RPs** (PR Runners) | pr-runners | **R$ 139,90** | Sim — 4 tempos hh:mm:ss (5/10/21/42 km) | Primeira peça da linha de corrida. Tempo opcional por distância; vazio = cadeado. Sem barras nem anilhas. |
+| 9 | Anilhas Avulsas | anilhas | **a partir de R$ 7,00** | Sim (modo anilhas-only) | Sem barra, só pares |
+| 10 | Camiseta Masculina | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
+| 11 | Camiseta Feminina Baby Look | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
+
+### Categorias (enum)
+
+- `pr-trackers` — linha original (força/LPO/crossfit)
+- `pr-runners` — linha de corrida (mai/2026)
+- `anilhas` — pares avulsos
+- `camisetas` — vestuário
+
+### Cores dos PR Tracker Boards
+
+| Cor | HEX | Default? |
+|-----|-----|:--------:|
+| Cobre brunido | `#B87333` | ✅ |
+| Preto fosco | `#111111` |  |
+| Rosa pink | `#E91E63` |  |
 
 ### Preços de anilhas (tabela única — sem preço diferenciado por kit)
 

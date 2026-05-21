@@ -15,20 +15,45 @@ const products = await getCollection("products");
 const prTrackersAll = products
   .filter((p) => p.data.category === "pr-trackers")
   .sort((a, b) => a.data.priority - b.data.priority);
-// Home carousel order — preço crescente (menor entrada → âncora premium
-// no final). Deadlift (R$ 149) abre por ser o produto-pôster da marca.
-// My PR Gym (R$ 379 EM BREVE) fecha como âncora visual que faz os outros
-// parecerem mais acessíveis.
-const carouselOrder = [
-  "deadlift-set",   // R$ 149
-  "my-pr-set",      // R$ 159
-  "power-rack-set", // R$ 169
-  "bench-press-set",// R$ 189
-  "my-pr-gym",      // R$ 379 (EM BREVE)
+
+/**
+ * Home divide a categoria `pr-trackers` em duas seções visuais separadas
+ * (mai/2026), espelhando os dois dropdowns do header:
+ *
+ *   - Miniaturas: réplicas em escala do equipamento de academia.
+ *     Power Rack, Bench Press, Deadlift Set.
+ *   - PR Trackers: placas-troféu configuráveis (My PR Set, Boards 2/3,
+ *     My PR Gym EM BREVE).
+ *
+ * O split ajuda o cliente a navegar — quem quer uma miniatura fiel acha
+ * em "Miniaturas"; quem quer uma placa-troféu acha em "PR Trackers".
+ *
+ * A ordem dentro de cada seção é preço crescente (entrada acessível →
+ * âncora premium no final).
+ */
+const miniaturasOrder = [
+  "deadlift-set",         // R$ 149,00
+  "power-rack-set",       // R$ 169,00
+  "bench-press-set",      // R$ 189,00
+  "my-pr-gym",            // R$ 379,00 (EM BREVE) — gym completo em miniatura
 ] as const;
-const prTrackers = carouselOrder.map(
+const prTrackersOrder = [
+  "my-pr-set",            // R$ 159,00 (peça original da linha)
+  "pr-tracker-board-2",   // R$ 179,90 (LPO Arranco/Arremesso)
+  "pr-tracker-board-3",   // R$ 199,90 (3 ex configuráveis)
+] as const;
+const miniaturas = miniaturasOrder.map(
   (slug) => prTrackersAll.find((p) => p.data.slug === slug)!,
 );
+const prTrackers = prTrackersOrder.map(
+  (slug) => prTrackersAll.find((p) => p.data.slug === slug)!,
+);
+
+// PR Runners — nova linha de corrida (mai/2026). Carrossel próprio
+// renderizado em seção dedicada abaixo de PR Trackers.
+const prRunners = products
+  .filter((p) => p.data.category === "pr-runners")
+  .sort((a, b) => a.data.priority - b.data.priority);
 const anilhas = products.find((p) => p.data.slug === "anilhas")!;
 const camisetas = products
   .filter((p) => p.data.category === "camisetas")
@@ -158,12 +183,13 @@ const jsonLd = [
     </div>
   </section>
 
-  <!-- ========================= PRODUTOS ========================= -->
-  <section id="produtos" class="section section--paper">
+  <!-- ========================= MINIATURAS ========================= -->
+  <section id="produtos" class="section section--paper line-section line-section--miniaturas">
     <div class="container-page">
-      <div class="section__head">
-        <h2>Miniaturas que guardam sua história</h2>
-        <p>Cada set é uma réplica fiel do equipamento. Você configura, nós produzimos, você expõe.</p>
+      <div class="section__head line-section__head">
+        <h2 class="line-section__title">MINIATURAS</h2>
+        <p class="line-section__subtitle">Réplicas em escala do equipamento que faz o seu PR. Você configura a barra, nós produzimos a peça, você expõe.</p>
+        <a href="/colecao/miniaturas" class="line-section__cta">Ver toda a coleção →</a>
       </div>
 
       <div class="carousel product-carousel" data-carousel data-carousel-loop data-carousel-default="1">
@@ -176,7 +202,7 @@ const jsonLd = [
 
         <div class="carousel__viewport" data-carousel-viewport>
           <div class="carousel__track">
-            {prTrackers.map((p, i) => (
+            {miniaturas.map((p, i) => (
               <div class="pc-slide">
                 <ProductCard product={p} eager={i < 2} />
               </div>
@@ -184,10 +210,61 @@ const jsonLd = [
           </div>
         </div>
 
-        <div class="carousel__dots" role="tablist" aria-label="Navegação de produtos" data-carousel-dots></div>
+        <div class="carousel__dots" role="tablist" aria-label="Navegação de miniaturas" data-carousel-dots></div>
       </div>
     </div>
   </section>
+
+  <!-- ========================= PR TRACKERS ========================= -->
+  <section id="pr-trackers" class="section section--paper line-section line-section--trackers">
+    <div class="container-page">
+      <div class="section__head line-section__head">
+        <h2 class="line-section__title">PR TRACKERS</h2>
+        <p class="line-section__subtitle">Placas-troféu configuráveis. Escolha o exercício, monte a barra, exiba o número que importa.</p>
+        <a href="/colecao/pr-trackers" class="line-section__cta">Ver toda a coleção →</a>
+      </div>
+
+      <div class="carousel product-carousel product-carousel--3" data-carousel data-carousel-loop data-carousel-default="1">
+        <button type="button" class="carousel__nav carousel__nav--prev" aria-label="Produto anterior" data-carousel-prev>
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button type="button" class="carousel__nav carousel__nav--next" aria-label="Próximo produto" data-carousel-next>
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <div class="carousel__viewport" data-carousel-viewport>
+          <div class="carousel__track">
+            {prTrackers.map((p) => (
+              <div class="pc-slide">
+                <ProductCard product={p} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="carousel__dots" role="tablist" aria-label="Navegação de PR Trackers" data-carousel-dots></div>
+      </div>
+    </div>
+  </section>
+
+  {prRunners.length > 0 && (
+    <!-- ========================= PR RUNNERS ========================= -->
+    <section id="pr-runners" class="section section--paper pr-runners-section line-section line-section--runners">
+      <div class="container-page">
+        <div class="section__head pr-runners-section__head line-section__head">
+          <h2 class="line-section__title">PR RUNNERS</h2>
+          <p class="line-section__subtitle">5K, 10K, 21K, 42K. Quem corre sabe o peso de cada um desses números.</p>
+          <a href="/colecao/pr-runners" class="line-section__cta">Ver toda a coleção →</a>
+        </div>
+
+        <div class="pr-runners-section__grid">
+          {prRunners.map((p) => (
+            <ProductCard product={p} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
 
   <!-- ========================= DEPOIMENTOS ========================= -->
   <section class="section section--light testimonials">
@@ -749,6 +826,77 @@ const jsonLd = [
   .eyebrow--lime { color: var(--color-brand-lime); }
   .text-brand-white { color: var(--color-brand-white); }
 
+  /* ======================= LINHAS (3 categorias) =======================
+     Eyebrow + título + subtítulo padronizados pras três seções de catálogo:
+     MINIATURAS, PR TRACKERS, PR RUNNERS. O eyebrow ("// linha 0X") é um
+     selo monoespaçado em lime que reforça a categorização visual sem ruído.
+     Inspirado em editorial/print: number-headed sections com hairline rule.
+  */
+  .line-section { padding-block: clamp(3rem, 5vw, 4.25rem); }
+  .line-section + .line-section { padding-top: 0; }
+  .line-section__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+  .line-section__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-brand-navy);
+    text-decoration: none;
+    border-bottom: 2px solid var(--color-brand-lime);
+    padding-bottom: 0.18rem;
+    transition: color 160ms ease, transform 160ms ease, border-color 160ms ease;
+  }
+  .line-section__cta:hover {
+    color: var(--color-brand-navy);
+    transform: translateX(2px);
+    border-bottom-color: var(--color-brand-navy);
+  }
+  .line-section__title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2rem, 4vw + 0.5rem, 3.5rem);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin: 0;
+    color: var(--color-brand-navy);
+    /* Pequena hairline lime debaixo do título — reforça a marca sem
+       roubar atenção dos cards. */
+    position: relative;
+    padding-bottom: 0.8rem;
+  }
+  .line-section__title::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 3px;
+    background: var(--color-brand-lime);
+  }
+  .line-section__subtitle {
+    font-family: var(--font-body);
+    font-size: clamp(0.98rem, 0.8vw + 0.7rem, 1.1rem);
+    line-height: 1.55;
+    color: var(--color-brand-gray);
+    max-width: 46ch;
+    margin: 0.25rem auto 0;
+  }
+
   /* ======================= PRODUCT GRID ======================= */
   .product-grid {
     display: grid;
@@ -759,6 +907,23 @@ const jsonLd = [
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     max-width: 48rem;
     margin: 0 auto;
+  }
+
+  /* PR Runners section — compacta, com 1 card centralizado por ora */
+  .pr-runners-section { padding-block: 2.5rem; }
+  .pr-runners-section__head {
+    margin-bottom: 1.5rem;
+  }
+  .pr-runners-section__head h2 {
+    margin: 0;
+    font-size: clamp(1.5rem, 2vw + 0.5rem, 2rem);
+    letter-spacing: 0.06em;
+  }
+  .pr-runners-section__grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 320px));
+    justify-content: center;
   }
 
   /* ======================= PRODUCT CAROUSEL ======================= */
@@ -780,14 +945,16 @@ const jsonLd = [
     .product-carousel .pc-slide { flex-basis: calc(50% - 0.625rem); }
   }
   @media (min-width: 1024px) {
-    /* Desktop: todos os 5 cards do catálogo (4 sets + My PR Gym EM BREVE)
-       cabem na mesma linha. Anteriormente era 25% (4 cards) — quando o
-       My PR Gym entrou, o 5º ficava fora da viewport sem nav arrow visível
-       no desktop. */
-    .product-carousel .pc-slide { flex-basis: calc(20% - 1rem); }
+    /* Desktop padrão (PR Trackers, 4 cards): cabe tudo sem arrow. */
+    .product-carousel .pc-slide { flex-basis: calc(25% - 0.95rem); }
     .product-carousel .carousel__track { padding: 1rem 0.25rem 1.5rem; }
     .product-carousel .carousel__nav { display: none; }
     .product-carousel .carousel__dots { display: none; }
+  }
+  @media (min-width: 1024px) {
+    /* Miniaturas — 3 cards. Quebrei o flex-basis pra 33% pra ocupar bem
+       a largura sem cards gigantes. */
+    .product-carousel--3 .pc-slide { flex-basis: calc(33.333% - 0.85rem); }
   }
   @media (min-width: 1024px) {
     /* Camisetas (2 items) fit side-by-side without scrolling. */

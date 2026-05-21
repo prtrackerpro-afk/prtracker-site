@@ -18,7 +18,7 @@
  * with the metadata defined here (NCM, peso, etc).
  */
 
-import { PLATES } from "~/lib/catalog";
+import { PLATES, BOARD_COLORS, RUN_DISTANCES } from "~/lib/catalog";
 
 export interface SkuLine {
   /** Bling código (SKU). */
@@ -47,6 +47,12 @@ export interface ItemSku {
   size?: string;
   exercise?: string;
   plates?: Array<{ plateId: string; pairs: number }>;
+  runningTimes?: Record<string, string>;
+  boardColor?: "cobre" | "preto" | "rosa";
+  boardBarbells?: Array<{
+    exercise: string;
+    plates: Array<{ plateId: string; pairs: number }>;
+  }>;
 }
 
 /**
@@ -94,6 +100,48 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
         {
           codigo: "MYPR-SET",
           nome: `My PR Set — PR Tracker${exerciseSuffix}`,
+          qty: item.qty,
+          unitPrice: item.unit_price_cents / 100,
+          ncm: NCM_KIT,
+        },
+      ];
+    }
+    case "meus-rps": {
+      // PR Runners — Meus RPs. SKU único; tempos vão no `nome` (descrição
+      // do item no pedido + NF-e) pra produção saber quais imprimir.
+      const times = item.runningTimes ?? {};
+      const timesDesc = RUN_DISTANCES
+        .map((d) => (times[d.key] ? `${d.label} ${times[d.key]}` : `${d.label} —`))
+        .join(" / ");
+      return [
+        {
+          codigo: "RUNNER-MEUSRPS",
+          nome: `Meus RPs — PR Runners (${timesDesc})`,
+          qty: item.qty,
+          unitPrice: item.unit_price_cents / 100,
+          ncm: NCM_KIT,
+        },
+      ];
+    }
+    case "pr-tracker-board-3":
+    case "pr-tracker-board-2": {
+      const variant = item.slug === "pr-tracker-board-3" ? "BOARD3" : "BOARD2";
+      const colorKey = (item.boardColor ?? "cobre").toUpperCase();
+      const colorOpt = BOARD_COLORS.find((c) => c.value === (item.boardColor ?? "cobre"));
+      const exDesc = (item.boardBarbells ?? [])
+        .map((bb) => {
+          const platesDesc = (bb.plates ?? [])
+            .filter((p) => p.pairs > 0)
+            .map((p) => `${p.pairs}×${p.plateId.replace("_", ".")}kg`)
+            .join("+");
+          return platesDesc ? `${bb.exercise} ${platesDesc}` : bb.exercise;
+        })
+        .join(" / ");
+      const exCountLabel = item.slug === "pr-tracker-board-3" ? "3 ex" : "2 ex";
+      return [
+        {
+          codigo: `${variant}-${colorKey}`,
+          nome: `PR Tracker Board ${exCountLabel} — ${colorOpt?.label ?? colorKey} (${exDesc})`,
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
           ncm: NCM_KIT,

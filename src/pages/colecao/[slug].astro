@@ -1,0 +1,389 @@
+---
+/**
+ * Página de coleção — uma por linha de marca:
+ *   /colecao/miniaturas
+ *   /colecao/pr-trackers
+ *   /colecao/pr-runners
+ *
+ * Cada página tem hero da coleção + grid de produtos + cross-link
+ * para as outras duas coleções.
+ */
+import { getCollection as getProductCollection } from "astro:content";
+import BaseLayout from "~/layouts/BaseLayout.astro";
+import ProductCard from "~/components/ProductCard.astro";
+import ChevronRight from "@lucide/astro/icons/chevron-right";
+import ArrowRight from "@lucide/astro/icons/arrow-right";
+import { COLLECTIONS, otherCollections, type CollectionMeta } from "~/lib/collections";
+
+export async function getStaticPaths() {
+  return COLLECTIONS.map((c) => ({
+    params: { slug: c.slug },
+    props: { collection: c },
+  }));
+}
+
+interface Props {
+  collection: CollectionMeta;
+}
+
+const { collection } = Astro.props;
+
+const productsAll = await getProductCollection("products");
+const products = collection.products
+  .map((slug) => productsAll.find((p) => p.data.slug === slug))
+  .filter((p): p is NonNullable<typeof p> => p != null);
+
+const others = otherCollections(collection.slug);
+
+const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br").replace(/\/$/, "");
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: `${collection.name} — PR Tracker`,
+  description: collection.tagline,
+  url: `${SITE_URL}/colecao/${collection.slug}`,
+  hasPart: products.map((p) => ({
+    "@type": "Product",
+    name: p.data.title,
+    url: `${SITE_URL}/product/${p.data.slug}`,
+    image: `${SITE_URL}${p.data.images[0]?.src ?? ""}`,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "BRL",
+      price: (p.data.priceBase / 100).toFixed(2),
+      availability: p.data.comingSoon
+        ? "https://schema.org/PreOrder"
+        : "https://schema.org/InStock",
+    },
+  })),
+};
+
+const metaTitle = `${collection.name} — PR Tracker`;
+const metaDescription = collection.tagline;
+---
+
+<BaseLayout
+  title={metaTitle}
+  description={metaDescription}
+  jsonLd={jsonLd}
+>
+  <!-- Breadcrumb -->
+  <nav aria-label="Breadcrumb" class="breadcrumb container-page">
+    <ol>
+      <li><a href="/">Início</a></li>
+      <ChevronRight size={14} aria-hidden="true" />
+      <li aria-current="page">{collection.name}</li>
+    </ol>
+  </nav>
+
+  <!-- ========================= HERO da coleção ========================= -->
+  <section class="coll-hero">
+    <div class="coll-hero__bg" aria-hidden="true"></div>
+    <div class="container-page coll-hero__inner">
+      <span class="coll-hero__kicker">Coleção</span>
+      <h1 class="coll-hero__title">{collection.title}</h1>
+      <p class="coll-hero__tagline">{collection.tagline}</p>
+      <p class="coll-hero__description">{collection.description}</p>
+      <div class="coll-hero__count">
+        <span class="coll-hero__count-num">{products.length}</span>
+        <span class="coll-hero__count-label">peça{products.length === 1 ? "" : "s"} nesta coleção</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= GRID de produtos ========================= -->
+  <section class="coll-products">
+    <div class="container-page">
+      <div class="coll-grid" data-product-count={products.length}>
+        {products.map((p, i) => (
+          <div class="coll-grid__cell">
+            <ProductCard product={p} eager={i < 2} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= CROSS-LINK ========================= -->
+  <section class="coll-cross">
+    <div class="container-page">
+      <div class="coll-cross__head">
+        <span class="coll-cross__kicker">Explore também</span>
+        <h2 class="coll-cross__title">Outras coleções da PR Tracker</h2>
+      </div>
+
+      <div class="coll-cross__grid">
+        {others.map((other) => (
+          <a href={`/colecao/${other.slug}`} class="coll-cross__card">
+            <div class="coll-cross__card-body">
+              <span class="coll-cross__card-kicker">Coleção</span>
+              <h3 class="coll-cross__card-title">{other.title}</h3>
+              <p class="coll-cross__card-tagline">{other.tagline}</p>
+              <span class="coll-cross__card-cta">
+                Ver coleção
+                <ArrowRight size={16} aria-hidden="true" />
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ===================== Breadcrumb (compartilhado com /product) ===================== */
+  .breadcrumb {
+    padding: 1.25rem 1.25rem 0.5rem;
+  }
+  @media (min-width: 768px) { .breadcrumb { padding: 1.5rem 2rem 0.75rem; } }
+  .breadcrumb ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-brand-gray);
+  }
+  .breadcrumb a {
+    color: var(--color-brand-gray);
+    text-decoration: none;
+    transition: color 120ms ease;
+  }
+  .breadcrumb a:hover { color: var(--color-brand-navy); }
+  .breadcrumb [aria-current="page"] {
+    color: var(--color-brand-navy);
+    font-weight: 600;
+  }
+
+  /* ===================== Hero da coleção ===================== */
+  .coll-hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+    padding-block: clamp(3rem, 7vw, 5.5rem);
+    isolation: isolate;
+  }
+  .coll-hero__bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(800px 400px at 85% 30%, rgb(216 255 44 / 0.10), transparent 70%),
+      radial-gradient(600px 300px at 10% 80%, rgb(216 255 44 / 0.06), transparent 70%);
+    z-index: -1;
+  }
+  .coll-hero__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    max-width: 68rem;
+  }
+  .coll-hero__kicker {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+    border: 1px solid var(--color-brand-lime);
+    padding: 0.32rem 0.7rem 0.28rem;
+    line-height: 1;
+  }
+  .coll-hero__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2.5rem, 7vw + 0.5rem, 5rem);
+    line-height: 0.95;
+    letter-spacing: 0.04em;
+    color: var(--color-brand-white);
+  }
+  .coll-hero__tagline {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: clamp(1.05rem, 1vw + 0.7rem, 1.35rem);
+    line-height: 1.4;
+    color: var(--color-brand-lime);
+    max-width: 48ch;
+  }
+  .coll-hero__description {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgb(255 255 255 / 0.78);
+    max-width: 60ch;
+  }
+  .coll-hero__count {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgb(255 255 255 / 0.18);
+    align-self: stretch;
+    max-width: 60ch;
+  }
+  .coll-hero__count-num {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 2.25rem;
+    line-height: 1;
+    color: var(--color-brand-lime);
+  }
+  .coll-hero__count-label {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.7);
+  }
+
+  /* ===================== Grid de produtos ===================== */
+  .coll-products {
+    padding-block: clamp(3rem, 5vw, 4.5rem);
+    background: var(--color-paper);
+  }
+  .coll-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  /* Quando só 1 produto, centraliza num card razoável (PR Runners hoje). */
+  .coll-grid[data-product-count="1"] {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+    justify-content: center;
+  }
+  /* Com 2 produtos: lado a lado num max-width compacto */
+  .coll-grid[data-product-count="2"] {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+
+  /* ===================== Cross-link entre coleções ===================== */
+  .coll-cross {
+    padding-block: clamp(3rem, 5vw, 4.5rem);
+    background: var(--color-paper-deep);
+    border-top: 1px solid rgb(1 0 42 / 0.08);
+  }
+  .coll-cross__head {
+    text-align: center;
+    margin-bottom: 2.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .coll-cross__kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-brand-gray);
+  }
+  .coll-cross__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.6rem, 2vw + 1rem, 2.3rem);
+    letter-spacing: 0.02em;
+    color: var(--color-brand-navy);
+  }
+  .coll-cross__grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    max-width: 64rem;
+    margin-inline: auto;
+  }
+  .coll-cross__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+    padding: 2rem 1.75rem;
+    border: 1px solid rgb(1 0 42 / 0.16);
+    border-radius: var(--radius-card);
+    text-decoration: none;
+    overflow: hidden;
+    transition: transform 220ms cubic-bezier(0.32, 0.72, 0.16, 1), box-shadow 220ms;
+  }
+  .coll-cross__card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(400px 200px at 100% 0%, rgb(216 255 44 / 0.10), transparent 70%);
+    opacity: 0;
+    transition: opacity 240ms ease;
+  }
+  .coll-cross__card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--color-brand-lime);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 280ms cubic-bezier(0.32, 0.72, 0.16, 1);
+  }
+  .coll-cross__card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgb(1 0 42 / 0.35);
+  }
+  .coll-cross__card:hover::before { opacity: 1; }
+  .coll-cross__card:hover::after { transform: scaleY(1); }
+  .coll-cross__card-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .coll-cross__card-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+  }
+  .coll-cross__card-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(1.5rem, 1.5vw + 1rem, 2rem);
+    letter-spacing: 0.03em;
+    color: var(--color-brand-white);
+  }
+  .coll-cross__card-tagline {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: rgb(255 255 255 / 0.75);
+  }
+  .coll-cross__card-cta {
+    margin-top: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-brand-lime);
+  }
+  .coll-cross__card:hover .coll-cross__card-cta { transform: translateX(2px); }
+  .coll-cross__card-cta { transition: transform 200ms ease; }
+</style>

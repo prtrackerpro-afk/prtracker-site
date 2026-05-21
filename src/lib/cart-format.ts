@@ -4,8 +4,8 @@
  * the missing apostrophe escape that previously existed in checkout.astro.
  */
 
-import { BARBELL_WEIGHT_KG, plateById } from "./catalog";
-import type { CartItem } from "./cart-types";
+import { BARBELL_WEIGHT_KG, plateById, BOARD_COLORS, RUN_DISTANCES } from "./catalog";
+import type { CartItem, PlateSelection } from "./cart-types";
 
 /**
  * Total represented weight (barbell + plates) in kg, for items that model a
@@ -50,6 +50,30 @@ export interface CartItemDisplay {
  */
 export function formatCartItemDisplay(item: CartItem): CartItemDisplay {
   const subLines: string[] = [];
+
+  // PR Tracker Board: cor + barras com exercício e anilhas
+  if (item.boardBarbells && item.boardBarbells.length > 0) {
+    if (item.boardColor) {
+      const color = BOARD_COLORS.find((c) => c.value === item.boardColor);
+      subLines.push(`Cor: ${color?.label ?? item.boardColor}`);
+    }
+    for (const bb of item.boardBarbells) {
+      const platesDesc = describePlatesInline(bb.plates);
+      subLines.push(platesDesc ? `${bb.exercise} — ${platesDesc}` : bb.exercise);
+    }
+    return { titleSuffix: "", subLines };
+  }
+
+  // Meus RPs: tempos por distância
+  if (item.runningTimes && Object.keys(item.runningTimes).length > 0) {
+    for (const dist of RUN_DISTANCES) {
+      const t = item.runningTimes[dist.key];
+      if (t) subLines.push(`${dist.label} — ${t}`);
+    }
+    if (subLines.length === 0) subLines.push("Sem tempos cadastrados");
+    return { titleSuffix: "", subLines };
+  }
+
   const totalKg = totalRepresentedKg(item);
   const titleSuffix = totalKg > 0 ? ` — ${formatKg(totalKg)}` : "";
 
@@ -66,6 +90,17 @@ export function formatCartItemDisplay(item: CartItem): CartItemDisplay {
   if (item.size) subLines.push(`Tam. ${item.size}`);
 
   return { titleSuffix, subLines };
+}
+
+function describePlatesInline(plates: PlateSelection[]): string {
+  const active = plates.filter((p) => p.pairs > 0);
+  if (active.length === 0) return "";
+  return active
+    .map((p) => {
+      const kg = p.plateId.replace("_", ".");
+      return `${p.pairs}× ${kg}kg`;
+    })
+    .join(", ");
 }
 
 /** HTML-escape user-controlled strings before interpolating into innerHTML. */

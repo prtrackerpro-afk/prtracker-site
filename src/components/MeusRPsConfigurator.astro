@@ -1,0 +1,514 @@
+---
+/**
+ * Configurador do "Meus RPs" (PR Runners — primeira linha de corrida).
+ *
+ * UX: 4 inputs hh:mm:ss (5km, 10km, 21km, 42km). À medida que o cliente
+ * digita um tempo válido, o preview SVG sintético troca o ícone de
+ * cadeado pelo tempo. Distância sem tempo = cadeado fechado (default).
+ *
+ * O cliente pode comprar com qualquer combinação — inclusive nenhum
+ * tempo preenchido (4 cadeados), conforme decisão de UX (auto mode).
+ *
+ * Recompute server-side: `pricing.ts` normaliza os tempos (formato +
+ * faixas) e o Bling recebe a descrição completa via `sku-map.ts` para
+ * a produção saber exatamente o que imprimir.
+ */
+import { RUN_DISTANCES } from "~/lib/catalog";
+import { formatBRL, applyPix } from "~/lib/format";
+
+interface Props {
+  slug: string;
+  title: string;
+  image: string;
+  basePriceCents: number;
+  category?: string;
+}
+
+const { slug, title, image, basePriceCents, category } = Astro.props;
+
+const CONFIG_JSON = JSON.stringify({
+  slug,
+  title,
+  image,
+  basePriceCents,
+  category,
+  distances: RUN_DISTANCES,
+});
+---
+
+<div class="rcfg" data-meusrps-configurator data-config={CONFIG_JSON}>
+  <!-- Preview ao vivo: SVG sintético reproduzindo a placa do produto -->
+  <div class="rcfg__preview">
+    <svg
+      viewBox="0 0 320 360"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Preview do Meus RPs com os tempos digitados"
+      data-preview-svg
+    >
+      <!-- Placa de fundo (preto fosco) -->
+      <rect x="0" y="0" width="320" height="360" rx="14" fill="#111111" />
+      <rect x="3" y="3" width="314" height="354" rx="12" fill="none" stroke="#2a2a2a" stroke-width="1" />
+
+      <!-- Header centralizado: ícone corredor (Material Symbols
+           directions_run, redesenhado pra silhueta clara estilo emoji
+           🏃) + "MEUS RPs" em Archivo Black. -->
+      <g transform="translate(66, 24)">
+        {/* Runner glyph — usa viewBox próprio do Material Symbols (path
+            já testado e polido). Posicionado à esquerda do texto. */}
+        <svg x="0" y="6" width="38" height="38" viewBox="0 -960 960 960">
+          <path
+            d="M520-40v-240l-84-80-40 176-276-56 16-80 192 40 64-324-72 28v136h-80v-188l188-78q26-11 44-13.5t34 5q16 8 29 22.5t22 34.5l38 84q22 50 70.5 78.5T800-440v80q-69 0-122.5-25T580-460l-32 140 92 84v196h-120Zm44-720q-32 0-56-24t-24-56q0-33 24-56.5t56-23.5q33 0 56.5 23.5T644-840q0 32-23.5 56T564-760Z"
+            fill="#FFFFFF"
+          />
+        </svg>
+        {/* "MEUS RPs" texto */}
+        <text
+          x="46"
+          y="33"
+          font-family="Archivo Black, Inter, sans-serif"
+          font-size="26"
+          font-weight="900"
+          fill="#FFFFFF"
+          letter-spacing="-0.5"
+        >MEUS RPs</text>
+      </g>
+
+      <!-- Linha divisória -->
+      <line x1="22" y1="72" x2="298" y2="72" stroke="#FFFFFF" stroke-width="2" />
+
+      <!-- 4 linhas distância | tempo -->
+      {RUN_DISTANCES.map((d, i) => {
+        const y = 96 + i * 56;
+        return (
+          <g data-row={d.key} transform={`translate(0, ${y})`}>
+            <!-- Tag da distância (esquerda) -->
+            <rect x="22" y="0" width="120" height="44" rx="4" fill="#1d1d1d" stroke="#2c2c2c" stroke-width="0.6" />
+            <text
+              x="34"
+              y="31"
+              font-family="Archivo Black, Inter, sans-serif"
+              font-size="26"
+              font-weight="900"
+              fill="#FFFFFF"
+              letter-spacing="-0.5"
+            >{d.label}</text>
+            <!-- Tag do tempo (direita) -->
+            <rect x="156" y="0" width="142" height="44" rx="4" fill="#1d1d1d" stroke="#2c2c2c" stroke-width="0.6" />
+            <!-- Cadeado default (visível quando vazio) -->
+            <g data-locked={d.key} transform={`translate(${156 + 142 / 2 - 11}, 11)`}>
+              <rect x="2" y="9" width="18" height="13" rx="2" fill="#FFFFFF" />
+              <path d="M5 9 V5 a6 6 0 0 1 12 0 V9" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" />
+              <circle cx="11" cy="15.5" r="1.6" fill="#111111" />
+            </g>
+            <!-- Tempo digitado (visível quando há valor) -->
+            <text
+              data-time={d.key}
+              x="227"
+              y="31"
+              text-anchor="middle"
+              font-family="Archivo Black, Inter, sans-serif"
+              font-size="22"
+              font-weight="900"
+              fill="#FFFFFF"
+              letter-spacing="0.5"
+              visibility="hidden"
+            >00:00:00</text>
+          </g>
+        );
+      })}
+
+      <!-- Logo PR Tracker no rodapé (asset oficial branco, 10% menor) -->
+      <image
+        href="/images/brand/logo-pr-tracker-branco.svg"
+        x="106"
+        y="322"
+        width="108"
+        height="30"
+        opacity="0.95"
+        preserveAspectRatio="xMidYMid meet"
+      />
+
+    </svg>
+  </div>
+
+  <!-- Inputs: 4 tempos -->
+  <div class="rcfg__inputs" role="group" aria-label="Digite seus tempos">
+    {RUN_DISTANCES.map((d) => (
+      <label class="rcfg__input-row">
+        <span class="rcfg__input-distance">{d.label}</span>
+        <input
+          type="text"
+          inputmode="numeric"
+          class="rcfg__input"
+          data-time-input
+          data-distance={d.key}
+          placeholder="hh:mm:ss"
+          maxlength="8"
+          autocomplete="off"
+          aria-label={`Tempo no ${d.label}`}
+        />
+        <span class="rcfg__input-status rcfg__input-status--locked" data-input-status={d.key} aria-hidden="true">
+          <!-- Default: cadeado fechado -->
+          <svg data-status-locked class="rcfg__status-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <!-- Substituído por: check verde quando tempo válido -->
+          <svg data-status-checked class="rcfg__status-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+      </label>
+    ))}
+    <p class="rcfg__hint">
+      Sem um tempo? Deixe em branco — vem com cadeado, pronto pra desbloquear.
+    </p>
+  </div>
+
+  <!-- Buy block -->
+  <div class="rcfg__buy">
+    <div class="rcfg__price">
+      <div class="rcfg__price-main">{formatBRL(basePriceCents)}</div>
+      <div class="rcfg__price-pix">
+        <span class="pix-badge">Pix</span>
+        <span class="rcfg__price-pix-value">{formatBRL(applyPix(basePriceCents))}</span>
+        <span class="rcfg__price-pix-label">5 % OFF</span>
+      </div>
+      <div class="rcfg__price-installments">
+        ou 6× de {formatBRL(Math.round(basePriceCents / 6))} sem juros
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn>
+      Adicionar ao carrinho
+    </button>
+    <p class="rcfg__ship">
+      Envio para todo o Brasil com rastreio
+    </p>
+  </div>
+</div>
+
+<style>
+  .rcfg {
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: var(--radius-card);
+    background: var(--color-paper);
+  }
+  @media (min-width: 640px) { .rcfg { padding: 2rem; } }
+
+  .rcfg__preview {
+    /* Sem background nem moldura — placa preta flutua direto sobre o paper
+       do configurator, sem áreas brancas laterais. */
+    background: transparent;
+    border: none;
+    padding: 0.25rem 0 0.75rem;
+    display: flex;
+    justify-content: center;
+  }
+  .rcfg__preview svg {
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    display: block;
+  }
+
+  .rcfg__inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+  }
+  .rcfg__input-row {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    align-items: center;
+    gap: 0.85rem;
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    padding: 0.6rem 0.9rem;
+    transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  }
+  .rcfg__input-row:has(input:focus-visible),
+  .rcfg__input-row:hover {
+    border-color: var(--color-brand-navy);
+    transform: translate(-1px, -1px);
+    box-shadow: 2px 2px 0 0 var(--color-brand-navy);
+  }
+  .rcfg__input-distance {
+    font-family: var(--font-product, "Archivo Black");
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--color-brand-navy);
+    font-size: 1rem;
+    line-height: 1;
+    font-weight: 900;
+  }
+  .rcfg__input {
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    background: var(--color-paper);
+    color: var(--color-brand-navy);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+  }
+  .rcfg__input:focus-visible {
+    border-color: var(--color-brand-navy);
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 1px;
+  }
+  .rcfg__input--invalid {
+    border-color: #b91c1c;
+    outline: 2px solid rgb(185 28 28 / 0.18);
+    outline-offset: 1px;
+  }
+  .rcfg__input-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+  }
+  .rcfg__input-status--locked { color: #c87a3a; }   /* cadeado cor cobre/âmbar */
+  .rcfg__input-status--checked { color: #16a34a; }  /* check verde */
+  .rcfg__status-icon { display: block; }
+  .rcfg__hint {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--color-brand-gray);
+    text-transform: uppercase;
+    margin: 0.35rem 0 0;
+  }
+
+  .rcfg__buy {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1.25rem;
+    border-top: 2px solid var(--color-brand-navy);
+  }
+  .rcfg__price { display: flex; flex-direction: column; gap: 0.2rem; }
+  .rcfg__price-main {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2.25rem, 2.5vw + 1rem, 3rem);
+    color: var(--color-brand-navy);
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+  .rcfg__price-pix {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .rcfg__price-pix-value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-brand-navy);
+    letter-spacing: 0.02em;
+  }
+  .rcfg__price-pix-label {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .rcfg__price-installments {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .rcfg__ship {
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .pix-badge {
+    display: inline-block;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--color-brand-navy);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .w-full { width: 100%; }
+</style>
+
+<script>
+  import { cart } from "~/scripts/cart";
+  import { trackAddToCart } from "~/scripts/tracking";
+  import { normalizeRunTime, RUN_DISTANCES, type RunDistanceKey } from "~/lib/catalog";
+
+  interface CfgData {
+    slug: string;
+    title: string;
+    image: string;
+    basePriceCents: number;
+    category?: string;
+  }
+
+  const roots = document.querySelectorAll<HTMLElement>("[data-meusrps-configurator]");
+  roots.forEach((root) => init(root));
+
+  function init(root: HTMLElement): void {
+    if (root.dataset.cfgInit === "1") return;
+    root.dataset.cfgInit = "1";
+
+    const config = JSON.parse(root.dataset.config!) as CfgData;
+    const state: Partial<Record<RunDistanceKey, string>> = {};
+
+    const inputs = root.querySelectorAll<HTMLInputElement>("[data-time-input]");
+    const addBtn = root.querySelector<HTMLButtonElement>("[data-add-btn]")!;
+
+    /**
+     * Aplica máscara hh:mm:ss progressiva enquanto o usuário digita.
+     * Aceita só dígitos; os ":" são inseridos automaticamente. Aceita
+     * paste de "01:23:45", "012345", "1:23" etc.
+     *
+     * Regras: máximo 6 dígitos; após 2 dígitos insere ":"; após 4 outro ":".
+     */
+    function formatTimeMask(raw: string): string {
+      const digits = raw.replace(/\D/g, "").slice(0, 6);
+      if (digits.length === 0) return "";
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 4) return digits.slice(0, 2) + ":" + digits.slice(2);
+      return digits.slice(0, 2) + ":" + digits.slice(2, 4) + ":" + digits.slice(4);
+    }
+
+    inputs.forEach((input) => {
+      input.addEventListener("input", () => {
+        const key = input.dataset.distance as RunDistanceKey;
+        // Aplica máscara (preserva digits, insere ":" nos lugares certos).
+        // O cursor vai pro fim — comportamento padrão quando se reatribui
+        // value.
+        const masked = formatTimeMask(input.value);
+        if (input.value !== masked) input.value = masked;
+
+        if (masked === "") {
+          delete state[key];
+          input.classList.remove("rcfg__input--invalid");
+          updateRow(root, key, null);
+          return;
+        }
+
+        // Só persiste no state quando o tempo bate no formato e nas faixas
+        // (ver normalizeRunTime). Enquanto digita "01:2" não persiste — mas
+        // a máscara visual já está aplicada.
+        const normalized = normalizeRunTime(masked);
+        if (normalized) {
+          state[key] = normalized;
+          input.classList.remove("rcfg__input--invalid");
+          updateRow(root, key, normalized);
+        } else {
+          delete state[key];
+          // Parcial enquanto digita ≠ inválido. Só marca inválido quando
+          // tem 8 chars completos (hh:mm:ss) mas ainda fora da faixa.
+          if (masked.length === 8) {
+            input.classList.add("rcfg__input--invalid");
+          } else {
+            input.classList.remove("rcfg__input--invalid");
+          }
+          updateRow(root, key, null);
+        }
+      });
+
+      // Blur: completa tempo parcial assumindo prefixo de zeros. Ex: "05:30"
+      // (5 chars) → "00:05:30". "1:23:45" não bate aqui (já tá completo).
+      input.addEventListener("blur", () => {
+        const raw = input.value.trim();
+        if (raw === "") return;
+        // Tenta normalizar diretamente (aceita mm:ss conforme normalizeRunTime)
+        const norm = normalizeRunTime(raw);
+        if (norm) {
+          input.value = norm;
+          input.classList.remove("rcfg__input--invalid");
+          const key = input.dataset.distance as RunDistanceKey;
+          state[key] = norm;
+          updateRow(root, key, norm);
+        }
+      });
+    });
+
+    addBtn.addEventListener("click", () => {
+      const id = buildCartId(config.slug, state);
+      const timesDesc = RUN_DISTANCES
+        .filter((d) => state[d.key])
+        .map((d) => `${d.label} ${state[d.key]}`)
+        .join(" · ");
+      const fullTitle = timesDesc ? `${config.title} · ${timesDesc}` : config.title;
+
+      cart.add({
+        id,
+        productSlug: config.slug,
+        title: fullTitle,
+        image: config.image,
+        unitPriceCents: config.basePriceCents,
+        quantity: 1,
+        runningTimes: { ...state },
+      });
+      trackAddToCart({
+        slug: config.slug,
+        title: fullTitle,
+        unitPriceCents: config.basePriceCents,
+        quantity: 1,
+        category: config.category,
+      });
+    });
+  }
+
+  function updateRow(root: HTMLElement, key: RunDistanceKey, time: string | null) {
+    const locked = root.querySelector<SVGGElement>(`[data-locked="${key}"]`);
+    const text = root.querySelector<SVGTextElement>(`[data-time="${key}"]`);
+    const status = root.querySelector<HTMLElement>(`[data-input-status="${key}"]`);
+    const statusLockedSvg = status?.querySelector<SVGElement>("[data-status-locked]");
+    const statusCheckedSvg = status?.querySelector<SVGElement>("[data-status-checked]");
+    if (time) {
+      if (locked) locked.setAttribute("visibility", "hidden");
+      if (text) {
+        text.textContent = time;
+        text.setAttribute("visibility", "visible");
+      }
+      if (status) {
+        status.classList.remove("rcfg__input-status--locked");
+        status.classList.add("rcfg__input-status--checked");
+      }
+      if (statusLockedSvg) statusLockedSvg.setAttribute("hidden", "");
+      if (statusCheckedSvg) statusCheckedSvg.removeAttribute("hidden");
+    } else {
+      if (locked) locked.setAttribute("visibility", "visible");
+      if (text) text.setAttribute("visibility", "hidden");
+      if (status) {
+        status.classList.add("rcfg__input-status--locked");
+        status.classList.remove("rcfg__input-status--checked");
+      }
+      if (statusLockedSvg) statusLockedSvg.removeAttribute("hidden");
+      if (statusCheckedSvg) statusCheckedSvg.setAttribute("hidden", "");
+    }
+  }
+
+  function buildCartId(
+    slug: string,
+    times: Partial<Record<RunDistanceKey, string>>,
+  ): string {
+    const key = RUN_DISTANCES
+      .filter((d) => times[d.key])
+      .map((d) => `${d.key}=${times[d.key]}`)
+      .join("|");
+    return [slug, key].filter(Boolean).join("::");
+  }
+</script>
