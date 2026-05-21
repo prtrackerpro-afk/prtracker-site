@@ -78,8 +78,8 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grát
 | 2 | Bench Press Set | pr-trackers | **R$ 189,00** | Sim | Banco de supino em alumínio |
 | 3 | Deadlift Set | pr-trackers | **R$ 149,00** | Sim | Base MDF + borracha |
 | 4 | My PR Set | pr-trackers | **R$ 159,00** | Sim + seletor de 20 exercícios | Base em acrílico |
-| 5 | **PR Tracker Board — 3 Exercícios** | pr-trackers | **R$ 199,90** | Sim — cor (Cobre/Preto/Rosa) + 3 exercícios + 3 barras | Placa PLA com 3 exercícios escolhidos (default Supino/Agachamento/LT). Inclui Arranco/Arremesso no dropdown (bilíngue). |
-| 6 | **PR Tracker Board — 2 Exercícios** | pr-trackers | **R$ 179,90** | Sim — cor (Cobre/Preto/Rosa) + 2 exercícios + 2 barras | Placa PLA com 2 exercícios escolhidos (default Arranco/Arremesso). |
+| 5 | **PR Board 3 Exercícios** | pr-trackers | **R$ 199,90** | Sim — cor (Cobre/Preto/Rosa) + 3 exercícios + 3 barras | Placa PLA com 3 exercícios escolhidos (default Supino/Agachamento/LT). Inclui Arranco/Arremesso no dropdown (bilíngue). |
+| 6 | **PR Board 2 Exercícios** | pr-trackers | **R$ 179,90** | Sim — cor (Cobre/Preto/Rosa) + 2 exercícios + 2 barras | Placa PLA com 2 exercícios escolhidos (default Arranco/Arremesso). |
 | 7 | **My PR Gym** *(EM BREVE)* | pr-trackers | **R$ 379,00** | Sim — **3 barras independentes** (Supino, Agachamento, Levantamento Terra) | Gym completo em miniatura. Compra bloqueada; botão "Notifique-me quando lançar" (email + telefone) — envia email pra `contato@prtracker.com.br` com assunto "Novo Interessado no MY PR Gym". |
 | 8 | **Meus RPs** (PR Runners) | pr-runners | **R$ 139,90** | Sim — 4 tempos hh:mm:ss (5/10/21/42 km) | Primeira peça da linha de corrida. Tempo opcional por distância; vazio = cadeado. Sem barras nem anilhas. |
 | 9 | Anilhas Avulsas | anilhas | **a partir de R$ 7,00** | Sim (modo anilhas-only) | Sem barra, só pares |
@@ -93,7 +93,7 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grát
 - `anilhas` — pares avulsos
 - `camisetas` — vestuário
 
-### Cores dos PR Tracker Boards
+### Cores dos PR Boards
 
 | Cor | HEX | Default? |
 |-----|-----|:--------:|

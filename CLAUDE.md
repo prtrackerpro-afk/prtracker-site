@@ -63,8 +63,8 @@ A partir de **mai/2026** o portfólio também inclui a linha **PR Runners** — 
 - **My PR Set** — "Seu LPO favorito está aqui!" (o mais personalizável — 20 exercícios)
 - **Power Rack Set** — "Para quem ama agachamento!"
 - **Bench Press Set** — "Supino que virou troféu!"
-- **PR Tracker Board — 3 Exercícios** — placa colorida (Cobre/Preto/Rosa) com 3 barras independentes configuráveis. Default: Supino + Agachamento + Levantamento Terra.
-- **PR Tracker Board — 2 Exercícios** — placa colorida (Cobre/Preto/Rosa) com 2 barras independentes. Default: Arranco + Arremesso (LPO).
+- **PR Board 3 Exercícios** — placa colorida (Cobre/Preto/Rosa) com 3 barras independentes configuráveis. Default: Supino + Agachamento + Levantamento Terra.
+- **PR Board 2 Exercícios** — placa colorida (Cobre/Preto/Rosa) com 2 barras independentes. Default: Arranco + Arremesso (LPO).
 - **My PR Gym** — EM BREVE. Gym completo em miniatura: power rack + bench + plataforma de deadlift + 3 barras (Supino, Agachamento, Levantamento Terra) configuráveis. Cadastro de interesse para aviso de lançamento.
 - **Anilhas Avulsas** — pares adicionais para atualizar qualquer set
 - **Camisetas** — linha de vestuário (Masculina e Feminina Baby Look)
@@ -88,7 +88,7 @@ A partir de **mai/2026** o portfólio também inclui a linha **PR Runners** — 
 | Bench Press Set | Alumínio |
 | Power Rack Set | Alumínio |
 | Deadlift Set | MDF & Borracha |
-| PR Tracker Board (2 e 3 ex) | PLA premium (impressão 3D) — Cobre / Preto / Rosa |
+| PR Board (2 e 3 Exercícios) | PLA premium (impressão 3D) — Cobre / Preto / Rosa |
 | Meus RPs (PR Runners) | PLA premium preto fosco (impressão 3D) |
 
 ### My PR Set — exercícios disponíveis
@@ -128,8 +128,8 @@ Linha **PR Runners** (desde mai/2026):
 | My PR Set | R$ 159,00 |
 | Power Rack Set | R$ 169,00 |
 | Bench Press Set | R$ 189,00 |
-| PR Tracker Board — 2 Exercícios | R$ 179,90 |
-| PR Tracker Board — 3 Exercícios | R$ 199,90 |
+| PR Board 2 Exercícios | R$ 179,90 |
+| PR Board 3 Exercícios | R$ 199,90 |
 | **My PR Gym** (EM BREVE) | R$ 379,00 |
 
 ### Linha PR Runners (preço fechado)

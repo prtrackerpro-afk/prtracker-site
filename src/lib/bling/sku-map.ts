@@ -137,11 +137,11 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
           return platesDesc ? `${bb.exercise} ${platesDesc}` : bb.exercise;
         })
         .join(" / ");
-      const exCountLabel = item.slug === "pr-tracker-board-3" ? "3 ex" : "2 ex";
+      const exCountLabel = item.slug === "pr-tracker-board-3" ? "3 Exercícios" : "2 Exercícios";
       return [
         {
           codigo: `${variant}-${colorKey}`,
-          nome: `PR Tracker Board ${exCountLabel} — ${colorOpt?.label ?? colorKey} (${exDesc})`,
+          nome: `PR Board ${exCountLabel} — ${colorOpt?.label ?? colorKey} (${exDesc})`,
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
           ncm: NCM_KIT,
