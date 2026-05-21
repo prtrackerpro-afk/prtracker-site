@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { ingestMeta } from "../../../lib/admin/meta-ingest";
-import { ingestWindsor } from "../../../lib/admin/windsor-ingest";
+import { ingestGa4 } from "../../../lib/admin/ga4-ingest";
 import { ingestMercadoPago } from "../../../lib/admin/mp-ingest";
 import { ingestTikTokShop } from "../../../lib/admin/tiktok-shop-ingest";
 import { ingestTikTokAds } from "../../../lib/admin/tiktok-ads-ingest";
@@ -11,7 +11,7 @@ import { isEmailConfigured, sendAdminEmail } from "../../../lib/admin/email";
 export const prerender = false;
 
 /**
- * Daily cron: pulls Meta + Windsor + evaluates alerts.
+ * Daily cron: pulls Meta + GA4 + MP + TikTok + evaluates alerts.
  *
  * Triggered by Vercel Cron (vercel.json).
  * Auth: CRON_SECRET in Authorization header (Vercel Cron sets this automatically when CRON_SECRET env is set).
@@ -41,11 +41,11 @@ export const GET: APIRoute = async ({ request }) => {
     result.meta = { error: (e as Error).message };
   }
 
-  // 2) Windsor (GA4 + future channels)
+  // 2) GA4 — direct via Data API (Service Account)
   try {
-    result.windsor = await ingestWindsor({ daysBack });
+    result.ga4 = await ingestGa4({ daysBack });
   } catch (e) {
-    result.windsor = { error: (e as Error).message };
+    result.ga4 = { error: (e as Error).message };
   }
 
   // 3) Mercado Pago — site sales backfill

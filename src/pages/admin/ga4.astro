@@ -84,7 +84,7 @@ const sparkConv = chartData.map((d) => d.Conversions);
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold">GA4 / Site</h1>
-      <p class="text-sm text-navy-300 mt-0.5">Tráfego e conversões via Windsor.ai</p>
+      <p class="text-sm text-navy-300 mt-0.5">Tráfego e conversões via Data API (Service Account)</p>
     </div>
     <DateRangeSelect current={days} />
   </div>
@@ -93,9 +93,10 @@ const sparkConv = chartData.map((d) => d.Conversions);
     <div class="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 mb-6">
       <div class="font-medium text-amber-400 mb-1">⚠ GA4 ainda não ingerido</div>
       <div class="text-sm text-navy-200">
-        Configure <code class="text-brand-lime">WINDSOR_API_KEY</code> nas variáveis de ambiente Vercel
-        e dispare <code class="text-brand-lime">/api/cron/ingest?days=90</code> manualmente para popular.
-        Property GA4 detectada via Windsor: <code>525987283</code> (prtracker.com.br).
+        Configure <code class="text-brand-lime">GA4_SA_KEY_BASE64</code> nas variáveis de ambiente Vercel
+        (base64 do JSON da Service Account) e dispare <code class="text-brand-lime">/api/cron/ingest?days=90</code>
+        manualmente para popular. Property: <code>525987283</code> (prtracker.com.br), stream
+        <code>13664841350</code>.
       </div>
     </div>
   )}
