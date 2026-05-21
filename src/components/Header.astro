@@ -9,18 +9,69 @@ interface Props {
   transparent?: boolean;
 }
 
-const nav = [
-  { href: "/",                              label: "Início" },
-  { href: "/product/power-rack-set",        label: "Power Rack" },
-  { href: "/product/bench-press-set",       label: "Bench Press" },
-  { href: "/product/deadlift-set",          label: "Deadlift" },
-  { href: "/product/my-pr-set",             label: "My PR Set" },
-  { href: "/product/my-pr-gym",             label: "My PR Gym", badge: "EM BREVE" },
-  { href: "/product-category/camisetas",    label: "Camisetas" },
+/**
+ * Estrutura do menu (mai/2026): três dropdowns categorizando o
+ * portfólio + links flat pra anilhas/camisetas/institucionais.
+ *
+ *   - "Miniaturas": réplicas de equipamento real (rack, banco, plataforma).
+ *   - "PR Trackers": placas-troféu configuráveis (My PR Set, Boards 2/3,
+ *     My PR Gym EM BREVE).
+ *   - "PR Runners": linha de corrida (única peça por ora).
+ *
+ * O split Miniaturas vs PR Trackers ajuda o cliente a navegar — quem quer
+ * uma réplica fiel do equipamento entra em Miniaturas; quem quer um
+ * troféu-placa entra em PR Trackers.
+ */
+/**
+ * Estrutura do menu — três grupos categorizados + links flat.
+ *
+ *   - Grupos têm `href` (link pra página de coleção `/colecao/X`) + `children`
+ *     (lista de produtos individuais no dropdown).
+ *   - O label do grupo é clicável (vai pra coleção). O chevron abre/fecha
+ *     o dropdown sem navegar (split anchor + button via `data-nav-group-toggle`).
+ */
+type NavChild = { href: string; label: string; badge?: string };
+type NavItem =
+  | { href: string; label: string; badge?: string }
+  | { label: string; href: string; children: NavChild[] };
+
+const nav: NavItem[] = [
+  { href: "/", label: "Início" },
+  {
+    label: "Miniaturas",
+    href: "/colecao/miniaturas",
+    children: [
+      { href: "/product/deadlift-set",         label: "Deadlift Set" },
+      { href: "/product/power-rack-set",       label: "Power Rack Set" },
+      { href: "/product/bench-press-set",      label: "Bench Press Set" },
+      { href: "/product/my-pr-gym",            label: "My PR Gym", badge: "EM BREVE" },
+    ],
+  },
+  {
+    label: "PR Trackers",
+    href: "/colecao/pr-trackers",
+    children: [
+      { href: "/product/my-pr-set",            label: "My PR Set" },
+      { href: "/product/pr-tracker-board-2",   label: "PR Tracker Board — 2 ex" },
+      { href: "/product/pr-tracker-board-3",   label: "PR Tracker Board — 3 ex" },
+    ],
+  },
+  {
+    label: "PR Runners",
+    href: "/colecao/pr-runners",
+    children: [
+      { href: "/product/meus-rps",             label: "Meus RPs" },
+    ],
+  },
   { href: "/product/anilhas",               label: "Anilhas" },
+  { href: "/product-category/camisetas",    label: "Camisetas" },
   { href: "/sobre",                         label: "Quem Somos" },
   { href: "/contato",                       label: "Contato" },
 ];
+
+function isGroup(item: NavItem): item is { label: string; href: string; children: NavChild[] } {
+  return "children" in item;
+}
 ---
 
 <header class="site-header">
@@ -40,12 +91,39 @@ const nav = [
       </a>
 
       <nav aria-label="Menu principal" class="site-header__nav">
-        {nav.map((item) => (
+        {nav.map((item) => isGroup(item) ? (
+          <div class="nav-group" data-nav-group>
+            {/* Label: anchor pra página de coleção. Chevron à direita é
+                botão separado que toggla o dropdown sem navegar. */}
+            <a href={item.href} class="nav-link nav-group__label">
+              {item.label}
+            </a>
+            <button
+              type="button"
+              class="nav-group__caret-btn"
+              aria-expanded="false"
+              aria-haspopup="true"
+              aria-label={`Abrir submenu de ${item.label}`}
+              data-nav-group-toggle
+            >
+              <svg class="nav-link__caret" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="nav-dropdown" role="menu">
+              <a href={item.href} class="nav-dropdown__link nav-dropdown__link--all" role="menuitem">
+                Ver toda a coleção
+              </a>
+              {item.children.map((child) => (
+                <a href={child.href} class="nav-dropdown__link" role="menuitem">
+                  {child.label}
+                  {child.badge && <span class="nav-link__badge">{child.badge}</span>}
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : (
           <a href={item.href} class="nav-link">
             {item.label}
-            {"badge" in item && item.badge && (
-              <span class="nav-link__badge">{item.badge}</span>
-            )}
+            {item.badge && <span class="nav-link__badge">{item.badge}</span>}
           </a>
         ))}
       </nav>
@@ -78,12 +156,26 @@ const nav = [
   <!-- Mobile drawer -->
   <div class="mobile-nav" data-mobile-nav hidden>
     <nav aria-label="Menu mobile">
-      {nav.map((item) => (
+      {nav.map((item) => isGroup(item) ? (
+        <details class="mobile-nav__group">
+          <summary class="mobile-nav__link mobile-nav__link--summary">
+            <span>{item.label}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <a href={item.href} class="mobile-nav__link mobile-nav__link--child mobile-nav__link--all" data-mobile-nav-link>
+            Ver toda a coleção
+          </a>
+          {item.children.map((child) => (
+            <a href={child.href} class="mobile-nav__link mobile-nav__link--child" data-mobile-nav-link>
+              {child.label}
+              {child.badge && <span class="nav-link__badge">{child.badge}</span>}
+            </a>
+          ))}
+        </details>
+      ) : (
         <a href={item.href} class="mobile-nav__link" data-mobile-nav-link>
           {item.label}
-          {"badge" in item && item.badge && (
-            <span class="nav-link__badge">{item.badge}</span>
-          )}
+          {item.badge && <span class="nav-link__badge">{item.badge}</span>}
         </a>
       ))}
     </nav>
@@ -142,9 +234,11 @@ const nav = [
     display: none;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 1.4rem;
+    /* 8 items (incluindo 3 dropdowns + 5 flat) cabem confortavelmente em
+       1100px+ com gap 1.1rem. Reduzido de 1.4rem (era 7 items). */
+    gap: 1.1rem;
   }
-  @media (min-width: 1080px) {
+  @media (min-width: 1100px) {
     .site-header__nav { display: flex; }
   }
 
@@ -186,6 +280,133 @@ const nav = [
     letter-spacing: 0.12em;
     line-height: 1;
     vertical-align: middle;
+  }
+
+  /* Dropdown groups (Miniaturas, PR Trackers, PR Runners) — split anchor
+     (label vai pra coleção) + chevron button (toggle dropdown). */
+  .nav-group {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .nav-group__label {
+    /* Herda tudo do .nav-link irmão. */
+  }
+  .nav-group__caret-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--color-brand-white);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+  .nav-group__caret-btn:hover,
+  .nav-group__caret-btn[aria-expanded="true"] {
+    background: rgb(216 255 44 / 0.14);
+    color: var(--color-brand-lime);
+  }
+  .nav-link__caret {
+    transition: transform 220ms cubic-bezier(0.32, 0.72, 0.16, 1);
+    opacity: 0.75;
+  }
+  .nav-group:hover .nav-link__caret,
+  .nav-group:focus-within .nav-link__caret,
+  .nav-group__caret-btn[aria-expanded="true"] .nav-link__caret {
+    transform: rotate(180deg);
+    opacity: 1;
+  }
+  /* Underline animado quando o grupo está sendo interagido com */
+  .nav-group:hover .nav-group__label::after,
+  .nav-group:focus-within .nav-group__label::after {
+    transform: scaleX(1);
+  }
+  .nav-dropdown {
+    position: absolute;
+    top: 100%;
+    left: -0.5rem;
+    min-width: 260px;
+    background: var(--color-brand-navy);
+    border: 1px solid rgb(216 255 44 / 0.12);  /* lime tint vs default white */
+    border-top: 2px solid var(--color-brand-lime);  /* lime accent line */
+    border-radius: 0 0 8px 8px;
+    padding: 0.6rem 0;
+    margin-top: 0.6rem;
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+    z-index: 50;
+  }
+  .nav-group:hover > .nav-dropdown,
+  .nav-group:focus-within > .nav-dropdown,
+  .nav-group__caret-btn[aria-expanded="true"] ~ .nav-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  /* "Ver toda a coleção" — link de destaque no topo do dropdown, separado
+     dos produtos individuais por hairline. Cor lime pra reforçar CTA. */
+  .nav-dropdown__link--all {
+    color: var(--color-brand-lime);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    padding-bottom: 0.55rem;
+    margin-bottom: 0.4rem;
+    border-bottom: 1px dashed rgb(216 255 44 / 0.25);
+  }
+  .nav-dropdown__link--all:hover,
+  .nav-dropdown__link--all:focus-visible {
+    color: var(--color-brand-lime);
+    background: rgb(216 255 44 / 0.08);
+  }
+  .nav-dropdown__link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.7rem 1.1rem 0.7rem 1.4rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.92rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.88);
+    text-decoration: none;
+    transition: color 140ms ease, padding-left 140ms ease, background-color 140ms ease;
+    white-space: nowrap;
+  }
+  /* Lime accent bar à esquerda (revelada no hover) — mais elegante que
+     fundo lime cheio. Mantém o navy escuro como fundo principal. */
+  .nav-dropdown__link::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 3px;
+    background: var(--color-brand-lime);
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform 180ms cubic-bezier(0.32, 0.72, 0.16, 1);
+  }
+  .nav-dropdown__link:hover,
+  .nav-dropdown__link:focus-visible {
+    color: var(--color-brand-lime);
+    background: rgb(216 255 44 / 0.05);
+    padding-left: 1.65rem;
+  }
+  .nav-dropdown__link:hover::before,
+  .nav-dropdown__link:focus-visible::before {
+    transform: scaleY(1);
   }
 
   /* Actions — locked to the right edge of the header via justify-self:
@@ -238,7 +459,7 @@ const nav = [
   .icon-btn[aria-expanded="true"] .icon-btn__open { display: none; }
   .icon-btn[aria-expanded="true"] .icon-btn__close { display: inline-block; }
 
-  @media (min-width: 1080px) {
+  @media (min-width: 1100px) {
     .icon-btn.md\:hidden { display: none !important; }
   }
 
@@ -248,12 +469,18 @@ const nav = [
     border-top: 1px solid rgb(255 255 255 / 0.06);
     padding: 0.25rem 0;
   }
-  @media (min-width: 1080px) { .mobile-nav { display: none; } }
+  @media (min-width: 1100px) { .mobile-nav { display: none; } }
   .mobile-nav nav {
     display: flex;
     flex-direction: column;
   }
   .mobile-nav__link {
+    /* display:flex pra que os <a> filhos dentro de <details> empilhem
+       verticalmente (em vez de fluir inline horizontalmente, como
+       elementos <a> default). Sem isso o dropdown mobile fica quebrado. */
+    display: flex;
+    align-items: center;
+    width: 100%;
     padding: 0.95rem 1.5rem;
     font-family: var(--font-display);
     font-weight: 700;
@@ -268,6 +495,39 @@ const nav = [
   .mobile-nav__link:hover {
     background: var(--color-brand-lime);
     color: var(--color-brand-navy);
+  }
+
+  /* Mobile accordion groups */
+  .mobile-nav__group { border-bottom: 1px solid rgb(255 255 255 / 0.06); }
+  .mobile-nav__group:last-child { border-bottom: none; }
+  .mobile-nav__link--summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    list-style: none;
+    cursor: pointer;
+    border-bottom: none;
+  }
+  .mobile-nav__link--summary::-webkit-details-marker { display: none; }
+  .mobile-nav__group[open] .mobile-nav__link--summary svg { transform: rotate(180deg); }
+  .mobile-nav__link--summary svg { transition: transform 200ms ease; }
+  .mobile-nav__link--child {
+    padding-left: 2.75rem;
+    background: rgb(255 255 255 / 0.03);
+    font-size: 0.92rem;
+    font-weight: 600;
+    border-bottom: 1px solid rgb(255 255 255 / 0.04);
+  }
+  .mobile-nav__link--child:last-of-type { border-bottom: none; }
+  .mobile-nav__link--all {
+    color: var(--color-brand-lime);
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    border-bottom: 1px dashed rgb(216 255 44 / 0.18);
+  }
+  .mobile-nav__link--all:hover {
+    background: rgb(216 255 44 / 0.08);
+    color: var(--color-brand-lime);
   }
 </style>
 
@@ -287,6 +547,33 @@ const nav = [
       });
     });
   }
+
+  // Dropdown groups (PR Trackers, PR Runners) — clique pra abrir em touch
+  // devices onde hover não existe. Hover ainda funciona via CSS pra mouse.
+  // Fecha quando clica fora.
+  const groups = document.querySelectorAll<HTMLElement>("[data-nav-group]");
+  groups.forEach((group) => {
+    const toggle = group.querySelector<HTMLButtonElement>("[data-nav-group-toggle]");
+    if (!toggle) return;
+    toggle.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const isOpen = toggle.getAttribute("aria-expanded") === "true";
+      // Fecha outros grupos abertos
+      groups.forEach((g) => {
+        const t = g.querySelector<HTMLButtonElement>("[data-nav-group-toggle]");
+        if (t && t !== toggle) t.setAttribute("aria-expanded", "false");
+      });
+      toggle.setAttribute("aria-expanded", String(!isOpen));
+    });
+  });
+  document.addEventListener("click", (ev) => {
+    const target = ev.target as HTMLElement;
+    if (!target.closest("[data-nav-group]")) {
+      groups.forEach((g) => {
+        g.querySelector<HTMLButtonElement>("[data-nav-group-toggle]")?.setAttribute("aria-expanded", "false");
+      });
+    }
+  });
 
   document.querySelector("[data-cart-open]")?.addEventListener("click", () => {
     document.dispatchEvent(new CustomEvent("cart:open"));

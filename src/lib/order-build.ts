@@ -31,6 +31,25 @@ const plateSelectionSchema = z.object({
   pairs: z.number().int().min(0).max(4),
 });
 
+const boardBarbellSchema = z.object({
+  exercise: z.string().min(1).max(60),
+  plates: z.array(plateSelectionSchema).default([]),
+});
+
+const runTimeSchema = z
+  .string()
+  .max(8)
+  .regex(/^\d{1,2}:\d{2}:\d{2}$/, "Tempo deve ter formato hh:mm:ss");
+
+const runningTimesSchema = z
+  .object({
+    "5km": runTimeSchema.optional(),
+    "10km": runTimeSchema.optional(),
+    "21km": runTimeSchema.optional(),
+    "42km": runTimeSchema.optional(),
+  })
+  .strict();
+
 const cartItemSchema = z.object({
   id: z.string().min(1).max(200),
   productSlug: z.string().min(1).max(100),
@@ -41,6 +60,9 @@ const cartItemSchema = z.object({
   plates: z.array(plateSelectionSchema).optional(),
   exercise: z.string().max(60).optional(),
   size: z.string().max(10).optional(),
+  runningTimes: runningTimesSchema.optional(),
+  boardColor: z.enum(["cobre", "preto", "rosa"]).optional(),
+  boardBarbells: z.array(boardBarbellSchema).min(2).max(3).optional(),
 });
 
 const shippingOptionSchema = z.object({
@@ -167,6 +189,12 @@ export function buildOrder(
     size?: string;
     exercise?: string;
     plates?: Array<{ plateId: string; pairs: number }>;
+    runningTimes?: Record<string, string>;
+    boardColor?: "cobre" | "preto" | "rosa";
+    boardBarbells?: Array<{
+      exercise: string;
+      plates: Array<{ plateId: string; pairs: number }>;
+    }>;
   }> = [];
   let subtotalCents = 0;
 
@@ -198,6 +226,13 @@ export function buildOrder(
         ...(input.exercise ? { exercise: input.exercise } : {}),
         ...(input.plates && input.plates.length > 0
           ? { plates: input.plates }
+          : {}),
+        ...(input.runningTimes && Object.keys(input.runningTimes).length > 0
+          ? { runningTimes: input.runningTimes as Record<string, string> }
+          : {}),
+        ...(input.boardColor ? { boardColor: input.boardColor } : {}),
+        ...(input.boardBarbells && input.boardBarbells.length > 0
+          ? { boardBarbells: input.boardBarbells }
           : {}),
       });
 

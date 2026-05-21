@@ -7,6 +7,8 @@ import FAQAccordion from "~/components/FAQAccordion.astro";
 import AddToCartSimple from "~/components/AddToCartSimple.astro";
 import BarbellConfigurator from "~/components/BarbellConfigurator.astro";
 import TripleBarbellConfigurator from "~/components/TripleBarbellConfigurator.astro";
+import MeusRPsConfigurator from "~/components/MeusRPsConfigurator.astro";
+import BoardConfigurator from "~/components/BoardConfigurator.astro";
 import NotifyMeForm from "~/components/NotifyMeForm.astro";
 import TrackViewContent from "~/components/TrackViewContent.astro";
 import { formatBRL, centsToReaisString } from "~/lib/format";
@@ -107,12 +109,26 @@ const jsonLd = {
 
 const metaTitle = seo.metaTitle ?? `${title} — PR Tracker`;
 const metaDescription = seo.metaDescription ?? shortDescription;
+
+// OG image dedicada (1200×630) só pros produtos da linha PR Runners e
+// PR Tracker Boards — gerada via scripts/gen-product-og.mjs. Demais
+// produtos caem no primary.src (foto + dimensões erradas no preview de
+// link, mas funciona — versão futura: gerar OG pra todos). Ver
+// .claude/v12-* pra referência.
+const PRODUCTS_WITH_DEDICATED_OG = new Set([
+  "meus-rps",
+  "pr-tracker-board-2",
+  "pr-tracker-board-3",
+]);
+const ogImagePath = PRODUCTS_WITH_DEDICATED_OG.has(slug)
+  ? `/images/og/${slug}.jpg`
+  : primary.src;
 ---
 
 <BaseLayout
   title={metaTitle}
   description={metaDescription}
-  ogImage={primary.src}
+  ogImage={ogImagePath}
   ogType="product"
   jsonLd={jsonLd}
 >
@@ -158,7 +174,25 @@ const metaDescription = seo.metaDescription ?? shortDescription;
         <p class="product__short">{shortDescription}</p>
 
         <div class="product__buy">
-          {configurator.isTripleBarbell ? (
+          {configurator.isMeusRPs ? (
+            <MeusRPsConfigurator
+              slug={slug}
+              title={title}
+              image={primary.src}
+              basePriceCents={priceBase}
+              category={category}
+            />
+          ) : configurator.isBoard ? (
+            <BoardConfigurator
+              slug={slug}
+              title={title}
+              image={primary.src}
+              basePriceCents={priceBase}
+              exerciseCount={(configurator.boardExerciseCount ?? 3) as 2 | 3}
+              defaultExercises={configurator.boardDefaultExercises ?? []}
+              category={category}
+            />
+          ) : configurator.isTripleBarbell ? (
             <TripleBarbellConfigurator
               slug={slug}
               title={title}

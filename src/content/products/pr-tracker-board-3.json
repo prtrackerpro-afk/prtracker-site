@@ -1,0 +1,43 @@
+{
+  "slug": "pr-tracker-board-3",
+  "title": "PR Tracker Board — 3 Exercícios",
+  "tagline": "Três grandes do treino. Uma placa. O seu PR exposto.",
+  "category": "pr-trackers",
+  "priceBase": 19990,
+  "priceFrom": true,
+  "shipping": { "weight_g": 600, "length_cm": 26, "width_cm": 22, "height_cm": 6 },
+  "shortDescription": "Placa colorida com 3 barras independentes — Supino, Agachamento e Levantamento Terra por padrão (você troca por qualquer exercício). 3 cores: Cobre, Preto ou Rosa.",
+  "longDescriptionHtml": "<p>O <strong>PR Tracker Board — 3 Exercícios</strong> é a evolução natural do troféu único: agora são três PRs em uma única peça, lado a lado, configurados por você no momento da compra.</p><p>Escolha o exercício de cada uma das três barras (Supino, Agachamento, Levantamento Terra são os defaults — mas você pode trocar por qualquer um dos 20+ disponíveis, incluindo <strong>Arranco</strong> e <strong>Arremesso</strong>) e monte cada barra com as anilhas exatas do seu recorde.</p><p>Disponível em <strong>3 cores</strong>: Cobre (default, premium e atemporal), Preto (sóbrio, alto contraste) e Rosa (vibrante, estilo monobloco). Lettering branco em alto relevo. Barras em aço inoxidável usinado, anilhas em ABS padrão Olímpico.</p>",
+  "images": [
+    { "src": "/images/products/pr-tracker-board-3/photo-01.jpg", "alt": "PR Tracker Board 3 exercícios — placa com Supino, Agachamento e Levantamento Terra", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-3/photo-02.jpg", "alt": "PR Tracker Board 3 exercícios — vista lateral", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-3/photo-03.jpg", "alt": "PR Tracker Board 3 exercícios — detalhe das anilhas", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-3/photo-04.jpg", "alt": "PR Tracker Board 3 exercícios — composição em mesa", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-3/photo-05.jpg", "alt": "PR Tracker Board 3 exercícios — vista superior", "width": 1200, "height": 1600 }
+  ],
+  "specs": [
+    { "label": "Placa", "value": "PLA premium · 200 × 200 mm · 3 cores (Cobre, Preto, Rosa)" },
+    { "label": "Barras", "value": "3 × aço inoxidável usinado · 220 × Ø 5 mm" },
+    { "label": "Anilhas", "value": "Plástico ABS · Ø 42 mm · padrão olímpico" },
+    { "label": "Presilhas", "value": "Aço (mini)" },
+    { "label": "Lettering", "value": "Archivo Black · ALL CAPS em alto relevo · Branco" }
+  ],
+  "faq": [
+    { "question": "Quais exercícios eu posso escolher?", "answer": "Os mesmos 20 do My PR Set (Back Squat, Bench Press, Deadlift, Clean, Snatch, etc.), mais Snatch e Clean & Jerk com tradução pra Arranco / Arremesso — termos do LPO brasileiro." },
+    { "question": "As 3 barras compartilham anilhas?", "answer": "Não. Cada barra é independente — você seleciona o peso (anilhas) de cada uma separadamente. O valor final soma o preço-base do Board + o custo das anilhas escolhidas em cada barra." },
+    { "question": "Posso trocar a cor depois?", "answer": "Não. A cor é definida na compra (impressão 3D em PLA colorido). Se quiser variar, é só pedir outra unidade da cor diferente." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." }
+  ],
+  "configurator": {
+    "enabled": true,
+    "isAnilhasOnly": false,
+    "hasExerciseSelector": false,
+    "isTripleBarbell": false,
+    "isMeusRPs": false,
+    "isBoard": true,
+    "boardExerciseCount": 3,
+    "boardDefaultExercises": ["Supino", "Agachamento", "Levantamento Terra"]
+  },
+  "featured": true,
+  "priority": 9
+}

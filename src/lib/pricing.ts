@@ -12,9 +12,12 @@ import {
   PLATES,
   MAX_SIDE_SPACE_MM,
   BARBELL_WEIGHT_KG,
+  BOARD_EXERCISES,
+  BOARD_COLORS,
+  normalizeRunTime,
   type PlateId,
 } from "./catalog";
-import type { CartItem } from "./cart-types";
+import type { CartItem, BoardBarbell } from "./cart-types";
 
 const platesById = new Map(PLATES.map((p) => [p.id, p]));
 
@@ -82,6 +85,55 @@ export function recomputeLine(
 
   if (!images[0]) throw new Error(`Product ${product.data.slug} has no images`);
   const picture_url = images[0].src;
+
+  // Meus RPs (PR Runners) — preço fixo; tempos opcionais (vazio = cadeado).
+  if (configurator.isMeusRPs) {
+    const normalized = normalizeRunningTimes(input.runningTimes);
+    const lineTitle = buildMeusRPsTitle(title, normalized);
+    return {
+      unitPriceCents: priceBase,
+      lineTotalCents: priceBase * input.quantity,
+      title: lineTitle,
+      picture_url,
+    };
+  }
+
+  // PR Tracker Board — cor + N exercícios + N barras independentes.
+  if (configurator.isBoard) {
+    const expectedCount = configurator.boardExerciseCount ?? 3;
+    const barbells = input.boardBarbells ?? [];
+    if (barbells.length !== expectedCount) {
+      throw new Error(
+        `${title}: configure os ${expectedCount} exercícios antes de finalizar.`,
+      );
+    }
+    const allowedExercises = new Set(BOARD_EXERCISES.map((e) => e.value));
+    for (const bb of barbells) {
+      if (!allowedExercises.has(bb.exercise)) {
+        throw new Error(`Exercício desconhecido: ${bb.exercise}`);
+      }
+    }
+    const color = input.boardColor ?? "cobre";
+    if (!BOARD_COLORS.find((c) => c.value === color)) {
+      throw new Error(`Cor de board inválida: ${color}`);
+    }
+    let platesCents = 0;
+    for (const bb of barbells) {
+      const used = sumPlatesSpace(bb.plates);
+      if (used > MAX_SIDE_SPACE_MM) {
+        throw new Error(`Espaço físico excedido em ${bb.exercise} (${used}mm > ${MAX_SIDE_SPACE_MM}mm)`);
+      }
+      platesCents += sumPlatesCents(bb.plates);
+    }
+    const unit = priceBase + platesCents;
+    const lineTitle = buildBoardTitle(title, color, barbells);
+    return {
+      unitPriceCents: unit,
+      lineTotalCents: unit * input.quantity,
+      title: lineTitle,
+      picture_url,
+    };
+  }
 
   if (configurator.enabled) {
     const plates = input.plates ?? [];
@@ -163,4 +215,41 @@ function sumPlatesSpace(
     mm += Math.floor(s.pairs) * plate.thicknessMm;
   }
   return mm;
+}
+
+function normalizeRunningTimes(
+  raw: Record<string, string> | undefined,
+): Record<string, string> {
+  if (!raw) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const norm = normalizeRunTime(v);
+    if (norm) out[k] = norm;
+  }
+  return out;
+}
+
+function buildMeusRPsTitle(
+  base: string,
+  times: Record<string, string>,
+): string {
+  const parts: string[] = [];
+  for (const key of ["5km", "10km", "21km", "42km"]) {
+    if (times[key]) parts.push(`${key.toUpperCase()} ${times[key]}`);
+  }
+  return parts.length > 0 ? `${base} · ${parts.join(" · ")}` : `${base} · (sem tempos)`;
+}
+
+function buildBoardTitle(
+  base: string,
+  color: string,
+  barbells: BoardBarbell[],
+): string {
+  const colorOpt = BOARD_COLORS.find((c) => c.value === color);
+  const colorLabel = colorOpt?.label ?? color;
+  const exParts = barbells.map((bb) => {
+    const platesDesc = describePlates(bb.plates);
+    return platesDesc ? `${bb.exercise} (${platesDesc})` : bb.exercise;
+  });
+  return `${base} — ${colorLabel} · ${exParts.join(" + ")}`;
 }

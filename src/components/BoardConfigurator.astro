@@ -1,0 +1,1393 @@
+---
+/**
+ * Configurador do "PR Tracker Board" — 2 ou 3 exercícios independentes.
+ *
+ * UX:
+ *   1. Color picker (Cobre/Preto/Rosa) — Cobre default. Aplica no preview.
+ *   2. N dropdowns de exercício (`BOARD_EXERCISES`, com bilíngue para os
+ *      termos PT-BR — Arranco/Arremesso). Defaults vêm de
+ *      `boardDefaultExercises` no JSON do produto (top→bottom).
+ *   3. N barras independentes (mesmo configurador do BarbellConfigurator,
+ *      simplificado): selectors de pares por anilha, SVG da barra,
+ *      preço por barra somado no preço total.
+ *
+ * Preço final = `priceBase` + soma das anilhas de todas as barras.
+ * Limite físico (45mm por lado) aplicado por barra.
+ */
+import {
+  PLATES,
+  BOARD_EXERCISES,
+  BOARD_COLORS,
+  BARBELL_WEIGHT_KG,
+  MAX_SIDE_SPACE_MM,
+} from "~/lib/catalog";
+import { formatBRL, applyPix } from "~/lib/format";
+
+interface Props {
+  slug: string;
+  title: string;
+  image: string;
+  basePriceCents: number;
+  exerciseCount: 2 | 3;
+  defaultExercises: string[];
+  category?: string;
+}
+
+const {
+  slug,
+  title,
+  image,
+  basePriceCents,
+  exerciseCount,
+  defaultExercises,
+  category,
+} = Astro.props;
+
+const indices = Array.from({ length: exerciseCount }, (_, i) => i);
+
+const CONFIG_JSON = JSON.stringify({
+  slug,
+  title,
+  image,
+  basePriceCents,
+  exerciseCount,
+  defaultExercises,
+  category,
+  plates: PLATES,
+  exercises: BOARD_EXERCISES,
+  colors: BOARD_COLORS,
+  barbellWeightKg: BARBELL_WEIGHT_KG,
+  maxSideSpaceMm: MAX_SIDE_SPACE_MM,
+});
+---
+
+<div class="bcfg" data-board-configurator data-config={CONFIG_JSON}>
+  <!-- Preview: placa colorida espelhando o produto real. Cada row é uma
+       UNIDADE com label preto no TOPO + barbell horizontal EMBAIXO do
+       label (não atrás). As anilhas estendem-se pra fora das bordas da
+       placa, exatamente como na foto do produto físico. -->
+  <div class="bcfg__preview">
+    <svg
+      viewBox="-32 0 384 380"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Preview do PR Tracker Board"
+      data-preview-svg
+    >
+      <rect
+        x="0"
+        y="0"
+        width="320"
+        height="380"
+        rx="14"
+        fill="#B87333"
+        data-preview-bg
+      />
+      <!-- Logo PR Tracker no topo da placa (asset oficial branco) -->
+      <image
+        href="/images/brand/logo-pr-tracker-branco.svg"
+        x="100"
+        y="22"
+        width="120"
+        height="34"
+        preserveAspectRatio="xMidYMid meet"
+      />
+      <!-- Fallback: se o asset não carregar (env sem assets), o ::before
+           do CSS desenha um placeholder. Em produção sempre carrega. -->
+
+
+      {indices.map((i) => {
+        // Posição Y do TOPO de cada row. Layout calibrado pela proporção
+        // do produto real: label 28h + gap 24px + plates 32h = 84px por row.
+        const rowTop = exerciseCount === 3 ? 90 + i * 95 : 112 + i * 120;
+        const labelH = 28;
+        // Centro vertical da barra abaixo do label.
+        const barY = rowTop + labelH + 24;
+        return (
+          <g data-preview-row={String(i)}>
+            {/* Label preto centralizado — só nome do exercício */}
+            <rect
+              x="60"
+              y={rowTop}
+              width="200"
+              height={labelH}
+              rx="2.5"
+              fill="#111111"
+              data-preview-label-bg={String(i)}
+            />
+            <text
+              x="160"
+              y={rowTop + 19.5}
+              text-anchor="middle"
+              font-family="Archivo Black, Inter, sans-serif"
+              font-size="12"
+              font-weight="900"
+              fill="#FFFFFF"
+              letter-spacing="0.7"
+              data-preview-exercise={String(i)}
+            >EXERCÍCIO</text>
+
+            {/* Barbell shaft — fino, com gradient subtil pra dar volume */}
+            <rect x="6"   y={barY - 1.2} width="308" height="2.4" rx="0.4" fill="#8e94a0" />
+            <rect x="6"   y={barY - 1.2} width="308" height="0.8" fill="#c4c8cf" />
+            {/* End caps (tip do bar) */}
+            <rect x="2"   y={barY - 2.2} width="4"   height="4.4" rx="0.5" fill="#3e434b" />
+            <rect x="314" y={barY - 2.2} width="4"   height="4.4" rx="0.5" fill="#3e434b" />
+            {/* Collar/holder em PLA (preto) — segura a barra na placa, igual produto real */}
+            <rect x="58"  y={barY - 5}   width="6"   height="10" fill="#1a1c22" />
+            <rect x="256" y={barY - 5}   width="6"   height="10" fill="#1a1c22" />
+
+            {/* Plate groups: esquerda ancorada x=58 (junto ao collar), direita x=262.
+                Crescem em direção OPOSTA (pra fora). Anilhas além de x=0 ou x=320
+                aparecem no canvas extra do viewBox (-32 a 352). */}
+            <g data-preview-plates-left={String(i)}  transform={`translate(58, ${barY})`}></g>
+            <g data-preview-plates-right={String(i)} transform={`translate(262, ${barY})`}></g>
+          </g>
+        );
+      })}
+    </svg>
+  </div>
+
+  <!-- Color picker -->
+  <div class="bcfg__colors" role="radiogroup" aria-label="Cor da placa">
+    <span class="bcfg__field-label">Cor</span>
+    <div class="bcfg__colors-row">
+      {BOARD_COLORS.map((c, i) => (
+        <button
+          type="button"
+          class="bcfg__color"
+          role="radio"
+          aria-checked={i === 0 ? "true" : "false"}
+          data-color={c.value}
+          aria-label={c.label}
+          title={c.label}
+        >
+          <span class="bcfg__color-swatch" style={`background:${c.hex}`}></span>
+          <span class="bcfg__color-label">{c.label}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <!-- MOBILE TABS — visíveis abaixo de 900 px (mesmo padrão do My PR Gym).
+       Cada linha é UMA BARRA configurável. Cliente toca pra abrir o
+       painel daquela barra e editar exercício + anilhas. -->
+  <div class="bcfg__tabs-block">
+    <div class="bcfg__tabs-header">
+      <span class="bcfg__field-label bcfg__field-label--light">
+        Suas {exerciseCount} barras
+      </span>
+      <span class="bcfg__tabs-hint">Toque para editar cada uma</span>
+    </div>
+    <div class="bcfg__tabs-wrap">
+      {/* Cabos físicos — SVG estende ABAIXO dos tabs e entra na área do
+          painel (overflow visible + height extra). Cada cabo sai do left
+          edge da tab, curva pra esquerda na lane, desce vertical, curva
+          de volta no topo do painel. Só o ATIVO está aceso (lime + neon
+          glow); inativos ficam navy translúcido com stroke mais grosso. */}
+      <svg
+        class="bcfg__cables"
+        viewBox={exerciseCount === 3 ? "0 0 100 305" : "0 0 100 290"}
+        preserveAspectRatio="none"
+        data-cable-active="0"
+        aria-hidden="true"
+      >
+        <defs>
+          <filter id="bcfg-cable-glow" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur stdDeviation="4.5" result="blur-outer" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="blur-inner" />
+            <feMerge>
+              <feMergeNode in="blur-outer" />
+              <feMergeNode in="blur-outer" />
+              <feMergeNode in="blur-inner" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {exerciseCount === 3 ? (
+          <>
+            {/* Cabos 3 ex — convergem em y=295 (panel head / badge area).
+                Cabo 1 lane externa (x=12), 2 meio (x=30), 3 interna (x=48). */}
+            <path class="bcfg__cable" data-cable="0" d="M 100 35 L 35 35 Q 12 35 12 55 L 12 275 Q 12 295 35 295 L 100 295" />
+            <path class="bcfg__cable" data-cable="1" d="M 100 105 L 50 105 Q 30 105 30 125 L 30 275 Q 30 295 50 295 L 100 295" />
+            <path class="bcfg__cable" data-cable="2" d="M 100 175 L 70 175 Q 48 175 48 195 L 48 275 Q 48 295 70 295 L 100 295" />
+            {/* Plugs: cada cabo termina num círculo "lâmpada" na borda direita.
+                Apenas o do cabo ativo brilha lime; outros ficam navy translúcido. */}
+            <circle class="bcfg__cable-tip" data-cable-tip="0" cx="98" cy="295" r="5" />
+            <circle class="bcfg__cable-tip" data-cable-tip="1" cx="98" cy="295" r="5" />
+            <circle class="bcfg__cable-tip" data-cable-tip="2" cx="98" cy="295" r="5" />
+          </>
+        ) : (
+          <>
+            <path class="bcfg__cable" data-cable="0" d="M 100 55 L 35 55 Q 12 55 12 75 L 12 260 Q 12 280 35 280 L 100 280" />
+            <path class="bcfg__cable" data-cable="1" d="M 100 145 L 60 145 Q 35 145 35 165 L 35 260 Q 35 280 60 280 L 100 280" />
+            <circle class="bcfg__cable-tip" data-cable-tip="0" cx="98" cy="280" r="5" />
+            <circle class="bcfg__cable-tip" data-cable-tip="1" cx="98" cy="280" r="5" />
+          </>
+        )}
+      </svg>
+
+      <div class="bcfg__tabs" role="tablist" aria-label="Selecionar barra">
+        {indices.map((i) => (
+          <button
+            type="button"
+            role="tab"
+            class="bcfg__tab"
+            data-tab={String(i)}
+            aria-selected={i === 0 ? "true" : "false"}
+            aria-controls={`bcfg-panel-${i}`}
+            id={`bcfg-tab-${i}`}
+          >
+            <span class="bcfg__tab-pos">{i + 1}</span>
+            <span class="bcfg__tab-meta">
+              <span class="bcfg__tab-exercise" data-tab-exercise={String(i)}>{defaultExercises[i] ?? `Barra ${i + 1}`}</span>
+              <span class="bcfg__tab-weight" data-tab-weight={String(i)}>{BARBELL_WEIGHT_KG} kg</span>
+            </span>
+            {/* Indicador visual: chevron quando inativo, "editando" quando ativo */}
+            <span class="bcfg__tab-action" aria-hidden="true">
+              <span class="bcfg__tab-action-edit">editando</span>
+              <svg class="bcfg__tab-action-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- PANELS: 1 por barra. Cada panel contém:
+       1. Dropdown do exercício no topo
+       2. Barbell SVG com anilhas dinâmicas
+       3. Grade de seletores de anilhas
+       Desktop: panels empilhados verticalmente.
+       Mobile: só o panel ativo aparece (controlado pelos tabs acima). -->
+  <div class="bcfg__panels">
+    {indices.map((i) => (
+      <section
+        class="bcfg__panel"
+        data-panel={String(i)}
+        id={`bcfg-panel-${i}`}
+        role="tabpanel"
+        aria-labelledby={`bcfg-tab-${i}`}
+        data-active={i === 0 ? "true" : "false"}
+      >
+        <header class="bcfg__panel-head">
+          <span class="bcfg__panel-pos">{i + 1}</span>
+          <select
+            class="bcfg__panel-exercise-select"
+            data-exercise-select
+            data-index={String(i)}
+            aria-label={`Exercício ${i + 1}`}
+          >
+            {BOARD_EXERCISES.map((ex) => (
+              <option
+                value={ex.value}
+                selected={ex.value === defaultExercises[i] ? true : undefined}
+              >{ex.label}</option>
+            ))}
+          </select>
+          <p class="bcfg__panel-weight">
+            <span data-barbell-kg={String(i)}>{BARBELL_WEIGHT_KG}</span><span class="bcfg__panel-weight-unit"> kg</span>
+          </p>
+        </header>
+
+        <!-- Barbell SVG da barra dessa seção (separado da preview da placa).
+             Plates renderizados dinamicamente via JS. -->
+        <div class="bcfg__panel-barbell">
+          <svg
+            viewBox="0 0 600 200"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label={`Barra olímpica configurada para barra ${i + 1}`}
+            data-panel-svg={String(i)}
+          >
+            <defs>
+              <linearGradient id={`bcfg-shaft-${i}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#E4E8ED" />
+                <stop offset="50%" stop-color="#B0B6BF" />
+                <stop offset="100%" stop-color="#7A7F88" />
+              </linearGradient>
+              <linearGradient id={`bcfg-sleeve-${i}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#D5D9E0" />
+                <stop offset="50%" stop-color="#9AA0AA" />
+                <stop offset="100%" stop-color="#5A5F68" />
+              </linearGradient>
+            </defs>
+            <rect x="156" y="94" width="288" height="12" rx="3" fill={`url(#bcfg-shaft-${i})`} />
+            <rect x="36"  y="89" width="120" height="22" rx="3" fill={`url(#bcfg-sleeve-${i})`} />
+            <rect x="444" y="89" width="120" height="22" rx="3" fill={`url(#bcfg-sleeve-${i})`} />
+            <rect x="152" y="85" width="8" height="30" rx="1.5" fill="#3E434B" />
+            <rect x="440" y="85" width="8" height="30" rx="1.5" fill="#3E434B" />
+            <rect x="30"  y="90" width="8" height="20" rx="1.5" fill="#2C3036" />
+            <rect x="562" y="90" width="8" height="20" rx="1.5" fill="#2C3036" />
+            <g data-panel-plates-left={String(i)}  transform="translate(156, 100)"></g>
+            <g data-panel-plates-right={String(i)} transform="translate(444, 100)"></g>
+          </svg>
+        </div>
+
+        <div class="bcfg__plates" role="group" aria-label={`Anilhas — barra ${i + 1}`}>
+          {PLATES.map((plate) => (
+            <label class="bcfg__plate">
+              <span class="bcfg__plate-dot" style={`background:${plate.color}`} aria-hidden="true"></span>
+              <span class="bcfg__plate-kg">{plate.label}</span>
+              <select
+                class="bcfg__plate-select"
+                data-plate-select
+                data-barbell={String(i)}
+                data-plate-id={plate.id}
+                aria-label={`${plate.label} na barra ${i + 1}`}
+              >
+                {Array.from({ length: plate.maxPairs + 1 }, (_, n) => (
+                  <option value={n}>{n}p</option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+
+        <p class="bcfg__warn" data-barbell-warn={String(i)} hidden>Espaço esgotado nesta barra</p>
+      </section>
+    ))}
+  </div>
+
+  <!-- Buy block -->
+  <div class="bcfg__buy">
+    <div class="bcfg__price">
+      <div class="bcfg__price-main" data-total-price>{formatBRL(basePriceCents)}</div>
+      <div class="bcfg__price-pix">
+        <span class="pix-badge">Pix</span>
+        <span data-pix-price class="bcfg__price-pix-value">{formatBRL(applyPix(basePriceCents))}</span>
+        <span class="bcfg__price-pix-label">5 % OFF</span>
+      </div>
+      <div class="bcfg__price-installments">
+        ou 6× de <span data-installment-price>{formatBRL(Math.round(basePriceCents / 6))}</span> sem juros
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn>
+      Adicionar ao carrinho
+    </button>
+    <p class="bcfg__ship">Envio para todo o Brasil com rastreio</p>
+  </div>
+
+  <!-- Onboarding tour — dispara no PRIMEIRO clique em tab ou dropdown
+       de exercício. Persiste em localStorage (bcfg-tour-seen=1) pra não
+       repetir. Card centralizado com 3 instruções curtas + dismiss. -->
+  <div class="bcfg__tour" data-tour hidden role="dialog" aria-modal="true" aria-labelledby="bcfg-tour-title">
+    <div class="bcfg__tour-card" role="document">
+      <span class="bcfg__tour-kicker">Como configurar</span>
+      <h3 id="bcfg-tour-title" class="bcfg__tour-title">
+        Monte cada barra<br />do seu jeito
+      </h3>
+      <ol class="bcfg__tour-steps">
+        <li>
+          <span class="bcfg__tour-step-n">1</span>
+          <div class="bcfg__tour-step-text">
+            <strong>Escolha o exercício</strong>
+            <span>Português ou inglês — o nome vai impresso na placa.</span>
+          </div>
+        </li>
+        <li>
+          <span class="bcfg__tour-step-n">2</span>
+          <div class="bcfg__tour-step-text">
+            <strong>Monte a barra</strong>
+            <span>Adicione anilhas — o peso atualiza ao vivo.</span>
+          </div>
+        </li>
+        <li>
+          <span class="bcfg__tour-step-n">3</span>
+          <div class="bcfg__tour-step-text">
+            <strong>Repita</strong>
+            <span>Toque nas outras barras pra editar cada uma.</span>
+          </div>
+        </li>
+      </ol>
+      <button type="button" class="bcfg__tour-dismiss" data-tour-dismiss>
+        Entendi
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .bcfg {
+    /* `position: relative` ancora o tour popup dentro do componente
+       (overlay cobre só a viewport relativa do componente, não a tela
+       inteira — fica menos invasivo). */
+    position: relative;
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: var(--radius-card);
+    background: var(--color-paper);
+  }
+  @media (min-width: 640px) { .bcfg { padding: 2rem; } }
+
+  .bcfg__preview {
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+  }
+  .bcfg__preview svg {
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    display: block;
+  }
+
+  .bcfg__field-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--color-brand-navy);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  .bcfg__field-label::before { content: "// "; color: var(--color-brand-gray); }
+  /* Variante leve do label, usada no header dos tabs (mais sutil que o normal) */
+  .bcfg__field-label--light {
+    font-weight: 700;
+    letter-spacing: 0.14em;
+  }
+
+  .bcfg__colors-row {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+  .bcfg__color {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem 0.4rem 0.4rem;
+    border: 1.5px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    background: var(--color-brand-white);
+    cursor: pointer;
+    transition: border-color 150ms ease, transform 120ms ease, box-shadow 120ms ease;
+  }
+  .bcfg__color:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 2px 2px 0 0 var(--color-brand-navy);
+  }
+  .bcfg__color[aria-checked="true"] {
+    border-color: var(--color-brand-navy);
+    box-shadow: 2px 2px 0 0 var(--color-brand-navy);
+  }
+  .bcfg__color-swatch {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 0 0 1px rgb(1 0 42 / 0.25);
+  }
+  .bcfg__color-label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--color-brand-navy);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ===================== TABS (mobile) =====================
+     Visíveis abaixo de 900 px. Mesma lógica do My PR Gym: cliente
+     clica numa tab pra ver o painel daquela barra. Affordances de
+     "clicável" reforçados: header explicativo + chevron pros tabs
+     inativos + selo "editando" pro ativo. */
+  .bcfg__tabs-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .bcfg__tabs-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0 0.15rem;
+  }
+  .bcfg__tabs-hint {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-gray);
+    opacity: 0.85;
+  }
+  /* Wrap: reserva lane na ESQUERDA pros cabos SVG */
+  .bcfg__tabs-wrap {
+    position: relative;
+    padding-left: 38px;
+  }
+  .bcfg__cables {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 38px;
+    /* SVG estende ABAIXO dos tabs (calc(100% + 70px)) pra que a parte
+       inferior dos cabos chegue exatamente na badge "1" do panel head.
+       overflow:visible garante que o glow do cabo aceso não seja cortado. */
+    height: calc(100% + 70px);
+    overflow: visible;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .bcfg__cable {
+    fill: none;
+    /* Cabo DESLIGADO: navy translúcido + stroke 3.2 pra dar peso visual */
+    stroke: rgb(1 0 42 / 0.4);
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 280ms ease, stroke-width 240ms ease, filter 280ms ease;
+  }
+  /* Cabo ACESO — lime brilhando + neon glow duplo (outer + inner) */
+  .bcfg__cables[data-cable-active="0"] [data-cable="0"],
+  .bcfg__cables[data-cable-active="1"] [data-cable="1"],
+  .bcfg__cables[data-cable-active="2"] [data-cable="2"] {
+    stroke: var(--color-brand-lime);
+    stroke-width: 3.8;
+    filter: url(#bcfg-cable-glow);
+  }
+  /* "Lâmpada" no fim do cabo — círculo que serve de plug visual.
+     Apenas o do cabo ATIVO acende lime + glow; outros ficam navy
+     translúcido (combinando com o stroke dos cabos desligados). */
+  .bcfg__cable-tip {
+    fill: rgb(1 0 42 / 0.4);
+    stroke: rgb(1 0 42 / 0.6);
+    stroke-width: 0.8;
+    transition: fill 280ms ease, filter 280ms ease, stroke 280ms ease;
+  }
+  .bcfg__cables[data-cable-active="0"] [data-cable-tip="0"],
+  .bcfg__cables[data-cable-active="1"] [data-cable-tip="1"],
+  .bcfg__cables[data-cable-active="2"] [data-cable-tip="2"] {
+    fill: var(--color-brand-lime);
+    stroke: var(--color-brand-lime);
+    filter: url(#bcfg-cable-glow);
+  }
+
+  .bcfg__tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.4rem;
+    background: var(--color-brand-navy);
+    border-radius: 10px;
+  }
+  .bcfg__tab {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.8rem 0.7rem 1.1rem;
+    background: rgb(255 255 255 / 0.04);
+    border: 1.5px solid rgb(255 255 255 / 0.08);
+    border-radius: 7px;
+    color: rgb(255 255 255 / 0.7);
+    cursor: pointer;
+    font-family: var(--font-display);
+    text-align: left;
+    transition: background 180ms ease, color 180ms ease, border-color 180ms ease, transform 140ms ease, box-shadow 200ms ease;
+    position: relative;
+  }
+  .bcfg__tab:hover {
+    background: rgb(216 255 44 / 0.05);
+    border-color: rgb(216 255 44 / 0.35);
+    color: rgb(255 255 255 / 0.95);
+    transform: translateX(2px);
+  }
+  /* ACESO: tab levemente lime, contraste forte com o cabo lime que sai
+     dela. Tab body em rgb(255 255 255/0.04) → muda pra lime tint. */
+  .bcfg__tab[aria-selected="true"] {
+    background: rgb(216 255 44 / 0.1);
+    border-color: rgb(216 255 44 / 0.6);
+    color: var(--color-brand-white);
+    transform: none;
+    box-shadow: 0 0 0 1px rgb(216 255 44 / 0.15), 0 6px 20px rgb(216 255 44 / 0.18);
+  }
+  .bcfg__tab[aria-selected="true"]:hover { transform: none; }
+  .bcfg__tab-pos {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.14);
+    color: rgb(255 255 255 / 0.85);
+    font-weight: 900;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+  .bcfg__tab[aria-selected="true"] .bcfg__tab-pos {
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+  }
+  .bcfg__tab-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1;
+  }
+  .bcfg__tab-exercise {
+    font-weight: 800;
+    font-size: 0.92rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .bcfg__tab-weight {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.76rem;
+    opacity: 0.85;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Indicador de affordance: chevron quando inativo, "editando" quando ativo */
+  .bcfg__tab-action {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .bcfg__tab-action-edit {
+    display: none;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.22rem 0.45rem;
+    color: var(--color-brand-navy);
+    background: var(--color-brand-lime);
+    border-radius: 3px;
+    line-height: 1;
+  }
+  .bcfg__tab[aria-selected="true"] .bcfg__tab-action-edit { display: inline-block; }
+  .bcfg__tab[aria-selected="true"] .bcfg__tab-action-icon { display: none; }
+  .bcfg__tab-action-icon { opacity: 0.55; transition: opacity 140ms ease, transform 140ms ease; }
+  .bcfg__tab:hover .bcfg__tab-action-icon {
+    opacity: 1;
+    transform: translateX(2px);
+    color: var(--color-brand-lime);
+  }
+  @media (min-width: 900px) { .bcfg__tabs-block { display: none; } }
+
+  /* ===================== PANELS ===================== */
+  .bcfg__panels {
+    display: grid;
+    gap: 0.85rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgb(1 0 42 / 0.15);
+  }
+  .bcfg__panel {
+    display: grid;
+    gap: 0.7rem;
+    padding: 0.9rem;
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.12);
+    border-radius: var(--radius-card);
+  }
+  /* No mobile: só o painel ativo (data-active="true") aparece, igual MY PR Gym */
+  @media (max-width: 899px) {
+    .bcfg__panel[data-active="false"] { display: none; }
+  }
+
+  .bcfg__panel-head {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 0.65rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid rgb(1 0 42 / 0.08);
+  }
+  /* Mobile: padding-left extra no panel-head reserva espaço pro plug
+     do cabo lime chegar entre o left edge do panel e o badge "1".
+     Sem isso, o plug ficava sobreposto ao badge. */
+  @media (max-width: 899px) {
+    .bcfg__panel-head { padding-left: 30px; }
+  }
+  .bcfg__panel-pos {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    border-radius: 50%;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 0.85rem;
+  }
+  .bcfg__panel-exercise-select {
+    width: 100%;
+    padding: 0.4rem 1.6rem 0.4rem 0.6rem;
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: 8px;
+    background: var(--color-brand-white);
+    color: var(--color-brand-navy);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.84rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301002a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+  }
+  .bcfg__panel-weight {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-weight: 800;
+    color: var(--color-brand-navy);
+    font-size: 0.98rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .bcfg__panel-weight-unit {
+    font-size: 0.78em;
+    opacity: 0.6;
+    margin-left: 0.12rem;
+  }
+  .bcfg__panel-barbell {
+    background: var(--color-paper);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+  }
+  .bcfg__panel-barbell svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .bcfg__plates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.4rem;
+  }
+  .bcfg__plate {
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid rgb(1 0 42 / 0.08);
+    border-radius: 6px;
+    background: var(--color-paper);
+  }
+  .bcfg__plate-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgb(1 0 42 / 0.3);
+  }
+  .bcfg__plate-kg {
+    font-family: var(--font-product, "Archivo Black");
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    color: var(--color-brand-navy);
+  }
+  .bcfg__plate-select {
+    width: 38px;
+    padding: 0.2rem 0.25rem;
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: 4px;
+    background: var(--color-brand-white);
+    color: var(--color-brand-navy);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-align: center;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .bcfg__warn {
+    margin: 0.5rem 0 0;
+    padding: 0.4rem 0.6rem;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .bcfg__buy {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1.25rem;
+    border-top: 2px solid var(--color-brand-navy);
+  }
+  .bcfg__price { display: flex; flex-direction: column; gap: 0.2rem; }
+  .bcfg__price-main {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2.25rem, 2.5vw + 1rem, 3rem);
+    color: var(--color-brand-navy);
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+  .bcfg__price-pix {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .bcfg__price-pix-value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-brand-navy);
+  }
+  .bcfg__price-pix-label {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .bcfg__price-installments {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .bcfg__ship {
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .pix-badge {
+    display: inline-block;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--color-brand-navy);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .w-full { width: 100%; }
+
+  /* ===================== ONBOARDING TOUR =====================
+     Aparece UMA vez por usuário (localStorage). Disparado no
+     primeiro clique em uma tab/barra ou no dropdown de exercício.
+     Cobre apenas o configurador (overlay com position:absolute
+     dentro de `.bcfg` que tem position:relative). */
+  .bcfg__tour {
+    /* fixed pra cobrir TODA a viewport — incluindo os floating buttons
+       (WhatsApp/Chat) e outros elementos fora do configurador. Focus
+       máximo no onboarding da primeira interação. */
+    position: fixed;
+    inset: 0;
+    /* z-index alto pra ficar acima dos floating buttons (60) e do
+       cookie banner (60). Abaixo do CartDrawer/FreteGratis (100). */
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgb(1 0 42 / 0.82);
+    backdrop-filter: blur(4px);
+    animation: bcfg-tour-fade 220ms ease-out;
+  }
+  .bcfg__tour[hidden] { display: none; }
+  @keyframes bcfg-tour-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .bcfg__tour-card {
+    width: 100%;
+    max-width: 340px;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-white);
+    border: 1px solid rgb(216 255 44 / 0.18);
+    border-top: 3px solid var(--color-brand-lime);
+    border-radius: 10px;
+    padding: 1.5rem 1.25rem 1.1rem;
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
+    animation: bcfg-tour-pop 280ms cubic-bezier(0.32, 0.72, 0.16, 1);
+  }
+  @keyframes bcfg-tour-pop {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .bcfg__tour-kicker {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brand-navy);
+    background: var(--color-brand-lime);
+    padding: 0.22rem 0.55rem;
+    line-height: 1;
+  }
+  .bcfg__tour-title {
+    margin: 0.7rem 0 1.1rem;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.25rem;
+    line-height: 1.1;
+    color: var(--color-brand-white);
+    letter-spacing: 0.01em;
+  }
+  .bcfg__tour-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .bcfg__tour-steps li {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 0.65rem;
+    align-items: start;
+  }
+  .bcfg__tour-step-n {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    border-radius: 50%;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+  .bcfg__tour-step-text { display: flex; flex-direction: column; gap: 0.15rem; }
+  .bcfg__tour-step-text strong {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.92rem;
+    letter-spacing: 0.02em;
+    color: var(--color-brand-white);
+    text-transform: uppercase;
+  }
+  .bcfg__tour-step-text span {
+    font-family: var(--font-body);
+    font-size: 0.86rem;
+    line-height: 1.4;
+    color: rgb(255 255 255 / 0.75);
+  }
+  .bcfg__tour-dismiss {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 0.92rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+  }
+  .bcfg__tour-dismiss:hover,
+  .bcfg__tour-dismiss:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgb(216 255 44 / 0.35);
+  }
+</style>
+
+<script>
+  import { cart } from "~/scripts/cart";
+  import { trackAddToCart } from "~/scripts/tracking";
+  import { formatBRL, applyPix } from "~/lib/format";
+  import type { PlateSpec, PlateId, BoardColorOption, BoardExerciseOption } from "~/lib/catalog";
+
+  interface CfgData {
+    slug: string;
+    title: string;
+    image: string;
+    basePriceCents: number;
+    exerciseCount: 2 | 3;
+    defaultExercises: string[];
+    category?: string;
+    plates: PlateSpec[];
+    exercises: BoardExerciseOption[];
+    colors: BoardColorOption[];
+    barbellWeightKg: number;
+    maxSideSpaceMm: number;
+  }
+
+  const roots = document.querySelectorAll<HTMLElement>("[data-board-configurator]");
+  roots.forEach((root) => init(root));
+
+  function init(root: HTMLElement): void {
+    if (root.dataset.cfgInit === "1") return;
+    root.dataset.cfgInit = "1";
+
+    const config = JSON.parse(root.dataset.config!) as CfgData;
+    const platesById = new Map<string, PlateSpec>(config.plates.map((p) => [p.id, p]));
+
+    // State
+    let selectedColor = config.colors[0]!.value;
+    const exercises: string[] = config.defaultExercises.slice(0, config.exerciseCount);
+    // platesState[barbellIndex][plateId] = pairs
+    const platesState: Array<Record<string, number>> = Array.from(
+      { length: config.exerciseCount },
+      () => Object.fromEntries(config.plates.map((p) => [p.id, 0])),
+    );
+
+    // --- Tabs (mobile) ---------------------------------------------------
+    const tabs = root.querySelectorAll<HTMLButtonElement>("[data-tab]");
+    const panels = root.querySelectorAll<HTMLElement>("[data-panel]");
+    const cablesEl = root.querySelector<SVGSVGElement>(".bcfg__cables");
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        maybeShowTour();
+        const target = tab.dataset.tab;
+        tabs.forEach((t) => t.setAttribute("aria-selected", t === tab ? "true" : "false"));
+        panels.forEach((p) => p.setAttribute("data-active", p.dataset.panel === target ? "true" : "false"));
+        // Atualiza qual cabo de luz está aceso (sync com tab ativa)
+        if (target) cablesEl?.setAttribute("data-cable-active", target);
+      });
+    });
+
+    // --- Onboarding tour (uma vez por cliente) ---------------------------
+    // Dispara no PRIMEIRO clique em tab OU dropdown de exercício. Persiste
+    // em localStorage pra não repetir em visitas futuras.
+    const TOUR_KEY = "bcfg-tour-seen";
+    const tourEl = root.querySelector<HTMLElement>("[data-tour]");
+    const tourDismiss = root.querySelector<HTMLButtonElement>("[data-tour-dismiss]");
+    let tourSeen = false;
+    try {
+      tourSeen = localStorage.getItem(TOUR_KEY) === "1";
+    } catch {
+      // localStorage indisponível (private mode): trata como "já visto"
+      // pra não bloquear o usuário com popup que não persiste.
+      tourSeen = true;
+    }
+    function maybeShowTour(): void {
+      if (tourSeen || !tourEl) return;
+      tourEl.hidden = false;
+      // Foca o botão dismiss pra acessibilidade (Enter fecha o popup).
+      setTimeout(() => tourDismiss?.focus(), 50);
+    }
+    function dismissTour(): void {
+      if (!tourEl) return;
+      tourEl.hidden = true;
+      tourSeen = true;
+      try {
+        localStorage.setItem(TOUR_KEY, "1");
+      } catch {
+        // Falha silenciosa — popup não vai persistir mas o usuário
+        // não vai ver de novo nesta sessão.
+      }
+    }
+    tourDismiss?.addEventListener("click", dismissTour);
+    // Click no overlay (área escura, fora do card) também fecha
+    tourEl?.addEventListener("click", (ev) => {
+      if (ev.target === tourEl) dismissTour();
+    });
+    // ESC pra fechar
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && tourEl && !tourEl.hidden) dismissTour();
+    });
+
+    // --- Color picker ----------------------------------------------------
+    const colorButtons = root.querySelectorAll<HTMLButtonElement>("[data-color]");
+    const previewBg = root.querySelector<SVGRectElement>("[data-preview-bg]");
+    const labelBgs = root.querySelectorAll<SVGRectElement>("[data-preview-label-bg]");
+
+    colorButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const value = btn.dataset.color!;
+        const opt = config.colors.find((c) => c.value === value)!;
+        selectedColor = opt.value;
+        colorButtons.forEach((b) => b.setAttribute("aria-checked", b === btn ? "true" : "false"));
+        if (previewBg) previewBg.setAttribute("fill", opt.hex);
+        labelBgs.forEach((bg) => {
+          // Em fundos pretos: label bg permanece preto. Em outros: label bg
+          // mais escuro/contraste alto. Mantém #111111 sempre — funciona em
+          // cobre e rosa, e em preto vira moldura sutil.
+          bg.setAttribute("fill", opt.value === "preto" ? "#000000" : "#111111");
+        });
+      });
+    });
+
+    // --- Exercise selectors ---------------------------------------------
+    const exSelects = root.querySelectorAll<HTMLSelectElement>("[data-exercise-select]");
+
+    function syncExerciseLabel(idx: number, value: string): void {
+      const ex = config.exercises.find((e) => e.value === value);
+      if (!ex) return;
+      // Label físico (text dentro do retângulo preto na placa preview).
+      // Label = value em ALL CAPS (cliente escolhe o termo que será
+      // impresso). Crossfitter pega "Back Squat" → "BACK SQUAT" no board.
+      // Halterofilista pega "Agachamento" → "AGACHAMENTO".
+      const preview = root.querySelector<SVGTextElement>(`[data-preview-exercise="${idx}"]`);
+      if (preview) preview.textContent = ex.value.toUpperCase();
+      // Atualiza o nome do exercício na tab mobile correspondente.
+      const tabEx = root.querySelector<HTMLElement>(`[data-tab-exercise="${idx}"]`);
+      if (tabEx) tabEx.textContent = ex.value;
+    }
+
+    exSelects.forEach((sel) => {
+      const idx = Number(sel.dataset.index);
+      sel.addEventListener("change", () => {
+        exercises[idx] = sel.value;
+        syncExerciseLabel(idx, sel.value);
+      });
+      // Dispara o tour no primeiro toque/clique no dropdown ANTES do
+      // picker nativo abrir, pra usuário ver as instruções primeiro.
+      sel.addEventListener("pointerdown", maybeShowTour);
+      sel.addEventListener("focus", maybeShowTour);
+      // Initial sync (em caso de hidratação/SSR)
+      syncExerciseLabel(idx, sel.value);
+    });
+
+    // --- Plate selectors --------------------------------------------------
+    const plateSelects = root.querySelectorAll<HTMLSelectElement>("[data-plate-select]");
+    plateSelects.forEach((sel) => {
+      sel.addEventListener("change", () => {
+        const bi = Number(sel.dataset.barbell);
+        const pid = sel.dataset.plateId!;
+        platesState[bi]![pid] = Math.max(
+          0,
+          Math.min(Number(sel.value), platesById.get(pid)!.maxPairs),
+        );
+        render();
+      });
+    });
+
+    // --- Buttons ----------------------------------------------------------
+    const totalPriceEl = root.querySelector<HTMLElement>("[data-total-price]")!;
+    const pixPriceEl = root.querySelector<HTMLElement>("[data-pix-price]")!;
+    const installmentPriceEl = root.querySelector<HTMLElement>("[data-installment-price]")!;
+    const addBtn = root.querySelector<HTMLButtonElement>("[data-add-btn]")!;
+
+    const NS = "http://www.w3.org/2000/svg";
+    const platesOrderedDesc = [...config.plates].sort((a, b) => b.kg - a.kg);
+
+    function renderPreviewPlates(barbellIdx: number): void {
+      const leftGroup = root.querySelector<SVGGElement>(`[data-preview-plates-left="${barbellIdx}"]`);
+      const rightGroup = root.querySelector<SVGGElement>(`[data-preview-plates-right="${barbellIdx}"]`);
+      if (leftGroup && rightGroup) {
+        drawPreviewSide(leftGroup, barbellIdx, "left");
+        drawPreviewSide(rightGroup, barbellIdx, "right");
+      }
+      // Renderiza também o barbell SVG do painel (vista frontal da barra
+      // com anilhas, separado da preview da placa inteira).
+      const panelLeft = root.querySelector<SVGGElement>(`[data-panel-plates-left="${barbellIdx}"]`);
+      const panelRight = root.querySelector<SVGGElement>(`[data-panel-plates-right="${barbellIdx}"]`);
+      if (panelLeft && panelRight) {
+        drawPanelSide(panelLeft, barbellIdx, "left");
+        drawPanelSide(panelRight, barbellIdx, "right");
+      }
+    }
+
+    /**
+     * Renderiza as anilhas no barbell SVG do painel (vista frontal grande).
+     * Escala diferente da preview da placa (mais espaço, mais detalhe).
+     * Espelha o estilo do My PR Gym (TripleBarbellConfigurator).
+     */
+    function drawPanelSide(group: SVGGElement, barbellIdx: number, side: "left" | "right"): void {
+      while (group.firstChild) group.removeChild(group.firstChild);
+      // Escala generosa pro panel (viewBox 600x200, espaço pra plates):
+      // 1mm = 3.2px → 25kg = 8mm = 25.6px wide. PLATE_DIAMETER 90px.
+      const pxPerMm = 3.2;
+      const PLATE_DIAMETER_PX = 90;
+      const HUB_HEIGHT_PX = 12;
+      const direction = side === "left" ? -1 : 1;
+      let offset = 0;
+      let cumulativeMm = 0;
+      for (const p of platesOrderedDesc) {
+        const pairs = platesState[barbellIdx]?.[p.id] ?? 0;
+        if (!pairs) continue;
+        for (let i = 0; i < pairs; i++) {
+          if (cumulativeMm + p.thicknessMm > config.maxSideSpaceMm) break;
+          const widthPx = p.thicknessMm * pxPerMm;
+          const x = side === "left" ? offset - widthPx : offset;
+          const rect = document.createElementNS(NS, "rect");
+          rect.setAttribute("x", String(x));
+          rect.setAttribute("y", String(-PLATE_DIAMETER_PX / 2));
+          rect.setAttribute("width", String(widthPx));
+          rect.setAttribute("height", String(PLATE_DIAMETER_PX));
+          rect.setAttribute("rx", "3");
+          rect.setAttribute("fill", p.color);
+          rect.setAttribute("stroke", "#01002a");
+          rect.setAttribute("stroke-width", "1");
+          group.appendChild(rect);
+          const hub = document.createElementNS(NS, "rect");
+          hub.setAttribute("x", String(x));
+          hub.setAttribute("y", String(-HUB_HEIGHT_PX / 2));
+          hub.setAttribute("width", String(widthPx));
+          hub.setAttribute("height", String(HUB_HEIGHT_PX));
+          hub.setAttribute("fill", "#1a1c22");
+          group.appendChild(hub);
+          offset += direction * widthPx;
+          cumulativeMm += p.thicknessMm;
+        }
+      }
+    }
+
+    function drawPreviewSide(group: SVGGElement, barbellIdx: number, side: "left" | "right"): void {
+      while (group.firstChild) group.removeChild(group.firstChild);
+      // Calibrado pelas fotos do produto real:
+      //   Anilha física ~30mm diâmetro × 8mm espessura (25kg) → ratio ~3.75:1.
+      //   No preview, mantemos ~4:1: PLATE_DIAMETER 32px, pxPerMm 1.0
+      //   (25kg = 8mm = 8px wide). Hub 4px (mais fino que antes).
+      const pxPerMm = 1.0;
+      const PLATE_DIAMETER_PX = 32;
+      const HUB_HEIGHT_PX = 3.5;
+      const direction = side === "left" ? -1 : 1;
+      let offset = 0;
+      let cumulativeMm = 0;
+      for (const p of platesOrderedDesc) {
+        const pairs = platesState[barbellIdx]?.[p.id] ?? 0;
+        if (!pairs) continue;
+        for (let i = 0; i < pairs; i++) {
+          if (cumulativeMm + p.thicknessMm > config.maxSideSpaceMm) break;
+          const widthPx = p.thicknessMm * pxPerMm;
+          const x = side === "left" ? offset - widthPx : offset;
+          // Anilha (corpo colorido) — face circular vista de lado
+          const rect = document.createElementNS(NS, "rect");
+          rect.setAttribute("x", String(x));
+          rect.setAttribute("y", String(-PLATE_DIAMETER_PX / 2));
+          rect.setAttribute("width", String(widthPx));
+          rect.setAttribute("height", String(PLATE_DIAMETER_PX));
+          rect.setAttribute("rx", "1.2");
+          rect.setAttribute("fill", p.color);
+          rect.setAttribute("stroke", "#01002a");
+          rect.setAttribute("stroke-width", "0.6");
+          group.appendChild(rect);
+          // Hub central (faixa escura onde a barra atravessa)
+          const hub = document.createElementNS(NS, "rect");
+          hub.setAttribute("x", String(x));
+          hub.setAttribute("y", String(-HUB_HEIGHT_PX / 2));
+          hub.setAttribute("width", String(widthPx));
+          hub.setAttribute("height", String(HUB_HEIGHT_PX));
+          hub.setAttribute("fill", "#1a1c22");
+          group.appendChild(hub);
+          offset += direction * widthPx;
+          cumulativeMm += p.thicknessMm;
+        }
+      }
+    }
+
+    function render(): void {
+      let platesCents = 0;
+      let anyOverLimit = false;
+      for (let i = 0; i < config.exerciseCount; i++) {
+        let bbKg = config.barbellWeightKg;
+        let bbSpace = 0;
+        let bbCents = 0;
+        for (const p of config.plates) {
+          const pairs = platesState[i]![p.id] ?? 0;
+          bbKg += pairs * 2 * p.kg;
+          bbSpace += pairs * p.thicknessMm;
+          bbCents += pairs * p.pricePerPairCents;
+        }
+        platesCents += bbCents;
+        const overLimit = bbSpace > config.maxSideSpaceMm;
+        anyOverLimit = anyOverLimit || overLimit;
+        const kgText = bbKg % 1 === 0 ? `${bbKg}` : bbKg.toFixed(2);
+        const kgEl = root.querySelector<HTMLElement>(`[data-barbell-kg="${i}"]`);
+        const warnEl = root.querySelector<HTMLElement>(`[data-barbell-warn="${i}"]`);
+        const tabWeight = root.querySelector<HTMLElement>(`[data-tab-weight="${i}"]`);
+        if (kgEl) kgEl.textContent = kgText;
+        if (warnEl) warnEl.hidden = !overLimit;
+        if (tabWeight) tabWeight.textContent = `${kgText} kg`;
+        renderPreviewPlates(i);
+      }
+      const total = config.basePriceCents + platesCents;
+      totalPriceEl.textContent = formatBRL(total);
+      pixPriceEl.textContent = formatBRL(applyPix(total));
+      installmentPriceEl.textContent = formatBRL(Math.round(total / 6));
+    }
+
+    addBtn.addEventListener("click", () => {
+      // Build cart payload
+      const barbells = exercises.map((ex, i) => ({
+        exercise: ex,
+        plates: Object.entries(platesState[i]!)
+          .filter(([, pairs]) => pairs > 0)
+          .map(([plateId, pairs]) => ({ plateId: plateId as PlateId, pairs })),
+      }));
+      let platesCents = 0;
+      for (const bb of barbells) {
+        for (const p of bb.plates) {
+          platesCents += p.pairs * platesById.get(p.plateId)!.pricePerPairCents;
+        }
+      }
+      const unitPriceCents = config.basePriceCents + platesCents;
+
+      const colorOpt = config.colors.find((c) => c.value === selectedColor)!;
+      const exDesc = barbells.map((bb) => bb.exercise).join(" / ");
+      const fullTitle = `${config.title} — ${colorOpt.label} · ${exDesc}`;
+
+      const id = buildCartId(config.slug, selectedColor, barbells);
+      cart.add({
+        id,
+        productSlug: config.slug,
+        title: fullTitle,
+        image: config.image,
+        unitPriceCents,
+        quantity: 1,
+        boardColor: selectedColor as "cobre" | "preto" | "rosa",
+        boardBarbells: barbells,
+      });
+      trackAddToCart({
+        slug: config.slug,
+        title: fullTitle,
+        unitPriceCents,
+        quantity: 1,
+        category: config.category,
+      });
+    });
+
+    render();
+  }
+
+  function buildCartId(
+    slug: string,
+    color: string,
+    barbells: Array<{ exercise: string; plates: Array<{ plateId: string; pairs: number }> }>,
+  ): string {
+    const bbKey = barbells
+      .map((bb) => {
+        const pk = bb.plates
+          .slice()
+          .sort((a, b) => a.plateId.localeCompare(b.plateId))
+          .map((p) => `${p.plateId}x${p.pairs}`)
+          .join("|");
+        return `${bb.exercise}@${pk}`;
+      })
+      .join(">>");
+    return [slug, color, bbKey].filter(Boolean).join("::");
+  }
+</script>

@@ -53,15 +53,25 @@ O que a marca vende (emocionalmente): **conquista, orgulho, identidade, memória
 
 Miniaturas em formato de equipamentos e movimentos de musculação/força, representando o universo do levantamento de peso. Peças colecionáveis, decorativas e premium.
 
+A partir de **mai/2026** o portfólio também inclui a linha **PR Runners** — primeira expansão para corrida. Importante: a nomenclatura troca de **PR** (Personal Record, crossfit/LPO) para **RP** (Recorde Pessoal, termo brasileiro do mundo da corrida). Não misturar — corredores brasileiros usam RP, não PR.
+
 ### Linhas de produto ativas
+
+#### PR Trackers (linha original — força)
 
 - **Deadlift Set** — "O mais bruto dos PRs"
 - **My PR Set** — "Seu LPO favorito está aqui!" (o mais personalizável — 20 exercícios)
 - **Power Rack Set** — "Para quem ama agachamento!"
 - **Bench Press Set** — "Supino que virou troféu!"
+- **PR Tracker Board — 3 Exercícios** — placa colorida (Cobre/Preto/Rosa) com 3 barras independentes configuráveis. Default: Supino + Agachamento + Levantamento Terra.
+- **PR Tracker Board — 2 Exercícios** — placa colorida (Cobre/Preto/Rosa) com 2 barras independentes. Default: Arranco + Arremesso (LPO).
 - **My PR Gym** — EM BREVE. Gym completo em miniatura: power rack + bench + plataforma de deadlift + 3 barras (Supino, Agachamento, Levantamento Terra) configuráveis. Cadastro de interesse para aviso de lançamento.
 - **Anilhas Avulsas** — pares adicionais para atualizar qualquer set
 - **Camisetas** — linha de vestuário (Masculina e Feminina Baby Look)
+
+#### PR Runners (linha de corrida — desde mai/2026)
+
+- **Meus RPs** — placa preta com 4 distâncias clássicas de corrida (5, 10, 21, 42 km). Cliente digita o tempo por distância (hh:mm:ss); sem tempo = cadeado fechado (default), pronto pra desbloquear quando bater o RP.
 
 ### Composição oficial do produto (usar sempre)
 
@@ -78,6 +88,8 @@ Miniaturas em formato de equipamentos e movimentos de musculação/força, repre
 | Bench Press Set | Alumínio |
 | Power Rack Set | Alumínio |
 | Deadlift Set | MDF & Borracha |
+| PR Tracker Board (2 e 3 ex) | PLA premium (impressão 3D) — Cobre / Preto / Rosa |
+| Meus RPs (PR Runners) | PLA premium preto fosco (impressão 3D) |
 
 ### My PR Set — exercícios disponíveis
 
@@ -89,12 +101,18 @@ A combinação de materiais resulta em uma peça com aparência premium, proporc
 
 ### Público-alvo
 
+Linha **PR Trackers**:
 - Praticantes de CrossFit
 - Halterofilismo (LPO)
 - Powerlifting
 - Musculação
 
-> **IMPORTANTE**: Corrida **NÃO** faz parte do portfólio. A marca foca exclusivamente em força e levantamento de peso.
+Linha **PR Runners** (desde mai/2026):
+- Corredores de rua / asfalto
+- Triatletas (parcial — pernas de corrida)
+- Maratonistas e meio-maratonistas
+
+> **CORRIDA AGORA FAZ PARTE DO PORTFÓLIO** (desde mai/2026) — mas apenas na linha PR Runners, com identidade e nomenclatura próprias (RP em vez de PR). O grosso da marca segue focado em força/levantamento. Não tratar corrida como modalidade equivalente; é uma extensão validada.
 
 ---
 
@@ -102,7 +120,7 @@ A combinação de materiais resulta em uma peça com aparência premium, proporc
 
 > Estratégia: aumentamos o preço-base dos kits e reduzimos o preço das anilhas avulsas (para baixar friction no add-to-cart de upgrade), além de zerar o frete acima de R$ 100 — embutido na margem do kit. Cria âncora psicológica forte: anilhas baratas, kits "premium" e o novo **My PR Gym** (R$ 379) faz os outros parecerem ainda mais acessíveis.
 
-### Kits (preço base, sistema "Monte sua barra")
+### Kits PR Trackers (preço base, sistema "Monte sua barra")
 
 | Produto | A partir de |
 |---------|------------:|
@@ -110,7 +128,17 @@ A combinação de materiais resulta em uma peça com aparência premium, proporc
 | My PR Set | R$ 159,00 |
 | Power Rack Set | R$ 169,00 |
 | Bench Press Set | R$ 189,00 |
+| PR Tracker Board — 2 Exercícios | R$ 179,90 |
+| PR Tracker Board — 3 Exercícios | R$ 199,90 |
 | **My PR Gym** (EM BREVE) | R$ 379,00 |
+
+### Linha PR Runners (preço fechado)
+
+| Produto | Preço |
+|---------|------:|
+| Meus RPs | R$ 139,90 |
+
+> O Meus RPs **não** soma anilhas (é placa só, sem barras). Os Boards (2 ex e 3 ex) somam anilhas como os kits — base + R$ 7/par escolhido em cada barra.
 
 ### Anilhas avulsas (tabela única — mesmo preço em qualquer set)
 
@@ -417,8 +445,8 @@ Pesos menores (não definidos no MIV, definidos no BRIEF):
 
 ## Regras — o que Claude nunca deve fazer
 
-1. Tratar a marca como se atendesse todos os esportes. Foco: **força e levantamento de peso** (CrossFit, Powerlifting, Halterofilismo, Musculação).
-2. Incluir corrida como modalidade atual.
+1. Tratar a marca como se atendesse todos os esportes. Foco principal: **força e levantamento de peso** (CrossFit, Powerlifting, Halterofilismo, Musculação). **Corrida** entra apenas via linha dedicada **PR Runners** (a partir de mai/2026) — não tratar como modalidade equivalente do core.
+2. Misturar nomenclatura PR (Personal Record, força) com RP (Recorde Pessoal, corrida). PR Runners usa **RP**; PR Trackers usa **PR**.
 3. Usar linguagem genérica, fria ou corporativa. Tom: **humano, direto, premium**.
 4. Inventar preços diferentes dos listados. Usar sempre a tabela deste documento.
 5. Apresentar a marca como consolidada. Ela está em construção.
