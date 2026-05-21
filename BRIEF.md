@@ -217,7 +217,7 @@ Checkout (`/checkout`):
 
 - Form: nome, e-mail, telefone, CPF, CEP (autocomplete ViaCEP), logradouro, número, complemento, bairro, cidade, estado.
 - Após CEP válido: chama `POST /api/frete` → mostra lista de opções de envio (PAC, Sedex, Jadlog, etc) com preço e prazo, usuário seleciona uma.
-- Radio: **Pix (5 % OFF)** vs **Cartão de crédito (até 6× sem juros)**.
+- Radio: **Pix (5 % OFF)** vs **Cartão de crédito (até 3× sem juros)**.
 - Total final = produtos − desconto Pix (se aplicável) + frete selecionado.
 - Submit → `POST /api/create-preference` (enviando `shipping` como item separado) → redirect para `init_point` do Mercado Pago.
 - Validação client-side com mensagens em PT-BR.
@@ -357,7 +357,7 @@ PUBLIC_SITE_URL=https://prtracker.com.br
 - **TikTok**: ativo (link no footer)
 - **CNPJ**: 59.947.215/0001-67
 - **Razão Social**: PR Tracker Ltda
-- **Pagamento**: Pix (5 % OFF) ou cartão até 6× sem juros
+- **Pagamento**: Pix (5 % OFF) ou cartão até 3× sem juros
 - **Envio**: para todo o Brasil com rastreio
 
 ---

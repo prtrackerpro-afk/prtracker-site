@@ -359,7 +359,7 @@ const CONFIG_JSON = JSON.stringify({
         <span class="bcfg__price-pix-label">5 % OFF</span>
       </div>
       <div class="bcfg__price-installments">
-        ou 6× de <span data-installment-price>{formatBRL(Math.round(basePriceCents / 6))}</span> sem juros
+        ou 3× de <span data-installment-price>{formatBRL(Math.round(basePriceCents / 3))}</span> sem juros
       </div>
     </div>
     <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn>
@@ -1327,7 +1327,7 @@ const CONFIG_JSON = JSON.stringify({
       const total = config.basePriceCents + platesCents;
       totalPriceEl.textContent = formatBRL(total);
       pixPriceEl.textContent = formatBRL(applyPix(total));
-      installmentPriceEl.textContent = formatBRL(Math.round(total / 6));
+      installmentPriceEl.textContent = formatBRL(Math.round(total / 3));
     }
 
     addBtn.addEventListener("click", () => {

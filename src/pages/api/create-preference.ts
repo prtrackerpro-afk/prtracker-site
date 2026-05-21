@@ -134,7 +134,7 @@ export const POST: APIRoute = async ({ request }) => {
         },
         payment_methods: {
           // Cartão-only endpoint — excluir Pix + débito + boleto. Assim
-          // quem cai aqui só vê cartão (até 6× sem juros).
+          // quem cai aqui só vê cartão (até 3× sem juros).
           excluded_payment_types: [
             { id: "bank_transfer" },
             { id: "debit_card" },

@@ -159,7 +159,7 @@ R$ 80,00 (Masculina e Feminina Baby Look) — tamanhos P/M/G/GG.
 ### Pagamento
 
 - **Pix**: 5 % de desconto automático no total.
-- **Cartão de crédito**: até **6× sem juros**.
+- **Cartão de crédito**: até **3× sem juros**.
 
 ### Frete grátis (cupom `fretegratis`, sempre ativo)
 
@@ -490,7 +490,7 @@ Slides com foco em produto: não deixar espaço em branco excessivo. A imagem do
 - **Razão Social**: PR Tracker Ltda
 - **Atendimento**: Seg a Sex, 8h às 18h
 - **Envio**: para todo o Brasil com rastreio
-- **Pagamento**: Pix (5 % OFF) ou cartão até 6× sem juros
+- **Pagamento**: Pix (5 % OFF) ou cartão até 3× sem juros
 - **Site desenvolvido por**: @MagnoDigital (WordPress atual) — rebuild Astro em andamento
 - **MIV**: Faísca Design Júnior / UFRGS
 - **Planilha admin**: Google Sheets "PR Tracker - Administração" (somente leitura — **NUNCA editar**)
