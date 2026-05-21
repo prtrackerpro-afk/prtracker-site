@@ -3,14 +3,14 @@
  * GA4 + Meta Pixel. IDs públicos (aparecem no HTML client-side), hardcoded
  * pra manter o build simples.
  *
- * GA4 Measurement ID: stream "PR Tracker v2" da propriedade prtracker.com.br.
- * Note que NÃO usamos o Google Tag wrapper (GT-WBTC67LF) do WordPress —
- * aquele tag existe mas não está roteado pra essa propriedade GA4, então
- * dados nunca chegavam. Usando G- direto os hits vão pro Realtime em minutos.
+ * GA4 Measurement ID: stream "prtracker.com.br" (ID 13664841350) da propriedade
+ * prtracker.com.br. O stream "PR Tracker v2" (G-B2EPJXKSPZ) foi descontinuado —
+ * estava configurado pro domínio de preview do Vercel e o gtag.js retornava 404
+ * em produção, derrubando o tracking client-side.
  *
  * Meta Pixel: mesmo ID do WP atual, preserva audiência e conversões.
  */
-const GA4_MEASUREMENT_ID = "G-B2EPJXKSPZ";
+const GA4_MEASUREMENT_ID = "G-5TQCL0R0RE";
 const META_PIXEL_ID = "1278981700843845";
 
 const isDev = import.meta.env.DEV;
