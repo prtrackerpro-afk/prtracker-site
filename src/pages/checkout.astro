@@ -586,13 +586,14 @@ import Loader from "@lucide/astro/icons/loader";
   const couponAmountEl = document.querySelector<HTMLElement>("[data-checkout-coupon]")!;
 
   let selectedFrete: FreteOption | null = null;
-  let appliedCoupon: {
+  type AppliedCoupon = {
     code: string;
     discountCents: number;
     creditedTo: string;
     pickupLocation: PickupLocation | null;
     freeShipping: boolean;
-  } | null = null;
+  };
+  let appliedCoupon: AppliedCoupon | null = null;
 
   function renderSummary(snap: CartSnapshot) {
     itemsList.innerHTML = snap.items
@@ -813,6 +814,26 @@ import Loader from "@lucide/astro/icons/loader";
     renderFreteList(merged);
   }
   couponBtn.addEventListener("click", applyCoupon);
+
+  // Auto-aplica FRETEGRATIS quando subtotal ≥ R$ 100 e o cliente ainda
+  // não digitou cupom próprio. Remove fricção do "tem cupom, mas eu preciso
+  // digitar" — drop ATC→IC tava em 68% (Pixel maio/2026).
+  const AUTO_COUPON_CODE = "fretegratis";
+  let autoCouponTried = false;
+  async function maybeAutoApplyFreteGratis() {
+    if (autoCouponTried) return;
+    if (appliedCoupon) return;
+    if (cart.snapshot().subtotalCents < FREE_SHIPPING_MIN_CENTS) return;
+    autoCouponTried = true;
+    couponInput.value = AUTO_COUPON_CODE;
+    await applyCoupon();
+    const result = appliedCoupon as AppliedCoupon | null;
+    if (result && result.code === AUTO_COUPON_CODE) {
+      couponStatus.textContent =
+        "✓ Cupom FRETEGRATIS aplicado automaticamente · FRETE GRÁTIS";
+    }
+  }
+  void maybeAutoApplyFreteGratis();
 
   const cpfEl = document.querySelector<HTMLInputElement>("#cpf")!;
   const cepEl = document.querySelector<HTMLInputElement>("#cep")!;
