@@ -26,11 +26,18 @@ Dashboard interno multi-canal pra acompanhar Meta Ads, GA4, e vendas (Site / Mer
 3. Copia a key (começa com `re_`)
 4. Pula este passo se não quiser email — alertas continuam no dashboard
 
-### 3. (Opcional) Gerar API key Windsor.ai pra GA4
+### 3. Configurar Service Account Google Cloud pra GA4
 
-1. https://windsor.ai/account/integrations/ → aba **API**
-2. **Create API Key**
-3. Copia a key
+GA4 é lido via Data API com Service Account (Windsor.ai foi descontinuado em mai/2026).
+
+1. **GCP Console** → projeto com Analytics Data API habilitada → **IAM & Admin → Service Accounts**
+2. Criar SA `analytics-reader` → criar chave JSON → baixar
+3. **GA4 Admin** (`analytics.google.com`) → propriedade `prtracker.com.br` (525987283) → **Property Access Management** → adicionar o email do SA como **Viewer**
+   - Se a UI rejeitar o email do SA com "doesn't match a Google Account", use a Admin API v1alpha direto (ver memória `project_ga4_service_account.md`)
+4. Codificar a chave em base64:
+   - PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("sa.json"))`
+   - Linux/Mac: `base64 -w0 < sa.json`
+5. Guardar o resultado pra colar em `GA4_SA_KEY_BASE64` no Vercel (passo 4)
 
 ### 4. Setar variáveis de ambiente Vercel
 
@@ -45,7 +52,7 @@ META_ACCESS_TOKEN=<copiar do Tráfego/.env>
 META_AD_ACCOUNT_ID=act_1936343516981196
 META_API_VERSION=v23.0
 GA4_PROPERTY_ID=525987283
-WINDSOR_API_KEY=<key do passo 3, se criou>
+GA4_SA_KEY_BASE64=<base64 do JSON da SA — passo 3>
 RESEND_API_KEY=<key do passo 2, se criou>
 ALERT_EMAIL_TO=contato@prtracker.com.br
 CRON_SECRET=<gerar com `openssl rand -hex 32`>
@@ -87,7 +94,7 @@ src/
 │   ├── login.astro               # Login email/senha
 │   ├── index.astro               # Overview executivo
 │   ├── meta.astro                # Meta Ads (drill campaign → adset → ad)
-│   ├── ga4.astro                 # GA4 / Site (via Windsor)
+│   ├── ga4.astro                 # GA4 / Site (via Data API com Service Account)
 │   ├── sales.astro               # Multi-canal vendas
 │   └── alerts.astro              # Histórico + ações
 ├── pages/api/
@@ -103,8 +110,10 @@ src/
 │   │   ├── auth.ts               # whitelist + auth helper
 │   │   ├── meta-api.ts           # Meta Marketing API client
 │   │   ├── meta-ingest.ts        # Pull → Supabase upsert
-│   │   ├── windsor-api.ts        # Windsor.ai client
-│   │   ├── windsor-ingest.ts     # GA4 + futuras integrações
+│   │   ├── ga4-direct.ts         # GA4 Data API client (SA JWT)
+│   │   ├── ga4-ingest.ts         # GA4 daily → ga4_daily upsert
+│   │   ├── windsor-api.ts        # Windsor.ai client (deprecated, só pra TikTok Ads)
+│   │   ├── windsor-ingest.ts     # (deprecated — substituído por ga4-ingest)
 │   │   ├── alerts-engine.ts      # Thresholds + criação de alerts
 │   │   ├── email.ts              # Resend (opcional)
 │   │   └── format.ts             # Helpers BRL, agregação
@@ -141,7 +150,8 @@ Pra adicionar threshold, editar `src/lib/admin/alerts-engine.ts` e redeployar.
 
 - [ ] Adicionar gráficos de breakdown (placement, age, gender) na aba Meta
 - [ ] Webhook MP → tabela `sales` (channel='site') automaticamente
-- [ ] Conectar Mercado Livre / Amazon / Shopee no Windsor.ai e ingerir vendas
+- [ ] Conectar Mercado Livre / Amazon / Shopee via APIs nativas e ingerir vendas
+- [ ] Substituir TikTok Ads ingest (último uso de Windsor.ai) por TikTok Business API direta
 - [ ] Funil de conversão (ViewContent → ATC → IC → Purchase) com taxas
 - [ ] Cohort de creators/cupons (LTV por origem)
 - [ ] Custom alerts no UI sem precisar deploy
@@ -170,6 +180,6 @@ Pra adicionar threshold, editar `src/lib/admin/alerts-engine.ts` e redeployar.
 curl -H "Authorization: Bearer $CRON_SECRET" "https://prtracker.com.br/api/cron/ingest?days=90"
 ```
 
-**GA4 não popula**: `WINDSOR_API_KEY` não configurada ou conta Windsor sem GA4 conectado.
+**GA4 não popula**: `GA4_SA_KEY_BASE64` não configurada, ou Service Account sem acesso de Viewer na property 525987283. Conferir resposta do cron — se `result.ga4.skipped == true`, env não foi lida. Se `result.ga4.error` contém `403 PERMISSION_DENIED`, ajustar Property Access Management no GA4 Admin.
 
 **Email de alerta não chega**: `RESEND_API_KEY` faltando ou domínio não verificado (free tier usa `onboarding@resend.dev`, deveria funcionar pra testes).
