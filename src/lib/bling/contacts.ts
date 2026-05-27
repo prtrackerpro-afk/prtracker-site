@@ -47,6 +47,30 @@ function digits(s: string | undefined | null): string {
   return (s ?? "").replace(/\D/g, "");
 }
 
+/**
+ * Bling v3 valida o telefone do contato contra o padrão brasileiro (DDD
+ * válido + fixo 8 dígitos OU celular 9 dígitos começando em 9). Quando o
+ * cliente digita com prefixo "+55" o checkout às vezes salva 11 dígitos
+ * começados em "55" — DDD 55 é técnicamente válido (Santa Maria/RS) mas
+ * o número anexado vira inválido. Em vez de mandar lixo pro Bling
+ * (rejeita o contato inteiro), filtra: se não bate com fixo/celular BR,
+ * volta undefined e a chamada é feita sem telefone (Bling aceita).
+ */
+function sanitizeBrazilianPhone(raw: string | undefined): string | undefined {
+  let d = digits(raw);
+  if (!d) return undefined;
+  // Strip country code "55" prefix when total ficou 12-13 dígitos (cliente
+  // digitou +55 antes do DDD).
+  if (d.length === 12 || d.length === 13) {
+    if (d.startsWith("55")) d = d.slice(2);
+  }
+  // Aceita só formatos canônicos: DDDXXXXXXXX (fixo, 10) ou DDD9XXXXXXXX
+  // (celular, 11, terceiro dígito é 9).
+  if (/^\d{2}\d{8}$/.test(d)) return d;          // fixo
+  if (/^\d{2}9\d{8}$/.test(d)) return d;         // celular
+  return undefined;
+}
+
 export async function findContactByDocument(
   numeroDocumento: string,
   accessToken?: string,
@@ -76,9 +100,12 @@ export async function createContact(
     nome: input.nome,
     numeroDocumento: cpfDigits,
     tipo,
+    // Bling v3 passou a exigir situacao explícito (~mai/2026). "A" = ativo.
+    situacao: "A",
   };
   if (input.email) body.email = input.email;
-  if (input.telefone) body.telefone = digits(input.telefone);
+  const sanitizedPhone = sanitizeBrazilianPhone(input.telefone);
+  if (sanitizedPhone) body.telefone = sanitizedPhone;
   if (input.endereco) {
     body.endereco = {
       geral: {
