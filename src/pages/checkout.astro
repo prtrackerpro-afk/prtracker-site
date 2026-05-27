@@ -1069,6 +1069,21 @@ import Loader from "@lucide/astro/icons/loader";
     }
     cpfEl.removeAttribute("aria-invalid");
 
+    // Telefone com prefixo "+55" trunca em 11 chars e fica malformado
+    // (ex: "55319939551" — DDD 55 + 9 dígitos que não casam com celular
+    // BR). Bling rejeita o contato inteiro. Bloqueia client-side e pede
+    // pra digitar só DDD + número.
+    const phoneDigits = phoneEl.value.replace(/\D/g, "");
+    if (phoneDigits.startsWith("55") && phoneDigits.length >= 11) {
+      phoneEl.setAttribute("aria-invalid", "true");
+      submitError.textContent =
+        "Telefone inválido — digite apenas DDD + número, sem o código do país (+55).";
+      submitError.hidden = false;
+      phoneEl.focus();
+      return;
+    }
+    phoneEl.removeAttribute("aria-invalid");
+
     if (!selectedFrete) {
       submitError.textContent = "Selecione uma opção de frete antes de continuar.";
       submitError.hidden = false;
