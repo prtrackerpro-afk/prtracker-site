@@ -42,6 +42,19 @@ import Copy from "@lucide/astro/icons/copy";
   ></button>
 
   <div class="fg-popup__card" role="document">
+    <span class="fg-popup__deco fg-popup__deco--1" aria-hidden="true">
+      <Heart size={42} />
+    </span>
+    <span class="fg-popup__deco fg-popup__deco--2" aria-hidden="true">
+      <Heart size={28} />
+    </span>
+    <span class="fg-popup__deco fg-popup__deco--3" aria-hidden="true">
+      <Heart size={22} />
+    </span>
+    <span class="fg-popup__deco fg-popup__deco--4" aria-hidden="true">
+      <Heart size={18} />
+    </span>
+
     <button
       type="button"
       class="fg-popup__close"
@@ -53,19 +66,26 @@ import Copy from "@lucide/astro/icons/copy";
 
     <p class="fg-popup__eyebrow">
       <Sparkles size={14} aria-hidden="true" />
-      <span>DIA DOS NAMORADOS · OFERTA ESPECIAL</span>
+      <span>Dia dos Namorados</span>
+      <Sparkles size={14} aria-hidden="true" />
     </p>
 
     <h2 id="fretegratis-popup-title" class="fg-popup__title">
-      10 % OFF + frete grátis
+      <span class="fg-popup__title-accent">10% OFF</span>
+      <span class="fg-popup__title-plus" aria-hidden="true">
+        <Heart size={18} />
+      </span>
+      <span class="fg-popup__title-line">frete grátis</span>
     </h2>
+
+    <p class="fg-popup__tagline">pra quem ama um PR</p>
+
     <p class="fg-popup__subtitle">
-      <Heart size={16} aria-hidden="true" />
-      <span>Em compras acima de <strong>R$ 100</strong> · qualquer lugar do Brasil</span>
+      Em compras acima de <strong>R$ 100</strong> · qualquer lugar do Brasil
     </p>
 
     <div class="fg-popup__coupon">
-      <span class="fg-popup__coupon-label">CUPOM</span>
+      <span class="fg-popup__coupon-label">cupom</span>
       <code class="fg-popup__coupon-code" data-fg-coupon>PRLOVERS</code>
       <button
         type="button"
@@ -79,11 +99,12 @@ import Copy from "@lucide/astro/icons/copy";
     </div>
 
     <p class="fg-popup__small">
-      Use no checkout pra desbloquear 10 % OFF + frete grátis. Válido até <strong>12 de junho</strong>.
+      Use no checkout pra desbloquear o desconto. Válido até <strong>12 de junho</strong>.
     </p>
 
     <button type="button" class="fg-popup__cta" data-fg-claim>
-      Quero o desconto
+      <Heart size={16} aria-hidden="true" />
+      <span>Quero o desconto</span>
     </button>
 
     <p class="fg-popup__legal">
@@ -93,9 +114,14 @@ import Copy from "@lucide/astro/icons/copy";
 </div>
 
 <style>
-  /* The modal sits *above* everything else but uses pointer-events: none
-     on the wrapper, so clicks fall through when hidden. */
+  /* Paleta de campanha — coral rosé como acento complementar à brand
+     navy/lime. Não vira tema permanente; só vive enquanto a campanha
+     PRLOVERS está no ar. */
   .fg-popup {
+    --prlovers-coral: #ff6b8a;
+    --prlovers-coral-soft: #ffd9e2;
+    --prlovers-coral-deep: #d9405f;
+
     position: fixed;
     inset: 0;
     z-index: 100;
@@ -109,8 +135,11 @@ import Copy from "@lucide/astro/icons/copy";
   .fg-popup__backdrop {
     position: absolute;
     inset: 0;
-    background: rgb(1 0 42 / 0.78);
-    backdrop-filter: blur(2px);
+    background:
+      radial-gradient(ellipse at 30% 20%, rgb(255 107 138 / 0.18), transparent 60%),
+      radial-gradient(ellipse at 70% 80%, rgb(216 255 44 / 0.10), transparent 55%),
+      rgb(1 0 42 / 0.78);
+    backdrop-filter: blur(3px);
     border: 0;
     padding: 0;
     cursor: pointer;
@@ -120,21 +149,72 @@ import Copy from "@lucide/astro/icons/copy";
     position: relative;
     width: min(420px, 100%);
     max-height: calc(100vh - 2rem);
-    overflow: auto;
-    background: var(--color-brand-white, #fff);
+    overflow: hidden;
+    background: linear-gradient(
+      180deg,
+      #fff 0%,
+      #fff 70%,
+      #fff7f9 100%
+    );
     color: var(--color-brand-navy, #01002a);
-    border-radius: 14px;
-    padding: 2rem 1.6rem 1.5rem;
-    box-shadow: 0 24px 60px rgb(1 0 42 / 0.35);
+    border-radius: 22px;
+    padding: 2.2rem 1.6rem 1.5rem;
+    box-shadow:
+      0 24px 60px rgb(1 0 42 / 0.35),
+      0 12px 32px rgb(255 107 138 / 0.18);
     text-align: center;
     border: 2px solid var(--color-brand-navy, #01002a);
-    /* Slight lime band at top */
-    background-image: linear-gradient(
-      to bottom,
-      var(--color-brand-lime, #d8ff2c) 0,
-      var(--color-brand-lime, #d8ff2c) 6px,
-      var(--color-brand-white, #fff) 6px
+    animation: fg-popup-pop 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  /* Faixa decorativa do topo: gradient lime → coral (campanha) */
+  .fg-popup__card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(
+      90deg,
+      var(--color-brand-lime, #d8ff2c) 0%,
+      var(--color-brand-lime, #d8ff2c) 35%,
+      var(--prlovers-coral) 65%,
+      var(--prlovers-coral-deep) 100%
     );
+  }
+
+  /* Corações decorativos absolutos atrás do conteúdo */
+  .fg-popup__deco {
+    position: absolute;
+    color: var(--prlovers-coral);
+    pointer-events: none;
+    opacity: 0;
+    animation: fg-deco-in 600ms ease-out forwards;
+  }
+  .fg-popup__deco svg { fill: currentColor; stroke: none; }
+  .fg-popup__deco--1 {
+    top: 18px; left: -8px;
+    color: var(--prlovers-coral-soft);
+    transform: rotate(-22deg);
+    animation-delay: 200ms;
+  }
+  .fg-popup__deco--2 {
+    top: 88px; right: 6px;
+    color: var(--prlovers-coral);
+    opacity: 0.85;
+    transform: rotate(18deg);
+    animation-delay: 320ms;
+  }
+  .fg-popup__deco--3 {
+    bottom: 70px; left: 4px;
+    color: var(--prlovers-coral-soft);
+    transform: rotate(14deg);
+    animation-delay: 420ms;
+  }
+  .fg-popup__deco--4 {
+    bottom: 28px; right: -4px;
+    color: var(--prlovers-coral);
+    opacity: 0.55;
+    transform: rotate(-28deg);
+    animation-delay: 500ms;
   }
 
   .fg-popup__close {
@@ -146,123 +226,210 @@ import Copy from "@lucide/astro/icons/copy";
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
+    background: rgb(255 255 255 / 0.85);
     border: 1px solid rgb(1 0 42 / 0.18);
     color: var(--color-brand-navy, #01002a);
     border-radius: 50%;
     cursor: pointer;
     transition: background 120ms ease, transform 120ms ease;
+    z-index: 2;
   }
   .fg-popup__close:hover {
-    background: rgb(1 0 42 / 0.06);
-    transform: scale(1.06);
+    background: rgb(255 217 226 / 0.9);
+    transform: scale(1.06) rotate(90deg);
   }
 
   .fg-popup__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin: 0.4rem 0 0.9rem;
-    padding: 0.25rem 0.7rem;
-    background: var(--color-brand-navy, #01002a);
-    color: var(--color-brand-lime, #d8ff2c);
-    font-family: var(--font-display, "Inter"), sans-serif;
-    font-weight: 800;
-    font-size: 0.7rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    border-radius: 4px;
-  }
-
-  .fg-popup__title {
-    font-family: var(--font-display, "Inter"), sans-serif;
-    font-weight: 900;
-    font-size: clamp(1.65rem, 2.5vw + 0.8rem, 2.1rem);
-    line-height: 1;
-    letter-spacing: -0.02em;
-    margin: 0 0 0.6rem;
-    color: var(--color-brand-navy, #01002a);
-    text-transform: uppercase;
-  }
-
-  .fg-popup__subtitle {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    margin: 0.2rem 0 1rem;
+    padding: 0.35rem 0.9rem;
+    background: linear-gradient(
+      90deg,
+      var(--prlovers-coral) 0%,
+      var(--prlovers-coral-deep) 100%
+    );
+    color: #fff;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgb(255 107 138 / 0.35);
+    z-index: 2;
+  }
+  .fg-popup__eyebrow svg { color: #fff; }
+
+  .fg-popup__title {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 900;
+    font-size: clamp(1.75rem, 2.6vw + 0.8rem, 2.25rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.4rem;
+    color: var(--color-brand-navy, #01002a);
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  .fg-popup__title-accent {
+    background: linear-gradient(
+      135deg,
+      var(--prlovers-coral) 0%,
+      var(--prlovers-coral-deep) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  .fg-popup__title-plus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--prlovers-coral);
+    animation: fg-heartbeat 1.6s ease-in-out infinite;
+  }
+  .fg-popup__title-plus svg { fill: currentColor; stroke: none; }
+  .fg-popup__title-line { color: var(--color-brand-navy, #01002a); }
+
+  .fg-popup__tagline {
+    position: relative;
+    margin: 0 0 1rem;
+    font-family: var(--font-display, "Inter"), sans-serif;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 0.92rem;
+    color: var(--prlovers-coral-deep);
+    letter-spacing: 0.01em;
+    z-index: 2;
+  }
+
+  .fg-popup__subtitle {
+    position: relative;
+    display: block;
     margin: 0 0 1.25rem;
     color: var(--color-brand-navy, #01002a);
-    opacity: 0.78;
-    font-size: 0.95rem;
-    line-height: 1.4;
+    opacity: 0.72;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    z-index: 2;
   }
   .fg-popup__subtitle strong { font-weight: 800; opacity: 1; }
 
   .fg-popup__coupon {
+    position: relative;
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.7rem 0.85rem;
-    background: var(--color-brand-navy, #01002a);
+    padding: 0.8rem 0.9rem;
+    background:
+      linear-gradient(135deg, #01002a 0%, #1a1547 100%);
     color: var(--color-brand-white, #fff);
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
+    border-radius: 12px;
+    margin-bottom: 0.85rem;
     text-align: left;
+    box-shadow:
+      0 6px 18px rgb(1 0 42 / 0.25),
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+    z-index: 2;
+  }
+  /* Mini brilho rosé na esquerda da pílula do cupom */
+  .fg-popup__coupon::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 3px;
+    background: linear-gradient(
+      180deg,
+      var(--prlovers-coral) 0%,
+      var(--prlovers-coral-deep) 100%
+    );
+    border-radius: 12px 0 0 12px;
   }
   .fg-popup__coupon-label {
     font-family: var(--font-mono, "JetBrains Mono"), monospace;
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
-    color: var(--color-brand-lime, #d8ff2c);
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    color: var(--prlovers-coral-soft);
     text-transform: uppercase;
   }
   .fg-popup__coupon-code {
     font-family: var(--font-display, "Inter"), sans-serif;
     font-weight: 900;
-    font-size: 1.15rem;
-    letter-spacing: 0.12em;
+    font-size: 1.2rem;
+    letter-spacing: 0.16em;
     text-align: center;
+    background: linear-gradient(
+      90deg,
+      #fff 0%,
+      var(--prlovers-coral-soft) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
   .fg-popup__coupon-copy {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    padding: 0.4rem 0.65rem;
+    padding: 0.45rem 0.7rem;
     background: var(--color-brand-lime, #d8ff2c);
     color: var(--color-brand-navy, #01002a);
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-family: var(--font-display, "Inter"), sans-serif;
     font-weight: 700;
     font-size: 0.72rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    transition: filter 120ms ease;
+    transition: filter 120ms ease, transform 120ms ease;
   }
-  .fg-popup__coupon-copy:hover { filter: brightness(1.05); }
+  .fg-popup__coupon-copy:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
   .fg-popup__coupon-copy[data-copied="true"] {
     background: #43b02a;
     color: #fff;
   }
 
   .fg-popup__small {
+    position: relative;
     font-size: 0.78rem;
     line-height: 1.45;
     color: var(--color-brand-navy, #01002a);
     opacity: 0.65;
     margin: 0 0 1.1rem;
+    z-index: 2;
   }
   .fg-popup__small strong { opacity: 1; font-weight: 800; }
 
   .fg-popup__cta {
-    display: block;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
     width: 100%;
     padding: 0.95rem 1rem;
     background: var(--color-brand-lime, #d8ff2c);
     color: var(--color-brand-navy, #01002a);
     border: 2px solid var(--color-brand-navy, #01002a);
-    border-radius: 8px;
+    border-radius: 12px;
     font-family: var(--font-display, "Inter"), sans-serif;
     font-weight: 900;
     font-size: 1rem;
@@ -271,34 +438,72 @@ import Copy from "@lucide/astro/icons/copy";
     cursor: pointer;
     transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
     margin-bottom: 0.85rem;
+    z-index: 2;
+  }
+  .fg-popup__cta svg {
+    color: var(--prlovers-coral-deep);
+    fill: currentColor;
+    stroke: none;
+    animation: fg-heartbeat 1.6s ease-in-out infinite;
   }
   .fg-popup__cta:hover {
     transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 0 var(--color-brand-navy, #01002a);
+    box-shadow:
+      3px 3px 0 0 var(--color-brand-navy, #01002a),
+      0 6px 18px rgb(255 107 138 / 0.25);
     filter: brightness(1.03);
   }
   .fg-popup__cta:active { transform: translate(0, 0); box-shadow: none; }
 
   .fg-popup__legal {
+    position: relative;
     margin: 0;
     font-size: 0.7rem;
     color: var(--color-brand-navy, #01002a);
     opacity: 0.45;
     line-height: 1.4;
+    z-index: 2;
   }
 
   @keyframes fg-popup-in {
     from { opacity: 0; }
     to   { opacity: 1; }
   }
+  @keyframes fg-popup-pop {
+    0%   { opacity: 0; transform: scale(0.86) translateY(12px); }
+    60%  { opacity: 1; transform: scale(1.02) translateY(0); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes fg-heartbeat {
+    0%, 100% { transform: scale(1); }
+    14%      { transform: scale(1.22); }
+    28%      { transform: scale(1); }
+    42%      { transform: scale(1.16); }
+    70%      { transform: scale(1); }
+  }
+  @keyframes fg-deco-in {
+    from { opacity: 0; transform: var(--fg-deco-rot, rotate(0)) translateY(8px); }
+    to   { opacity: var(--fg-deco-opacity, 1); }
+  }
   @media (prefers-reduced-motion: reduce) {
-    .fg-popup { animation: none; }
+    .fg-popup,
+    .fg-popup__card,
+    .fg-popup__deco,
+    .fg-popup__title-plus,
+    .fg-popup__cta svg { animation: none; }
+    .fg-popup__deco { opacity: 0.7; }
   }
 
   @media (max-width: 480px) {
     .fg-popup__card {
-      padding: 1.6rem 1.2rem 1.2rem;
+      padding: 1.8rem 1.2rem 1.2rem;
+      border-radius: 18px;
     }
+    .fg-popup__deco--1 { top: 12px; left: -12px; }
+    .fg-popup__deco--2 { top: 72px; right: 0; }
+    .fg-popup__deco--3 { bottom: 60px; left: -2px; }
+    .fg-popup__deco--4 { bottom: 22px; right: -8px; }
+    .fg-popup__title { font-size: clamp(1.55rem, 6vw, 1.9rem); }
   }
 </style>
 
