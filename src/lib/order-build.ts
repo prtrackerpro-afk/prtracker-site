@@ -50,7 +50,7 @@ const runningTimesSchema = z
   })
   .strict();
 
-const cartItemSchema = z.object({
+export const cartItemSchema = z.object({
   id: z.string().min(1).max(200),
   productSlug: z.string().min(1).max(100),
   title: z.string().min(1).max(200),

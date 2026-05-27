@@ -13,25 +13,9 @@ import { z } from "astro:content";
 import { recomputeLine } from "~/lib/pricing";
 import { getCollection } from "astro:content";
 import { validateCoupon } from "~/lib/coupons";
+import { cartItemSchema } from "~/lib/order-build";
 
 export const prerender = false;
-
-const plateSelectionSchema = z.object({
-  plateId: z.enum(["25", "20", "15", "10", "5", "2_5", "1_25"]),
-  pairs: z.number().int().min(0).max(4),
-});
-
-const cartItemSchema = z.object({
-  id: z.string().min(1).max(200),
-  productSlug: z.string().min(1).max(100),
-  title: z.string().min(1).max(200),
-  image: z.string().min(1).max(500),
-  unitPriceCents: z.number().int().min(0).max(10_000_00),
-  quantity: z.number().int().min(1).max(20),
-  plates: z.array(plateSelectionSchema).optional(),
-  exercise: z.string().max(60).optional(),
-  size: z.string().max(10).optional(),
-});
 
 const payloadSchema = z.object({
   code: z.string().trim().min(1).max(60),
