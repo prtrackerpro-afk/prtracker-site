@@ -629,13 +629,13 @@ import Loader from "@lucide/astro/icons/loader";
       } else {
         freteProgressEl.dataset.unlocked = "false";
         freteProgressEl.textContent =
-          "Aplique o cupom FRETEGRATIS pra liberar frete grátis.";
+          "Aplique o cupom PRLOVERS pra desbloquear 10 % OFF + frete grátis.";
       }
     } else {
       const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
       freteProgressEl.hidden = false;
       freteProgressEl.dataset.unlocked = "false";
-      freteProgressEl.textContent = `Faltam ${formatBRL(missing)} pra desbloquear o cupom FRETEGRATIS.`;
+      freteProgressEl.textContent = `Faltam ${formatBRL(missing)} pra desbloquear o cupom PRLOVERS (10 % OFF + frete grátis).`;
     }
 
     const couponCents = appliedCoupon?.discountCents ?? 0;
@@ -815,10 +815,13 @@ import Loader from "@lucide/astro/icons/loader";
   }
   couponBtn.addEventListener("click", applyCoupon);
 
-  // Auto-aplica FRETEGRATIS quando subtotal ≥ R$ 100 e o cliente ainda
-  // não digitou cupom próprio. Remove fricção do "tem cupom, mas eu preciso
-  // digitar" — drop ATC→IC tava em 68% (Pixel maio/2026).
-  const AUTO_COUPON_CODE = "fretegratis";
+  // Auto-aplica PRLOVERS (campanha Dia dos Namorados — 10 % OFF + frete grátis)
+  // quando subtotal ≥ R$ 100 e o cliente ainda não digitou cupom próprio. Remove
+  // fricção do "tem cupom, mas eu preciso digitar" — drop ATC→IC tava em 68%
+  // (Pixel maio/2026). Após 12/06/2026 PRLOVERS expira; cair de volta pra
+  // FRETEGRATIS (apenas frete grátis).
+  const AUTO_COUPON_CODE = "prlovers";
+  const AUTO_COUPON_FALLBACK = "fretegratis";
   let autoCouponTried = false;
   async function maybeAutoApplyFreteGratis() {
     if (autoCouponTried) return;
@@ -827,8 +830,18 @@ import Loader from "@lucide/astro/icons/loader";
     autoCouponTried = true;
     couponInput.value = AUTO_COUPON_CODE;
     await applyCoupon();
-    const result = appliedCoupon as AppliedCoupon | null;
+    let result = appliedCoupon as AppliedCoupon | null;
     if (result && result.code === AUTO_COUPON_CODE) {
+      couponStatus.textContent =
+        "✓ Cupom PRLOVERS aplicado automaticamente · 10 % OFF + FRETE GRÁTIS";
+      return;
+    }
+    // PRLOVERS falhou (provavelmente expirado pós-campanha) → tenta o
+    // FRETEGRATIS antigo pra não deixar o cliente sem frete grátis.
+    couponInput.value = AUTO_COUPON_FALLBACK;
+    await applyCoupon();
+    result = appliedCoupon as AppliedCoupon | null;
+    if (result && result.code === AUTO_COUPON_FALLBACK) {
       couponStatus.textContent =
         "✓ Cupom FRETEGRATIS aplicado automaticamente · FRETE GRÁTIS";
     }

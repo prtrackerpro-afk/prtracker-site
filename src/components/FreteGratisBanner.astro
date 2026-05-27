@@ -1,16 +1,17 @@
 ---
 /**
- * Banner promocional do topo + countdown do cupom fretegratis.
+ * Banner promocional do topo + countdown do cupom de campanha `prlovers`
+ * (Dia dos Namorados — 10 % OFF + frete grátis acima de R$ 100, expira 12/06).
  *
  * Substitui o antigo promo strip estático do Header. Comportamento:
  *
  * - Sempre visível como faixa lime no topo (acima do header navy).
- * - Se o usuário NUNCA viu o pop-up `fretegratis` ainda: mostra
- *   versão padrão ("CUPOM FRETEGRATIS · FRETE GRÁTIS ACIMA DE R$ 100 ·
- *   PIX 5 % OFF · 3× SEM JUROS").
+ * - Se o usuário NUNCA viu o pop-up `prlovers` ainda: mostra
+ *   versão padrão ("CUPOM PRLOVERS · 10 % OFF + FRETE GRÁTIS · PIX 5 %
+ *   OFF · 3× SEM JUROS").
  * - Quando o pop-up é fechado, salva um timestamp em
- *   `localStorage["prt_fretegratis_started_at"]` e o banner passa a
- *   mostrar o COUNTDOWN ao vivo: "CUPOM FRETEGRATIS · 01:59:43".
+ *   `localStorage["prt_prlovers_started_at"]` e o banner passa a
+ *   mostrar o COUNTDOWN ao vivo: "CUPOM PRLOVERS · 01:59:43".
  * - Quando faltar < 0 ms, removemos o timestamp do localStorage — assim,
  *   se o usuário voltar mais tarde, o pop-up reaparece e o ciclo
  *   recomeça. Como ninguém fica online por > 2 h, isso só acontece em
@@ -29,10 +30,10 @@
   <div class="container-page fg-banner__inner">
     <div class="fg-banner__lead">
       <span class="fg-banner__tag" aria-hidden="true">CUPOM</span>
-      <strong class="fg-banner__code">FRETEGRATIS</strong>
+      <strong class="fg-banner__code">PRLOVERS</strong>
     </div>
 
-    <span class="fg-banner__copy" data-fg-copy>FRETE GRÁTIS ACIMA DE R$ 100</span>
+    <span class="fg-banner__copy" data-fg-copy>10 % OFF + FRETE GRÁTIS</span>
 
     <div class="fg-banner__countdown" data-fg-countdown hidden>
       <span class="fg-banner__countdown-value" data-fg-countdown-value>02:00:00</span>
@@ -156,8 +157,8 @@
       /* Rows explicit pra evitar bug de auto-flow + sticky no iOS. */
       grid-template-rows: auto auto;
       /* Countdown ocupa as 2 linhas — fica verticalmente centralizado
-         entre o "CUPOM FRETEGRATIS" (linha 1) e o "FRETE GRÁTIS ACIMA
-         DE R$ 100" (linha 2). */
+         entre o "CUPOM PRLOVERS" (linha 1) e o "10 % OFF + FRETE GRÁTIS"
+         (linha 2). */
       grid-template-areas:
         "lead countdown"
         "copy countdown";
@@ -193,7 +194,7 @@
 
 <script is:inline>
   (function () {
-    const STORAGE_KEY = "prt_fretegratis_started_at";
+    const STORAGE_KEY = "prt_prlovers_started_at";
     const DURATION_MS = 2 * 60 * 60 * 1000;
 
     function pad(n) { return n.toString().padStart(2, "0"); }
@@ -223,7 +224,7 @@
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
           banner.classList.remove("is-counting");
-          copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
+          copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
           return;
         }
         const remaining = startedAt + DURATION_MS - Date.now();
@@ -232,13 +233,13 @@
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
           banner.classList.remove("is-counting");
-          copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
-          document.dispatchEvent(new CustomEvent("fretegratis:expired"));
+          copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
+          document.dispatchEvent(new CustomEvent("prlovers:expired"));
           return;
         }
         countdownEl.hidden = false;
         banner.classList.add("is-counting");
-        copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
+        copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
         countdownValueEl.textContent = format(remaining);
       }
 
@@ -252,7 +253,7 @@
       window.addEventListener("storage", function (e) {
         if (e.key === STORAGE_KEY) tick();
       });
-      document.addEventListener("fretegratis:started", function () { start(); });
+      document.addEventListener("prlovers:started", function () { start(); });
     }
 
     if (document.readyState === "loading") {

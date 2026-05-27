@@ -1,9 +1,10 @@
 ---
 /**
- * Pop-up de boas-vindas que distribui o cupom `fretegratis`.
+ * Pop-up de boas-vindas que distribui o cupom de campanha `prlovers`
+ * (Dia dos Namorados — 10 % OFF + frete grátis acima de R$ 100, expira 12/06).
  *
  * Aparece UMA vez por janela de 2 h por máquina (controlado pelo mesmo
- * `prt_fretegratis_started_at` em localStorage que o FreteGratisBanner
+ * `prt_prlovers_started_at` em localStorage que o FreteGratisBanner
  * usa).
  *
  * Fluxo:
@@ -21,7 +22,7 @@
  */
 import Sparkles from "@lucide/astro/icons/sparkles";
 import X from "@lucide/astro/icons/x";
-import Truck from "@lucide/astro/icons/truck";
+import Heart from "@lucide/astro/icons/heart";
 import Copy from "@lucide/astro/icons/copy";
 ---
 
@@ -52,20 +53,20 @@ import Copy from "@lucide/astro/icons/copy";
 
     <p class="fg-popup__eyebrow">
       <Sparkles size={14} aria-hidden="true" />
-      <span>OFERTA POR TEMPO LIMITADO</span>
+      <span>DIA DOS NAMORADOS · OFERTA ESPECIAL</span>
     </p>
 
     <h2 id="fretegratis-popup-title" class="fg-popup__title">
-      Frete grátis pra você
+      10 % OFF + frete grátis
     </h2>
     <p class="fg-popup__subtitle">
-      <Truck size={16} aria-hidden="true" />
+      <Heart size={16} aria-hidden="true" />
       <span>Em compras acima de <strong>R$ 100</strong> · qualquer lugar do Brasil</span>
     </p>
 
     <div class="fg-popup__coupon">
       <span class="fg-popup__coupon-label">CUPOM</span>
-      <code class="fg-popup__coupon-code" data-fg-coupon>FRETEGRATIS</code>
+      <code class="fg-popup__coupon-code" data-fg-coupon>PRLOVERS</code>
       <button
         type="button"
         class="fg-popup__coupon-copy"
@@ -78,15 +79,15 @@ import Copy from "@lucide/astro/icons/copy";
     </div>
 
     <p class="fg-popup__small">
-      Use no checkout pra liberar a opção de frete grátis. Validade do timer: <strong>2 horas</strong>.
+      Use no checkout pra desbloquear 10 % OFF + frete grátis. Válido até <strong>12 de junho</strong>.
     </p>
 
     <button type="button" class="fg-popup__cta" data-fg-claim>
-      Quero o frete grátis
+      Quero o desconto
     </button>
 
     <p class="fg-popup__legal">
-      Cupom de cortesia — não cumulativo com outros descontos de frete.
+      Cupom de campanha — não cumulativo com outros cupons.
     </p>
   </div>
 </div>
@@ -303,7 +304,7 @@ import Copy from "@lucide/astro/icons/copy";
 
 <script is:inline>
   (function () {
-    const STORAGE_KEY = "prt_fretegratis_started_at";
+    const STORAGE_KEY = "prt_prlovers_started_at";
     const DURATION_MS = 2 * 60 * 60 * 1000;
     const SHOW_DELAY_MS = 700;
 
@@ -322,7 +323,7 @@ import Copy from "@lucide/astro/icons/copy";
     function startTimer() {
       try {
         localStorage.setItem(STORAGE_KEY, String(Date.now()));
-        document.dispatchEvent(new CustomEvent("fretegratis:started"));
+        document.dispatchEvent(new CustomEvent("prlovers:started"));
       } catch (e) {
         // localStorage blocked (private mode) — banner just won't persist.
       }
@@ -362,7 +363,7 @@ import Copy from "@lucide/astro/icons/copy";
 
       if (copyBtn) {
         copyBtn.addEventListener("click", function () {
-          const code = (couponEl && couponEl.textContent ? couponEl.textContent : "FRETEGRATIS").trim();
+          const code = (couponEl && couponEl.textContent ? couponEl.textContent : "PRLOVERS").trim();
           const done = function () {
             copyBtn.dataset.copied = "true";
             if (copyText) copyText.textContent = "copiado";
@@ -383,7 +384,7 @@ import Copy from "@lucide/astro/icons/copy";
         popup.remove();
       }
 
-      document.addEventListener("fretegratis:expired", function () {
+      document.addEventListener("prlovers:expired", function () {
         if (popup.isConnected) show();
       });
     }
