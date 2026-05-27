@@ -305,7 +305,11 @@ function buildOrderEmailData(
       name: payerName,
       email,
       phone,
-      cpf: String(payer.identification?.number ?? meta.customer_cpf ?? ""),
+      // MP anonimiza payer.identification.number em Pix (mesmo motivo que
+      // mascara email/nome). Usa meta primeiro — é o CPF validado que
+      // mandamos pra preference. payer só serve de fallback pra pedidos
+      // antigos sem metadata.
+      cpf: String(meta.customer_cpf ?? payer.identification?.number ?? ""),
     },
     shipping: {
       cep: String(meta.shipping_cep ?? ""),
