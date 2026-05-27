@@ -421,6 +421,26 @@
       "exclude_sale_items": false,
       "first_order_only": false,
       "affiliate": null
+    },
+    {
+      "code": "erikalpo",
+      "discount_type": "percent",
+      "amount": 50,
+      "date_expires": null,
+      "usage_count": 0,
+      "usage_limit": 1,
+      "usage_limit_per_user": 1,
+      "individual_use": true,
+      "free_shipping": false,
+      "minimum_amount_cents": 0,
+      "maximum_amount_cents": 0,
+      "product_ids": [],
+      "excluded_product_ids": [],
+      "product_categories": [],
+      "excluded_product_categories": [],
+      "exclude_sale_items": false,
+      "first_order_only": false,
+      "affiliate": null
     }
   ]
 }
