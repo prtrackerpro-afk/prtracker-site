@@ -3,22 +3,10 @@
  * Banner promocional do topo + countdown do cupom de campanha `prlovers`
  * (Dia dos Namorados — 10 % OFF + frete grátis acima de R$ 100, expira 12/06).
  *
- * Substitui o antigo promo strip estático do Header. Comportamento:
- *
- * - Sempre visível como faixa lime no topo (acima do header navy).
- * - Se o usuário NUNCA viu o pop-up `prlovers` ainda: mostra
- *   versão padrão ("CUPOM PRLOVERS · 10 % OFF + FRETE GRÁTIS · PIX 5 %
- *   OFF · 3× SEM JUROS").
- * - Quando o pop-up é fechado, salva um timestamp em
- *   `localStorage["prt_prlovers_started_at"]` e o banner passa a
- *   mostrar o COUNTDOWN ao vivo: "CUPOM PRLOVERS · 01:59:43".
- * - Quando faltar < 0 ms, removemos o timestamp do localStorage — assim,
- *   se o usuário voltar mais tarde, o pop-up reaparece e o ciclo
- *   recomeça. Como ninguém fica online por > 2 h, isso só acontece em
- *   sessões posteriores.
- *
- * O JS é vanilla, embutido no próprio componente. Sem dependências.
+ * Visual alinhado ao FreteGratisPopup: paleta coral/rosé, hearts Lucide
+ * com heartbeat. Não é lime — é a faixa temática de Dia dos Namorados.
  */
+import Heart from "@lucide/astro/icons/heart";
 ---
 
 <aside
@@ -29,6 +17,9 @@
 >
   <div class="container-page fg-banner__inner">
     <div class="fg-banner__lead">
+      <span class="fg-banner__heart fg-banner__heart--beat" aria-hidden="true">
+        <Heart size={14} />
+      </span>
       <span class="fg-banner__tag" aria-hidden="true">CUPOM</span>
       <strong class="fg-banner__code">PRLOVERS</strong>
     </div>
@@ -48,10 +39,23 @@
 </aside>
 
 <style>
+  /* Paleta de campanha PRLOVERS (Dia dos Namorados) — alinhada ao
+     FreteGratisPopup. Vive só enquanto a campanha está no ar. */
   .fg-banner {
-    background: var(--color-brand-lime, #d8ff2c);
-    color: var(--color-brand-navy, #01002a);
-    border-bottom: 1px solid rgb(1 0 42 / 0.15);
+    --prlovers-coral: #ff6b8a;
+    --prlovers-coral-soft: #ffd9e2;
+    --prlovers-coral-deep: #d9405f;
+
+    background:
+      linear-gradient(
+        90deg,
+        var(--prlovers-coral-deep) 0%,
+        var(--prlovers-coral) 50%,
+        var(--prlovers-coral-deep) 100%
+      );
+    color: #fff;
+    border-bottom: 1px solid rgb(1 0 42 / 0.25);
+    box-shadow: 0 2px 12px rgb(217 64 95 / 0.25);
   }
   .fg-banner__inner {
     display: grid;
@@ -78,22 +82,35 @@
     gap: 0.45rem;
   }
 
+  .fg-banner__heart {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+  .fg-banner__heart svg { fill: currentColor; stroke: none; }
+  .fg-banner__heart--beat {
+    animation: fg-banner-heartbeat 1.6s ease-in-out infinite;
+    transform-origin: center;
+  }
+
   .fg-banner__copy {
     grid-area: copy;
     font-weight: 700;
     justify-self: start;
+    color: #fff;
   }
   .fg-banner__copy::before {
     content: "· ";
-    opacity: 0.45;
+    opacity: 0.55;
     margin-right: 0.15em;
   }
 
   .fg-banner__tag {
     display: inline-block;
-    padding: 0.18rem 0.4rem;
+    padding: 0.18rem 0.45rem;
     background: var(--color-brand-navy, #01002a);
-    color: var(--color-brand-lime, #d8ff2c);
+    color: var(--prlovers-coral-soft);
     font-size: 0.66rem;
     letter-spacing: 0.14em;
     line-height: 1;
@@ -102,8 +119,9 @@
   .fg-banner__code {
     font-weight: 900;
     letter-spacing: 0.1em;
+    color: #fff;
   }
-  .fg-banner__sep { opacity: 0.45; }
+  .fg-banner__sep { opacity: 0.55; }
 
   .fg-banner__countdown {
     grid-area: countdown;
@@ -112,9 +130,10 @@
     gap: 0.5rem;
     padding: 0.25rem 0.7rem;
     background: var(--color-brand-navy, #01002a);
-    color: var(--color-brand-lime, #d8ff2c);
+    color: var(--prlovers-coral-soft);
     border-radius: 4px;
     line-height: 1;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
   }
   .fg-banner__countdown-value {
     font-family: var(--font-mono, "JetBrains Mono", monospace);
@@ -132,6 +151,18 @@
     justify-self: end;
     font-weight: 700;
     font-size: 0.74rem;
+    color: #fff;
+  }
+
+  @keyframes fg-banner-heartbeat {
+    0%, 100% { transform: scale(1); }
+    14%      { transform: scale(1.25); }
+    28%      { transform: scale(1); }
+    42%      { transform: scale(1.18); }
+    70%      { transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fg-banner__heart--beat { animation: none; }
   }
 
   /* Tablet: ainda em 1 linha (copy cabe), mas esconde secondary */
