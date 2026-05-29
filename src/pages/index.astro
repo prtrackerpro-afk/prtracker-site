@@ -49,6 +49,25 @@ const prTrackers = prTrackersOrder.map(
   (slug) => prTrackersAll.find((p) => p.data.slug === slug)!,
 );
 
+/**
+ * Override do card do Board 3 na home: mostra a foto ROSA (photo-04) em
+ * vez da Cobre default. Cobre segue como primária na página do produto.
+ */
+const board3Idx = prTrackers.findIndex((p) => p.data.slug === "pr-tracker-board-3");
+if (board3Idx >= 0) {
+  const original = prTrackers[board3Idx]!;
+  const rosa = original.data.images.find((img) => /photo-04\./.test(img.src));
+  if (rosa) {
+    prTrackers[board3Idx] = {
+      ...original,
+      data: {
+        ...original.data,
+        images: [rosa, ...original.data.images.filter((img) => img !== rosa)],
+      },
+    };
+  }
+}
+
 // PR Runners — nova linha de corrida (mai/2026). Carrossel próprio
 // renderizado em seção dedicada abaixo de PR Trackers.
 const prRunners = products
@@ -141,17 +160,18 @@ const jsonLd = [
   <!-- ========================= HERO ========================= -->
   <section class="hero">
     <picture class="hero__bg" aria-hidden="true">
-      {/* PR Board 3 Exercícios em ROSA — destaque da home (mai/2026). */}
-      <source media="(min-width: 900px)" type="image/avif" srcset="/images/products/pr-tracker-board-3/photo-04.avif" />
-      <source media="(min-width: 900px)" type="image/webp" srcset="/images/products/pr-tracker-board-3/photo-04.webp" />
-      <source media="(min-width: 900px)" srcset="/images/products/pr-tracker-board-3/photo-04.jpg" />
-      <source type="image/avif" srcset="/images/products/pr-tracker-board-3/photo-04.avif" />
-      <source type="image/webp" srcset="/images/products/pr-tracker-board-3/photo-04.webp" />
+      {/* Desktop sources — browser picks the first supported format */}
+      <source media="(min-width: 900px)" type="image/avif" srcset="/images/brand/hero-desktop.avif" />
+      <source media="(min-width: 900px)" type="image/webp" srcset="/images/brand/hero-desktop.webp" />
+      <source media="(min-width: 900px)" srcset="/images/brand/hero-desktop.jpg" />
+      {/* Mobile sources */}
+      <source type="image/avif" srcset="/images/brand/hero-mobile.avif" />
+      <source type="image/webp" srcset="/images/brand/hero-mobile.webp" />
       <img
-        src="/images/products/pr-tracker-board-3/photo-04.jpg"
+        src="/images/brand/hero-mobile.jpg"
         alt=""
-        width="1200"
-        height="1600"
+        width="1080"
+        height="1349"
         fetchpriority="high"
         loading="eager"
         decoding="async"
