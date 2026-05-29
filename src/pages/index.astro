@@ -50,13 +50,14 @@ const prTrackers = prTrackersOrder.map(
 );
 
 /**
- * Override do card do Board 3 na home: mostra a foto ROSA (photo-04) em
- * vez da Cobre default. Cobre segue como primária na página do produto.
+ * Override do card do Board 3 na home: mostra a foto ROSA angulada
+ * (photo-03) em vez da Cobre default. Cobre segue como primária na
+ * página do produto.
  */
 const board3Idx = prTrackers.findIndex((p) => p.data.slug === "pr-tracker-board-3");
 if (board3Idx >= 0) {
   const original = prTrackers[board3Idx]!;
-  const rosa = original.data.images.find((img) => /photo-04\./.test(img.src));
+  const rosa = original.data.images.find((img) => /photo-03\./.test(img.src));
   if (rosa) {
     prTrackers[board3Idx] = {
       ...original,
