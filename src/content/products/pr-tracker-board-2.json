@@ -6,8 +6,8 @@
   "priceBase": 17990,
   "priceFrom": true,
   "shipping": { "weight_g": 460, "length_cm": 24, "width_cm": 22, "height_cm": 6 },
-  "shortDescription": "Placa colorida com 2 barras independentes — Arranco em cima, Arremesso embaixo por padrão (você troca por qualquer exercício). 3 cores: Cobre, Preto ou Rosa.",
-  "longDescriptionHtml": "<p>O <strong>PR Board 2 Exercícios</strong> nasceu pra honrar o universo do Levantamento de Peso Olímpico (LPO). Os defaults são os clássicos do LPO: <strong>Arranco</strong> (Snatch) em cima e <strong>Arremesso</strong> (Clean & Jerk) embaixo — mas você pode trocar por qualquer um dos 20+ exercícios da lista.</p><p>Cada barra é configurada com as anilhas do seu recorde. Disponível em <strong>3 cores</strong>: Cobre (default, premium e atemporal), Preto (sóbrio, alto contraste) e Rosa (vibrante, estilo monobloco). Lettering branco em alto relevo.</p><p>Para o atleta que vive Arranco e Arremesso. Para o coach que quer presentear um aluno halterofilista. Para qualquer um que respeita os dois movimentos mais técnicos da força.</p>",
+  "shortDescription": "Placa colorida com 2 barras dedicadas ao LPO: Arranco (ou Snatch) em cima, Arremesso (ou Clean & Jerk) embaixo. 3 cores: Cobre, Preto ou Rosa.",
+  "longDescriptionHtml": "<p>O <strong>PR Board 2 Exercícios</strong> é dedicado ao universo do Levantamento de Peso Olímpico (LPO). A primeira barra é o <strong>Arranco</strong> (ou <strong>Snatch</strong> em inglês), a segunda é o <strong>Arremesso</strong> (ou <strong>Clean & Jerk</strong>) — você escolhe o termo que prefere ver impresso na placa.</p><p>Cada barra é configurada com as anilhas do seu recorde. Disponível em <strong>3 cores</strong>: Cobre (default, premium e atemporal), Preto (sóbrio, alto contraste) e Rosa (vibrante, estilo monobloco). Lettering branco em alto relevo.</p><p>Para o atleta que vive Arranco e Arremesso. Para o coach que quer presentear um aluno halterofilista. Para qualquer um que respeita os dois movimentos mais técnicos da força.</p>",
   "images": [
     { "src": "/images/products/pr-tracker-board-2/photo-01.jpg", "alt": "PR Tracker Board 2 exercícios — placa com Arranco e Arremesso", "width": 1200, "height": 1600 }
   ],
@@ -19,8 +19,8 @@
     { "label": "Lettering", "value": "Archivo Black · ALL CAPS em alto relevo · Branco" }
   ],
   "faq": [
-    { "question": "Por que Arranco e Arremesso como default?", "answer": "São os dois movimentos do Levantamento de Peso Olímpico — onde força encontra técnica. Esse Board honra o LPO. Mas você pode trocar por qualquer exercício da lista (Back Squat, Deadlift, Bench Press, etc.)." },
-    { "question": "Qual a diferença pro Board de 3?", "answer": "O de 3 é maior (200 × 200 mm) e mais completo (3 PRs). O de 2 é mais compacto (180 × 180 mm), focado em quem vive 2 movimentos específicos — clássico LPO ou qualquer outra dupla que faça sentido pra você." },
+    { "question": "Por que Arranco e Arremesso?", "answer": "São os dois movimentos do Levantamento de Peso Olímpico — onde força encontra técnica. Esse Board honra o LPO. A primeira barra é Arranco (você pode escolher entre 'Arranco' em PT ou 'Snatch' em EN) e a segunda é Arremesso ('Arremesso' em PT ou 'Clean & Jerk' em EN). Quem quer outros exercícios pode escolher o Board 3 Exercícios ou o My PR Set." },
+    { "question": "Qual a diferença pro Board de 3?", "answer": "O de 3 é maior (200 × 200 mm) e traz Supino, Agachamento e Levantamento Terra fixos. O de 2 é mais compacto (180 × 180 mm) e dedicado ao LPO (Arranco + Arremesso)." },
     { "question": "Posso trocar a cor depois?", "answer": "Não. A cor é definida na compra (impressão 3D em PLA colorido). Se quiser variar, é só pedir outra unidade da cor diferente." },
     { "question": "Quanto tempo leva para receber?", "answer": "Despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." }
   ],
@@ -32,7 +32,11 @@
     "isMeusRPs": false,
     "isBoard": true,
     "boardExerciseCount": 2,
-    "boardDefaultExercises": ["Arranco", "Arremesso"]
+    "boardDefaultExercises": ["Arranco", "Arremesso"],
+    "boardExerciseChoices": [
+      ["Arranco", "Snatch"],
+      ["Arremesso", "Clean & Jerk"]
+    ]
   },
   "featured": true,
   "priority": 7

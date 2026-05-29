@@ -45,6 +45,7 @@ export const categoryEnum = z.enum([
   "pr-runners",
   "anilhas",
   "camisetas",
+  "gift-cards",
 ]);
 
 const products = defineCollection({
@@ -89,6 +90,29 @@ const products = defineCollection({
         isBoard: z.boolean().default(false),
         boardExerciseCount: z.number().int().min(2).max(3).optional(),
         boardDefaultExercises: z.array(z.string()).optional(),
+        /**
+         * Restringe o dropdown de cada slot a um subconjunto de exercícios
+         * (lista de `value`s da BOARD_EXERCISES, ordem top→bottom). Útil
+         * pro Board 2 do LPO, onde o slot 1 só faz sentido como
+         * Arranco/Snatch e o slot 2 como Arremesso/Clean & Jerk.
+         */
+        boardExerciseChoices: z.array(z.array(z.string())).optional(),
+        /**
+         * Fixa os exercícios — remove o dropdown e exibe os labels como
+         * texto estático. Usado no Board 3 (Supino/Agachamento/Terra).
+         */
+        boardExercisesFixed: z.boolean().default(false),
+        /**
+         * Vale-presente digital. Renderiza o `GiftCardConfigurator` com
+         * seletor de denominação fixa + campos opcionais do presenteado.
+         * Combinar com `digital: true` no produto pra dispensar frete.
+         */
+        isGiftCard: z.boolean().default(false),
+        /**
+         * Denominações fixas do vale-presente em centavos. Validadas
+         * server-side em `pricing.ts`.
+         */
+        giftCardDenominationsCents: z.array(z.number().int().positive()).optional(),
       })
       .default({
         enabled: false,
@@ -97,7 +121,14 @@ const products = defineCollection({
         isTripleBarbell: false,
         isMeusRPs: false,
         isBoard: false,
+        isGiftCard: false,
       }),
+    /**
+     * Produto digital — sem frete, sem etiqueta Melhor Envio. Entregue
+     * por e-mail (vale-presente, no caso). `shipping.weight_g` ainda é
+     * obrigatório no schema mas é ignorado quando `digital: true`.
+     */
+    digital: z.boolean().default(false),
     /**
      * Marca o produto como "EM BREVE". O `[slug].astro` substitui o
      * botão de Adicionar ao carrinho por um formulário Notify-me.
