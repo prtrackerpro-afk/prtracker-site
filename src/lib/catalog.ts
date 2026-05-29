@@ -88,7 +88,18 @@ export const CATEGORY_LABELS: Record<string, string> = {
   "pr-runners": "PR Runners",
   anilhas: "Anilhas",
   camisetas: "Camisetas",
+  "gift-cards": "Vale-Presente",
 };
+
+/** Denominações oficiais do vale-presente (centavos). */
+export const GIFT_CARD_DENOMINATIONS_CENTS = [
+  10_000, 15_000, 20_000, 30_000, 50_000,
+] as const;
+export type GiftCardDenominationCents =
+  (typeof GIFT_CARD_DENOMINATIONS_CENTS)[number];
+
+/** Validade padrão do vale-presente em meses. */
+export const GIFT_CARD_VALIDITY_MONTHS = 12;
 
 /**
  * Lista de exercícios para os produtos "PR Tracker Board".

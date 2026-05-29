@@ -994,26 +994,31 @@ import Loader from "@lucide/astro/icons/loader";
     freteList.innerHTML = options
       .map((o, idx) => {
         const isPickup = o.id === 0;
+        const isDigital = o.id === -1;
         const isCheapest = idx === 0;
         const meta = isPickup
           ? o.pickup_address ?? ""
-          : o.delivery_days_min && o.delivery_days_max
-            ? o.delivery_days_min === o.delivery_days_max
-              ? `${o.delivery_days_min} dia${o.delivery_days_min === 1 ? "" : "s"} útil${o.delivery_days_min === 1 ? "" : "eis"}`
-              : `${o.delivery_days_min}–${o.delivery_days_max} dias úteis`
-            : "Prazo a confirmar";
-        const isFree = !isPickup && o.price_cents === 0;
+          : isDigital
+            ? "Chega no e-mail em segundos · sem prazo de envio"
+            : o.delivery_days_min && o.delivery_days_max
+              ? o.delivery_days_min === o.delivery_days_max
+                ? `${o.delivery_days_min} dia${o.delivery_days_min === 1 ? "" : "s"} útil${o.delivery_days_min === 1 ? "" : "eis"}`
+                : `${o.delivery_days_min}–${o.delivery_days_max} dias úteis`
+              : "Prazo a confirmar";
+        const isFree = !isPickup && !isDigital && o.price_cents === 0;
         const badge = isPickup
           ? `<span class="frete-option__badge">Retirada</span>`
-          : isFree
-            ? `<span class="frete-option__badge frete-option__badge--free">Frete grátis</span>`
-            : isCheapest
-              ? `<span class="frete-option__badge">Melhor opção</span>`
-              : "";
-        const title = isPickup
+          : isDigital
+            ? `<span class="frete-option__badge frete-option__badge--free">Digital</span>`
+            : isFree
+              ? `<span class="frete-option__badge frete-option__badge--free">Frete grátis</span>`
+              : isCheapest
+                ? `<span class="frete-option__badge">Melhor opção</span>`
+                : "";
+        const title = isPickup || isDigital
           ? escapeHtml(o.name)
           : `${escapeHtml(o.company)} · ${escapeHtml(o.name)}`;
-        const price = isPickup || isFree ? "Grátis" : formatBRL(o.price_cents);
+        const price = isPickup || isDigital || isFree ? "Grátis" : formatBRL(o.price_cents);
         return `
           <label class="frete-option">
             <input type="radio" name="frete" value="${o.id}" ${isCheapest ? "checked" : ""} />

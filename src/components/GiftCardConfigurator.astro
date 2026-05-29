@@ -1,0 +1,419 @@
+---
+import { formatBRL, applyPix } from "~/lib/format";
+import { GIFT_CARD_DENOMINATIONS_CENTS } from "~/lib/catalog";
+
+/**
+ * Vale-Presente — configurador com seletor de denominação + (opcional)
+ * dados do presenteado (nome, e-mail, mensagem). Quando o cliente preenche
+ * o e-mail do presenteado, o vale vai direto pra ele; senão, vai pro
+ * próprio comprador encaminhar.
+ *
+ * Persistência: localStorage via `cart` store. Os campos giftCard* são
+ * propagados pro `mp-webhook` via metadata da MP preference (ver
+ * order-build → itemsSkus).
+ */
+
+interface Props {
+  slug: string;
+  title: string;
+  image: string;
+  category: string;
+  denominationsCents?: number[];
+}
+
+const {
+  slug,
+  title,
+  image,
+  category,
+  denominationsCents = [...GIFT_CARD_DENOMINATIONS_CENTS],
+} = Astro.props;
+
+const denominations = denominationsCents;
+---
+
+<div
+  class="gift-card-cfg"
+  data-gift-card-cfg
+  data-slug={slug}
+  data-title={title}
+  data-image={image}
+  data-category={category}
+>
+  <div class="gc__price">
+    <div class="gc__price-main" data-price-main>{formatBRL(denominations[0]!)}</div>
+    <div class="gc__price-pix">
+      <span class="pix-badge">Pix</span>
+      <span class="gc__price-pix-value" data-price-pix>{formatBRL(applyPix(denominations[0]!))}</span>
+      <span class="gc__price-pix-label">5 % OFF</span>
+    </div>
+    <div class="gc__price-installments" data-price-installments>
+      ou 3× de {formatBRL(Math.round(denominations[0]! / 3))} sem juros
+    </div>
+  </div>
+
+  <div class="gc__group">
+    <label class="gc__label">Valor do vale</label>
+    <div class="gc__denoms" role="radiogroup" aria-label="Selecione o valor">
+      {denominations.map((cents, i) => (
+        <label class="gc__denom">
+          <input
+            type="radio"
+            name={`gc-${slug}-denom`}
+            value={cents}
+            required
+            checked={i === 0}
+            data-denom-input
+          />
+          <span>{formatBRL(cents)}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  <details class="gc__gift-details" data-gc-details>
+    <summary class="gc__gift-summary">
+      <span class="gc__gift-summary-text">
+        <strong>Presentear alguém?</strong>
+        <span class="gc__gift-summary-hint">Opcional · vale vai direto pro e-mail dele(a)</span>
+      </span>
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    </summary>
+
+    <div class="gc__gift-fields">
+      <div class="gc__field">
+        <label class="gc__sublabel" for={`gc-${slug}-rcpname`}>Nome do presenteado</label>
+        <input
+          id={`gc-${slug}-rcpname`}
+          type="text"
+          maxlength="80"
+          placeholder="Ex: Maria"
+          data-recipient-name
+        />
+      </div>
+      <div class="gc__field">
+        <label class="gc__sublabel" for={`gc-${slug}-rcpemail`}>E-mail do presenteado</label>
+        <input
+          id={`gc-${slug}-rcpemail`}
+          type="email"
+          maxlength="120"
+          placeholder="maria@email.com"
+          data-recipient-email
+        />
+        <p class="gc__hint">
+          Em branco = vale vai pro seu e-mail (você encaminha quando quiser).
+        </p>
+      </div>
+      <div class="gc__field">
+        <label class="gc__sublabel" for={`gc-${slug}-msg`}>
+          Mensagem pessoal
+          <span class="gc__counter" data-msg-counter>0/280</span>
+        </label>
+        <textarea
+          id={`gc-${slug}-msg`}
+          rows="3"
+          maxlength="280"
+          placeholder="Parabéns pelo PR! Esse vale é pra você materializar a conquista."
+          data-message
+        ></textarea>
+      </div>
+    </div>
+  </details>
+
+  <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn>
+    Adicionar ao carrinho
+  </button>
+
+  <p class="gc__delivery">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+    Entrega digital · chega no e-mail em segundos · validade 12 meses
+  </p>
+</div>
+
+<style>
+  .gift-card-cfg {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .gc__price { display: flex; flex-direction: column; gap: 0.25rem; }
+  .gc__price-main {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2rem, 2.5vw + 0.5rem, 2.75rem);
+    line-height: 1;
+    color: var(--color-brand-navy);
+    letter-spacing: -0.02em;
+  }
+  .gc__price-pix {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .gc__price-pix-value {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #16a34a;
+  }
+  .gc__price-pix-label {
+    color: var(--color-brand-gray);
+    font-size: 0.85rem;
+  }
+  .gc__price-installments {
+    color: var(--color-brand-gray);
+    font-size: 0.875rem;
+  }
+  .pix-badge {
+    display: inline-block;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .gc__group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .gc__label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: var(--color-brand-navy);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .gc__denoms {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+    gap: 0.5rem;
+  }
+  .gc__denom input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .gc__denom span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem 0.5rem;
+    border: 2px solid rgb(1 0 42 / 0.12);
+    border-radius: 10px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--color-brand-navy);
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease, transform 100ms ease;
+    text-align: center;
+  }
+  .gc__denom input:checked + span {
+    border-color: var(--color-brand-navy);
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+  }
+  .gc__denom input:focus-visible + span {
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 2px;
+  }
+  .gc__denom span:hover { transform: translateY(-1px); }
+
+  .gc__gift-details {
+    border: 1.5px dashed rgb(1 0 42 / 0.18);
+    border-radius: 10px;
+    padding: 0;
+    background: rgb(216 255 44 / 0.04);
+  }
+  .gc__gift-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem;
+    list-style: none;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background-color 150ms ease;
+  }
+  .gc__gift-summary::-webkit-details-marker { display: none; }
+  .gc__gift-summary:hover { background: rgb(216 255 44 / 0.08); }
+  .gc__gift-summary-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    color: var(--color-brand-navy);
+    font-size: 0.95rem;
+  }
+  .gc__gift-summary-text strong { font-weight: 700; }
+  .gc__gift-summary-hint {
+    color: var(--color-brand-gray);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .gc__gift-details[open] .gc__gift-summary svg { transform: rotate(180deg); }
+  .gc__gift-summary svg { transition: transform 200ms ease; flex-shrink: 0; }
+
+  .gc__gift-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0 1.1rem 1.1rem;
+  }
+  .gc__field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .gc__sublabel {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: var(--color-brand-navy);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .gc__counter {
+    font-size: 0.7rem;
+    color: var(--color-brand-gray);
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .gc__field input,
+  .gc__field textarea {
+    padding: 0.65rem 0.85rem;
+    border: 1.5px solid rgb(1 0 42 / 0.15);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: var(--color-brand-navy);
+    background: #fff;
+    font-family: inherit;
+    transition: border-color 140ms ease;
+  }
+  .gc__field input:focus,
+  .gc__field textarea:focus {
+    outline: none;
+    border-color: var(--color-brand-navy);
+  }
+  .gc__field textarea { resize: vertical; min-height: 72px; }
+  .gc__hint {
+    margin: 0.1rem 0 0;
+    font-size: 0.78rem;
+    color: var(--color-brand-gray);
+    line-height: 1.4;
+  }
+
+  .w-full { width: 100%; }
+
+  .gc__delivery {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-size: 0.875rem;
+  }
+</style>
+
+<script>
+  import { cart } from "~/scripts/cart";
+  import { trackAddToCart } from "~/scripts/tracking";
+  import { formatBRL, applyPix } from "~/lib/format";
+
+  document.querySelectorAll<HTMLElement>("[data-gift-card-cfg]").forEach((root) => {
+    if (root.dataset.gcInit === "1") return;
+    root.dataset.gcInit = "1";
+
+    const slug = root.dataset.slug!;
+    const title = root.dataset.title!;
+    const image = root.dataset.image!;
+    const category = root.dataset.category || undefined;
+
+    const denomInputs = root.querySelectorAll<HTMLInputElement>("[data-denom-input]");
+    const priceMainEl = root.querySelector<HTMLElement>("[data-price-main]")!;
+    const pricePixEl = root.querySelector<HTMLElement>("[data-price-pix]")!;
+    const priceInstallmentsEl = root.querySelector<HTMLElement>("[data-price-installments]")!;
+    const recipientNameInput = root.querySelector<HTMLInputElement>("[data-recipient-name]")!;
+    const recipientEmailInput = root.querySelector<HTMLInputElement>("[data-recipient-email]")!;
+    const messageInput = root.querySelector<HTMLTextAreaElement>("[data-message]")!;
+    const msgCounter = root.querySelector<HTMLElement>("[data-msg-counter]")!;
+    const addBtn = root.querySelector<HTMLButtonElement>("[data-add-btn]")!;
+
+    function selectedCents(): number {
+      const checked = Array.from(denomInputs).find((i) => i.checked);
+      return Number(checked?.value ?? denomInputs[0]?.value ?? 0);
+    }
+
+    function refreshPrice() {
+      const cents = selectedCents();
+      priceMainEl.textContent = formatBRL(cents);
+      pricePixEl.textContent = formatBRL(applyPix(cents));
+      priceInstallmentsEl.textContent = `ou 3× de ${formatBRL(Math.round(cents / 3))} sem juros`;
+    }
+
+    denomInputs.forEach((input) => {
+      input.addEventListener("change", refreshPrice);
+    });
+
+    messageInput.addEventListener("input", () => {
+      msgCounter.textContent = `${messageInput.value.length}/280`;
+    });
+
+    addBtn.addEventListener("click", () => {
+      const cents = selectedCents();
+      if (!cents) return;
+      const recipientName = recipientNameInput.value.trim() || undefined;
+      const recipientEmail = recipientEmailInput.value.trim() || undefined;
+      const message = messageInput.value.trim() || undefined;
+
+      // Validação rasa do e-mail do presenteado se preenchido — bloqueia
+      // só o caso óbvio. Backend (zod) tem a validação autoritativa.
+      if (recipientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+        recipientEmailInput.focus();
+        recipientEmailInput.setCustomValidity("E-mail inválido");
+        recipientEmailInput.reportValidity();
+        return;
+      }
+      recipientEmailInput.setCustomValidity("");
+
+      const reais = Math.round(cents / 100);
+      const titleSuffix = recipientName
+        ? `R$ ${reais} — para ${recipientName}`
+        : `R$ ${reais}`;
+      // Id estável por config — múltiplos valores diferentes no mesmo
+      // carrinho ficam como linhas separadas; mesma config aumenta qty.
+      const configKey = [
+        `v=${cents}`,
+        recipientEmail ? `e=${recipientEmail}` : "",
+        recipientName ? `n=${recipientName}` : "",
+        message ? `m=${message.slice(0, 16)}` : "",
+      ].filter(Boolean).join("|");
+      const id = `${slug}::${configKey}`;
+
+      cart.add({
+        id,
+        productSlug: slug,
+        title: `${title} · ${titleSuffix}`,
+        image,
+        unitPriceCents: cents,
+        quantity: 1,
+        giftCardValueCents: cents,
+        giftCardRecipientName: recipientName,
+        giftCardRecipientEmail: recipientEmail,
+        giftCardMessage: message,
+      });
+
+      trackAddToCart({
+        slug,
+        title: `${title} · ${titleSuffix}`,
+        unitPriceCents: cents,
+        quantity: 1,
+        category,
+      });
+    });
+  });
+</script>

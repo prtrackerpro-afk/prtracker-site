@@ -353,3 +353,186 @@ export async function sendCustomerConfirmation(
     html,
   });
 }
+
+// =============================================================================
+// Vale-Presente — e-mail enviado quando o vale é emitido (pagamento aprovado).
+// =============================================================================
+
+export interface GiftCardIssuedEmailData {
+  code: string;
+  valueCents: number;
+  /** ISO timestamp. */
+  expiresAt: string;
+  buyerName: string;
+  buyerEmail: string;
+  /** Se nulo, envia pro comprador (forwarded mode). */
+  recipientName: string | null;
+  recipientEmail: string | null;
+  personalMessage: string | null;
+}
+
+function formatExpiresBr(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+/**
+ * E-mail caprichado com o código do vale-presente. Vai pra:
+ *   - presenteado (`recipient_email`), se preenchido
+ *   - comprador, sempre como cópia / fallback
+ * Owner também recebe alerta separado (vai pelo sendOwnerOrderAlert).
+ */
+export async function sendGiftCardIssued(
+  data: GiftCardIssuedEmailData,
+): Promise<void> {
+  const valueBr = brl(data.valueCents / 100);
+  const expiresStr = formatExpiresBr(data.expiresAt);
+  const isGift = Boolean(data.recipientEmail);
+  const headline = isGift
+    ? `Você ganhou um vale-presente PR Tracker`
+    : `Seu vale-presente PR Tracker`;
+  const greeting = isGift
+    ? `${escapeHtml(data.recipientName ?? "atleta")}, ${escapeHtml(data.buyerName.split(" ")[0] ?? "alguém")} mandou esse pra você.`
+    : `Obrigado pela compra, ${escapeHtml(data.buyerName.split(" ")[0] ?? "atleta")}. Aqui está seu vale.`;
+
+  const messageBlock = data.personalMessage
+    ? `
+      <div style="margin:24px auto 0;padding:18px 22px;background:#f8f9fa;border-left:4px solid #d8ff2c;border-radius:6px;max-width:480px;text-align:left">
+        <p style="margin:0 0 6px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.1em;font-weight:700">
+          Mensagem ${escapeHtml(data.buyerName.split(" ")[0] ?? "do remetente")}
+        </p>
+        <p style="margin:0;font-size:15px;color:#333;line-height:1.6;font-style:italic">
+          "${escapeHtml(data.personalMessage)}"
+        </p>
+      </div>
+    `
+    : "";
+
+  const html = `<!doctype html>
+<html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f5f5f5;margin:0;padding:24px">
+  <div style="max-width:580px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgb(0 0 0 / 0.06)">
+
+    <!-- Hero: brand colors + headline -->
+    <div style="background:#01002A;color:#fff;padding:40px 24px 28px;text-align:center">
+      <p style="margin:0 0 6px;font-family:Archivo Black,system-ui,sans-serif;font-size:11px;color:#d8ff2c;letter-spacing:0.22em;text-transform:uppercase">
+        PR Tracker
+      </p>
+      <h1 style="margin:0;font-size:26px;line-height:1.15;font-weight:900;letter-spacing:-0.01em">
+        ${headline}
+      </h1>
+      <p style="margin:14px 0 0;color:#fff;opacity:0.78;font-size:15px;line-height:1.5">
+        ${greeting}
+      </p>
+    </div>
+
+    <!-- Value chip -->
+    <div style="text-align:center;padding:32px 24px 8px">
+      <div style="display:inline-block;padding:14px 28px;background:#d8ff2c;color:#01002A;border-radius:9999px;font-family:Archivo Black,system-ui,sans-serif;font-size:28px;font-weight:900;letter-spacing:-0.01em">
+        ${escapeHtml(valueBr)}
+      </div>
+      <p style="margin:14px 0 0;color:#666;font-size:13px">
+        Saldo inicial · use parcial ou integralmente
+      </p>
+    </div>
+
+    <!-- Code -->
+    <div style="padding:24px 24px 0;text-align:center">
+      <p style="margin:0 0 10px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.12em;font-weight:700">
+        Código pra usar no checkout
+      </p>
+      <div style="display:inline-block;padding:18px 32px;background:#01002A;color:#d8ff2c;border-radius:8px;font-family:'Courier New',monospace;font-size:24px;font-weight:700;letter-spacing:0.12em;border:2px solid #d8ff2c">
+        ${escapeHtml(data.code)}
+      </div>
+      <p style="margin:12px 0 0;font-size:13px;color:#666;line-height:1.5">
+        Cole esse código no campo <strong>"Cupom"</strong> do checkout em prtracker.com.br
+      </p>
+    </div>
+
+    ${messageBlock}
+
+    <!-- How to use -->
+    <div style="padding:32px 24px 8px">
+      <h2 style="margin:0 0 14px;font-size:15px;color:#444;text-transform:uppercase;letter-spacing:0.05em">
+        Como usar
+      </h2>
+      <ol style="margin:0;padding-left:20px;color:#333;line-height:1.7;font-size:14px">
+        <li>Escolha os produtos em <a href="https://prtracker.com.br" style="color:#01002A;font-weight:600">prtracker.com.br</a></li>
+        <li>No checkout, cole <code style="background:#f8f9fa;padding:1px 6px;border-radius:3px;font-family:monospace">${escapeHtml(data.code)}</code> no campo de cupom</li>
+        <li>O valor é descontado do total. Sobrou saldo? Fica salvo pra próxima compra.</li>
+      </ol>
+    </div>
+
+    <!-- Rules -->
+    <div style="padding:8px 24px 28px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;color:#555">
+        <tr>
+          <td style="padding:8px 0;border-bottom:1px solid #eee;width:40%;color:#888">Validade</td>
+          <td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:600;color:#333">${escapeHtml(expiresStr)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;border-bottom:1px solid #eee;color:#888">Saldo persistente</td>
+          <td style="padding:8px 0;border-bottom:1px solid #eee">Sobra do desconto fica salva pra próxima compra</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;border-bottom:1px solid #eee;color:#888">Cobre frete?</td>
+          <td style="padding:8px 0;border-bottom:1px solid #eee">Não — só desconta o subtotal dos produtos</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#888">Combina com cupom?</td>
+          <td style="padding:8px 0">Não na mesma compra — só um código por pedido</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- CTA -->
+    <div style="padding:0 24px 32px;text-align:center">
+      <a href="https://prtracker.com.br" style="display:inline-block;padding:14px 32px;background:#d8ff2c;color:#01002A;text-decoration:none;border-radius:9999px;font-family:Archivo Black,system-ui,sans-serif;font-weight:900;font-size:14px;letter-spacing:0.05em;text-transform:uppercase">
+        Escolher meu troféu
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:18px 24px;background:#f8f9fa;border-top:1px solid #eee;text-align:center;font-size:11px;color:#888;line-height:1.6">
+      <p style="margin:0 0 4px">
+        Dúvidas? Responda este e-mail ou WhatsApp
+        <a href="https://wa.me/5551982061914" style="color:#01002A;text-decoration:none">(51) 98206-1914</a>
+      </p>
+      <p style="margin:0">
+        PR Tracker · CNPJ 59.947.215/0001-67 · Porto Alegre/RS
+      </p>
+    </div>
+  </div>
+</body></html>`;
+
+  // Estratégia de envio:
+  //   - Se tem recipient: vai pra ele + cc pro comprador
+  //   - Sem recipient: só pro comprador
+  const recipients: string[] = [];
+  if (data.recipientEmail) recipients.push(data.recipientEmail);
+  if (data.buyerEmail && !recipients.includes(data.buyerEmail)) {
+    recipients.push(data.buyerEmail);
+  }
+  if (recipients.length === 0) {
+    console.warn("[email] gift card has no recipient — skipping send");
+    return;
+  }
+
+  const subject = isGift
+    ? `Você ganhou um vale-presente PR Tracker · ${valueBr}`
+    : `Seu vale-presente PR Tracker · ${valueBr}`;
+
+  await send({
+    to: recipients,
+    subject,
+    html,
+    replyTo: data.buyerEmail,
+  });
+}

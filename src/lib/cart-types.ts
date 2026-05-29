@@ -48,6 +48,14 @@ export interface CartItem {
   boardColor?: BoardColor;
   /** Barras configuradas no Board (2 ou 3, top→bottom). */
   boardBarbells?: BoardBarbell[];
+  /** Denominação escolhida do vale-presente (cents). Define o `unitPriceCents`. */
+  giftCardValueCents?: number;
+  /** Nome do presenteado (opcional — se preenchido, vale é enviado pra ele). */
+  giftCardRecipientName?: string;
+  /** E-mail do presenteado (opcional — se preenchido, vale é enviado pra ele). */
+  giftCardRecipientEmail?: string;
+  /** Mensagem pessoal incluída no e-mail do vale (max 280 chars). */
+  giftCardMessage?: string;
 }
 
 export interface CartSnapshot {

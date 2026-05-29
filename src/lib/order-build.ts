@@ -22,6 +22,7 @@ import { validCpf } from "./cpf";
 import { validateCoupon } from "./coupons";
 import type { PickupLocation } from "./coupons";
 import type { CartItem } from "./cart-types";
+import { lookupGiftCard } from "./gift-cards";
 
 // ---------------------------------------------------------------------------
 // Zod schema — shared by every endpoint that creates an order.
@@ -63,12 +64,19 @@ export const cartItemSchema = z.object({
   runningTimes: runningTimesSchema.optional(),
   boardColor: z.enum(["cobre", "preto", "rosa"]).optional(),
   boardBarbells: z.array(boardBarbellSchema).min(2).max(3).optional(),
+  /** Vale-presente: denominação em cents (R$ 100 / 150 / 200 / 300 / 500). */
+  giftCardValueCents: z.number().int().positive().max(100_000_00).optional(),
+  giftCardRecipientName: z.string().trim().max(80).optional(),
+  giftCardRecipientEmail: z.string().trim().email().max(120).optional(),
+  giftCardMessage: z.string().trim().max(280).optional(),
 });
 
 const shippingOptionSchema = z.object({
-  // id=0 é sentinela de retirada presencial (pickup unlock via cupom).
+  // Sentinelas:
+  //   id=0  → retirada presencial (pickup unlock via cupom)
+  //   id=-1 → entrega digital (carrinho 100% digital, ex: vale-presente)
   // Qualquer id positivo é um service do Melhor Envio.
-  id: z.number().int().min(0),
+  id: z.number().int().min(-1),
   name: z.string().min(1).max(80),
   company: z.string().min(1).max(80),
   price_cents: z.number().int().min(0).max(1_000_00),
@@ -152,6 +160,12 @@ export interface BuiltOrder {
     discountCents: number;
     creditedTo: string;
   } | null;
+  /** Vale-presente aplicado (resgate). */
+  giftCardApplied: {
+    cardId: string;
+    code: string;
+    discountCents: number;
+  } | null;
   /** Pix discount applied, in cents. 0 if not Pix. */
   pixDiscountCents: number;
   /** Per-package shipping dims for Melhor Envio. */
@@ -169,11 +183,11 @@ export type BuildOrderResult =
   | { ok: true; order: BuiltOrder }
   | { ok: false; status: number; error: string; field?: string };
 
-export function buildOrder(
+export async function buildOrder(
   data: OrderInput,
   products: Array<CollectionEntry<"products">>,
   absoluteUrl: (path: string) => string,
-): BuildOrderResult {
+): Promise<BuildOrderResult> {
   const bySlug = new Map(products.map((p) => [p.data.slug, p]));
 
   const items: BuiltOrderItem[] = [];
@@ -195,8 +209,16 @@ export function buildOrder(
       exercise: string;
       plates: Array<{ plateId: string; pairs: number }>;
     }>;
+    giftCardValueCents?: number;
+    giftCardRecipientName?: string;
+    giftCardRecipientEmail?: string;
+    giftCardMessage?: string;
   }> = [];
   let subtotalCents = 0;
+  /** Subtotal excluindo gift cards — base pra aplicar resgate de vale. */
+  let subtotalExGiftCardsCents = 0;
+  let allDigital = true;
+  let anyDigital = false;
 
   for (const input of data.items) {
     const product = bySlug.get(input.productSlug);
@@ -209,7 +231,12 @@ export function buildOrder(
     }
     try {
       const priced = recomputeLine(input, product);
+      const isGiftCard = product.data.configurator.isGiftCard;
+      const isDigital = product.data.digital === true;
       subtotalCents += priced.lineTotalCents;
+      if (!isGiftCard) subtotalExGiftCardsCents += priced.lineTotalCents;
+      if (isDigital) anyDigital = true;
+      else allDigital = false;
       items.push({
         id: `${input.productSlug}-${input.id.slice(0, 40)}`,
         title: priced.title,
@@ -234,21 +261,36 @@ export function buildOrder(
         ...(input.boardBarbells && input.boardBarbells.length > 0
           ? { boardBarbells: input.boardBarbells }
           : {}),
+        ...(input.giftCardValueCents
+          ? { giftCardValueCents: input.giftCardValueCents }
+          : {}),
+        ...(input.giftCardRecipientName
+          ? { giftCardRecipientName: input.giftCardRecipientName }
+          : {}),
+        ...(input.giftCardRecipientEmail
+          ? { giftCardRecipientEmail: input.giftCardRecipientEmail }
+          : {}),
+        ...(input.giftCardMessage
+          ? { giftCardMessage: input.giftCardMessage }
+          : {}),
       });
 
-      const dims = product.data.shipping;
-      const isStandaloneAnilhas = product.data.slug === "anilhas";
-      const totalPairs = isStandaloneAnilhas
-        ? (input.plates ?? []).reduce((n, p) => n + p.pairs, 0) || 1
-        : 1;
-      const weightKg = (dims.weight_g * totalPairs) / 1000;
-      for (let q = 0; q < input.quantity; q++) {
-        shippingVolumes.push({
-          height: dims.height_cm,
-          width: dims.width_cm,
-          length: dims.length_cm,
-          weight: Number(weightKg.toFixed(3)),
-        });
+      // Itens digitais não geram volumes pro Melhor Envio.
+      if (!isDigital) {
+        const dims = product.data.shipping;
+        const isStandaloneAnilhas = product.data.slug === "anilhas";
+        const totalPairs = isStandaloneAnilhas
+          ? (input.plates ?? []).reduce((n, p) => n + p.pairs, 0) || 1
+          : 1;
+        const weightKg = (dims.weight_g * totalPairs) / 1000;
+        for (let q = 0; q < input.quantity; q++) {
+          shippingVolumes.push({
+            height: dims.height_cm,
+            width: dims.width_cm,
+            length: dims.length_cm,
+            weight: Number(weightKg.toFixed(3)),
+          });
+        }
       }
     } catch (err) {
       return {
@@ -261,35 +303,91 @@ export function buildOrder(
 
   // Coupon first (discounts merch subtotal); Pix then stacks on the
   // post-coupon subtotal — matches the legacy WC site.
+  //
+  // O campo `couponCode` aceita 2 tipos: cupom tradicional (JSON) OU
+  // vale-presente (Supabase). Mutuamente exclusivos. Tenta cupom primeiro;
+  // se a validação for `not_found`, cai pro lookup de gift card. Vale-
+  // presente NÃO desconta gift cards do carrinho (não dá pra usar vale pra
+  // comprar vale).
   let couponDiscountCents = 0;
   let couponCreditedTo: string | null = null;
   let couponInfo: BuiltOrder["coupon"] = null;
   let pickupLocation: PickupLocation | null = null;
+  let giftCardApplied: BuiltOrder["giftCardApplied"] = null;
 
   if (data.couponCode && data.couponCode.length > 0) {
-    const result = validateCoupon(data.couponCode, subtotalCents);
-    if (!result.ok) {
-      return { ok: false, status: 400, error: result.message, field: "couponCode" };
+    const couponResult = validateCoupon(data.couponCode, subtotalCents);
+    if (couponResult.ok) {
+      couponDiscountCents = couponResult.discountCents;
+      couponCreditedTo = couponResult.creditedTo;
+      pickupLocation = couponResult.pickupLocation;
+      if (couponDiscountCents > 0) {
+        items.push({
+          id: `coupon-${couponResult.coupon.code}`,
+          title: `Cupom ${couponResult.coupon.code.toUpperCase()}${
+            couponCreditedTo !== couponResult.coupon.code ? ` — ${couponCreditedTo}` : ""
+          }`,
+          picture_url: "",
+          quantity: 1,
+          unit_price: -(Math.round(couponDiscountCents) / 100),
+        });
+      }
+      couponInfo = {
+        code: couponResult.coupon.code,
+        discountCents: couponDiscountCents,
+        creditedTo: couponCreditedTo,
+      };
+    } else if (couponResult.error === "not_found") {
+      // Tentar como vale-presente. Bloqueia uso quando carrinho tem
+      // só gift card (subtotalExGiftCardsCents == 0 mas subtotal > 0).
+      if (subtotalExGiftCardsCents <= 0 && subtotalCents > 0) {
+        return {
+          ok: false,
+          status: 400,
+          error: "Vale-presente não pode ser usado pra comprar outro vale.",
+          field: "couponCode",
+        };
+      }
+      const gc = await lookupGiftCard(data.couponCode);
+      if (!gc) {
+        return { ok: false, status: 400, error: "Cupom não encontrado.", field: "couponCode" };
+      }
+      if (gc.status === "cancelled") {
+        return { ok: false, status: 400, error: "Vale-presente cancelado.", field: "couponCode" };
+      }
+      if (gc.status === "expired" || new Date(gc.expires_at).getTime() < Date.now()) {
+        return { ok: false, status: 400, error: "Vale-presente expirado.", field: "couponCode" };
+      }
+      if (gc.status === "depleted" || gc.balance_cents <= 0) {
+        return {
+          ok: false,
+          status: 400,
+          error: "Esse vale-presente já foi usado integralmente.",
+          field: "couponCode",
+        };
+      }
+      const giftDiscount = Math.min(gc.balance_cents, subtotalExGiftCardsCents);
+      if (giftDiscount > 0) {
+        items.push({
+          id: `gift-card-${gc.code}`,
+          title: `Vale-Presente ${gc.code}`,
+          picture_url: "",
+          quantity: 1,
+          unit_price: -(Math.round(giftDiscount) / 100),
+        });
+      }
+      giftCardApplied = {
+        cardId: gc.id,
+        code: gc.code,
+        discountCents: giftDiscount,
+      };
+      // Pra o cálculo subsequente (Pix), o desconto do vale entra como
+      // se fosse desconto de cupom — sem stack com cupom (mutuamente
+      // exclusivos), o nome interno aqui não importa.
+      couponDiscountCents = giftDiscount;
+    } else {
+      return { ok: false, status: 400, error: couponResult.message, field: "couponCode" };
     }
-    couponDiscountCents = result.discountCents;
-    couponCreditedTo = result.creditedTo;
-    pickupLocation = result.pickupLocation;
-    if (couponDiscountCents > 0) {
-      items.push({
-        id: `coupon-${result.coupon.code}`,
-        title: `Cupom ${result.coupon.code.toUpperCase()}${
-          couponCreditedTo !== result.coupon.code ? ` — ${couponCreditedTo}` : ""
-        }`,
-        picture_url: "",
-        quantity: 1,
-        unit_price: -(Math.round(couponDiscountCents) / 100),
-      });
-    }
-    couponInfo = {
-      code: result.coupon.code,
-      discountCents: couponDiscountCents,
-      creditedTo: couponCreditedTo,
-    };
   }
 
   // Pickup option (id=0) só pode ser usada com cupom que libera retirada
@@ -308,6 +406,26 @@ export function buildOrder(
       ok: false,
       status: 400,
       error: "Retirada presencial não cobra frete.",
+      field: "shippingOption",
+    };
+  }
+
+  // Sentinela digital (id=-1): só vale quando o carrinho é 100% digital.
+  // Carrinhos mistos (digital + físico) precisam de uma opção real do ME.
+  const isDigitalShipping = data.shippingOption.id === -1;
+  if (isDigitalShipping && !allDigital) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Carrinho contém produtos físicos — escolha uma opção de frete.",
+      field: "shippingOption",
+    };
+  }
+  if (isDigitalShipping && data.shippingOption.price_cents !== 0) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Entrega digital não cobra frete.",
       field: "shippingOption",
     };
   }
@@ -345,7 +463,9 @@ export function buildOrder(
 
   const shippingServiceName = isPickup && pickupLocation
     ? `Retirada — ${pickupLocation.name}`
-    : `${data.shippingOption.company} · ${data.shippingOption.name}`;
+    : isDigitalShipping
+      ? "Entrega digital — por e-mail"
+      : `${data.shippingOption.company} · ${data.shippingOption.name}`;
 
   const metadata: Record<string, string | number> = {
     customer_name: data.customer.name,
@@ -362,9 +482,9 @@ export function buildOrder(
     shipping_city: data.shipping.city,
     shipping_state: data.shipping.state,
     shipping_complement: data.shipping.complement ?? "",
-    coupon_code: data.couponCode?.toLowerCase() ?? "",
-    coupon_discount_cents: couponDiscountCents,
-    coupon_credited_to: couponCreditedTo ?? "",
+    coupon_code: giftCardApplied ? "" : (data.couponCode?.toLowerCase() ?? ""),
+    coupon_discount_cents: giftCardApplied ? 0 : couponDiscountCents,
+    coupon_credited_to: giftCardApplied ? "" : (couponCreditedTo ?? ""),
     pix_discount_cents: pixDiscountCents,
     subtotal_cents: subtotalCents,
     freight_cents: freightCents,
@@ -372,10 +492,15 @@ export function buildOrder(
     items_skus: JSON.stringify(itemsSkus),
     shipping_volumes: JSON.stringify(shippingVolumes),
     is_pickup: isPickup ? 1 : 0,
+    is_digital: anyDigital ? 1 : 0,
+    is_all_digital: allDigital ? 1 : 0,
     pickup_name: isPickup && pickupLocation ? pickupLocation.name : "",
     pickup_address: isPickup && pickupLocation
       ? `${pickupLocation.address_line} · ${pickupLocation.district}, ${pickupLocation.city}/${pickupLocation.state} · CEP ${pickupLocation.cep}`
       : "",
+    gift_card_applied_id: giftCardApplied?.cardId ?? "",
+    gift_card_applied_code: giftCardApplied?.code ?? "",
+    gift_card_applied_discount_cents: giftCardApplied?.discountCents ?? 0,
   };
 
   return {
@@ -385,6 +510,7 @@ export function buildOrder(
       totalCents,
       subtotalCents,
       coupon: couponInfo,
+      giftCardApplied,
       pixDiscountCents,
       shippingVolumes,
       metadata,
