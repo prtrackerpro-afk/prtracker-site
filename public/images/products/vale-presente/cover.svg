@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-label="Vale-Presente PR Tracker — código digital entregue por e-mail">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#01002A"/>
+      <stop offset="1" stop-color="#0a0844"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d0c54"/>
+      <stop offset="0.6" stop-color="#01002A"/>
+      <stop offset="1" stop-color="#020039"/>
+    </linearGradient>
+    <linearGradient id="lime" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d8ff2c"/>
+      <stop offset="1" stop-color="#a8d121"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#d8ff2c" stroke-width="0.5" opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <rect width="1200" height="1200" fill="url(#grid)"/>
+
+  <!-- Soft lime halo behind card -->
+  <ellipse cx="600" cy="600" rx="460" ry="320" fill="#d8ff2c" opacity="0.08"/>
+
+  <!-- Gift card body -->
+  <g transform="translate(180 320)">
+    <!-- Card shadow -->
+    <rect x="12" y="20" width="840" height="540" rx="32" fill="#000" opacity="0.45" filter="url(#glow)"/>
+    <!-- Card -->
+    <rect x="0" y="0" width="840" height="540" rx="32" fill="url(#card)" stroke="#d8ff2c" stroke-width="2"/>
+
+    <!-- Lime accent strip top-right corner -->
+    <path d="M 840 0 L 840 120 L 720 0 Z" fill="url(#lime)"/>
+    <text x="800" y="62" font-family="Archivo Black, Arial Black, sans-serif" font-size="22" font-weight="900" fill="#01002A" text-anchor="end" letter-spacing="2">PR</text>
+
+    <!-- Brand mark + label -->
+    <g transform="translate(48 56)">
+      <text x="0" y="0" font-family="Archivo Black, Arial Black, sans-serif" font-size="14" font-weight="900" fill="#d8ff2c" letter-spacing="4" opacity="0.85">PR TRACKER</text>
+      <text x="0" y="22" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="500" fill="#ffffff" letter-spacing="3" opacity="0.55">VALE-PRESENTE DIGITAL</text>
+    </g>
+
+    <!-- Big value chip -->
+    <g transform="translate(48 160)">
+      <rect x="0" y="0" width="280" height="76" rx="38" fill="url(#lime)"/>
+      <text x="140" y="52" font-family="Archivo Black, Arial Black, sans-serif" font-size="40" font-weight="900" fill="#01002A" text-anchor="middle" letter-spacing="-1">R$ 100–500</text>
+    </g>
+
+    <!-- Sample code -->
+    <g transform="translate(48 280)">
+      <text x="0" y="0" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="600" fill="#ffffff" opacity="0.55" letter-spacing="3">CÓDIGO</text>
+      <text x="0" y="46" font-family="Courier New, monospace" font-size="42" font-weight="700" fill="#d8ff2c" letter-spacing="6">PR-XXXX-XXXX</text>
+    </g>
+
+    <!-- Headline -->
+    <g transform="translate(48 400)">
+      <text x="0" y="0" font-family="Inter, Arial Black, sans-serif" font-size="32" font-weight="900" fill="#ffffff" letter-spacing="-0.5">Seu PR merece</text>
+      <text x="0" y="40" font-family="Inter, Arial Black, sans-serif" font-size="32" font-weight="900" fill="#d8ff2c" letter-spacing="-0.5">mais do que uma foto.</text>
+    </g>
+
+    <!-- Footer line -->
+    <g transform="translate(48 500)">
+      <text x="0" y="0" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500" fill="#ffffff" opacity="0.5" letter-spacing="1">Entrega por e-mail · validade 12 meses · prtracker.com.br</text>
+    </g>
+  </g>
+
+  <!-- Spark icons (corner flourishes) -->
+  <g opacity="0.6">
+    <path d="M 120 200 L 134 214 L 148 200 L 134 186 Z" fill="#d8ff2c"/>
+    <path d="M 1070 1010 L 1086 1026 L 1102 1010 L 1086 994 Z" fill="#d8ff2c"/>
+  </g>
+
+  <!-- Bottom label -->
+  <g transform="translate(600 1080)">
+    <text x="0" y="0" font-family="Archivo Black, Arial Black, sans-serif" font-size="34" font-weight="900" fill="#d8ff2c" text-anchor="middle" letter-spacing="6">VALE-PRESENTE</text>
+    <text x="0" y="38" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="500" fill="#ffffff" text-anchor="middle" letter-spacing="3" opacity="0.6">CHEGA POR E-MAIL · USE QUANDO QUISER</text>
+  </g>
+</svg>

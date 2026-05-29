@@ -41,4 +41,8 @@ scraped/
 # into optimized versions under public/images/). Keep local only — bloats repo.
 Imagens/
 
+# Claude Code internal: screenshots de testes Playwright/webapp-testing,
+# scripts ad-hoc de debug, scheduled task locks. Local-only por design.
+.claude/
+
 .vercel

@@ -410,3 +410,49 @@ PUBLIC_SITE_URL=https://prtracker.com.br
 13. Favicons + OG image.
 14. `README` + `.env.example`.
 15. Lighthouse local → ajustar até 95+.
+
+---
+
+## Skill Router — qual skill usar quando
+
+> Skills são auto-invocadas pelo Claude via `description` no frontmatter. Esta tabela é apoio pros casos ambíguos. Se a tarefa cair em mais de uma linha, prefira a **mais específica**.
+
+### Por tipo de tarefa
+
+| Tarefa | Skill |
+|---|---|
+| Adicionar produto novo (JSON + configurador + Bling SKU) | `add-product` |
+| Mexer no /pr/gym (3D, Three.js, troféus) | `pr-tracker-3d-gym` |
+| Mexer em integração existente (Bling, MP, GA4, TikTok, Firecrawl) | `api-connector-builder` |
+| Bug em fluxo crítico (checkout, webhook, cron, sync) | `verification-loop` |
+| Tratamento de erro (retry, fallback, mensagem) | `error-handling` |
+| Nova página /admin/* ou painel de operação | `dashboard-builder` |
+| Refatorar / mudar CSS / mexer em UI existente | `make-interfaces-feel-better` + `frontend-a11y` |
+| Formulário, checkout, popup, banner (interação) | `frontend-a11y` |
+| Plano grande multi-step (nova linha, rebuild de página) | `plan-orchestrate` |
+| Escrever copy (caption, e-mail, descrição, tagline) | `brand-voice` |
+| Campanha completa (lançamento, recuperação carrinho, BF) | `marketing-campaign` |
+| SEO técnico / on-page / schema / sitemap | `seo` |
+| Auditar `.md` da pasta PR Tracker | `update_prtracker_mdfiles` |
+| Pesquisa de mercado / concorrente / referência externa | `deep-research` |
+| Antes de inventar lib/padrão novo | `search-first` |
+| Extrair regra recorrente da conversa → memória/CLAUDE.md | `rules-distill` |
+| Configurar settings.json, hooks, permissões | `update-config` |
+
+### Por palavra-gatilho típica do Felipe
+
+| Frase | Skill primária |
+|---|---|
+| "novo produto / criar SKU" | `add-product` |
+| "fix / não tá funcionando / corrige isso" | `verification-loop` |
+| "Bling tá rejeitando / webhook falha / TikTok não sincroniza" | `api-connector-builder` + `error-handling` |
+| "melhora visualmente / tá feio / espaçamento esquisito" | `make-interfaces-feel-better` |
+| "escreve um Reel / caption / e-mail" | `brand-voice` + (se for lançamento) `marketing-campaign` |
+| "Lighthouse / Core Web Vitals / SEO" | `seo` |
+| "preciso planejar X" (algo grande) | `plan-orchestrate` |
+| "/admin/X / preciso ver Y" | `dashboard-builder` |
+
+### Regra de ouro
+
+Nunca empilhe 4+ skills numa tarefa. Se a tarefa exige mais de 2, usar `plan-orchestrate` primeiro pra quebrar em sub-tarefas, cada uma com sua skill dedicada.
+

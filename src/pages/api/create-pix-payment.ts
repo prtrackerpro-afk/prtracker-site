@@ -82,7 +82,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const products = await getCollection("products");
-  const built = buildOrder(data, products, absoluteFrom(request));
+  const built = await buildOrder(data, products, absoluteFrom(request));
   if (!built.ok) {
     return jsonResponse(built.status, {
       error: built.error,

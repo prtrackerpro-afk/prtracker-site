@@ -127,7 +127,8 @@ export const POST: APIRoute = async ({ request }) => {
     return jsonResponse(200, { options: cached.value, cached: true });
   }
 
-  // Build ME product lines from catalog dimensions.
+  // Build ME product lines from catalog dimensions. Itens digitais
+  // (vale-presente) são ignorados — não geram volume físico pra cotar.
   const products = await getCollection("products");
   const bySlug = new Map(products.map((p) => [p.data.slug, p]));
 
@@ -140,6 +141,7 @@ export const POST: APIRoute = async ({ request }) => {
     insurance_value: number; // BRL
     quantity: number;
   }> = [];
+  let anyPhysical = false;
 
   for (const item of items) {
     const product = bySlug.get(item.productSlug);
@@ -148,6 +150,11 @@ export const POST: APIRoute = async ({ request }) => {
         error: `Produto não encontrado: ${item.productSlug}`,
       });
     }
+    if (product.data.digital === true) {
+      // Digital — pula a cotação física.
+      continue;
+    }
+    anyPhysical = true;
     const dims = product.data.shipping;
     // For standalone anilhas, the "unit" is per pair — scale weight by
     // total pairs selected. PR sets ship as one package regardless of
@@ -169,6 +176,24 @@ export const POST: APIRoute = async ({ request }) => {
       weight: Number(weightKg.toFixed(3)),
       insurance_value: Number(insuranceBRL.toFixed(2)),
       quantity: item.quantity,
+    });
+  }
+
+  // Carrinho 100% digital → uma única opção "Entrega digital" grátis.
+  // Sentinela id=-1 reconhecida em order-build.ts.
+  if (!anyPhysical) {
+    return jsonResponse(200, {
+      options: [
+        {
+          id: -1,
+          name: "Entrega digital — por e-mail",
+          company: "PR Tracker",
+          company_picture: null,
+          price_cents: 0,
+          delivery_days_min: 0,
+          delivery_days_max: 0,
+        },
+      ],
     });
   }
 

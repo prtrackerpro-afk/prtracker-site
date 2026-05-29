@@ -14,6 +14,7 @@ import {
   BARBELL_WEIGHT_KG,
   BOARD_EXERCISES,
   BOARD_COLORS,
+  GIFT_CARD_DENOMINATIONS_CENTS,
   normalizeRunTime,
   type PlateId,
 } from "./catalog";
@@ -85,6 +86,28 @@ export function recomputeLine(
 
   if (!images[0]) throw new Error(`Product ${product.data.slug} has no images`);
   const picture_url = images[0].src;
+
+  // Vale-Presente — denominação fixa; preço = denominação escolhida.
+  if (configurator.isGiftCard) {
+    const value = input.giftCardValueCents;
+    const allowed = (configurator.giftCardDenominationsCents ??
+      [...GIFT_CARD_DENOMINATIONS_CENTS]) as number[];
+    if (!value || !allowed.includes(value)) {
+      throw new Error(
+        `Vale-Presente: denominação inválida (${value ?? "vazio"}).`,
+      );
+    }
+    const reais = Math.round(value / 100);
+    const recipient = input.giftCardRecipientName?.trim();
+    const titleParts: string[] = [`${title} · R$ ${reais}`];
+    if (recipient) titleParts.push(`para ${recipient}`);
+    return {
+      unitPriceCents: value,
+      lineTotalCents: value * input.quantity,
+      title: titleParts.join(" — "),
+      picture_url,
+    };
+  }
 
   // Meus RPs (PR Runners) — preço fixo; tempos opcionais (vazio = cadeado).
   if (configurator.isMeusRPs) {
