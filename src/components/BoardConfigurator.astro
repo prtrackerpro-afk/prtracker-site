@@ -31,6 +31,13 @@ interface Props {
   exerciseCount: 2 | 3;
   defaultExercises: string[];
   category?: string;
+  /**
+   * Restringe o dropdown de cada slot a um subconjunto. Se omitido (ou
+   * undefined para um slot), o slot usa a lista completa BOARD_EXERCISES.
+   */
+  exerciseChoices?: (string[] | undefined)[];
+  /** Quando true, esconde os dropdowns — exercícios são fixos. */
+  exercisesFixed?: boolean;
 }
 
 const {
@@ -41,9 +48,18 @@ const {
   exerciseCount,
   defaultExercises,
   category,
+  exerciseChoices,
+  exercisesFixed = false,
 } = Astro.props;
 
 const indices = Array.from({ length: exerciseCount }, (_, i) => i);
+
+/** Filtra BOARD_EXERCISES por `value` mantendo a ordem alfabética. */
+function optionsForSlot(i: number) {
+  const allowed = exerciseChoices?.[i];
+  if (!allowed || allowed.length === 0) return BOARD_EXERCISES;
+  return BOARD_EXERCISES.filter((ex) => allowed.includes(ex.value));
+}
 
 const CONFIG_JSON = JSON.stringify({
   slug,
@@ -125,7 +141,7 @@ const CONFIG_JSON = JSON.stringify({
               fill="#FFFFFF"
               letter-spacing="0.7"
               data-preview-exercise={String(i)}
-            >EXERCÍCIO</text>
+            >{(defaultExercises[i] ?? "EXERCÍCIO").toUpperCase()}</text>
 
             {/* Barbell shaft — fino, com gradient subtil pra dar volume */}
             <rect x="6"   y={barY - 1.2} width="308" height="2.4" rx="0.4" fill="#8e94a0" />
@@ -272,19 +288,25 @@ const CONFIG_JSON = JSON.stringify({
       >
         <header class="bcfg__panel-head">
           <span class="bcfg__panel-pos">{i + 1}</span>
-          <select
-            class="bcfg__panel-exercise-select"
-            data-exercise-select
-            data-index={String(i)}
-            aria-label={`Exercício ${i + 1}`}
-          >
-            {BOARD_EXERCISES.map((ex) => (
-              <option
-                value={ex.value}
-                selected={ex.value === defaultExercises[i] ? true : undefined}
-              >{ex.label}</option>
-            ))}
-          </select>
+          {exercisesFixed ? (
+            <span class="bcfg__panel-exercise-fixed">
+              {defaultExercises[i] ?? `Barra ${i + 1}`}
+            </span>
+          ) : (
+            <select
+              class="bcfg__panel-exercise-select"
+              data-exercise-select
+              data-index={String(i)}
+              aria-label={`Exercício ${i + 1}`}
+            >
+              {optionsForSlot(i).map((ex) => (
+                <option
+                  value={ex.value}
+                  selected={ex.value === defaultExercises[i] ? true : undefined}
+                >{ex.label}</option>
+              ))}
+            </select>
+          )}
           <p class="bcfg__panel-weight">
             <span data-barbell-kg={String(i)}>{BARBELL_WEIGHT_KG}</span><span class="bcfg__panel-weight-unit"> kg</span>
           </p>
@@ -732,6 +754,15 @@ const CONFIG_JSON = JSON.stringify({
     font-family: var(--font-display);
     font-weight: 900;
     font-size: 0.85rem;
+  }
+  .bcfg__panel-exercise-fixed {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--color-brand-navy);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.4rem 0.6rem;
   }
   .bcfg__panel-exercise-select {
     width: 100%;

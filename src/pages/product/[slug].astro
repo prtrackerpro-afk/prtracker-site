@@ -190,6 +190,8 @@ const ogImagePath = PRODUCTS_WITH_DEDICATED_OG.has(slug)
               basePriceCents={priceBase}
               exerciseCount={(configurator.boardExerciseCount ?? 3) as 2 | 3}
               defaultExercises={configurator.boardDefaultExercises ?? []}
+              exerciseChoices={configurator.boardExerciseChoices}
+              exercisesFixed={configurator.boardExercisesFixed}
               category={category}
             />
           ) : configurator.isTripleBarbell ? (
