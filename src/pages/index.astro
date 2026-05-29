@@ -141,18 +141,17 @@ const jsonLd = [
   <!-- ========================= HERO ========================= -->
   <section class="hero">
     <picture class="hero__bg" aria-hidden="true">
-      {/* Desktop sources — browser picks the first supported format */}
-      <source media="(min-width: 900px)" type="image/avif" srcset="/images/brand/hero-desktop.avif" />
-      <source media="(min-width: 900px)" type="image/webp" srcset="/images/brand/hero-desktop.webp" />
-      <source media="(min-width: 900px)" srcset="/images/brand/hero-desktop.jpg" />
-      {/* Mobile sources */}
-      <source type="image/avif" srcset="/images/brand/hero-mobile.avif" />
-      <source type="image/webp" srcset="/images/brand/hero-mobile.webp" />
+      {/* PR Board 3 Exercícios em ROSA — destaque da home (mai/2026). */}
+      <source media="(min-width: 900px)" type="image/avif" srcset="/images/products/pr-tracker-board-3/photo-04.avif" />
+      <source media="(min-width: 900px)" type="image/webp" srcset="/images/products/pr-tracker-board-3/photo-04.webp" />
+      <source media="(min-width: 900px)" srcset="/images/products/pr-tracker-board-3/photo-04.jpg" />
+      <source type="image/avif" srcset="/images/products/pr-tracker-board-3/photo-04.avif" />
+      <source type="image/webp" srcset="/images/products/pr-tracker-board-3/photo-04.webp" />
       <img
-        src="/images/brand/hero-mobile.jpg"
+        src="/images/products/pr-tracker-board-3/photo-04.jpg"
         alt=""
-        width="1080"
-        height="1349"
+        width="1200"
+        height="1600"
         fetchpriority="high"
         loading="eager"
         decoding="async"
@@ -183,40 +182,8 @@ const jsonLd = [
     </div>
   </section>
 
-  <!-- ========================= MINIATURAS ========================= -->
-  <section id="produtos" class="section section--paper line-section line-section--miniaturas">
-    <div class="container-page">
-      <div class="section__head line-section__head">
-        <h2 class="line-section__title">MINIATURAS</h2>
-        <p class="line-section__subtitle">Réplicas em escala do equipamento que faz o seu PR. Você configura a barra, nós produzimos a peça, você expõe.</p>
-        <a href="/colecao/miniaturas" class="line-section__cta">Ver toda a coleção →</a>
-      </div>
-
-      <div class="carousel product-carousel" data-carousel data-carousel-loop data-carousel-default="1">
-        <button type="button" class="carousel__nav carousel__nav--prev" aria-label="Produto anterior" data-carousel-prev>
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <button type="button" class="carousel__nav carousel__nav--next" aria-label="Próximo produto" data-carousel-next>
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
-
-        <div class="carousel__viewport" data-carousel-viewport>
-          <div class="carousel__track">
-            {miniaturas.map((p, i) => (
-              <div class="pc-slide">
-                <ProductCard product={p} eager={i < 2} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div class="carousel__dots" role="tablist" aria-label="Navegação de miniaturas" data-carousel-dots></div>
-      </div>
-    </div>
-  </section>
-
   <!-- ========================= PR TRACKERS ========================= -->
-  <section id="pr-trackers" class="section section--paper line-section line-section--trackers">
+  <section id="produtos" class="section section--paper line-section line-section--trackers">
     <div class="container-page">
       <div class="section__head line-section__head">
         <h2 class="line-section__title">PR TRACKERS</h2>
@@ -234,7 +201,39 @@ const jsonLd = [
 
         <div class="carousel__viewport" data-carousel-viewport>
           <div class="carousel__track">
-            {prTrackers.map((p) => (
+            {prTrackers.map((p, i) => (
+              <div class="pc-slide">
+                <ProductCard product={p} eager={i < 2} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="carousel__dots" role="tablist" aria-label="Navegação de PR Trackers" data-carousel-dots></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= MINIATURAS ========================= -->
+  <section id="miniaturas" class="section section--paper line-section line-section--miniaturas">
+    <div class="container-page">
+      <div class="section__head line-section__head">
+        <h2 class="line-section__title">MINIATURAS</h2>
+        <p class="line-section__subtitle">Réplicas em escala do equipamento que faz o seu PR. Você configura a barra, nós produzimos a peça, você expõe.</p>
+        <a href="/colecao/miniaturas" class="line-section__cta">Ver toda a coleção →</a>
+      </div>
+
+      <div class="carousel product-carousel" data-carousel data-carousel-loop data-carousel-default="1">
+        <button type="button" class="carousel__nav carousel__nav--prev" aria-label="Produto anterior" data-carousel-prev>
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button type="button" class="carousel__nav carousel__nav--next" aria-label="Próximo produto" data-carousel-next>
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <div class="carousel__viewport" data-carousel-viewport>
+          <div class="carousel__track">
+            {miniaturas.map((p) => (
               <div class="pc-slide">
                 <ProductCard product={p} />
               </div>
@@ -242,7 +241,7 @@ const jsonLd = [
           </div>
         </div>
 
-        <div class="carousel__dots" role="tablist" aria-label="Navegação de PR Trackers" data-carousel-dots></div>
+        <div class="carousel__dots" role="tablist" aria-label="Navegação de miniaturas" data-carousel-dots></div>
       </div>
     </div>
   </section>
