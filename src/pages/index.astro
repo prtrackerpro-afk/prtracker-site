@@ -941,9 +941,15 @@ const jsonLd = [
   }
   .pr-runners-section__grid {
     display: grid;
-    gap: 1.5rem;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 320px));
+    /* Sempre 2 colunas: Meus RPs + Plaquinha Avulsa lado-a-lado mesmo em
+       mobile estreito. Gap reduzido em telas pequenas pra caber sem
+       comprimir o conteúdo dos cards. */
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 320px));
     justify-content: center;
+  }
+  @media (min-width: 640px) {
+    .pr-runners-section__grid { gap: 1.5rem; }
   }
 
   /* ======================= PRODUCT CAROUSEL ======================= */
