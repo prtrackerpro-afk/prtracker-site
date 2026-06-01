@@ -25,12 +25,11 @@ export type RunningTimes = Partial<Record<RunDistanceKey, string>>;
 
 /**
  * Uma plaquinha avulsa (produto "meus-rps-plaquinha"). 1 a 4 por cart line.
- * Cada plaquinha é independente — distância + tempo digitado pelo cliente.
- * Duplicatas permitidas (cliente pode comprar 2× 5km com tempos diferentes).
+ * A plaquinha é universal — encaixa em qualquer um dos 4 slots do Meus RPs
+ * (5/10/21/42 km), então o produto só precisa do tempo digitado. O cliente
+ * decide depois (em casa) em qual slot encaixar.
  */
 export interface RunningPlate {
-  /** Distância da plaquinha (5km/10km/21km/42km). */
-  distance: RunDistanceKey;
   /** Tempo no formato canônico "hh:mm:ss". */
   time: string;
 }

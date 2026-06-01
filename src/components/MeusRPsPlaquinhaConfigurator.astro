@@ -2,15 +2,14 @@
 /**
  * Configurador "Plaquinha Meus RPs" (PR Runners — plaquinha avulsa).
  *
- * UX: lista dinâmica. Começa com 1 linha (dropdown de distância +
- * input hh:mm:ss); botão "+ adicionar plaquinha" até 4. Duplicatas
- * permitidas (cliente pode pedir 2× 5km com tempos diferentes).
+ * UX: lista dinâmica de 1-4 plaquinhas. Cada uma é independente — só um
+ * input de tempo hh:mm:ss. A plaquinha é universal: encaixa em qualquer
+ * um dos 4 slots do Meus RPs (5/10/21/42 km), o cliente decide o slot
+ * em casa. Sem dropdown de distância.
  *
- * Pricing: linear — total = basePriceCents × qtd de plaquinhas
- * preenchidas válidas. Cliente só consegue add-to-cart com pelo menos
- * 1 plaquinha com distância + tempo válido.
+ * Pricing: linear — total = basePriceCents × qtd de plaquinhas com tempo
+ * válido. Add-to-cart só com pelo menos 1 plaquinha preenchida.
  */
-import { RUN_DISTANCES } from "~/lib/catalog";
 import { formatBRL, applyPix } from "~/lib/format";
 
 interface Props {
@@ -29,7 +28,6 @@ const CONFIG_JSON = JSON.stringify({
   image,
   basePriceCents,
   category,
-  distances: RUN_DISTANCES,
   maxPlates: 4,
 });
 ---
@@ -57,36 +55,25 @@ const CONFIG_JSON = JSON.stringify({
       >SUAS PLAQUINHAS</text>
 
       <!-- 4 slots verticais — plaquinhas individuais que aparecem
-           conforme o cliente adiciona/preenche. -->
+           conforme o cliente adiciona/preenche. Sem rótulo de distância:
+           a plaquinha é universal, encaixa em qualquer slot do Meus RPs. -->
       <g data-preview-slots>
         {Array.from({ length: 4 }, (_, i) => {
           const y = 56 + i * 56;
           return (
             <g data-preview-slot={i} transform={`translate(0, ${y})`} opacity="0.18">
-              <!-- Plaquinha avulsa estilizada: bloco preto com tag dist + tempo -->
-              <rect x="22" y="0" width="276" height="44" rx="6" fill="#111111" stroke="#2a2a2a" stroke-width="0.8" />
-              <rect x="30" y="6" width="110" height="32" rx="3" fill="#1d1d1d" stroke="#2c2c2c" stroke-width="0.5" />
-              <text
-                data-preview-dist={i}
-                x="40"
-                y="29"
-                font-family="Archivo Black, Inter, sans-serif"
-                font-size="20"
-                font-weight="900"
-                fill="#FFFFFF"
-                letter-spacing="-0.5"
-              >—</text>
-              <rect x="148" y="6" width="142" height="32" rx="3" fill="#1d1d1d" stroke="#2c2c2c" stroke-width="0.5" />
+              <rect x="40" y="0" width="240" height="44" rx="6" fill="#111111" stroke="#2a2a2a" stroke-width="0.8" />
+              <rect x="48" y="6" width="224" height="32" rx="3" fill="#1d1d1d" stroke="#2c2c2c" stroke-width="0.5" />
               <text
                 data-preview-time={i}
-                x="219"
-                y="29"
+                x="160"
+                y="30"
                 text-anchor="middle"
                 font-family="Archivo Black, Inter, sans-serif"
-                font-size="18"
+                font-size="22"
                 font-weight="900"
                 fill="#FFFFFF"
-                letter-spacing="0.5"
+                letter-spacing="1"
               >hh:mm:ss</text>
             </g>
           );
@@ -97,16 +84,9 @@ const CONFIG_JSON = JSON.stringify({
 
   <!-- Lista dinâmica de inputs (1-4) -->
   <div class="pcfg__list" data-rows>
-    <!-- Linha template (clonada por JS quando o cliente clica em "+ adicionar"). -->
     <template data-row-template>
       <div class="pcfg__row" data-row>
         <div class="pcfg__row-num" data-row-num>1</div>
-        <select class="pcfg__select" data-distance-select aria-label="Distância">
-          <option value="">Distância…</option>
-          {RUN_DISTANCES.map((d) => (
-            <option value={d.key}>{d.label}</option>
-          ))}
-        </select>
         <input
           type="text"
           inputmode="numeric"
@@ -137,7 +117,7 @@ const CONFIG_JSON = JSON.stringify({
   </button>
 
   <p class="pcfg__hint">
-    Cada plaquinha custa <strong>{formatBRL(basePriceCents)}</strong>. Pode repetir a mesma distância — útil pra atualizar tempo ou repor plaquinha danificada.
+    Cada plaquinha custa <strong>{formatBRL(basePriceCents)}</strong>. A plaquinha é universal — encaixa em qualquer slot do Meus RPs (5, 10, 21 ou 42 km). Você decide o slot em casa.
   </p>
 
   <!-- Buy block -->
@@ -194,16 +174,15 @@ const CONFIG_JSON = JSON.stringify({
   }
   .pcfg__row {
     display: grid;
-    grid-template-columns: auto minmax(110px, 1.1fr) minmax(110px, 1fr) auto;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.65rem;
     background: var(--color-brand-white);
     border: 1px solid rgb(1 0 42 / 0.15);
     border-radius: var(--radius-card);
-    padding: 0.5rem 0.65rem;
+    padding: 0.55rem 0.75rem;
     transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
   }
-  .pcfg__row:has(.pcfg__select:focus-visible),
   .pcfg__row:has(.pcfg__input:focus-visible),
   .pcfg__row:hover {
     border-color: var(--color-brand-navy);
@@ -224,28 +203,18 @@ const CONFIG_JSON = JSON.stringify({
     justify-content: center;
     flex-shrink: 0;
   }
-  .pcfg__select,
   .pcfg__input {
     width: 100%;
-    padding: 0.5rem 0.7rem;
+    padding: 0.55rem 0.85rem;
     border: 1px solid rgb(1 0 42 / 0.15);
     border-radius: var(--radius-card);
     background: var(--color-paper);
     color: var(--color-brand-navy);
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
     font-weight: 600;
-    font-size: 0.9rem;
-    letter-spacing: 0.03em;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
   }
-  .pcfg__select {
-    appearance: none;
-    background-image: linear-gradient(45deg, transparent 50%, var(--color-brand-navy) 50%), linear-gradient(135deg, var(--color-brand-navy) 50%, transparent 50%);
-    background-position: calc(100% - 14px) center, calc(100% - 9px) center;
-    background-size: 5px 5px, 5px 5px;
-    background-repeat: no-repeat;
-    padding-right: 1.6rem;
-  }
-  .pcfg__select:focus-visible,
   .pcfg__input:focus-visible {
     border-color: var(--color-brand-navy);
     outline: 2px solid var(--color-brand-lime);
@@ -319,7 +288,7 @@ const CONFIG_JSON = JSON.stringify({
     letter-spacing: 0.04em;
     color: var(--color-brand-gray);
     margin: 0;
-    line-height: 1.5;
+    line-height: 1.55;
   }
   .pcfg__hint strong {
     color: var(--color-brand-navy);
@@ -395,11 +364,7 @@ const CONFIG_JSON = JSON.stringify({
   import { cart } from "~/scripts/cart";
   import { trackAddToCart } from "~/scripts/tracking";
   import { formatBRL, applyPix } from "~/lib/format";
-  import {
-    normalizeRunTime,
-    RUN_DISTANCES,
-    type RunDistanceKey,
-  } from "~/lib/catalog";
+  import { normalizeRunTime } from "~/lib/catalog";
 
   interface CfgData {
     slug: string;
@@ -411,9 +376,8 @@ const CONFIG_JSON = JSON.stringify({
   }
 
   interface PlateState {
-    distance: RunDistanceKey | "";
-    time: string;          // raw input (masked while typing)
-    normalized: string | null; // null if not yet valid
+    time: string;
+    normalized: string | null;
   }
 
   const roots = document.querySelectorAll<HTMLElement>("[data-meusrps-plaquinha-configurator]");
@@ -439,7 +403,7 @@ const CONFIG_JSON = JSON.stringify({
       if (state.length >= config.maxPlates) return;
       const node = tmpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
       list.appendChild(node);
-      state.push({ distance: "", time: "", normalized: null });
+      state.push({ time: "", normalized: null });
       bindRow(node, state.length - 1);
       renumberRows();
       updateAddRowBtn();
@@ -452,7 +416,6 @@ const CONFIG_JSON = JSON.stringify({
       const node = rows[idx];
       if (node) node.remove();
       state.splice(idx, 1);
-      // Rebind remaining rows (indices shifted).
       const remaining = list.querySelectorAll<HTMLElement>("[data-row]");
       remaining.forEach((row, i) => bindRow(row, i));
       renumberRows();
@@ -462,28 +425,15 @@ const CONFIG_JSON = JSON.stringify({
     }
 
     function bindRow(row: HTMLElement, idx: number): void {
-      const select = row.querySelector<HTMLSelectElement>("[data-distance-select]")!;
       const input = row.querySelector<HTMLInputElement>("[data-time-input]")!;
       const removeBtn = row.querySelector<HTMLButtonElement>("[data-remove-row]")!;
 
-      select.value = state[idx]?.distance ?? "";
       input.value = state[idx]?.time ?? "";
 
-      // Strip and rebind listeners by cloning (since rebind happens on splice).
-      const newSelect = select.cloneNode(true) as HTMLSelectElement;
       const newInput = input.cloneNode(true) as HTMLInputElement;
       const newRemove = removeBtn.cloneNode(true) as HTMLButtonElement;
-      select.replaceWith(newSelect);
       input.replaceWith(newInput);
       removeBtn.replaceWith(newRemove);
-
-      newSelect.addEventListener("change", () => {
-        const item = state[idx];
-        if (!item) return;
-        item.distance = newSelect.value as RunDistanceKey;
-        updatePreview();
-        updateTotals();
-      });
 
       newInput.addEventListener("input", () => {
         const item = state[idx];
@@ -521,12 +471,10 @@ const CONFIG_JSON = JSON.stringify({
       });
 
       newRemove.addEventListener("click", () => {
-        // Quando só há 1 linha, não deixa remover (mantém UX consistente).
         if (state.length <= 1) return;
         removeRow(idx);
       });
 
-      // Hide remove on the only row.
       newRemove.hidden = state.length <= 1;
     }
 
@@ -544,43 +492,33 @@ const CONFIG_JSON = JSON.stringify({
       const atMax = state.length >= config.maxPlates;
       addRowBtn.disabled = atMax;
       addRowCount.textContent = `(${state.length} de ${config.maxPlates})`;
-      if (atMax) {
-        addRowBtn.setAttribute("aria-disabled", "true");
-      } else {
-        addRowBtn.removeAttribute("aria-disabled");
-      }
+      if (atMax) addRowBtn.setAttribute("aria-disabled", "true");
+      else addRowBtn.removeAttribute("aria-disabled");
     }
 
     function updatePreview(): void {
       for (let i = 0; i < config.maxPlates; i++) {
         const slot = root.querySelector<SVGGElement>(`[data-preview-slot="${i}"]`);
-        const distEl = root.querySelector<SVGTextElement>(`[data-preview-dist="${i}"]`);
         const timeEl = root.querySelector<SVGTextElement>(`[data-preview-time="${i}"]`);
         if (!slot) continue;
         const item = state[i];
-        if (item && (item.distance || item.normalized)) {
+        if (item?.normalized) {
           slot.setAttribute("opacity", "1");
-          if (distEl) {
-            const dist = RUN_DISTANCES.find((d) => d.key === item.distance);
-            distEl.textContent = dist?.label ?? "—";
-          }
-          if (timeEl) {
-            timeEl.textContent = item.normalized ?? "hh:mm:ss";
-          }
+          if (timeEl) timeEl.textContent = item.normalized;
+        } else if (item) {
+          slot.setAttribute("opacity", "0.4");
+          if (timeEl) timeEl.textContent = "hh:mm:ss";
         } else {
-          slot.setAttribute("opacity", item ? "0.4" : "0.18");
-          if (distEl) distEl.textContent = "—";
+          slot.setAttribute("opacity", "0.18");
           if (timeEl) timeEl.textContent = "hh:mm:ss";
         }
       }
     }
 
-    function validPlates(): Array<{ distance: RunDistanceKey; time: string }> {
+    function validPlates(): Array<{ time: string }> {
       return state
-        .filter((s): s is { distance: RunDistanceKey; time: string; normalized: string } =>
-          !!s.distance && !!s.normalized,
-        )
-        .map((s) => ({ distance: s.distance, time: s.normalized! }));
+        .filter((s): s is { time: string; normalized: string } => !!s.normalized)
+        .map((s) => ({ time: s.normalized! }));
     }
 
     function updateTotals(): void {
@@ -607,10 +545,7 @@ const CONFIG_JSON = JSON.stringify({
       if (plates.length === 0) return;
 
       const id = buildCartId(config.slug, plates);
-      const desc = plates.map((p) => {
-        const dist = RUN_DISTANCES.find((d) => d.key === p.distance);
-        return `${dist?.label ?? p.distance} ${p.time}`;
-      }).join(" · ");
+      const desc = plates.map((p) => p.time).join(" · ");
       const fullTitle = `${config.title} · ${desc}`;
       const totalCents = config.basePriceCents * plates.length;
 
@@ -619,7 +554,7 @@ const CONFIG_JSON = JSON.stringify({
         productSlug: config.slug,
         title: fullTitle,
         image: config.image,
-        unitPriceCents: totalCents, // line price = qtd × base; quantity=1 (uma linha agrupada)
+        unitPriceCents: totalCents,
         quantity: 1,
         runningPlates: plates,
       });
@@ -632,15 +567,11 @@ const CONFIG_JSON = JSON.stringify({
       });
     });
 
-    // Inicial: 1 linha.
     addRow();
   }
 
-  function buildCartId(
-    slug: string,
-    plates: Array<{ distance: RunDistanceKey; time: string }>,
-  ): string {
-    const key = plates.map((p, i) => `${i}:${p.distance}=${p.time}`).join("|");
+  function buildCartId(slug: string, plates: Array<{ time: string }>): string {
+    const key = plates.map((p, i) => `${i}:${p.time}`).join("|");
     return [slug, key].filter(Boolean).join("::");
   }
 </script>

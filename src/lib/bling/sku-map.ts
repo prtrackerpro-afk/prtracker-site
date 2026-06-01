@@ -48,7 +48,7 @@ export interface ItemSku {
   exercise?: string;
   plates?: Array<{ plateId: string; pairs: number }>;
   runningTimes?: Record<string, string>;
-  runningPlates?: Array<{ distance: string; time: string }>;
+  runningPlates?: Array<{ time: string }>;
   boardColor?: "cobre" | "preto" | "rosa";
   boardBarbells?: Array<{
     exercise: string;
@@ -125,8 +125,9 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
       ];
     }
     case "meus-rps-plaquinha": {
-      // Plaquinha avulsa: cada plaquinha vira uma SkuLine separada
-      // (mesmo SKU pode aparecer 2×+ com tempos diferentes no `nome`).
+      // Plaquinha avulsa: SKU único `RUNNER-PLAQ` (peça universal — encaixa
+      // em qualquer slot do Meus RPs). Cada plaquinha vira uma SkuLine
+      // separada com o tempo no `nome` pra produção saber o que imprimir.
       // unitPriceCents da cart line = base × N; preço por SKU = base.
       const plates = item.runningPlates ?? [];
       const out: SkuLine[] = [];
@@ -135,10 +136,9 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
           ? item.unit_price_cents / 100 / plates.length
           : item.unit_price_cents / 100;
       for (const p of plates) {
-        const distLabel = p.distance.toUpperCase(); // "5KM" etc.
         out.push({
-          codigo: `RUNNER-PLAQ-${distLabel}`,
-          nome: `Plaquinha Meus RPs — ${distLabel} ${p.time}`,
+          codigo: "RUNNER-PLAQ",
+          nome: `Plaquinha Meus RPs — ${p.time}`,
           qty: item.qty,
           unitPrice: unitPriceEach,
           ncm: NCM_KIT,
