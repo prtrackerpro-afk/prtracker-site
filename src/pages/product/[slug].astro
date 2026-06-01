@@ -10,6 +10,7 @@ import TripleBarbellConfigurator from "~/components/TripleBarbellConfigurator.as
 import MeusRPsConfigurator from "~/components/MeusRPsConfigurator.astro";
 import MeusRPsPlaquinhaConfigurator from "~/components/MeusRPsPlaquinhaConfigurator.astro";
 import BoardConfigurator from "~/components/BoardConfigurator.astro";
+import GiftCardConfigurator from "~/components/GiftCardConfigurator.astro";
 import NotifyMeForm from "~/components/NotifyMeForm.astro";
 import TrackViewContent from "~/components/TrackViewContent.astro";
 import { formatBRL, centsToReaisString } from "~/lib/format";
@@ -175,7 +176,15 @@ const ogImagePath = PRODUCTS_WITH_DEDICATED_OG.has(slug)
         <p class="product__short">{shortDescription}</p>
 
         <div class="product__buy">
-          {configurator.isMeusRPs ? (
+          {configurator.isGiftCard ? (
+            <GiftCardConfigurator
+              slug={slug}
+              title={title}
+              image={primary.src}
+              category={category}
+              denominationsCents={configurator.giftCardDenominationsCents}
+            />
+          ) : configurator.isMeusRPs ? (
             <MeusRPsConfigurator
               slug={slug}
               title={title}

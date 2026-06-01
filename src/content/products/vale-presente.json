@@ -1,0 +1,45 @@
+{
+  "slug": "vale-presente",
+  "title": "Vale-Presente PR Tracker",
+  "tagline": "O presente que vira troféu.",
+  "category": "gift-cards",
+  "priceBase": 10000,
+  "priceFrom": true,
+  "digital": true,
+  "shipping": { "weight_g": 1, "length_cm": 1, "width_cm": 1, "height_cm": 1 },
+  "shortDescription": "Vale-presente digital. Entregue na hora por e-mail, com um código único pra usar em qualquer produto do site. Sem prazo de envio — o presente chega em segundos.",
+  "longDescriptionHtml": "<p>O <strong>Vale-Presente PR Tracker</strong> é a forma mais rápida de presentear quem treina sério. Você escolhe o valor, finaliza a compra e o código chega <strong>imediatamente por e-mail</strong> — pode encaminhar pra pessoa presenteada ou imprimir.</p><p>Cinco denominações fixas: <strong>R$ 100, R$ 150, R$ 200, R$ 300 e R$ 500</strong>. O valor pode ser usado em qualquer produto do site — kits, anilhas avulsas, boards, camisetas, tudo.</p><p>Funciona como um cupom de saldo: digite o código no checkout e o valor é descontado do subtotal. Se o vale for maior que a compra, o saldo restante fica salvo pra próxima. Se a compra for maior, o cliente completa a diferença no Pix ou cartão.</p><p>Validade de <strong>12 meses</strong> a partir da emissão. Não cobre frete — o frete continua sendo cobrado normalmente. Não combinável com cupons de desconto na mesma compra.</p>",
+  "images": [
+    { "src": "/images/products/vale-presente/cover.svg", "alt": "Vale-Presente PR Tracker — código digital entregue por e-mail", "width": 1200, "height": 1200 }
+  ],
+  "specs": [
+    { "label": "Entrega", "value": "Digital · por e-mail · em segundos" },
+    { "label": "Validade", "value": "12 meses a partir da emissão" },
+    { "label": "Uso", "value": "Cupom de saldo no checkout · saldo persiste entre compras" },
+    { "label": "Cobertura", "value": "Vale produtos · não cobre frete · não combinável com outros cupons" }
+  ],
+  "faq": [
+    { "question": "Como o vale-presente chega?", "answer": "Por e-mail, imediatamente após a confirmação do pagamento. O e-mail vai pra você (comprador) por padrão. Se você preencher o e-mail do presenteado no momento da compra, o vale vai direto pra ele com a sua mensagem pessoal." },
+    { "question": "O vale dá pra usar parcialmente?", "answer": "Sim. Se você ganhou um vale de R$ 200 e gastou R$ 150, sobram R$ 50 pra próxima compra — basta usar o mesmo código de novo. O saldo fica salvo automaticamente." },
+    { "question": "E se eu quiser comprar algo mais caro que o vale?", "answer": "Sem problema. Aplica o vale no checkout, o valor é descontado, e você paga a diferença normalmente por Pix (5% OFF) ou cartão (até 3× sem juros)." },
+    { "question": "O vale cobre frete?", "answer": "Não. O vale é aplicado só no subtotal dos produtos. O frete continua sendo cobrado pelo Melhor Envio normalmente, conforme o CEP." },
+    { "question": "Dá pra combinar vale com cupom de desconto?", "answer": "Não na mesma compra. Você escolhe um dos dois no campo de cupom do checkout. Mas pode usar o cupom numa compra e o vale em outra." },
+    { "question": "Qual a validade?", "answer": "12 meses contados a partir da emissão. Recomendamos usar dentro do prazo — após expirar o saldo restante é perdido." }
+  ],
+  "configurator": {
+    "enabled": false,
+    "isAnilhasOnly": false,
+    "hasExerciseSelector": false,
+    "isTripleBarbell": false,
+    "isMeusRPs": false,
+    "isBoard": false,
+    "isGiftCard": true,
+    "giftCardDenominationsCents": [10000, 15000, 20000, 30000, 50000]
+  },
+  "featured": true,
+  "priority": 50,
+  "seo": {
+    "metaTitle": "Vale-Presente PR Tracker — Presente Digital, Entrega na Hora",
+    "metaDescription": "Vale-presente digital da PR Tracker. Escolha o valor, presenteie quem treina. Código por e-mail em segundos, validade de 12 meses. R$ 100 a R$ 500."
+  }
+}

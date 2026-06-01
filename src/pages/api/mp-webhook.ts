@@ -4,8 +4,16 @@ import crypto from "node:crypto";
 import {
   sendOwnerOrderAlert,
   sendCustomerConfirmation,
+  sendGiftCardIssued,
   type OrderEmailData,
+  type GiftCardIssuedEmailData,
 } from "~/lib/email";
+import {
+  issueGiftCard,
+  atomicDebitGiftCard,
+  refundGiftCard,
+  findGiftCardByMpOrder,
+} from "~/lib/gift-cards";
 import { sendCapiPurchase, sendGa4Purchase } from "~/lib/tracking-server";
 import { getAdminSupabase } from "~/lib/supabase/server";
 import { paymentToSaleRow } from "~/lib/admin/mp-ingest";
@@ -161,6 +169,19 @@ export const POST: APIRoute = async ({ request }) => {
     payer_email: payment.payer?.email,
   });
 
+  // Refund / chargeback — se o pagamento foi estornado e originalmente
+  // debitou um vale-presente, restaura o saldo. Processa antes do
+  // early-return de "approved-only" e retorna 200 (não precisa do resto
+  // da pipeline pra refunds).
+  if (payment.status === "refunded" || payment.status === "charged_back") {
+    try {
+      await processGiftCardRefund(payment);
+    } catch (err) {
+      console.error("[mp-webhook] gift card refund failed:", err);
+    }
+    return new Response("ok", { status: 200 });
+  }
+
   // Only approved payments trigger label generation. Pending Pix payments
   // will fire another webhook when confirmed, so we'll handle them then.
   if (payment.status !== "approved") {
@@ -208,6 +229,17 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (err) {
     labelError = err instanceof Error ? err.message : String(err);
     console.error("[mp-webhook] shipping label generation failed:", err);
+  }
+
+  // Vale-presente: 2 fluxos paralelos, ambos derivados do metadata da MP.
+  //   1) Emissão — pra cada SKU `vale-presente` no carrinho, gera código
+  //      novo no Supabase + envia e-mail com o código.
+  //   2) Resgate — se metadata tem gift_card_applied_id, debita o saldo
+  //      do vale (atômico via RPC, idempotente via UNIQUE constraint).
+  try {
+    await processGiftCardSideEffects(payment);
+  } catch (err) {
+    console.error("[mp-webhook] gift card side effects failed:", err);
   }
 
   // Order notifications + server-side conversion tracking — all fire-and-forget.
@@ -358,6 +390,162 @@ async function upsertSaleRow(payment: MpPayment): Promise<void> {
 
 type MpPayment = Awaited<ReturnType<Payment["get"]>>;
 
+interface ItemSkuRow {
+  slug: string;
+  qty: number;
+  title?: string;
+  unit_price_cents?: number;
+  giftCardValueCents?: number;
+  giftCardRecipientName?: string;
+  giftCardRecipientEmail?: string;
+  giftCardMessage?: string;
+}
+
+async function processGiftCardSideEffects(payment: MpPayment): Promise<void> {
+  const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+  const buyerEmail =
+    String(meta.customer_email ?? "") ||
+    String(payment.payer?.email ?? "");
+  const buyerName = String(meta.customer_name ?? "") || "Cliente PR Tracker";
+  const externalRef =
+    payment.external_reference ?? `mp-${payment.id ?? "?"}`;
+
+  // ---------- 1) Resgate: debitar saldo do vale aplicado ----------
+  const appliedCardId = String(meta.gift_card_applied_id ?? "");
+  const appliedDiscountCents = Number(
+    meta.gift_card_applied_discount_cents ?? 0,
+  );
+  if (appliedCardId && appliedDiscountCents > 0) {
+    const debitResult = await atomicDebitGiftCard({
+      cardId: appliedCardId,
+      mpOrderId: String(payment.id ?? externalRef),
+      debitCents: appliedDiscountCents,
+    });
+    if (debitResult.ok) {
+      console.log("[mp-webhook] gift card debited", {
+        code: debitResult.code,
+        debited: debitResult.debitedCents,
+        new_balance: debitResult.newBalanceCents,
+        new_status: debitResult.newStatus,
+      });
+    } else if (debitResult.error === "already_debited") {
+      console.log("[mp-webhook] gift card already debited (idempotent skip)", {
+        card_id: appliedCardId,
+        payment_id: payment.id,
+      });
+    } else {
+      console.error("[mp-webhook] gift card debit FAILED", debitResult);
+    }
+  }
+
+  // ---------- 2) Emissão: gift cards comprados no pedido ----------
+  let itemsSkus: ItemSkuRow[] = [];
+  try {
+    const raw = String(meta.items_skus ?? "");
+    if (raw) itemsSkus = JSON.parse(raw) as ItemSkuRow[];
+  } catch (err) {
+    console.warn("[mp-webhook] failed to parse items_skus", err);
+    return;
+  }
+
+  const giftCardLines = itemsSkus.filter(
+    (it) => it.slug === "vale-presente" && it.giftCardValueCents,
+  );
+  if (giftCardLines.length === 0) return;
+
+  for (const line of giftCardLines) {
+    const valueCents = Number(line.giftCardValueCents);
+    if (!valueCents) continue;
+    for (let i = 0; i < line.qty; i++) {
+      const recipientEmail = line.giftCardRecipientEmail ?? null;
+      const issued = await issueGiftCard({
+        valueCents,
+        buyerEmail,
+        buyerName,
+        recipientEmail,
+        recipientName: line.giftCardRecipientName ?? null,
+        personalMessage: line.giftCardMessage ?? null,
+        mpPurchasePaymentId: String(payment.id ?? ""),
+        mpPurchaseExternalReference: externalRef,
+      });
+      if (!issued.ok) {
+        console.error("[mp-webhook] gift card issuance failed", issued.error);
+        continue;
+      }
+      const emailData: GiftCardIssuedEmailData = {
+        code: issued.card.code,
+        valueCents: issued.card.value_cents,
+        expiresAt: issued.card.expires_at,
+        buyerName,
+        buyerEmail,
+        recipientName: issued.card.recipient_name ?? null,
+        recipientEmail: issued.card.recipient_email ?? null,
+        personalMessage: issued.card.personal_message ?? null,
+      };
+      try {
+        await sendGiftCardIssued(emailData);
+      } catch (err) {
+        console.error("[mp-webhook] gift card email send failed:", err);
+      }
+    }
+  }
+}
+
+/**
+ * Restaura o saldo de um vale-presente quando o pagamento que o usou é
+ * estornado (refunded ou charged_back). Idempotente via UNIQUE constraint
+ * na ledger de redemptions (tipo='refund').
+ *
+ * Estratégia: a `mp_order_id` que usamos no débito original é o
+ * `payment.id`. Procuramos a entrada de débito com esse mp_order_id e,
+ * se encontrarmos, devolvemos o valor pra esse vale específico.
+ */
+async function processGiftCardRefund(payment: MpPayment): Promise<void> {
+  const mpOrderId = String(payment.id ?? "");
+  if (!mpOrderId) return;
+
+  const debit = await findGiftCardByMpOrder(mpOrderId);
+  if (!debit) {
+    // Pagamento estornado não tinha vale aplicado. Nada a fazer.
+    return;
+  }
+
+  // Refund parcial vs total: MP expõe transaction_amount_refunded.
+  // Pra status=refunded sem detalhes, assumimos refund total.
+  const refundedAmountBrl = Number(
+    (payment as unknown as { transaction_amount_refunded?: number })
+      .transaction_amount_refunded ?? 0,
+  );
+  const totalBrl = Number(payment.transaction_amount ?? 0);
+  let refundCents = debit.debitedCents;
+  if (refundedAmountBrl > 0 && totalBrl > 0 && refundedAmountBrl < totalBrl) {
+    // Refund parcial — proporcional ao débito original.
+    refundCents = Math.round(
+      (debit.debitedCents * refundedAmountBrl) / totalBrl,
+    );
+  }
+
+  const result = await refundGiftCard({
+    cardId: debit.cardId,
+    mpOrderId,
+    refundCents,
+  });
+  if (result.ok) {
+    console.log("[mp-webhook] gift card refunded", {
+      code: result.code,
+      refunded: result.refundedCents,
+      new_balance: result.newBalanceCents,
+      new_status: result.newStatus,
+    });
+  } else if (result.error === "already_refunded") {
+    console.log("[mp-webhook] gift card already refunded (idempotent skip)", {
+      payment_id: payment.id,
+    });
+  } else {
+    console.error("[mp-webhook] gift card refund FAILED", result);
+  }
+}
+
 async function generateShippingLabel(payment: MpPayment): Promise<void> {
   const meta = (payment.metadata ?? {}) as Record<string, unknown>;
   // Pickup orders (cliente retira na unidade parceira) não passam pelo
@@ -367,6 +555,14 @@ async function generateShippingLabel(payment: MpPayment): Promise<void> {
     console.log("[mp-webhook] pickup order — skipping ME label", {
       payment_id: payment.id,
       pickup: meta.pickup_name,
+    });
+    return;
+  }
+  // Pedidos 100% digitais (só vale-presente, por exemplo) não geram
+  // etiqueta Melhor Envio — a entrega é por e-mail.
+  if (String(meta.is_all_digital ?? "") === "1") {
+    console.log("[mp-webhook] all-digital order — skipping ME label", {
+      payment_id: payment.id,
     });
     return;
   }
