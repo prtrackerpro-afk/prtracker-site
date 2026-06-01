@@ -85,6 +85,15 @@ const sources = [
     outBase: "public/images/products/my-pr-gym/hero.card",
     resize: { width: 800, height: 592, fit: "cover" },
   },
+  // Plaquinha avulsa Meus RPs — fotos do produto (JPG sources, gera WebP/AVIF)
+  {
+    src: "public/images/products/meus-rps-plaquinha/photo-01.jpg",
+    outBase: "public/images/products/meus-rps-plaquinha/photo-01",
+  },
+  {
+    src: "public/images/products/meus-rps-plaquinha/photo-02.jpg",
+    outBase: "public/images/products/meus-rps-plaquinha/photo-02",
+  },
   // Camisetas (PNG sources — emit JPG fallback + modern variants)
   {
     src: "public/images/products/camiseta-masculina/FT-C.png",
