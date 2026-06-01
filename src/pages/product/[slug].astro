@@ -8,6 +8,7 @@ import AddToCartSimple from "~/components/AddToCartSimple.astro";
 import BarbellConfigurator from "~/components/BarbellConfigurator.astro";
 import TripleBarbellConfigurator from "~/components/TripleBarbellConfigurator.astro";
 import MeusRPsConfigurator from "~/components/MeusRPsConfigurator.astro";
+import MeusRPsPlaquinhaConfigurator from "~/components/MeusRPsPlaquinhaConfigurator.astro";
 import BoardConfigurator from "~/components/BoardConfigurator.astro";
 import NotifyMeForm from "~/components/NotifyMeForm.astro";
 import TrackViewContent from "~/components/TrackViewContent.astro";
@@ -176,6 +177,14 @@ const ogImagePath = PRODUCTS_WITH_DEDICATED_OG.has(slug)
         <div class="product__buy">
           {configurator.isMeusRPs ? (
             <MeusRPsConfigurator
+              slug={slug}
+              title={title}
+              image={primary.src}
+              basePriceCents={priceBase}
+              category={category}
+            />
+          ) : configurator.isMeusRPsPlaquinha ? (
+            <MeusRPsPlaquinhaConfigurator
               slug={slug}
               title={title}
               image={primary.src}

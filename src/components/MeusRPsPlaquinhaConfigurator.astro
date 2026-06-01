@@ -1,0 +1,646 @@
+---
+/**
+ * Configurador "Plaquinha Meus RPs" (PR Runners — plaquinha avulsa).
+ *
+ * UX: lista dinâmica. Começa com 1 linha (dropdown de distância +
+ * input hh:mm:ss); botão "+ adicionar plaquinha" até 4. Duplicatas
+ * permitidas (cliente pode pedir 2× 5km com tempos diferentes).
+ *
+ * Pricing: linear — total = basePriceCents × qtd de plaquinhas
+ * preenchidas válidas. Cliente só consegue add-to-cart com pelo menos
+ * 1 plaquinha com distância + tempo válido.
+ */
+import { RUN_DISTANCES } from "~/lib/catalog";
+import { formatBRL, applyPix } from "~/lib/format";
+
+interface Props {
+  slug: string;
+  title: string;
+  image: string;
+  basePriceCents: number;
+  category?: string;
+}
+
+const { slug, title, image, basePriceCents, category } = Astro.props;
+
+const CONFIG_JSON = JSON.stringify({
+  slug,
+  title,
+  image,
+  basePriceCents,
+  category,
+  distances: RUN_DISTANCES,
+  maxPlates: 4,
+});
+---
+
+<div class="pcfg" data-meusrps-plaquinha-configurator data-config={CONFIG_JSON}>
+  <!-- Preview ao vivo: SVG sintético — fileira de plaquinhas individuais -->
+  <div class="pcfg__preview">
+    <svg
+      viewBox="0 0 320 320"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Preview das plaquinhas avulsas"
+      data-preview-svg
+    >
+      <rect x="0" y="0" width="320" height="320" rx="14" fill="#f5f1ea" />
+      <text
+        x="160"
+        y="32"
+        text-anchor="middle"
+        font-family="Archivo Black, Inter, sans-serif"
+        font-size="14"
+        font-weight="900"
+        fill="#01002A"
+        letter-spacing="0.12em"
+      >SUAS PLAQUINHAS</text>
+
+      <!-- 4 slots verticais — plaquinhas individuais que aparecem
+           conforme o cliente adiciona/preenche. -->
+      <g data-preview-slots>
+        {Array.from({ length: 4 }, (_, i) => {
+          const y = 56 + i * 56;
+          return (
+            <g data-preview-slot={i} transform={`translate(0, ${y})`} opacity="0.18">
+              <!-- Plaquinha avulsa estilizada: bloco preto com tag dist + tempo -->
+              <rect x="22" y="0" width="276" height="44" rx="6" fill="#111111" stroke="#2a2a2a" stroke-width="0.8" />
+              <rect x="30" y="6" width="110" height="32" rx="3" fill="#1d1d1d" stroke="#2c2c2c" stroke-width="0.5" />
+              <text
+                data-preview-dist={i}
+                x="40"
+                y="29"
+                font-family="Archivo Black, Inter, sans-serif"
+                font-size="20"
+                font-weight="900"
+                fill="#FFFFFF"
+                letter-spacing="-0.5"
+              >—</text>
+              <rect x="148" y="6" width="142" height="32" rx="3" fill="#1d1d1d" stroke="#2c2c2c" stroke-width="0.5" />
+              <text
+                data-preview-time={i}
+                x="219"
+                y="29"
+                text-anchor="middle"
+                font-family="Archivo Black, Inter, sans-serif"
+                font-size="18"
+                font-weight="900"
+                fill="#FFFFFF"
+                letter-spacing="0.5"
+              >hh:mm:ss</text>
+            </g>
+          );
+        })}
+      </g>
+    </svg>
+  </div>
+
+  <!-- Lista dinâmica de inputs (1-4) -->
+  <div class="pcfg__list" data-rows>
+    <!-- Linha template (clonada por JS quando o cliente clica em "+ adicionar"). -->
+    <template data-row-template>
+      <div class="pcfg__row" data-row>
+        <div class="pcfg__row-num" data-row-num>1</div>
+        <select class="pcfg__select" data-distance-select aria-label="Distância">
+          <option value="">Distância…</option>
+          {RUN_DISTANCES.map((d) => (
+            <option value={d.key}>{d.label}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          inputmode="numeric"
+          class="pcfg__input"
+          data-time-input
+          placeholder="hh:mm:ss"
+          maxlength="8"
+          autocomplete="off"
+          aria-label="Tempo no formato hh:mm:ss"
+        />
+        <button
+          type="button"
+          class="pcfg__remove"
+          data-remove-row
+          aria-label="Remover plaquinha"
+          title="Remover"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </template>
+  </div>
+
+  <button type="button" class="pcfg__add-row" data-add-row>
+    <span class="pcfg__add-row-icon" aria-hidden="true">+</span>
+    <span>Adicionar plaquinha</span>
+    <span class="pcfg__add-row-count" data-add-row-count>(1 de 4)</span>
+  </button>
+
+  <p class="pcfg__hint">
+    Cada plaquinha custa <strong>{formatBRL(basePriceCents)}</strong>. Pode repetir a mesma distância — útil pra atualizar tempo ou repor plaquinha danificada.
+  </p>
+
+  <!-- Buy block -->
+  <div class="pcfg__buy">
+    <div class="pcfg__price">
+      <div class="pcfg__price-main" data-total>{formatBRL(basePriceCents)}</div>
+      <div class="pcfg__price-pix">
+        <span class="pix-badge">Pix</span>
+        <span class="pcfg__price-pix-value" data-total-pix>{formatBRL(applyPix(basePriceCents))}</span>
+        <span class="pcfg__price-pix-label">5 % OFF</span>
+      </div>
+      <div class="pcfg__price-installments" data-total-installments>
+        ou 3× de {formatBRL(Math.round(basePriceCents / 3))} sem juros
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-lg w-full" data-add-btn disabled>
+      Adicionar ao carrinho
+    </button>
+    <p class="pcfg__ship">
+      Envio para todo o Brasil com rastreio · peça pequena, frete barato
+    </p>
+  </div>
+</div>
+
+<style>
+  .pcfg {
+    display: grid;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 1px solid rgb(1 0 42 / 0.1);
+    border-radius: var(--radius-card);
+    background: var(--color-paper);
+  }
+  @media (min-width: 640px) { .pcfg { padding: 2rem; } }
+
+  .pcfg__preview {
+    background: transparent;
+    border: none;
+    padding: 0.25rem 0 0.5rem;
+    display: flex;
+    justify-content: center;
+  }
+  .pcfg__preview svg {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+    display: block;
+  }
+
+  .pcfg__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .pcfg__row {
+    display: grid;
+    grid-template-columns: auto minmax(110px, 1.1fr) minmax(110px, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--color-brand-white);
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    padding: 0.5rem 0.65rem;
+    transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  }
+  .pcfg__row:has(.pcfg__select:focus-visible),
+  .pcfg__row:has(.pcfg__input:focus-visible),
+  .pcfg__row:hover {
+    border-color: var(--color-brand-navy);
+    transform: translate(-1px, -1px);
+    box-shadow: 2px 2px 0 0 var(--color-brand-navy);
+  }
+  .pcfg__row-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--color-brand-navy);
+    color: var(--color-brand-lime);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .pcfg__select,
+  .pcfg__input {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    background: var(--color-paper);
+    color: var(--color-brand-navy);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+  }
+  .pcfg__select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--color-brand-navy) 50%), linear-gradient(135deg, var(--color-brand-navy) 50%, transparent 50%);
+    background-position: calc(100% - 14px) center, calc(100% - 9px) center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 1.6rem;
+  }
+  .pcfg__select:focus-visible,
+  .pcfg__input:focus-visible {
+    border-color: var(--color-brand-navy);
+    outline: 2px solid var(--color-brand-lime);
+    outline-offset: 1px;
+  }
+  .pcfg__input--invalid {
+    border-color: #b91c1c;
+    outline: 2px solid rgb(185 28 28 / 0.18);
+    outline-offset: 1px;
+  }
+  .pcfg__remove {
+    background: transparent;
+    border: 1px solid rgb(1 0 42 / 0.15);
+    border-radius: var(--radius-card);
+    color: var(--color-brand-gray);
+    cursor: pointer;
+    padding: 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+  }
+  .pcfg__remove:hover {
+    color: #b91c1c;
+    border-color: #b91c1c;
+    background: rgb(185 28 28 / 0.05);
+  }
+  .pcfg__remove[hidden] { display: none; }
+
+  .pcfg__add-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: 1.5px dashed rgb(1 0 42 / 0.25);
+    border-radius: var(--radius-card);
+    color: var(--color-brand-navy);
+    cursor: pointer;
+    padding: 0.65rem 1rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    width: fit-content;
+    transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+  }
+  .pcfg__add-row:hover:not(:disabled) {
+    border-color: var(--color-brand-navy);
+    background: var(--color-brand-lime);
+    transform: translate(-1px, -1px);
+  }
+  .pcfg__add-row:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .pcfg__add-row-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+    font-weight: 900;
+  }
+  .pcfg__add-row-count {
+    color: var(--color-brand-gray);
+    font-weight: 600;
+    font-size: 0.72rem;
+  }
+
+  .pcfg__hint {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--color-brand-gray);
+    margin: 0;
+    line-height: 1.5;
+  }
+  .pcfg__hint strong {
+    color: var(--color-brand-navy);
+  }
+
+  .pcfg__buy {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--color-brand-navy);
+  }
+  .pcfg__price { display: flex; flex-direction: column; gap: 0.2rem; }
+  .pcfg__price-main {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(2.25rem, 2.5vw + 1rem, 3rem);
+    color: var(--color-brand-navy);
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+  .pcfg__price-pix {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .pcfg__price-pix-value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-brand-navy);
+    letter-spacing: 0.02em;
+  }
+  .pcfg__price-pix-label {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .pcfg__price-installments {
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .pcfg__ship {
+    margin: 0;
+    color: var(--color-brand-gray);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .pix-badge {
+    display: inline-block;
+    background: var(--color-brand-lime);
+    color: var(--color-brand-navy);
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--color-brand-navy);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .w-full { width: 100%; }
+</style>
+
+<script>
+  import { cart } from "~/scripts/cart";
+  import { trackAddToCart } from "~/scripts/tracking";
+  import { formatBRL, applyPix } from "~/lib/format";
+  import {
+    normalizeRunTime,
+    RUN_DISTANCES,
+    type RunDistanceKey,
+  } from "~/lib/catalog";
+
+  interface CfgData {
+    slug: string;
+    title: string;
+    image: string;
+    basePriceCents: number;
+    category?: string;
+    maxPlates: number;
+  }
+
+  interface PlateState {
+    distance: RunDistanceKey | "";
+    time: string;          // raw input (masked while typing)
+    normalized: string | null; // null if not yet valid
+  }
+
+  const roots = document.querySelectorAll<HTMLElement>("[data-meusrps-plaquinha-configurator]");
+  roots.forEach((root) => init(root));
+
+  function init(root: HTMLElement): void {
+    if (root.dataset.cfgInit === "1") return;
+    root.dataset.cfgInit = "1";
+
+    const config = JSON.parse(root.dataset.config!) as CfgData;
+    const list = root.querySelector<HTMLElement>("[data-rows]")!;
+    const tmpl = root.querySelector<HTMLTemplateElement>("[data-row-template]")!;
+    const addRowBtn = root.querySelector<HTMLButtonElement>("[data-add-row]")!;
+    const addRowCount = root.querySelector<HTMLElement>("[data-add-row-count]")!;
+    const addBtn = root.querySelector<HTMLButtonElement>("[data-add-btn]")!;
+    const totalEl = root.querySelector<HTMLElement>("[data-total]")!;
+    const totalPixEl = root.querySelector<HTMLElement>("[data-total-pix]")!;
+    const totalInstallmentsEl = root.querySelector<HTMLElement>("[data-total-installments]")!;
+
+    const state: PlateState[] = [];
+
+    function addRow(): void {
+      if (state.length >= config.maxPlates) return;
+      const node = tmpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
+      list.appendChild(node);
+      state.push({ distance: "", time: "", normalized: null });
+      bindRow(node, state.length - 1);
+      renumberRows();
+      updateAddRowBtn();
+      updatePreview();
+      updateTotals();
+    }
+
+    function removeRow(idx: number): void {
+      const rows = list.querySelectorAll<HTMLElement>("[data-row]");
+      const node = rows[idx];
+      if (node) node.remove();
+      state.splice(idx, 1);
+      // Rebind remaining rows (indices shifted).
+      const remaining = list.querySelectorAll<HTMLElement>("[data-row]");
+      remaining.forEach((row, i) => bindRow(row, i));
+      renumberRows();
+      updateAddRowBtn();
+      updatePreview();
+      updateTotals();
+    }
+
+    function bindRow(row: HTMLElement, idx: number): void {
+      const select = row.querySelector<HTMLSelectElement>("[data-distance-select]")!;
+      const input = row.querySelector<HTMLInputElement>("[data-time-input]")!;
+      const removeBtn = row.querySelector<HTMLButtonElement>("[data-remove-row]")!;
+
+      select.value = state[idx]?.distance ?? "";
+      input.value = state[idx]?.time ?? "";
+
+      // Strip and rebind listeners by cloning (since rebind happens on splice).
+      const newSelect = select.cloneNode(true) as HTMLSelectElement;
+      const newInput = input.cloneNode(true) as HTMLInputElement;
+      const newRemove = removeBtn.cloneNode(true) as HTMLButtonElement;
+      select.replaceWith(newSelect);
+      input.replaceWith(newInput);
+      removeBtn.replaceWith(newRemove);
+
+      newSelect.addEventListener("change", () => {
+        const item = state[idx];
+        if (!item) return;
+        item.distance = newSelect.value as RunDistanceKey;
+        updatePreview();
+        updateTotals();
+      });
+
+      newInput.addEventListener("input", () => {
+        const item = state[idx];
+        if (!item) return;
+        const masked = formatTimeMask(newInput.value);
+        if (newInput.value !== masked) newInput.value = masked;
+        item.time = masked;
+        const normalized = normalizeRunTime(masked);
+        item.normalized = normalized;
+        if (normalized) {
+          newInput.classList.remove("pcfg__input--invalid");
+        } else if (masked.length === 8) {
+          newInput.classList.add("pcfg__input--invalid");
+        } else {
+          newInput.classList.remove("pcfg__input--invalid");
+        }
+        updatePreview();
+        updateTotals();
+      });
+
+      newInput.addEventListener("blur", () => {
+        const item = state[idx];
+        if (!item) return;
+        const raw = newInput.value.trim();
+        if (raw === "") return;
+        const norm = normalizeRunTime(raw);
+        if (norm) {
+          newInput.value = norm;
+          item.time = norm;
+          item.normalized = norm;
+          newInput.classList.remove("pcfg__input--invalid");
+          updatePreview();
+          updateTotals();
+        }
+      });
+
+      newRemove.addEventListener("click", () => {
+        // Quando só há 1 linha, não deixa remover (mantém UX consistente).
+        if (state.length <= 1) return;
+        removeRow(idx);
+      });
+
+      // Hide remove on the only row.
+      newRemove.hidden = state.length <= 1;
+    }
+
+    function renumberRows(): void {
+      const rows = list.querySelectorAll<HTMLElement>("[data-row]");
+      rows.forEach((row, i) => {
+        const num = row.querySelector<HTMLElement>("[data-row-num]");
+        if (num) num.textContent = String(i + 1);
+        const removeBtn = row.querySelector<HTMLButtonElement>("[data-remove-row]");
+        if (removeBtn) removeBtn.hidden = state.length <= 1;
+      });
+    }
+
+    function updateAddRowBtn(): void {
+      const atMax = state.length >= config.maxPlates;
+      addRowBtn.disabled = atMax;
+      addRowCount.textContent = `(${state.length} de ${config.maxPlates})`;
+      if (atMax) {
+        addRowBtn.setAttribute("aria-disabled", "true");
+      } else {
+        addRowBtn.removeAttribute("aria-disabled");
+      }
+    }
+
+    function updatePreview(): void {
+      for (let i = 0; i < config.maxPlates; i++) {
+        const slot = root.querySelector<SVGGElement>(`[data-preview-slot="${i}"]`);
+        const distEl = root.querySelector<SVGTextElement>(`[data-preview-dist="${i}"]`);
+        const timeEl = root.querySelector<SVGTextElement>(`[data-preview-time="${i}"]`);
+        if (!slot) continue;
+        const item = state[i];
+        if (item && (item.distance || item.normalized)) {
+          slot.setAttribute("opacity", "1");
+          if (distEl) {
+            const dist = RUN_DISTANCES.find((d) => d.key === item.distance);
+            distEl.textContent = dist?.label ?? "—";
+          }
+          if (timeEl) {
+            timeEl.textContent = item.normalized ?? "hh:mm:ss";
+          }
+        } else {
+          slot.setAttribute("opacity", item ? "0.4" : "0.18");
+          if (distEl) distEl.textContent = "—";
+          if (timeEl) timeEl.textContent = "hh:mm:ss";
+        }
+      }
+    }
+
+    function validPlates(): Array<{ distance: RunDistanceKey; time: string }> {
+      return state
+        .filter((s): s is { distance: RunDistanceKey; time: string; normalized: string } =>
+          !!s.distance && !!s.normalized,
+        )
+        .map((s) => ({ distance: s.distance, time: s.normalized! }));
+    }
+
+    function updateTotals(): void {
+      const count = validPlates().length;
+      const total = config.basePriceCents * Math.max(count, 1);
+      totalEl.textContent = formatBRL(total);
+      totalPixEl.textContent = formatBRL(applyPix(total));
+      totalInstallmentsEl.textContent = `ou 3× de ${formatBRL(Math.round(total / 3))} sem juros`;
+      addBtn.disabled = count === 0;
+    }
+
+    function formatTimeMask(raw: string): string {
+      const digits = raw.replace(/\D/g, "").slice(0, 6);
+      if (digits.length === 0) return "";
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 4) return digits.slice(0, 2) + ":" + digits.slice(2);
+      return digits.slice(0, 2) + ":" + digits.slice(2, 4) + ":" + digits.slice(4);
+    }
+
+    addRowBtn.addEventListener("click", addRow);
+
+    addBtn.addEventListener("click", () => {
+      const plates = validPlates();
+      if (plates.length === 0) return;
+
+      const id = buildCartId(config.slug, plates);
+      const desc = plates.map((p) => {
+        const dist = RUN_DISTANCES.find((d) => d.key === p.distance);
+        return `${dist?.label ?? p.distance} ${p.time}`;
+      }).join(" · ");
+      const fullTitle = `${config.title} · ${desc}`;
+      const totalCents = config.basePriceCents * plates.length;
+
+      cart.add({
+        id,
+        productSlug: config.slug,
+        title: fullTitle,
+        image: config.image,
+        unitPriceCents: totalCents, // line price = qtd × base; quantity=1 (uma linha agrupada)
+        quantity: 1,
+        runningPlates: plates,
+      });
+      trackAddToCart({
+        slug: config.slug,
+        title: fullTitle,
+        unitPriceCents: totalCents,
+        quantity: 1,
+        category: config.category,
+      });
+    });
+
+    // Inicial: 1 linha.
+    addRow();
+  }
+
+  function buildCartId(
+    slug: string,
+    plates: Array<{ distance: RunDistanceKey; time: string }>,
+  ): string {
+    const key = plates.map((p, i) => `${i}:${p.distance}=${p.time}`).join("|");
+    return [slug, key].filter(Boolean).join("::");
+  }
+</script>

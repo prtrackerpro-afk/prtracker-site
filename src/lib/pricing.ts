@@ -17,7 +17,7 @@ import {
   normalizeRunTime,
   type PlateId,
 } from "./catalog";
-import type { CartItem, BoardBarbell } from "./cart-types";
+import type { CartItem, BoardBarbell, RunningPlate } from "./cart-types";
 
 const platesById = new Map(PLATES.map((p) => [p.id, p]));
 
@@ -93,6 +93,35 @@ export function recomputeLine(
     return {
       unitPriceCents: priceBase,
       lineTotalCents: priceBase * input.quantity,
+      title: lineTitle,
+      picture_url,
+    };
+  }
+
+  // Plaquinha avulsa Meus RPs — preço linear por plaquinha. O cliente
+  // envia 1-4 plaquinhas em runningPlates; agrupamos numa única linha
+  // com unitPriceCents = base × N (quantity=1). Cada plaquinha tem
+  // distance + time já normalizado pelo schema Zod.
+  if (configurator.isMeusRPsPlaquinha) {
+    const plates = input.runningPlates ?? [];
+    if (plates.length === 0) {
+      throw new Error(`${title}: adicione pelo menos uma plaquinha antes de finalizar.`);
+    }
+    if (plates.length > 4) {
+      throw new Error(`${title}: máximo de 4 plaquinhas por pedido.`);
+    }
+    // Re-normaliza os tempos (defense in depth — Zod já valida formato).
+    const normalized: RunningPlate[] = [];
+    for (const p of plates) {
+      const time = normalizeRunTime(p.time);
+      if (!time) throw new Error(`Tempo inválido para ${p.distance}: "${p.time}"`);
+      normalized.push({ distance: p.distance, time });
+    }
+    const unit = priceBase * normalized.length;
+    const lineTitle = buildPlaquinhaTitle(title, normalized);
+    return {
+      unitPriceCents: unit,
+      lineTotalCents: unit * input.quantity,
       title: lineTitle,
       picture_url,
     };
@@ -238,6 +267,12 @@ function buildMeusRPsTitle(
     if (times[key]) parts.push(`${key.toUpperCase()} ${times[key]}`);
   }
   return parts.length > 0 ? `${base} · ${parts.join(" · ")}` : `${base} · (sem tempos)`;
+}
+
+function buildPlaquinhaTitle(base: string, plates: RunningPlate[]): string {
+  const parts = plates.map((p) => `${p.distance.toUpperCase()} ${p.time}`);
+  const suffix = plates.length === 1 ? "" : ` (${plates.length} unidades)`;
+  return `${base} · ${parts.join(" + ")}${suffix}`;
 }
 
 function buildBoardTitle(

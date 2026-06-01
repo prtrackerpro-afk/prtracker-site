@@ -48,6 +48,7 @@ export interface ItemSku {
   exercise?: string;
   plates?: Array<{ plateId: string; pairs: number }>;
   runningTimes?: Record<string, string>;
+  runningPlates?: Array<{ distance: string; time: string }>;
   boardColor?: "cobre" | "preto" | "rosa";
   boardBarbells?: Array<{
     exercise: string;
@@ -122,6 +123,39 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
           ncm: NCM_KIT,
         },
       ];
+    }
+    case "meus-rps-plaquinha": {
+      // Plaquinha avulsa: cada plaquinha vira uma SkuLine separada
+      // (mesmo SKU pode aparecer 2×+ com tempos diferentes no `nome`).
+      // unitPriceCents da cart line = base × N; preço por SKU = base.
+      const plates = item.runningPlates ?? [];
+      const out: SkuLine[] = [];
+      const unitPriceEach =
+        plates.length > 0
+          ? item.unit_price_cents / 100 / plates.length
+          : item.unit_price_cents / 100;
+      for (const p of plates) {
+        const distLabel = p.distance.toUpperCase(); // "5KM" etc.
+        out.push({
+          codigo: `RUNNER-PLAQ-${distLabel}`,
+          nome: `Plaquinha Meus RPs — ${distLabel} ${p.time}`,
+          qty: item.qty,
+          unitPrice: unitPriceEach,
+          ncm: NCM_KIT,
+        });
+      }
+      // Fallback: se chegou sem plaquinhas (não deve acontecer — Zod barra),
+      // não quebra o pedido.
+      if (out.length === 0) {
+        out.push({
+          codigo: "RUNNER-PLAQ",
+          nome: "Plaquinha Meus RPs — PR Runners",
+          qty: item.qty,
+          unitPrice: item.unit_price_cents / 100,
+          ncm: NCM_KIT,
+        });
+      }
+      return out;
     }
     case "pr-tracker-board-3":
     case "pr-tracker-board-2": {

@@ -72,6 +72,7 @@ A partir de **mai/2026** o portfólio também inclui a linha **PR Runners** — 
 #### PR Runners (linha de corrida — desde mai/2026)
 
 - **Meus RPs** — placa preta com 4 distâncias clássicas de corrida (5, 10, 21, 42 km). Cliente digita o tempo por distância (hh:mm:ss); sem tempo = cadeado fechado (default), pronto pra desbloquear quando bater o RP.
+- **Plaquinha Avulsa Meus RPs** (desde jun/2026) — plaquinha modular para atualizar tempos no Meus RPs original. R$ 12 cada, até 4 por pedido. Cliente escolhe distância + tempo; pode comprar duplicatas (atualização ou reposição). Configurador é uma lista dinâmica (+ adicionar plaquinha).
 
 ### Composição oficial do produto (usar sempre)
 
@@ -90,6 +91,7 @@ A partir de **mai/2026** o portfólio também inclui a linha **PR Runners** — 
 | Deadlift Set | MDF & Borracha |
 | PR Board (2 e 3 Exercícios) | PLA premium (impressão 3D) — Cobre / Preto / Rosa |
 | Meus RPs (PR Runners) | PLA premium preto fosco (impressão 3D) |
+| Plaquinha Avulsa Meus RPs (PR Runners) | PLA premium preto fosco (impressão 3D) — mesma plaquinha modular do Meus RPs |
 
 ### My PR Set — exercícios disponíveis
 
@@ -137,8 +139,9 @@ Linha **PR Runners** (desde mai/2026):
 | Produto | Preço |
 |---------|------:|
 | Meus RPs | R$ 139,90 |
+| Plaquinha Avulsa Meus RPs | R$ 12,00 por plaquinha (1–4) |
 
-> O Meus RPs **não** soma anilhas (é placa só, sem barras). Os Boards (2 ex e 3 ex) somam anilhas como os kits — base + R$ 7/par escolhido em cada barra.
+> O Meus RPs **não** soma anilhas (é placa só, sem barras). Os Boards (2 ex e 3 ex) somam anilhas como os kits — base + R$ 7/par escolhido em cada barra. A Plaquinha Avulsa é linear: total = R$ 12 × nº de plaquinhas.
 
 ### Anilhas avulsas (tabela única — mesmo preço em qualquer set)
 
