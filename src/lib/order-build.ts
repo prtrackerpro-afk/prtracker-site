@@ -52,7 +52,6 @@ const runningTimesSchema = z
   .strict();
 
 const runningPlateSchema = z.object({
-  distance: z.enum(["5km", "10km", "21km", "42km"]),
   time: runTimeSchema,
 });
 
@@ -210,7 +209,7 @@ export async function buildOrder(
     exercise?: string;
     plates?: Array<{ plateId: string; pairs: number }>;
     runningTimes?: Record<string, string>;
-    runningPlates?: Array<{ distance: string; time: string }>;
+    runningPlates?: Array<{ time: string }>;
     boardColor?: "cobre" | "preto" | "rosa";
     boardBarbells?: Array<{
       exercise: string;

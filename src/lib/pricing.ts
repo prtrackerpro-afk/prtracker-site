@@ -123,8 +123,8 @@ export function recomputeLine(
 
   // Plaquinha avulsa Meus RPs — preço linear por plaquinha. O cliente
   // envia 1-4 plaquinhas em runningPlates; agrupamos numa única linha
-  // com unitPriceCents = base × N (quantity=1). Cada plaquinha tem
-  // distance + time já normalizado pelo schema Zod.
+  // com unitPriceCents = base × N (quantity=1). Cada plaquinha tem só
+  // o tempo (a plaquinha é universal, encaixa em qualquer slot).
   if (configurator.isMeusRPsPlaquinha) {
     const plates = input.runningPlates ?? [];
     if (plates.length === 0) {
@@ -137,8 +137,8 @@ export function recomputeLine(
     const normalized: RunningPlate[] = [];
     for (const p of plates) {
       const time = normalizeRunTime(p.time);
-      if (!time) throw new Error(`Tempo inválido para ${p.distance}: "${p.time}"`);
-      normalized.push({ distance: p.distance, time });
+      if (!time) throw new Error(`Tempo inválido: "${p.time}"`);
+      normalized.push({ time });
     }
     const unit = priceBase * normalized.length;
     const lineTitle = buildPlaquinhaTitle(title, normalized);
@@ -293,9 +293,9 @@ function buildMeusRPsTitle(
 }
 
 function buildPlaquinhaTitle(base: string, plates: RunningPlate[]): string {
-  const parts = plates.map((p) => `${p.distance.toUpperCase()} ${p.time}`);
+  const times = plates.map((p) => p.time).join(" + ");
   const suffix = plates.length === 1 ? "" : ` (${plates.length} unidades)`;
-  return `${base} · ${parts.join(" + ")}${suffix}`;
+  return `${base} · ${times}${suffix}`;
 }
 
 function buildBoardTitle(

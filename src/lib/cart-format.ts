@@ -74,13 +74,12 @@ export function formatCartItemDisplay(item: CartItem): CartItemDisplay {
     return { titleSuffix: "", subLines };
   }
 
-  // Plaquinha avulsa Meus RPs: lista de 1-4 plaquinhas (distância + tempo).
-  // Duplicatas são permitidas (ex: 5km × 2), então iteramos pela ordem de
-  // entrada sem deduplicar.
+  // Plaquinha avulsa Meus RPs: lista de 1-4 plaquinhas (só tempo — a
+  // plaquinha é universal, encaixa em qualquer slot). Duplicatas
+  // permitidas; iteramos pela ordem de entrada.
   if (item.runningPlates && item.runningPlates.length > 0) {
     for (const p of item.runningPlates) {
-      const dist = RUN_DISTANCES.find((d) => d.key === p.distance);
-      subLines.push(`${dist?.label ?? p.distance} — ${p.time}`);
+      subLines.push(`Plaquinha — ${p.time}`);
     }
     const suffix = item.runningPlates.length === 1 ? "" : ` — ${item.runningPlates.length} plaquinhas`;
     return { titleSuffix: suffix, subLines };
