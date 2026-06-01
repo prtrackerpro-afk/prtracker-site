@@ -51,6 +51,11 @@ const runningTimesSchema = z
   })
   .strict();
 
+const runningPlateSchema = z.object({
+  distance: z.enum(["5km", "10km", "21km", "42km"]),
+  time: runTimeSchema,
+});
+
 export const cartItemSchema = z.object({
   id: z.string().min(1).max(200),
   productSlug: z.string().min(1).max(100),
@@ -62,6 +67,7 @@ export const cartItemSchema = z.object({
   exercise: z.string().max(60).optional(),
   size: z.string().max(10).optional(),
   runningTimes: runningTimesSchema.optional(),
+  runningPlates: z.array(runningPlateSchema).min(1).max(4).optional(),
   boardColor: z.enum(["cobre", "preto", "rosa"]).optional(),
   boardBarbells: z.array(boardBarbellSchema).min(2).max(3).optional(),
   /** Vale-presente: denominação em cents (R$ 100 / 150 / 200 / 300 / 500). */
@@ -204,6 +210,7 @@ export async function buildOrder(
     exercise?: string;
     plates?: Array<{ plateId: string; pairs: number }>;
     runningTimes?: Record<string, string>;
+    runningPlates?: Array<{ distance: string; time: string }>;
     boardColor?: "cobre" | "preto" | "rosa";
     boardBarbells?: Array<{
       exercise: string;
@@ -257,6 +264,9 @@ export async function buildOrder(
         ...(input.runningTimes && Object.keys(input.runningTimes).length > 0
           ? { runningTimes: input.runningTimes as Record<string, string> }
           : {}),
+        ...(input.runningPlates && input.runningPlates.length > 0
+          ? { runningPlates: input.runningPlates }
+          : {}),
         ...(input.boardColor ? { boardColor: input.boardColor } : {}),
         ...(input.boardBarbells && input.boardBarbells.length > 0
           ? { boardBarbells: input.boardBarbells }
@@ -279,9 +289,12 @@ export async function buildOrder(
       if (!isDigital) {
         const dims = product.data.shipping;
         const isStandaloneAnilhas = product.data.slug === "anilhas";
+        const isStandalonePlaquinha = product.data.slug === "meus-rps-plaquinha";
         const totalPairs = isStandaloneAnilhas
           ? (input.plates ?? []).reduce((n, p) => n + p.pairs, 0) || 1
-          : 1;
+          : isStandalonePlaquinha
+            ? (input.runningPlates?.length ?? 1)
+            : 1;
         const weightKg = (dims.weight_g * totalPairs) / 1000;
         for (let q = 0; q < input.quantity; q++) {
           shippingVolumes.push({

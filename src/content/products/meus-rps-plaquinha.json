@@ -1,0 +1,39 @@
+{
+  "slug": "meus-rps-plaquinha",
+  "title": "Plaquinha Meus RPs",
+  "tagline": "Bateu um RP novo? Atualize só a plaquinha.",
+  "category": "pr-runners",
+  "priceBase": 1200,
+  "priceFrom": false,
+  "shipping": { "weight_g": 60, "length_cm": 12, "width_cm": 6, "height_cm": 2 },
+  "shortDescription": "Plaquinha avulsa para atualizar o seu Meus RPs. Cada plaquinha substitui um tempo no produto original — você pode comprar até 4 por pedido. R$ 12 cada.",
+  "longDescriptionHtml": "<p>Cada linha do <strong>Meus RPs</strong> é uma plaquinha modular que encaixa na placa principal. Bateu um RP novo? Substitui. Quebrou? Substitui. Comprou o Meus RPs com cadeado e finalmente desbloqueou a maratona? Substitui.</p><p>Esta página vende a <strong>plaquinha avulsa</strong> — sem a placa-base. Escolha a distância (5, 10, 21 ou 42 km) e digite o tempo no formato hh:mm:ss. Você pode adicionar até <strong>4 plaquinhas</strong> no mesmo pedido (mesma distância repetida também conta — caso uma quebrou e você quer trocar com tempo novo, por exemplo).</p><p>Mesmo material da placa original: PLA premium preto fosco, lettering branco em alto relevo, tipografia Archivo Black. Compatível só com o Meus RPs — não serve para outras peças da linha.</p>",
+  "images": [
+    { "src": "/images/products/meus-rps-plaquinha/photo-01.jpg", "alt": "Meus RPs com plaquinhas modulares — destaque para a plaquinha 5KM 00:22:30", "width": 800, "height": 800 },
+    { "src": "/images/products/meus-rps-plaquinha/photo-02.jpg", "alt": "Close-up da plaquinha avulsa 5KM 00:22:30 — formato modular para atualização", "width": 1000, "height": 260 }
+  ],
+  "specs": [
+    { "label": "Plaquinha", "value": "PLA premium · Preto fosco · ~100 × 38 mm" },
+    { "label": "Lettering", "value": "Archivo Black · Branco em alto relevo" },
+    { "label": "Distâncias disponíveis", "value": "5 km · 10 km · 21 km · 42 km" },
+    { "label": "Quantidade por pedido", "value": "1 a 4 plaquinhas (qualquer combinação)" },
+    { "label": "Compatibilidade", "value": "Apenas para o produto Meus RPs (PR Runners)" }
+  ],
+  "faq": [
+    { "question": "Como a plaquinha encaixa no Meus RPs?", "answer": "A placa principal do Meus RPs tem 4 slots modulares — você desencaixa a plaquinha antiga e encaixa a nova. Nenhuma cola ou ferramenta necessária." },
+    { "question": "Posso comprar a mesma distância duas vezes?", "answer": "Pode. Os dois casos mais comuns: (1) plaquinha original danificou e você quer uma reposição com o mesmo tempo, (2) você bateu o RP de novo e quer guardar a antiga + colocar a nova. É só adicionar duas vezes a mesma distância com os tempos certos." },
+    { "question": "E se eu não tiver tempo ainda? Posso pedir só a plaquinha de cadeado?", "answer": "Não — a plaquinha de cadeado já vem no Meus RPs original. Aqui só pedimos as plaquinhas com tempo digitado. Se você quer voltar uma distância para cadeado, é só desencaixar a do tempo (a do cadeado fica guardada com você)." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Como é uma peça pequena e leve, o frete sai bem barato." }
+  ],
+  "configurator": {
+    "enabled": true,
+    "isAnilhasOnly": false,
+    "hasExerciseSelector": false,
+    "isTripleBarbell": false,
+    "isMeusRPs": false,
+    "isMeusRPsPlaquinha": true,
+    "isBoard": false
+  },
+  "featured": false,
+  "priority": 9
+}

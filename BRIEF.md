@@ -68,9 +68,9 @@ Tom de voz: direto, motivacional, brasileiro, premium — "Sua marca. Seu PR." /
 
 ---
 
-## Catálogo de produtos (11 SKUs — preços oficiais — tabela única)
+## Catálogo de produtos (12 SKUs — preços oficiais — tabela única)
 
-Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grátis (≥ R$ 100) e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379). **Linha PR Runners** estreia em mai/2026 com o Meus RPs (R$ 139,90) — primeira expansão para corrida.
+Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grátis (≥ R$ 100) e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379). **Linha PR Runners** estreia em mai/2026 com o Meus RPs (R$ 139,90) — primeira expansão para corrida. Em **jun/2026** a linha ganha a **Plaquinha Avulsa Meus RPs** (R$ 12 × 1–4 unidades) — peça de manutenção pra atualizar tempos sem comprar a placa inteira.
 
 | # | Produto | Categoria | Preço base | Configurador | Obs. |
 |---|---------|-----------|-----------:|:------------:|------|
@@ -82,9 +82,10 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grát
 | 6 | **PR Board 2 Exercícios** | pr-trackers | **R$ 179,90** | Sim — cor (Cobre/Preto/Rosa) + 2 exercícios + 2 barras | Placa PLA com 2 exercícios escolhidos (default Arranco/Arremesso). |
 | 7 | **My PR Gym** *(EM BREVE)* | pr-trackers | **R$ 379,00** | Sim — **3 barras independentes** (Supino, Agachamento, Levantamento Terra) | Gym completo em miniatura. Compra bloqueada; botão "Notifique-me quando lançar" (email + telefone) — envia email pra `contato@prtracker.com.br` com assunto "Novo Interessado no MY PR Gym". |
 | 8 | **Meus RPs** (PR Runners) | pr-runners | **R$ 139,90** | Sim — 4 tempos hh:mm:ss (5/10/21/42 km) | Primeira peça da linha de corrida. Tempo opcional por distância; vazio = cadeado. Sem barras nem anilhas. |
-| 9 | Anilhas Avulsas | anilhas | **a partir de R$ 7,00** | Sim (modo anilhas-only) | Sem barra, só pares |
-| 10 | Camiseta Masculina | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
-| 11 | Camiseta Feminina Baby Look | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
+| 9 | **Plaquinha Avulsa Meus RPs** (PR Runners) | pr-runners | **R$ 12,00 × 1–4** | Sim — lista dinâmica (distância + tempo); até 4 plaquinhas; duplicatas permitidas | Peça modular de reposição/atualização para o Meus RPs original. SKUs Bling: `RUNNER-PLAQ-5KM`/`-10KM`/`-21KM`/`-42KM` (uma linha por plaquinha). |
+| 10 | Anilhas Avulsas | anilhas | **a partir de R$ 7,00** | Sim (modo anilhas-only) | Sem barra, só pares |
+| 11 | Camiseta Masculina | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
+| 12 | Camiseta Feminina Baby Look | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
 
 ### Categorias (enum)
 

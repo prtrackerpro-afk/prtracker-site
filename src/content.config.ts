@@ -81,6 +81,13 @@ const products = defineCollection({
          */
         isMeusRPs: z.boolean().default(false),
         /**
+         * "Plaquinha Meus RPs" (PR Runners): venda de plaquinhas avulsas
+         * pra atualizar tempos no Meus RPs original. Lista dinâmica de
+         * até 4 itens (distância + tempo). Preço linear: priceBase × qtd.
+         * Duplicatas permitidas (mesma distância mais de uma vez).
+         */
+        isMeusRPsPlaquinha: z.boolean().default(false),
+        /**
          * "PR Tracker Board" — placa colorida com N exercícios
          * configuráveis (cor + lista de exercícios + N barras de
          * anilhas independentes). `boardExerciseCount` define N
@@ -120,6 +127,7 @@ const products = defineCollection({
         hasExerciseSelector: false,
         isTripleBarbell: false,
         isMeusRPs: false,
+        isMeusRPsPlaquinha: false,
         isBoard: false,
         isGiftCard: false,
       }),

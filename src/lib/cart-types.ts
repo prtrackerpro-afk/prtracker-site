@@ -23,6 +23,18 @@ export interface BoardBarbell {
 /** Tempos do Meus RPs. Cada chave omitida (ou vazia) vira cadeado no produto. */
 export type RunningTimes = Partial<Record<RunDistanceKey, string>>;
 
+/**
+ * Uma plaquinha avulsa (produto "meus-rps-plaquinha"). 1 a 4 por cart line.
+ * Cada plaquinha é independente — distância + tempo digitado pelo cliente.
+ * Duplicatas permitidas (cliente pode comprar 2× 5km com tempos diferentes).
+ */
+export interface RunningPlate {
+  /** Distância da plaquinha (5km/10km/21km/42km). */
+  distance: RunDistanceKey;
+  /** Tempo no formato canônico "hh:mm:ss". */
+  time: string;
+}
+
 export interface CartItem {
   /** Stable id — hash of product slug + config so repeats merge into one line. */
   id: string;
@@ -44,6 +56,8 @@ export interface CartItem {
   size?: string;
   /** Tempos digitados pelo cliente (Meus RPs). */
   runningTimes?: RunningTimes;
+  /** Plaquinhas avulsas (1 a 4) — produto Plaquinha Meus RPs. */
+  runningPlates?: RunningPlate[];
   /** Cor da placa (PR Tracker Board). */
   boardColor?: BoardColor;
   /** Barras configuradas no Board (2 ou 3, top→bottom). */
