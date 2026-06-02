@@ -3,7 +3,7 @@ import { getCollection } from "astro:content";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { MAX_INSTALLMENTS } from "~/lib/catalog";
 import { buildOrder, orderPayloadSchema } from "~/lib/order-build";
-import { extractTrackingCookies } from "~/lib/tracking-cookies";
+import { extractTrackingCookies, flattenUtm } from "~/lib/tracking-cookies";
 
 export const prerender = false;
 
@@ -67,6 +67,7 @@ export const POST: APIRoute = async ({ request }) => {
     ...(tracking.fbp ? { fbp: tracking.fbp } : {}),
     ...(tracking.fbc ? { fbc: tracking.fbc } : {}),
     ...(tracking.gaClientId ? { ga_client_id: tracking.gaClientId } : {}),
+    ...flattenUtm(tracking.utm),
   };
 
   // Shape items for MP's Preference API (adds currency_id, drops empty

@@ -33,6 +33,18 @@ export type TrackingContext = {
   clientUserAgent?: string;
   /** Canonical URL for the conversion page. Defaults to /obrigado. */
   eventSourceUrl?: string;
+  /**
+   * UTM attribution (first-touch) capturada no Analytics.astro via cookie
+   * `pr_utm`. Vai pro custom_data do CAPI e pros params do GA4 MP pra
+   * fechar atribuição entre Meta/Google/orgânico/direto.
+   */
+  utm?: {
+    source?: string;
+    medium?: string;
+    campaign?: string;
+    term?: string;
+    content?: string;
+  };
 };
 
 function sha256(s: string): string {
@@ -139,6 +151,17 @@ export async function sendCapiPurchase(
     ? Math.floor(new Date(payment.date_approved).getTime() / 1000)
     : Math.floor(Date.now() / 1000);
 
+  // UTM attribution — Meta aceita chaves arbitrárias em custom_data; ficam
+  // disponíveis como breakdowns em offline events e em relatórios de
+  // atribuição. Só inclui quando há valor pra não poluir o payload.
+  const utm = ctx.utm ?? {};
+  const utmFields: Record<string, string> = {};
+  if (utm.source) utmFields.utm_source = utm.source;
+  if (utm.medium) utmFields.utm_medium = utm.medium;
+  if (utm.campaign) utmFields.utm_campaign = utm.campaign;
+  if (utm.content) utmFields.utm_content = utm.content;
+  if (utm.term) utmFields.utm_term = utm.term;
+
   const body = {
     data: [
       {
@@ -155,6 +178,7 @@ export async function sendCapiPurchase(
           content_type: "product",
           num_items: numItems,
           order_id: String(payment.external_reference ?? payment.id),
+          ...utmFields,
         },
       },
     ],
@@ -310,6 +334,15 @@ export async function sendGa4Purchase(
     items: gaItems,
   };
   if (meta.coupon_code) params.coupon = String(meta.coupon_code);
+  // GA4 reconhece `source/medium/campaign/term/content` como campos nativos
+  // de atribuição quando vêm no event-level params (event-scoped traffic
+  // source). Mando todos que existirem.
+  const utm = ctx.utm ?? {};
+  if (utm.source) params.source = utm.source;
+  if (utm.medium) params.medium = utm.medium;
+  if (utm.campaign) params.campaign = utm.campaign;
+  if (utm.term) params.term = utm.term;
+  if (utm.content) params.content = utm.content;
 
   const body = {
     client_id: clientId,

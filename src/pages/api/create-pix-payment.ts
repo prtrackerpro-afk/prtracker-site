@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { buildOrder, orderPayloadSchema } from "~/lib/order-build";
-import { extractTrackingCookies } from "~/lib/tracking-cookies";
+import { extractTrackingCookies, flattenUtm } from "~/lib/tracking-cookies";
 
 export const prerender = false;
 
@@ -100,6 +100,7 @@ export const POST: APIRoute = async ({ request }) => {
     ...(tracking.fbp ? { fbp: tracking.fbp } : {}),
     ...(tracking.fbc ? { fbc: tracking.fbc } : {}),
     ...(tracking.gaClientId ? { ga_client_id: tracking.gaClientId } : {}),
+    ...flattenUtm(tracking.utm),
   };
 
   const accessToken = import.meta.env.MP_ACCESS_TOKEN;

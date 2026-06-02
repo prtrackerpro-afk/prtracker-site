@@ -252,11 +252,20 @@ export const POST: APIRoute = async ({ request }) => {
   // aqui pra enriquecer o Purchase no CAPI e GA4 MP. Sem eles o match rate
   // cai ~10-15pp e o GA4 atribui a "(direct)" em vez da sessão original.
   const meta = (payment.metadata ?? {}) as Record<string, unknown>;
+  const utmCtx = {
+    source: meta.utm_source ? String(meta.utm_source) : undefined,
+    medium: meta.utm_medium ? String(meta.utm_medium) : undefined,
+    campaign: meta.utm_campaign ? String(meta.utm_campaign) : undefined,
+    term: meta.utm_term ? String(meta.utm_term) : undefined,
+    content: meta.utm_content ? String(meta.utm_content) : undefined,
+  };
+  const hasUtm = !!(utmCtx.source || utmCtx.medium || utmCtx.campaign);
   const trackingCtx = {
     fbp: meta.fbp ? String(meta.fbp) : undefined,
     fbc: meta.fbc ? String(meta.fbc) : undefined,
     gaClientId: meta.ga_client_id ? String(meta.ga_client_id) : undefined,
     clientUserAgent: request.headers.get("user-agent") ?? undefined,
+    ...(hasUtm ? { utm: utmCtx } : {}),
   };
 
   try {
