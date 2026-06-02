@@ -1,7 +1,8 @@
 ---
 /**
  * Pop-up de boas-vindas que distribui o cupom de campanha `prlovers`
- * (Dia dos Namorados — 10 % OFF + frete grátis acima de R$ 100, expira 12/06).
+ * (Dia dos Namorados — 10 % OFF acima de R$ 100, expira 12/06). Frete
+ * grátis já é baseline desde jun/2026; o popup foca só no desconto.
  *
  * Aparece UMA vez por janela de 2 h por máquina (controlado pelo mesmo
  * `prt_prlovers_started_at` em localStorage que o FreteGratisBanner
@@ -75,13 +76,13 @@ import Copy from "@lucide/astro/icons/copy";
       <span class="fg-popup__title-plus" aria-hidden="true">
         <Heart size={18} />
       </span>
-      <span class="fg-popup__title-line">frete grátis</span>
+      <span class="fg-popup__title-line">no pedido</span>
     </h2>
 
     <p class="fg-popup__tagline">pra quem ama um PR</p>
 
     <p class="fg-popup__subtitle">
-      Em compras acima de <strong>R$ 100</strong> · qualquer lugar do Brasil
+      Em compras acima de <strong>R$ 100</strong> · frete grátis sempre, em qualquer CEP do Brasil
     </p>
 
     <div class="fg-popup__coupon">

@@ -120,7 +120,7 @@ Linha **PR Runners** (desde mai/2026):
 
 ## Preços oficiais (reprecificação — maio 2026)
 
-> Estratégia: aumentamos o preço-base dos kits e reduzimos o preço das anilhas avulsas (para baixar friction no add-to-cart de upgrade), além de zerar o frete acima de R$ 100 — embutido na margem do kit. Cria âncora psicológica forte: anilhas baratas, kits "premium" e o novo **My PR Gym** (R$ 379) faz os outros parecerem ainda mais acessíveis.
+> Estratégia: aumentamos o preço-base dos kits e reduzimos o preço das anilhas avulsas (para baixar friction no add-to-cart de upgrade), além de **zerar o frete em qualquer pedido** (Correios, sem mínimo) — custo embutido na margem do kit. Cria âncora psicológica forte: anilhas baratas, kits "premium" e o novo **My PR Gym** (R$ 379) faz os outros parecerem ainda mais acessíveis.
 
 ### Kits PR Trackers (preço base, sistema "Monte sua barra")
 
@@ -164,11 +164,12 @@ R$ 80,00 (Masculina e Feminina Baby Look) — tamanhos P/M/G/GG.
 - **Pix**: 5 % de desconto automático no total.
 - **Cartão de crédito**: até **3× sem juros**.
 
-### Frete grátis (cupom `fretegratis`, sempre ativo)
+### Frete grátis (baseline, sem cupom, jun/2026)
 
-- Compras com subtotal de produtos **≥ R$ 100** podem aplicar o cupom `FRETEGRATIS` no checkout para liberar **frete grátis** na opção mais barata (geralmente PAC). SEDEX/expressas continuam pagas se o cliente quiser entrega rápida.
-- O cupom **não é automático** — o cliente precisa digitar/colar no campo de cupom do checkout. O pop-up de boas-vindas distribui o código com botão "copiar" e o banner do topo lembra o cupom o tempo todo.
-- Pop-up de boas-vindas mostra o benefício na primeira visita; um banner com countdown de 2h fica fixo no topo até zerar (depois o pop-up pode reaparecer).
+- **Frete grátis** via Correios para todo o Brasil em qualquer pedido, sem valor mínimo. Única transportadora oferecida no checkout. Custo absorvido na margem dos kits.
+- O `/api/frete` ainda chama Melhor Envio (Correios) pra escolher o service id correto pro CEP/volume (PAC normalmente) — esse id alimenta a compra do label no painel ME. O cliente sempre vê uma única opção: "Correios · Grátis".
+- O cupom `FRETEGRATIS` continua no banco como no-op (validador retorna ok, sem desconto) pra não quebrar marketing antigo. Não é mais necessário.
+- A campanha temporária **PRLOVERS** (10 % OFF, Dia dos Namorados, expira 12/06/2026) continua ativa via popup + banner. Auto-aplica no checkout quando subtotal ≥ R$ 100. Frete grátis não é mais um diferencial dela.
 
 Sempre usar os preços desta tabela. Não inventar valores.
 

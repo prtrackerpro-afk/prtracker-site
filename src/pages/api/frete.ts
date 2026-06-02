@@ -1,24 +1,26 @@
 /**
  * Real-time shipping quote via Melhor Envio.
  *
+ * Política atual (jun/2026): única transportadora oferecida é Correios,
+ * sempre com frete grátis pro cliente (custo absorvido na margem do kit).
+ * Ainda chamamos a ME pra escolher o service id válido do Correios
+ * (PAC normalmente, o mais barato pra origem/destino/volume) — esse id
+ * é usado depois pela compra do label no painel ME.
+ *
  * Flow:
  *   cart items → aggregate weight/dims per product → ME /shipment/calculate
- *   → filtered list of shipping options → client renders radio list
+ *   → pega o Correios mais barato → zera o preço → única opção retornada
  *
  * Auth: personal JWT stored in `ME_ACCESS_TOKEN` (long-lived, 18mo).
  * Origin CEP from `ME_CEP_ORIGEM`. `ME_SANDBOX=true` routes to the
  * melhorenvio sandbox host.
  *
- * We cache responses in-memory per (cep, itemsHash) for 5 min to absorb
- * the two typical double-fires: user tabs away and back, or switches
- * payment method. Cache is per-isolate — Vercel Functions can have many
- * isolates, so this is a best-effort performance win, not a correctness
- * mechanism.
+ * Cache em memória por (cep, itemsHash) por 5 min pra absorver double-fires
+ * típicos. Per-isolate em Vercel Functions, best-effort.
  */
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 import { z } from "astro:content";
-import { findCoupon } from "~/lib/coupons";
 
 export const prerender = false;
 
@@ -36,17 +38,11 @@ const itemSchema = z.object({
 const payloadSchema = z.object({
   cepDestino: z.string().regex(/^\d{8}$/),
   items: z.array(itemSchema).min(1).max(20),
+  // subtotalCents/coupon ainda aceitos pra compat com o checkout client mas
+  // não influenciam mais o preço retornado (frete grátis baseline).
   subtotalCents: z.number().int().min(0).max(10_000_000).optional(),
-  // Cupom aplicado pelo cliente. Quando for um cupom com `free_shipping:
-  // true` e o subtotal ≥ FREE_SHIPPING_MIN_CENTS, zera a opção mais barata.
-  // Sem cupom, todas as opções vêm com o preço cheio.
   coupon: z.string().trim().max(50).optional(),
 });
-
-// Subtotal de produtos a partir do qual o cupom `fretegratis` libera frete
-// grátis na opção mais barata. Custo absorvido na margem da venda;
-// SEDEX/expressas continuam pagas se o cliente quiser entrega mais rápida.
-const FREE_SHIPPING_MIN_CENTS = 10_000; // R$ 100,00
 
 type MeCarrier = {
   id: number;
@@ -107,7 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
       issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
     });
   }
-  const { cepDestino, items, subtotalCents, coupon } = parsed.data;
+  const { cepDestino, items } = parsed.data;
 
   // Trim defensively: Vercel's Sensitive env-var UI has been known to
   // preserve trailing whitespace or a stray newline, which breaks the
@@ -236,33 +232,16 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  // Curated whitelist of carriers that match the premium, D2C positioning
-  // of the brand. JeT/Buslog/J&T/Azul Cargo/LATAM Cargo return quotes but
-  // are either B2B-oriented, airport-pickup, or less recognized by retail
-  // buyers — showing them erodes trust at the decision moment. Correios is
-  // the default-trust brand in BR; Jadlog/Total Express are strong private
-  // alternatives; Loggi covers metro SP/RJ/BH with faster SLAs.
-  const ALLOWED_CARRIERS = new Set([
-    "Correios",
-    "Jadlog",
-    "Total Express",
-    "Loggi",
-  ]);
-
-  // Service-name blocklist — these are pickup-point deliveries (customer
-  // collects from a branch/locker), not door-to-door. Fine for B2C
-  // marketplaces where the buyer expects a pickup locker, but confusing
-  // at a premium D2C checkout. Match case-insensitive, substring.
+  // Política: única transportadora é Correios. Service-name blocklist
+  // (ponto/centralizado/coleta) descarta variantes de retirada em agência,
+  // confusas em D2C premium. Pega o Correios mais barato (PAC normalmente)
+  // pra gerar um service id válido pra compra do label no painel ME.
   const BLOCKED_SERVICE_PATTERNS = [/ponto/i, /centralizado/i, /coleta/i];
 
-  // After filtering by carrier, keep top 5 cheapest so multi-service
-  // carriers (Loggi has Express/Ponto/Coleta) don't dominate the list.
-  const MAX_OPTIONS = 5;
-  const options: QuoteOption[] = rawCarriers
+  const correiosOptions: QuoteOption[] = rawCarriers
     .filter((c) => {
       if (c.error || c.price == null) return false;
-      if (c.company?.name == null) return false;
-      if (!ALLOWED_CARRIERS.has(c.company.name)) return false;
+      if (c.company?.name !== "Correios") return false;
       if (BLOCKED_SERVICE_PATTERNS.some((rx) => rx.test(c.name ?? ""))) {
         return false;
       }
@@ -279,7 +258,7 @@ export const POST: APIRoute = async ({ request }) => {
       return {
         id: c.id,
         name: c.name,
-        company: c.company?.name ?? "—",
+        company: c.company?.name ?? "Correios",
         company_picture: c.company?.picture ?? null,
         price_cents,
         delivery_days_min: days.min,
@@ -287,34 +266,23 @@ export const POST: APIRoute = async ({ request }) => {
       };
     })
     .filter((o) => Number.isFinite(o.price_cents) && o.price_cents > 0)
-    .sort((a, b) => a.price_cents - b.price_cents)
-    .slice(0, MAX_OPTIONS);
+    .sort((a, b) => a.price_cents - b.price_cents);
 
-  if (options.length === 0) {
+  if (correiosOptions.length === 0) {
     return jsonResponse(200, {
       options: [],
-      error: "Nenhuma transportadora atende esse CEP no momento.",
+      error: "Correios não atende esse CEP no momento.",
     });
   }
 
-  // Cacheia os preços brutos das transportadoras, antes de aplicar o
-  // override de frete grátis — assim duas sessões com o mesmo carrinho
-  // mas subtotais diferentes (ex: cupom adicionou desconto) não se
-  // contaminam.
+  // Única opção exposta ao cliente: Correios, frete grátis. Preserva o
+  // service id real (vindo da ME) pra geração do label downstream.
+  const cheapest = correiosOptions[0]!;
+  const options: QuoteOption[] = [
+    { ...cheapest, name: "Correios", price_cents: 0 },
+  ];
+
   cache.set(cacheKey, { at: Date.now(), value: options });
 
-  // Frete grátis só é aplicado se: cupom é válido + tem free_shipping +
-  // subtotal ≥ threshold. Modalidades expressas continuam pagas. Sem
-  // cupom, o cliente vê os preços cheios — incentivo a aplicar o cupom.
-  const couponData = coupon ? findCoupon(coupon) : null;
-  const freeShippingEligible =
-    couponData?.free_shipping === true &&
-    subtotalCents != null &&
-    subtotalCents >= FREE_SHIPPING_MIN_CENTS;
-
-  const finalOptions = freeShippingEligible
-    ? [{ ...options[0], price_cents: 0 }, ...options.slice(1)]
-    : options;
-
-  return jsonResponse(200, { options: finalOptions });
+  return jsonResponse(200, { options });
 };

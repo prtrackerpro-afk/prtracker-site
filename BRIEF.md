@@ -70,7 +70,7 @@ Tom de voz: direto, motivacional, brasileiro, premium — "Sua marca. Seu PR." /
 
 ## Catálogo de produtos (12 SKUs — preços oficiais — tabela única)
 
-Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grátis (≥ R$ 100) e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379). **Linha PR Runners** estreia em mai/2026 com o Meus RPs (R$ 139,90) — primeira expansão para corrida. Em **jun/2026** a linha ganha a **Plaquinha Avulsa Meus RPs** (R$ 12 × 1–4 unidades) — peça de manutenção pra atualizar tempos sem comprar a placa inteira.
+Reprecificação **mai/2026** — aumentamos os kits para absorver o frete e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379). **Linha PR Runners** estreia em mai/2026 com o Meus RPs (R$ 139,90) — primeira expansão para corrida. Em **jun/2026** a linha ganha a **Plaquinha Avulsa Meus RPs** (R$ 12 × 1–4 unidades) — peça de manutenção pra atualizar tempos sem comprar a placa inteira. Em **jun/2026** o frete grátis vira baseline: única transportadora ofertada é Correios, sempre grátis em qualquer CEP (custo embutido na margem).
 
 | # | Produto | Categoria | Preço base | Configurador | Obs. |
 |---|---------|-----------|-----------:|:------------:|------|
@@ -114,12 +114,12 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grát
 | 2.5 kg | R$ 7,00 | 1 |
 | 1.25 kg | R$ 7,00 | 1 |
 
-### Frete grátis (cupom `fretegratis`)
+### Frete grátis (baseline jun/2026, sem cupom)
 
-- Cliente precisa **aplicar o cupom `FRETEGRATIS`** no campo de cupom do checkout. Não é automático.
-- Só desbloqueia quando **subtotal de produtos ≥ R$ 100,00**; abaixo disso o `/api/validate-coupon` rejeita com "Valor mínimo R$ 100,00".
-- Quando aplicado, o `/api/frete` retorna a opção mais barata (geralmente PAC) com `price_cents=0`. SEDEX/expressas continuam pagas.
-- Pop-up de boas-vindas mostra o cupom com botão "copiar" na 1ª visita ao domínio; banner com countdown de **2h** fica fixo no topo até zerar. Pop-up só reaparece após o timer expirar — não a cada navegação.
+- **Frete grátis em todo o Brasil** via Correios, sem valor mínimo. Custo absorvido na margem dos kits.
+- `/api/frete` continua chamando Melhor Envio (filtrado em `company === "Correios"`) só pra escolher o service id real (PAC normalmente) — o `price_cents` é forçado a `0` antes de retornar. Esse id é necessário pra comprar o label no painel ME depois.
+- Cupom `FRETEGRATIS` continua no `coupons.json` como no-op (validador retorna ok, sem desconto) — segurança pra marketing antigo. Não tem mais utilidade prática.
+- Campanha temporária **PRLOVERS** (10 % OFF acima de R$ 100, Dia dos Namorados, expira 12/06/2026) segue ativa: popup distribui o código, banner com countdown de 2h, auto-aplica no checkout quando subtotal ≥ R$ 100. Não está mais atrelada a frete grátis — frete grátis é baseline.
 
 ### Lista de exercícios do My PR Set (20 opções)
 
