@@ -72,7 +72,7 @@ A partir de **mai/2026** o portfólio também inclui a linha **PR Runners** — 
 #### PR Runners (linha de corrida — desde mai/2026)
 
 - **Meus RPs** — placa preta com 4 distâncias clássicas de corrida (5, 10, 21, 42 km). Cliente digita o tempo por distância (hh:mm:ss); sem tempo = cadeado fechado (default), pronto pra desbloquear quando bater o RP.
-- **Plaquinha Avulsa Meus RPs** (desde jun/2026) — plaquinha modular para atualizar tempos no Meus RPs original. R$ 7,90 cada, até 4 por pedido. **Peça universal** — encaixa em qualquer um dos 4 slots da placa (5/10/21/42 km), cliente só digita o tempo (sem escolha de distância). SKU Bling único: `RUNNER-PLAQ`. Configurador é uma lista dinâmica de tempos.
+- **Plaquinha Avulsa Meus RPs** (desde jun/2026) — plaquinha modular para atualizar tempos no Meus RPs original. R$ 7,90 cada, até 4 por pedido. **Peça universal** — encaixa em qualquer um dos 4 slots da placa (5/10/21/42 km), cliente só digita o tempo (sem escolha de distância). SKU Bling único: `TEMPO-Runner`. Configurador é uma lista dinâmica de tempos.
 
 ### Composição oficial do produto (usar sempre)
 

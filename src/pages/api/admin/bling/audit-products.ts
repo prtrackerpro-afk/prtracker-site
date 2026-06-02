@@ -28,6 +28,12 @@ const CANONICAL_SITE_SKUS = new Set<string>([
   "BENCH-SET",
   "POWER-SET",
   "MYPR-SET",
+  // Boards e PR Runners (cadastrados no Bling em jun/2026 pelo sócio).
+  // Cor/config no `nome`, não no código — 1 SKU por produto.
+  "PRboard-2ex",
+  "PRboard-3ex",
+  "RPRUNNER-Board",
+  "TEMPO-Runner",
   // Camisetas pais (não vendem sozinhos — só pra organizar variações no Bling)
   "TEE-MASC", "TEE-BABY",
   "TEE-MASC-P", "TEE-MASC-M", "TEE-MASC-G", "TEE-MASC-GG",
@@ -63,6 +69,12 @@ const CANONICAL_IMAGE_BY_SKU: Record<string, string> = {
   "ANILHA-2.5": `${SITE_URL}/images/products/anilhas/hero.jpg`,
   "ANILHA-1.25": `${SITE_URL}/images/products/anilhas/hero.jpg`,
   "ANILHA-MIX": `${SITE_URL}/images/products/anilhas/hero.jpg`,
+  // Boards e Runners — pastas têm hero.svg + photo-NN.jpg. Bling baixa
+  // por URL e SVG dá problema; usamos photo-01.jpg em todos.
+  "PRboard-2ex": `${SITE_URL}/images/products/pr-tracker-board-2/photo-01.jpg`,
+  "PRboard-3ex": `${SITE_URL}/images/products/pr-tracker-board-3/photo-01.jpg`,
+  "RPRUNNER-Board": `${SITE_URL}/images/products/meus-rps/photo-01.jpg`,
+  "TEMPO-Runner": `${SITE_URL}/images/products/meus-rps-plaquinha/photo-01.jpg`,
 };
 
 // Heurística pra associar produtos com SKUs não-canônicos a um hero do site

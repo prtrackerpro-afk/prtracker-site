@@ -1,11 +1,16 @@
 /**
  * SKU map: site product slug (+ variant) → Bling código + display name + NCM.
  *
- * Canonical Bling SKUs (alinhadas com sync-marketplace-skus.ts em mai/2026):
+ * Canonical Bling SKUs (alinhadas com sync-marketplace-skus.ts em mai/2026,
+ * + linhas Board/Runners cadastradas no Bling em jun/2026):
  *   deadlift-set                   → DEADLIFT-SET
  *   bench-press-set                → BENCH-SET
  *   power-rack-set                 → POWER-SET
  *   my-pr-set                      → MYPR-SET
+ *   pr-tracker-board-2 (qualquer cor) → PRboard-2ex    (cor + config no `nome`)
+ *   pr-tracker-board-3 (qualquer cor) → PRboard-3ex    (cor + config no `nome`)
+ *   meus-rps                       → RPRUNNER-Board   (tempos no `nome`)
+ *   meus-rps-plaquinha             → TEMPO-Runner     (tempo no `nome`, 1 SKU por plaquinha)
  *   camiseta-masculina + size      → TEE-MASC-{P|M|G|GG}
  *   camiseta-feminina-baby-look + size → TEE-BABY-{P|M|G|GG}
  *   anilhas + plates[]             → expandido em ANILHA-{plateId} por par
@@ -108,15 +113,16 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
       ];
     }
     case "meus-rps": {
-      // PR Runners — Meus RPs. SKU único; tempos vão no `nome` (descrição
-      // do item no pedido + NF-e) pra produção saber quais imprimir.
+      // PR Runners — Meus RPs. SKU único `RPRUNNER-Board`; tempos vão no
+      // `nome` (descrição do item no pedido + NF-e) pra produção saber
+      // quais imprimir.
       const times = item.runningTimes ?? {};
       const timesDesc = RUN_DISTANCES
         .map((d) => (times[d.key] ? `${d.label} ${times[d.key]}` : `${d.label} —`))
         .join(" / ");
       return [
         {
-          codigo: "RUNNER-MEUSRPS",
+          codigo: "RPRUNNER-Board",
           nome: `Meus RPs — PR Runners (${timesDesc})`,
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
@@ -125,7 +131,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
       ];
     }
     case "meus-rps-plaquinha": {
-      // Plaquinha avulsa: SKU único `RUNNER-PLAQ` (peça universal — encaixa
+      // Plaquinha avulsa: SKU único `TEMPO-Runner` (peça universal — encaixa
       // em qualquer slot do Meus RPs). Cada plaquinha vira uma SkuLine
       // separada com o tempo no `nome` pra produção saber o que imprimir.
       // unitPriceCents da cart line = base × N; preço por SKU = base.
@@ -137,7 +143,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
           : item.unit_price_cents / 100;
       for (const p of plates) {
         out.push({
-          codigo: "RUNNER-PLAQ",
+          codigo: "TEMPO-Runner",
           nome: `Plaquinha Meus RPs — ${p.time}`,
           qty: item.qty,
           unitPrice: unitPriceEach,
@@ -148,7 +154,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
       // não quebra o pedido.
       if (out.length === 0) {
         out.push({
-          codigo: "RUNNER-PLAQ",
+          codigo: "TEMPO-Runner",
           nome: "Plaquinha Meus RPs — PR Runners",
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,
@@ -159,7 +165,10 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
     }
     case "pr-tracker-board-3":
     case "pr-tracker-board-2": {
-      const variant = item.slug === "pr-tracker-board-3" ? "BOARD3" : "BOARD2";
+      // SKU única por produto (sem variação por cor). Cor + config dos
+      // exercícios entram no `nome` pra produção saber o que imprimir e
+      // pra NF-e descrever a peça específica vendida.
+      const codigo = item.slug === "pr-tracker-board-3" ? "PRboard-3ex" : "PRboard-2ex";
       const colorKey = (item.boardColor ?? "cobre").toUpperCase();
       const colorOpt = BOARD_COLORS.find((c) => c.value === (item.boardColor ?? "cobre"));
       const exDesc = (item.boardBarbells ?? [])
@@ -174,7 +183,7 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
       const exCountLabel = item.slug === "pr-tracker-board-3" ? "3 Exercícios" : "2 Exercícios";
       return [
         {
-          codigo: `${variant}-${colorKey}`,
+          codigo,
           nome: `PR Board ${exCountLabel} — ${colorOpt?.label ?? colorKey} (${exDesc})`,
           qty: item.qty,
           unitPrice: item.unit_price_cents / 100,

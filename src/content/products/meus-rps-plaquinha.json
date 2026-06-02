@@ -3,10 +3,10 @@
   "title": "Plaquinha Meus RPs",
   "tagline": "Bateu um RP novo? Atualize só a plaquinha.",
   "category": "pr-runners",
-  "priceBase": 1200,
+  "priceBase": 790,
   "priceFrom": false,
   "shipping": { "weight_g": 60, "length_cm": 12, "width_cm": 6, "height_cm": 2 },
-  "shortDescription": "Plaquinha avulsa para atualizar o seu Meus RPs. Bateu um RP novo? Só trocar. Cada plaquinha custa R$ 12 — até 4 por pedido.",
+  "shortDescription": "Plaquinha avulsa para atualizar o seu Meus RPs. Bateu um RP novo? Só trocar. Cada plaquinha custa R$ 7,90 — até 4 por pedido.",
   "longDescriptionHtml": "<p>A <strong>Plaquinha Meus RPs</strong> é a peça modular do Meus RPs vendida avulsa. É universal: encaixa em qualquer um dos 4 slots da placa (5, 10, 21 ou 42 km). Você decide em casa onde vai cada uma.</p><p>Use pra <strong>atualizar um tempo</strong> (bateu um RP novo na meia? troca só a plaquinha da 21K), <strong>desbloquear uma distância</strong> que estava com cadeado, ou <strong>repor uma plaquinha</strong> que danificou. Até 4 por pedido.</p><p>Mesmo material da placa principal: PLA premium preto fosco, lettering branco em alto relevo, tipografia Archivo Black. Você digita o tempo no formato hh:mm:ss durante a compra; a gente produz e envia. Compatível só com o Meus RPs — não serve para outras peças.</p>",
   "images": [
     { "src": "/images/products/meus-rps-plaquinha/photo-01.jpg", "alt": "Plaquinha Meus RPs — peça avulsa segurada na mão, mostrando a escala real (00:22:30)", "width": 1000, "height": 1000 },

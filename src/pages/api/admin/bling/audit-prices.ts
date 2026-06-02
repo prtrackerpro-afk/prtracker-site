@@ -34,6 +34,14 @@ const SLUG_TO_BLING_SKUS: Record<string, string[]> = {
   "bench-press-set": ["BENCH-SET"],
   "power-rack-set": ["POWER-SET"],
   "my-pr-set": ["MYPR-SET"],
+  // Boards: 1 SKU por produto (cor + config vai no `nome` do item de pedido,
+  // não no codigo do produto cadastrado). priceBase do JSON = preço-base
+  // sem anilhas, que é o que tem que estar no cadastro Bling.
+  "pr-tracker-board-2": ["PRboard-2ex"],
+  "pr-tracker-board-3": ["PRboard-3ex"],
+  // PR Runners: preço fechado (não soma anilhas).
+  "meus-rps": ["RPRUNNER-Board"],
+  "meus-rps-plaquinha": ["TEMPO-Runner"],
   "camiseta-masculina": [
     "TEE-MASC",
     "TEE-MASC-P",
