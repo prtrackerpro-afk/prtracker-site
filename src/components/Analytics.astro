@@ -36,6 +36,40 @@ const isDev = import.meta.env.DEV;
         })();
       </script>
 
+      {/*
+        UTM capture (first-touch, 30d cookie).
+        Roda no pageload de qualquer rota — se a URL trouxer utm_*, grava
+        cookie `pr_utm` com tudo encodado em JSON compacto. First-touch:
+        se já existe cookie, não sobrescreve (mantém o canal que trouxe
+        o usuário, não o último). Servidor lê esse cookie no checkout
+        e propaga pra metadata MP → webhook → CAPI custom_data + GA4 MP.
+      */}
+      <script is:inline>
+        (function () {
+          if (window.__noTracking) return;
+          try {
+            var qs = new URLSearchParams(window.location.search);
+            var has = qs.get("utm_source") || qs.get("utm_medium") || qs.get("utm_campaign");
+            if (!has) return;
+            // First-touch: não sobrescreve.
+            if (document.cookie.indexOf("pr_utm=") !== -1) return;
+            var payload = {
+              s: qs.get("utm_source") || "",
+              m: qs.get("utm_medium") || "",
+              c: qs.get("utm_campaign") || "",
+              t: qs.get("utm_term") || "",
+              n: qs.get("utm_content") || "",
+              landing: window.location.pathname,
+              ts: Date.now(),
+            };
+            var value = encodeURIComponent(JSON.stringify(payload));
+            var maxAge = 60 * 60 * 24 * 30; // 30 dias
+            document.cookie =
+              "pr_utm=" + value + "; path=/; max-age=" + maxAge + "; SameSite=Lax";
+          } catch (e) {}
+        })();
+      </script>
+
       {/* Google Analytics 4 (gtag.js) */}
       <script
         is:inline

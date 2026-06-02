@@ -39,12 +39,30 @@ export const GET: APIRoute = async ({ url }) => {
     const client = new MercadoPagoConfig({ accessToken });
     const payment = await new Payment(client).get({ id: paymentId });
 
+    // content_ids = slugs dos produtos comprados, pra Pixel browser disparar
+    // Purchase com mesmo payload que o CAPI mandou. Filtra linhas
+    // negativas (desconto Pix, cupom, frete grátis).
+    const items = (payment.additional_info?.items ?? []) as Array<{
+      id?: string;
+      title?: string;
+      quantity?: number;
+      unit_price?: number;
+    }>;
+    const contentIds = items
+      .filter((i) => Number(i.unit_price) > 0)
+      .map((i) => String(i.id ?? i.title ?? "unknown"));
+    const numItems = items
+      .filter((i) => Number(i.unit_price) > 0)
+      .reduce((n, i) => n + Number(i.quantity ?? 1), 0);
+
     return jsonResponse(200, {
       payment_id: String(payment.id ?? paymentId),
       status: payment.status ?? "unknown",
       status_detail: payment.status_detail ?? null,
       external_reference: payment.external_reference ?? null,
       amount: payment.transaction_amount ?? null,
+      content_ids: contentIds,
+      num_items: numItems,
     });
   } catch (err) {
     console.error("[payment-status] MP error:", err);

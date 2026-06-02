@@ -63,6 +63,70 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
         msgEl.textContent =
           "Sua compra foi processada com sucesso. Em breve você receberá um e-mail com os detalhes e o link de rastreio quando o produto for enviado.";
       attributeTrophyIfPRConversion();
+      fireBrowserPurchase();
+    }
+
+    // Browser-side Purchase pixel — dispara só quando temos confirmação
+    // approved. eventID = payment_id pra Meta deduplicar contra o CAPI
+    // (que usa o mesmo String(payment.id) como event_id). sessionStorage
+    // guarda o id já disparado pra não duplicar em refresh.
+    //
+    // Por que browser-side se já tem CAPI? Robustez: se CAPI falhar (timeout,
+    // outage), Pixel pega; se Pixel for bloqueado (adblock), CAPI pega.
+    // Meta dedup garante que não conta 2x quando ambos chegam.
+    let purchaseFired = false;
+    function fireBrowserPurchase() {
+      if (purchaseFired || !paymentId) return;
+      try {
+        const key = `pr_purchase_fired_${paymentId}`;
+        if (sessionStorage.getItem(key)) {
+          purchaseFired = true;
+          return;
+        }
+        sessionStorage.setItem(key, "1");
+      } catch {}
+      purchaseFired = true;
+
+      const w = window as typeof window & {
+        fbq?: (...args: unknown[]) => void;
+      };
+
+      fetch(`/api/payment-status?p=${encodeURIComponent(paymentId)}`, {
+        cache: "no-store",
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: {
+          amount?: number;
+          content_ids?: string[];
+          num_items?: number;
+        } | null) => {
+          if (!data || typeof data.amount !== "number") return;
+          const run = () => {
+            if (typeof w.fbq !== "function") return;
+            try {
+              w.fbq(
+                "track",
+                "Purchase",
+                {
+                  value: data.amount,
+                  currency: "BRL",
+                  content_type: "product",
+                  content_ids: data.content_ids ?? [],
+                  num_items: data.num_items ?? 1,
+                },
+                { eventID: String(paymentId) },
+              );
+            } catch {}
+          };
+          if (typeof w.fbq === "function") {
+            run();
+          } else if (typeof window.requestIdleCallback === "function") {
+            window.requestIdleCallback(run, { timeout: 5000 });
+          } else {
+            setTimeout(run, 3500);
+          }
+        })
+        .catch(() => {});
     }
 
     // Trophy attribution: when the checkout originated from /pr/celebrate,
@@ -95,9 +159,11 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
         });
     }
 
-    // Approved-on-arrival path: no polling, but we still need to attribute.
+    // Approved-on-arrival path: no polling, but we still need to attribute
+    // and fire the browser Purchase pixel (dedup w/ CAPI via eventID).
     if (status === "approved" && paymentId) {
       attributeTrophyIfPRConversion();
+      fireBrowserPurchase();
     }
 
     // Se chegamos aqui com status != approved e com um payment_id, fazemos
