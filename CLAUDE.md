@@ -72,7 +72,7 @@ A partir de **mai/2026** o portfólio também inclui a linha **PR Runners** — 
 #### PR Runners (linha de corrida — desde mai/2026)
 
 - **Meus RPs** — placa preta com 4 distâncias clássicas de corrida (5, 10, 21, 42 km). Cliente digita o tempo por distância (hh:mm:ss); sem tempo = cadeado fechado (default), pronto pra desbloquear quando bater o RP.
-- **Plaquinha Avulsa Meus RPs** (desde jun/2026) — plaquinha modular para atualizar tempos no Meus RPs original. R$ 12 cada, até 4 por pedido. **Peça universal** — encaixa em qualquer um dos 4 slots da placa (5/10/21/42 km), cliente só digita o tempo (sem escolha de distância). SKU Bling único: `RUNNER-PLAQ`. Configurador é uma lista dinâmica de tempos.
+- **Plaquinha Avulsa Meus RPs** (desde jun/2026) — plaquinha modular para atualizar tempos no Meus RPs original. R$ 7,90 cada, até 4 por pedido. **Peça universal** — encaixa em qualquer um dos 4 slots da placa (5/10/21/42 km), cliente só digita o tempo (sem escolha de distância). SKU Bling único: `RUNNER-PLAQ`. Configurador é uma lista dinâmica de tempos.
 
 ### Composição oficial do produto (usar sempre)
 
@@ -120,7 +120,7 @@ Linha **PR Runners** (desde mai/2026):
 
 ## Preços oficiais (reprecificação — maio 2026)
 
-> Estratégia: aumentamos o preço-base dos kits e reduzimos o preço das anilhas avulsas (para baixar friction no add-to-cart de upgrade), além de **zerar o frete em qualquer pedido** (Correios, sem mínimo) — custo embutido na margem do kit. Cria âncora psicológica forte: anilhas baratas, kits "premium" e o novo **My PR Gym** (R$ 379) faz os outros parecerem ainda mais acessíveis.
+> Estratégia: aumentamos o preço-base dos kits e reduzimos o preço das anilhas avulsas (para baixar friction no add-to-cart de upgrade), além de **liberar frete grátis automático acima de R$ 100** (PAC, Correios) — custo embutido na margem do kit. Cria âncora psicológica forte: anilhas baratas, kits "premium" e o novo **My PR Gym** (R$ 379) faz os outros parecerem ainda mais acessíveis.
 
 ### Kits PR Trackers (preço base, sistema "Monte sua barra")
 
@@ -139,9 +139,9 @@ Linha **PR Runners** (desde mai/2026):
 | Produto | Preço |
 |---------|------:|
 | Meus RPs | R$ 139,90 |
-| Plaquinha Avulsa Meus RPs | R$ 12,00 por plaquinha (1–4) |
+| Plaquinha Avulsa Meus RPs | R$ 7,90 por plaquinha (1–4) |
 
-> O Meus RPs **não** soma anilhas (é placa só, sem barras). Os Boards (2 ex e 3 ex) somam anilhas como os kits — base + R$ 7/par escolhido em cada barra. A Plaquinha Avulsa é linear: total = R$ 12 × nº de plaquinhas.
+> O Meus RPs **não** soma anilhas (é placa só, sem barras). Os Boards (2 ex e 3 ex) somam anilhas como os kits — base + R$ 7/par escolhido em cada barra. A Plaquinha Avulsa é linear: total = R$ 7,90 × nº de plaquinhas.
 
 ### Anilhas avulsas (tabela única — mesmo preço em qualquer set)
 
@@ -164,12 +164,14 @@ R$ 80,00 (Masculina e Feminina Baby Look) — tamanhos P/M/G/GG.
 - **Pix**: 5 % de desconto automático no total.
 - **Cartão de crédito**: até **3× sem juros**.
 
-### Frete grátis (baseline, sem cupom, jun/2026)
+### Frete grátis (automático acima de R$ 100, jun/2026)
 
-- **Frete grátis** via Correios para todo o Brasil em qualquer pedido, sem valor mínimo. Única transportadora oferecida no checkout. Custo absorvido na margem dos kits.
-- O `/api/frete` ainda chama Melhor Envio (Correios) pra escolher o service id correto pro CEP/volume (PAC normalmente) — esse id alimenta a compra do label no painel ME. O cliente sempre vê uma única opção: "Correios · Grátis".
-- O cupom `FRETEGRATIS` continua no banco como no-op (validador retorna ok, sem desconto) pra não quebrar marketing antigo. Não é mais necessário.
-- A campanha temporária **PRLOVERS** (10 % OFF, Dia dos Namorados, expira 12/06/2026) continua ativa via popup + banner. Auto-aplica no checkout quando subtotal ≥ R$ 100. Frete grátis não é mais um diferencial dela.
+- Única transportadora oferecida no checkout: **Correios**. Duas modalidades expostas: **PAC** (econômica) e **SEDEX** (expressa). Sem outras transportadoras (Jadlog/Loggi/Total Express foram removidas).
+- **Acima de R$ 100** (subtotal de produtos): repricing automático — PAC vai grátis (custo absorvido na margem) e SEDEX cobra apenas a **diferença em relação ao PAC**, ou seja, só o upgrade de velocidade. Sem cupom; é automático.
+- **Abaixo de R$ 100**: PAC e SEDEX vão com o preço cheio retornado pela Melhor Envio (calculado pelo CEP no checkout).
+- `/api/frete` chama Melhor Envio (Correios), pega PAC e SEDEX por regex no nome, calcula `baseline = min(pac, sedex)` quando elegível e aplica `price_cents_final = max(0, preço − baseline)`. Service ids reais preservados pra compra do label no painel ME.
+- Cupom `FRETEGRATIS` segue no `coupons.json` (mínimo R$ 100, free_shipping=true) — redundante na prática (a baseline já é grátis acima desse valor), mas preservado pra não quebrar marketing antigo.
+- Campanha temporária **PRLOVERS** (10 % OFF, Dia dos Namorados, expira 12/06/2026) continua via popup + banner. Auto-aplica no checkout quando subtotal ≥ R$ 100 — mesmo threshold do frete grátis, combo natural "10 % OFF + frete grátis".
 
 Sempre usar os preços desta tabela. Não inventar valores.
 

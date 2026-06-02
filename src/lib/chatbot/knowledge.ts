@@ -90,7 +90,8 @@ Tecido respirável de alta durabilidade. Lavar em água fria, do avesso, secar n
 # Prazo de despacho e entrega
 
 - **Pronta entrega**: produtos despachados em **até 2 dias úteis** após a confirmação do pagamento (temos estoque).
-- **Frete grátis** via Correios para todo o Brasil, com rastreio — sem valor mínimo. 3 a 10 dias úteis de envio dependendo da região.
+- Envio via Correios (PAC ou SEDEX) com rastreio para todo o Brasil. 3 a 10 dias úteis adicionais conforme a região.
+- **Frete grátis acima de R$ 100**: o PAC fica zero e o SEDEX cobra só a diferença em relação ao PAC. Abaixo desse valor, ambas as modalidades vão com preço cheio dos Correios, calculado pelo CEP no checkout.
 - Prazo total típico: 5 a 12 dias úteis.
 
 # Política de troca e devolução
@@ -107,7 +108,7 @@ Tecido respirável de alta durabilidade. Lavar em água fria, do avesso, secar n
 2. A barra atualiza em tempo real, calcula peso total e preço final.
 3. No My PR Set, também escolhe o exercício no dropdown (20 opções).
 4. Adiciona ao carrinho. O resumo mostra a configuração ("2× 25 kg + 2× 10 kg, Back Squat").
-5. Finaliza no checkout (CEP → confirmar frete grátis → Pix ou cartão).
+5. Finaliza no checkout (CEP → escolher PAC ou SEDEX → Pix ou cartão).
 6. Pode comprar Anilhas Avulsas depois para atualizar o troféu se bater um PR maior.
 
 Cálculo de exemplo (Power Rack Set + 2 pares de 25 kg):
@@ -144,7 +145,7 @@ Mesmos contatos para se candidatar.
 
 # Retirada presencial
 
-Por padrão, todos os pedidos são enviados via Correios com rastreio para todo o Brasil, sempre com **frete grátis**. Eventualmente liberamos retirada presencial em parcerias e eventos específicos. Se a pessoa perguntar sobre retirar pessoalmente em Porto Alegre ou em outra cidade, responda que esse modo é restrito a parcerias ativas e direcione pro WhatsApp pra checar disponibilidade. NÃO mencione códigos de cupom.
+Por padrão, todos os pedidos são enviados via Correios (PAC ou SEDEX) com rastreio para todo o Brasil. **Frete grátis a partir de R$ 100** (PAC zero, SEDEX paga só o delta). Eventualmente liberamos retirada presencial em parcerias e eventos específicos. Se a pessoa perguntar sobre retirar pessoalmente em Porto Alegre ou em outra cidade, responda que esse modo é restrito a parcerias ativas e direcione pro WhatsApp pra checar disponibilidade. NÃO mencione códigos de cupom.
 
 # Contatos
 

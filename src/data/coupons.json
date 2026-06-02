@@ -52,7 +52,7 @@
       "usage_limit_per_user": null,
       "individual_use": false,
       "free_shipping": true,
-      "minimum_amount_cents": 0,
+      "minimum_amount_cents": 10000,
       "maximum_amount_cents": 0,
       "product_ids": [],
       "excluded_product_ids": [],

@@ -70,7 +70,7 @@ Tom de voz: direto, motivacional, brasileiro, premium — "Sua marca. Seu PR." /
 
 ## Catálogo de produtos (12 SKUs — preços oficiais — tabela única)
 
-Reprecificação **mai/2026** — aumentamos os kits para absorver o frete e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379). **Linha PR Runners** estreia em mai/2026 com o Meus RPs (R$ 139,90) — primeira expansão para corrida. Em **jun/2026** a linha ganha a **Plaquinha Avulsa Meus RPs** (R$ 12 × 1–4 unidades) — peça de manutenção pra atualizar tempos sem comprar a placa inteira. Em **jun/2026** o frete grátis vira baseline: única transportadora ofertada é Correios, sempre grátis em qualquer CEP (custo embutido na margem).
+Reprecificação **mai/2026** — aumentamos os kits para absorver o frete grátis (≥ R$ 100) e baixamos as anilhas avulsas pra estimular o upgrade pós-PR. **My PR Gym** entra como produto âncora EM BREVE (R$ 379). **Linha PR Runners** estreia em mai/2026 com o Meus RPs (R$ 139,90) — primeira expansão para corrida. Em **jun/2026** a linha ganha a **Plaquinha Avulsa Meus RPs** (R$ 12 × 1–4 unidades) — peça de manutenção pra atualizar tempos sem comprar a placa inteira. Em **jun/2026** simplificamos o frete: única transportadora ofertada é Correios (PAC + SEDEX), e o frete grátis (PAC) é automático acima de R$ 100 — SEDEX paga só a diferença em relação ao PAC (cliente paga só o upgrade).
 
 | # | Produto | Categoria | Preço base | Configurador | Obs. |
 |---|---------|-----------|-----------:|:------------:|------|
@@ -82,7 +82,7 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete e bai
 | 6 | **PR Board 2 Exercícios** | pr-trackers | **R$ 179,90** | Sim — cor (Cobre/Preto/Rosa) + 2 exercícios + 2 barras | Placa PLA com 2 exercícios escolhidos (default Arranco/Arremesso). |
 | 7 | **My PR Gym** *(EM BREVE)* | pr-trackers | **R$ 379,00** | Sim — **3 barras independentes** (Supino, Agachamento, Levantamento Terra) | Gym completo em miniatura. Compra bloqueada; botão "Notifique-me quando lançar" (email + telefone) — envia email pra `contato@prtracker.com.br` com assunto "Novo Interessado no MY PR Gym". |
 | 8 | **Meus RPs** (PR Runners) | pr-runners | **R$ 139,90** | Sim — 4 tempos hh:mm:ss (5/10/21/42 km) | Primeira peça da linha de corrida. Tempo opcional por distância; vazio = cadeado. Sem barras nem anilhas. |
-| 9 | **Plaquinha Avulsa Meus RPs** (PR Runners) | pr-runners | **R$ 12,00 × 1–4** | Sim — lista dinâmica de tempos (até 4); plaquinha universal, sem escolha de distância | Peça modular de reposição/atualização para o Meus RPs original. Encaixa em qualquer um dos 4 slots da placa principal — cliente só digita o tempo. SKU Bling único: `RUNNER-PLAQ` (uma linha por plaquinha, tempo no `nome`). |
+| 9 | **Plaquinha Avulsa Meus RPs** (PR Runners) | pr-runners | **R$ 7,90 × 1–4** | Sim — lista dinâmica de tempos (até 4); plaquinha universal, sem escolha de distância | Peça modular de reposição/atualização para o Meus RPs original. Encaixa em qualquer um dos 4 slots da placa principal — cliente só digita o tempo. SKU Bling único: `RUNNER-PLAQ` (uma linha por plaquinha, tempo no `nome`). |
 | 10 | Anilhas Avulsas | anilhas | **a partir de R$ 7,00** | Sim (modo anilhas-only) | Sem barra, só pares |
 | 11 | Camiseta Masculina | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
 | 12 | Camiseta Feminina Baby Look | camisetas | **R$ 80,00** | Não | Tamanhos P/M/G/GG |
@@ -114,12 +114,14 @@ Reprecificação **mai/2026** — aumentamos os kits para absorver o frete e bai
 | 2.5 kg | R$ 7,00 | 1 |
 | 1.25 kg | R$ 7,00 | 1 |
 
-### Frete grátis (baseline jun/2026, sem cupom)
+### Frete grátis (automático ≥ R$ 100, jun/2026 — sem cupom)
 
-- **Frete grátis em todo o Brasil** via Correios, sem valor mínimo. Custo absorvido na margem dos kits.
-- `/api/frete` continua chamando Melhor Envio (filtrado em `company === "Correios"`) só pra escolher o service id real (PAC normalmente) — o `price_cents` é forçado a `0` antes de retornar. Esse id é necessário pra comprar o label no painel ME depois.
-- Cupom `FRETEGRATIS` continua no `coupons.json` como no-op (validador retorna ok, sem desconto) — segurança pra marketing antigo. Não tem mais utilidade prática.
-- Campanha temporária **PRLOVERS** (10 % OFF acima de R$ 100, Dia dos Namorados, expira 12/06/2026) segue ativa: popup distribui o código, banner com countdown de 2h, auto-aplica no checkout quando subtotal ≥ R$ 100. Não está mais atrelada a frete grátis — frete grátis é baseline.
+- Única transportadora ofertada: **Correios** (PAC + SEDEX). Sem outras transportadoras (Jadlog/Loggi/Total Express foram removidas).
+- **Subtotal ≥ R$ 100**: PAC vai grátis (custo absorvido na margem) e SEDEX cobra só a **diferença** em relação ao PAC — cliente paga só o upgrade de velocidade. Sem necessidade de cupom; é automático.
+- **Subtotal < R$ 100**: PAC e SEDEX vão com o preço cheio retornado pela Melhor Envio.
+- `/api/frete` continua chamando Melhor Envio (filtrado em `company === "Correios"`), pega PAC e SEDEX por regex no nome. Quando elegível (`subtotalCents ≥ FREE_SHIPPING_MIN_CENTS`), calcula `baseline = min(pac, sedex)` e reprices: `price_cents_final = max(0, price_cents − baseline)`. Service ids reais preservados pra compra do label no painel ME.
+- Cupom `FRETEGRATIS` segue no `coupons.json` (mínimo R$ 100, free_shipping=true) — redundante na prática agora que a baseline já é grátis acima desse valor, mas preservado pra não quebrar marketing antigo.
+- Campanha temporária **PRLOVERS** (10 % OFF acima de R$ 100, Dia dos Namorados, expira 12/06/2026) segue ativa: popup distribui o código, banner com countdown de 2h, auto-aplica no checkout quando subtotal ≥ R$ 100. Combo natural com o frete grátis (mesmo threshold).
 
 ### Lista de exercícios do My PR Set (20 opções)
 

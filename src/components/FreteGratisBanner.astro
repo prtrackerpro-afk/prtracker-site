@@ -1,12 +1,12 @@
 ---
 /**
  * Banner promocional do topo + countdown do cupom de campanha `prlovers`
- * (Dia dos Namorados — 10 % OFF acima de R$ 100, expira 12/06).
+ * (Dia dos Namorados — 10 % OFF acima de R$ 100, expira 12/06). Frete
+ * grátis (PAC, Correios) também é liberado automaticamente no checkout
+ * acima de R$ 100 — mesmo threshold.
  *
- * Frete grátis é baseline desde jun/2026 (Correios, sempre grátis), então
- * o banner foca só no desconto. Visual alinhado ao FreteGratisPopup:
- * paleta coral/rosé, hearts Lucide com heartbeat. Faixa temática de Dia
- * dos Namorados.
+ * Visual alinhado ao FreteGratisPopup: paleta coral/rosé, hearts Lucide
+ * com heartbeat. Não é lime — é a faixa temática de Dia dos Namorados.
  */
 import Heart from "@lucide/astro/icons/heart";
 ---
@@ -26,7 +26,7 @@ import Heart from "@lucide/astro/icons/heart";
       <strong class="fg-banner__code">PRLOVERS</strong>
     </div>
 
-    <span class="fg-banner__copy" data-fg-copy>10 % OFF · FRETE GRÁTIS BR</span>
+    <span class="fg-banner__copy" data-fg-copy>10 % OFF + FRETE GRÁTIS</span>
 
     <div class="fg-banner__countdown" data-fg-countdown hidden>
       <span class="fg-banner__countdown-value" data-fg-countdown-value>02:00:00</span>
@@ -190,7 +190,7 @@ import Heart from "@lucide/astro/icons/heart";
       /* Rows explicit pra evitar bug de auto-flow + sticky no iOS. */
       grid-template-rows: auto auto;
       /* Countdown ocupa as 2 linhas — fica verticalmente centralizado
-         entre o "CUPOM PRLOVERS" (linha 1) e o "10 % OFF · FRETE GRÁTIS BR"
+         entre o "CUPOM PRLOVERS" (linha 1) e o "10 % OFF + FRETE GRÁTIS"
          (linha 2). */
       grid-template-areas:
         "lead countdown"
@@ -257,7 +257,7 @@ import Heart from "@lucide/astro/icons/heart";
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
           banner.classList.remove("is-counting");
-          copyEl.textContent = "10 % OFF · FRETE GRÁTIS BR";
+          copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
           return;
         }
         const remaining = startedAt + DURATION_MS - Date.now();
@@ -266,7 +266,7 @@ import Heart from "@lucide/astro/icons/heart";
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
           banner.classList.remove("is-counting");
-          copyEl.textContent = "10 % OFF · FRETE GRÁTIS BR";
+          copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
           document.dispatchEvent(new CustomEvent("prlovers:expired"));
           return;
         }

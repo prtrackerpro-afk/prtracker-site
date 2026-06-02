@@ -2,27 +2,34 @@
  * Real-time shipping quote via Melhor Envio.
  *
  * Política atual (jun/2026): única transportadora oferecida é Correios,
- * sempre com frete grátis pro cliente (custo absorvido na margem do kit).
- * Ainda chamamos a ME pra escolher o service id válido do Correios
- * (PAC normalmente, o mais barato pra origem/destino/volume) — esse id
- * é usado depois pela compra do label no painel ME.
+ * com PAC + SEDEX expostos no checkout. Quando subtotal de produtos
+ * ≥ R$ 100, a modalidade mais barata (PAC normalmente) vai grátis e a
+ * outra (SEDEX) cobra só a diferença em relação à PAC — cliente paga
+ * apenas o upgrade de velocidade, não o frete cheio. Abaixo de R$ 100,
+ * ambas vão com o preço cheio retornado pela ME.
  *
  * Flow:
  *   cart items → aggregate weight/dims per product → ME /shipment/calculate
- *   → pega o Correios mais barato → zera o preço → única opção retornada
+ *   → filtra Correios → seleciona PAC e SEDEX → aplica repricing se elegível
  *
  * Auth: personal JWT stored in `ME_ACCESS_TOKEN` (long-lived, 18mo).
  * Origin CEP from `ME_CEP_ORIGEM`. `ME_SANDBOX=true` routes to the
  * melhorenvio sandbox host.
  *
- * Cache em memória por (cep, itemsHash) por 5 min pra absorver double-fires
- * típicos. Per-isolate em Vercel Functions, best-effort.
+ * Cache em memória por (cep, itemsHash, freeShipEligible) por 5 min pra
+ * absorver double-fires típicos. Per-isolate em Vercel Functions,
+ * best-effort.
  */
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 import { z } from "astro:content";
 
 export const prerender = false;
+
+// Subtotal de produtos a partir do qual o frete grátis (PAC) é liberado
+// automaticamente — sem cupom. SEDEX cobra só a diferença pra PAC; abaixo
+// disso, PAC e SEDEX vão com preço cheio da Melhor Envio.
+const FREE_SHIPPING_MIN_CENTS = 10_000; // R$ 100,00
 
 const plateSelectionSchema = z.object({
   plateId: z.enum(["25", "20", "15", "10", "5", "2_5", "1_25"]),
@@ -38,9 +45,11 @@ const itemSchema = z.object({
 const payloadSchema = z.object({
   cepDestino: z.string().regex(/^\d{8}$/),
   items: z.array(itemSchema).min(1).max(20),
-  // subtotalCents/coupon ainda aceitos pra compat com o checkout client mas
-  // não influenciam mais o preço retornado (frete grátis baseline).
+  // Subtotal de produtos (antes de cupom). Decide se o repricing de frete
+  // grátis é aplicado: ≥ R$ 100 → PAC grátis + SEDEX paga delta; < R$ 100
+  // → ambos com preço cheio.
   subtotalCents: z.number().int().min(0).max(10_000_000).optional(),
+  // Campo mantido por compat com o client; não influencia o preço.
   coupon: z.string().trim().max(50).optional(),
 });
 
@@ -103,7 +112,9 @@ export const POST: APIRoute = async ({ request }) => {
       issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
     });
   }
-  const { cepDestino, items } = parsed.data;
+  const { cepDestino, items, subtotalCents } = parsed.data;
+  const freeShippingEligible =
+    subtotalCents != null && subtotalCents >= FREE_SHIPPING_MIN_CENTS;
 
   // Trim defensively: Vercel's Sensitive env-var UI has been known to
   // preserve trailing whitespace or a stray newline, which breaks the
@@ -117,7 +128,10 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const cacheKey = `${cepDestino}::${hashItems(items)}`;
+  // Eligibility entra na chave: dois carrinhos com mesmos itens + CEP mas
+  // subtotais cruzando o threshold (R$ 99 vs R$ 100) recebem listas
+  // diferentes, então não podem compartilhar cache.
+  const cacheKey = `${cepDestino}::${hashItems(items)}::free=${freeShippingEligible}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
     return jsonResponse(200, { options: cached.value, cached: true });
@@ -232,10 +246,11 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  // Política: única transportadora é Correios. Service-name blocklist
-  // (ponto/centralizado/coleta) descarta variantes de retirada em agência,
-  // confusas em D2C premium. Pega o Correios mais barato (PAC normalmente)
-  // pra gerar um service id válido pra compra do label no painel ME.
+  // Política: única transportadora é Correios. Modalidades expostas: PAC
+  // (econômica, padrão) e SEDEX (expressa). A **mais barata vai grátis**
+  // (custo absorvido na margem); a outra cobra apenas a *diferença* —
+  // cliente paga só o upgrade de velocidade. Variantes de retirada em
+  // agência ficam fora.
   const BLOCKED_SERVICE_PATTERNS = [/ponto/i, /centralizado/i, /coleta/i];
 
   const correiosOptions: QuoteOption[] = rawCarriers
@@ -275,12 +290,46 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  // Única opção exposta ao cliente: Correios, frete grátis. Preserva o
-  // service id real (vindo da ME) pra geração do label downstream.
-  const cheapest = correiosOptions[0]!;
-  const options: QuoteOption[] = [
-    { ...cheapest, name: "Correios", price_cents: 0 },
-  ];
+  // Pega PAC e SEDEX (nomes podem vir como "PAC", "SEDEX", "PAC Mini",
+  // "SEDEX 10" etc — match por regex no nome). Em casos onde a ME só
+  // retorna um deles pro CEP/volume, expomos só esse.
+  const pac = correiosOptions.find((o) => /\bpac\b/i.test(o.name));
+  const sedex = correiosOptions.find((o) => /sedex/i.test(o.name));
+
+  // Fallback final: se nem PAC nem SEDEX bateram no regex (raro — nome
+  // do serviço mudou no ME), pega o Correios mais barato pra não
+  // bloquear venda.
+  const fallback = !pac && !sedex ? correiosOptions[0]! : null;
+  const exposed = [pac, sedex, fallback].filter(
+    (o): o is QuoteOption => o != null,
+  );
+
+  // Repricing: só aplica quando carrinho ≥ R$ 100 (frete grátis automático).
+  //   - Baseline (mais barata) sai grátis — custo absorvido na margem.
+  //   - As outras pagam só a diferença em relação à baseline (upgrade de
+  //     velocidade).
+  // Abaixo de R$ 100, ambas mantêm o preço cheio retornado pela ME.
+  const baselineCents = freeShippingEligible
+    ? Math.min(...exposed.map((o) => o.price_cents))
+    : 0;
+
+  const priceFor = (opt: QuoteOption): number =>
+    freeShippingEligible
+      ? Math.max(0, opt.price_cents - baselineCents)
+      : opt.price_cents;
+
+  const label = (opt: QuoteOption, fallbackLabel: string): string =>
+    opt === pac ? "Correios PAC" : opt === sedex ? "Correios SEDEX" : fallbackLabel;
+
+  const options: QuoteOption[] = exposed.map((opt) => ({
+    ...opt,
+    name: label(opt, "Correios"),
+    price_cents: priceFor(opt),
+  }));
+
+  // Ordena por preço pro cliente (mais barata/grátis primeiro) — auto-select
+  // no UI pega o primeiro elemento.
+  options.sort((a, b) => a.price_cents - b.price_cents);
 
   cache.set(cacheKey, { at: Date.now(), value: options });
 

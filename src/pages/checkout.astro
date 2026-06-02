@@ -93,7 +93,6 @@ import Loader from "@lucide/astro/icons/loader";
             <legend>Frete</legend>
             <div class="frete-status" data-frete-status></div>
             <div class="frete-list" data-frete-list role="radiogroup" aria-label="Opções de envio"></div>
-            <p class="frete-note">🚚 Frete grátis via Correios para todo o Brasil.</p>
           </fieldset>
 
           <fieldset class="field-group">
@@ -161,9 +160,10 @@ import Loader from "@lucide/astro/icons/loader";
             <dt>Cupom <span class="text-brand-gray text-sm" data-coupon-applied></span></dt>
             <dd data-checkout-coupon>- R$ 0,00</dd>
           </div>
+          <p class="frete-progress" data-frete-progress hidden></p>
           <div class="checkout__row" data-frete-row hidden>
             <dt>Frete <span class="text-brand-gray text-sm" data-frete-name></span></dt>
-            <dd data-checkout-frete>Grátis</dd>
+            <dd data-checkout-frete>R$ 0,00</dd>
           </div>
           <div class="checkout__row checkout__row--highlight" data-pix-row>
             <dt>Total Pix <span class="text-brand-gray text-sm">5 % OFF no subtotal</span></dt>
@@ -482,10 +482,13 @@ import Loader from "@lucide/astro/icons/loader";
   .checkout__row dd { margin: 0; font-weight: 700; color: var(--color-brand-navy); }
   .checkout__row--highlight dd { font-family: var(--font-display); font-size: 1.25rem; color: #16a34a; }
 
-  .frete-note {
-    margin: 0.5rem 0 0;
-    font-size: 0.82rem;
+  .frete-progress {
+    margin: -0.25rem 0 0;
+    font-size: 0.85rem;
     line-height: 1.4;
+    color: var(--color-brand-gray);
+  }
+  .frete-progress[data-unlocked="true"] {
     color: #15803d;
     font-weight: 600;
   }
@@ -573,8 +576,10 @@ import Loader from "@lucide/astro/icons/loader";
   const freteGroup = document.querySelector<HTMLFieldSetElement>("#freteGroup")!;
   const freteStatus = document.querySelector<HTMLElement>("[data-frete-status]")!;
   const freteList = document.querySelector<HTMLElement>("[data-frete-list]")!;
-  // Subtotal mínimo do cupom PRLOVERS (10% OFF). Frete grátis é baseline.
-  const PRLOVERS_MIN_CENTS = 10_000;
+  const freteProgressEl = document.querySelector<HTMLElement>("[data-frete-progress]")!;
+  // Subtotal mínimo pra frete grátis automático (PAC) + também é o mínimo
+  // do cupom PRLOVERS (10 % OFF).
+  const FREE_SHIPPING_MIN_CENTS = 10_000;
   const couponInput = document.querySelector<HTMLInputElement>("#coupon-code")!;
   const couponBtn = document.querySelector<HTMLButtonElement>("[data-coupon-apply]")!;
   const couponStatus = document.querySelector<HTMLElement>("[data-coupon-status]")!;
@@ -614,6 +619,19 @@ import Loader from "@lucide/astro/icons/loader";
       })
       .join("");
     subtotalEl.textContent = formatBRL(snap.subtotalCents);
+
+    if (snap.subtotalCents <= 0) {
+      freteProgressEl.hidden = true;
+    } else if (snap.subtotalCents >= FREE_SHIPPING_MIN_CENTS) {
+      freteProgressEl.hidden = false;
+      freteProgressEl.dataset.unlocked = "true";
+      freteProgressEl.textContent = "🎉 Frete grátis (PAC) liberado neste pedido.";
+    } else {
+      const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
+      freteProgressEl.hidden = false;
+      freteProgressEl.dataset.unlocked = "false";
+      freteProgressEl.textContent = `Faltam ${formatBRL(missing)} pra liberar frete grátis (PAC).`;
+    }
 
     const couponCents = appliedCoupon?.discountCents ?? 0;
     couponRow.hidden = couponCents === 0;
@@ -793,7 +811,7 @@ import Loader from "@lucide/astro/icons/loader";
   async function maybeAutoApplyPrlovers() {
     if (autoCouponTried) return;
     if (appliedCoupon) return;
-    if (cart.snapshot().subtotalCents < PRLOVERS_MIN_CENTS) return;
+    if (cart.snapshot().subtotalCents < FREE_SHIPPING_MIN_CENTS) return;
     autoCouponTried = true;
     couponInput.value = AUTO_COUPON_CODE;
     await applyCoupon();
@@ -913,6 +931,9 @@ import Loader from "@lucide/astro/icons/loader";
             quantity: i.quantity,
             plates: i.plates,
           })),
+          // Server usa pra decidir se aplica o repricing de frete grátis
+          // (PAC=0, SEDEX=delta) — só ≥ R$ 100.
+          subtotalCents: snap.subtotalCents,
         }),
         signal: freteAbort.signal,
       });
@@ -966,7 +987,7 @@ import Loader from "@lucide/astro/icons/loader";
                 : "";
         const title = isPickup || isDigital
           ? escapeHtml(o.name)
-          : o.company === o.name
+          : o.name.toLowerCase().startsWith(o.company.toLowerCase())
             ? escapeHtml(o.name)
             : `${escapeHtml(o.company)} · ${escapeHtml(o.name)}`;
         const price = isPickup || isDigital || isFree ? "Grátis" : formatBRL(o.price_cents);

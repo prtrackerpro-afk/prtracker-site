@@ -257,6 +257,7 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
   const pixEl = summary.querySelector<HTMLElement>("[data-cart-pix-total]")!;
   const installmentEl = summary.querySelector<HTMLElement>("[data-cart-installment]")!;
   const freeProgressEl = summary.querySelector<HTMLElement>("[data-cart-free-progress]")!;
+  const FREE_SHIPPING_MIN_CENTS = 10_000;
 
   let snap: CartSnapshot = cart.snapshot();
 
@@ -310,9 +311,18 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
     pixEl.textContent = formatBRL(snap.pixTotalCents);
     installmentEl.textContent = `${MAX_INSTALLMENTS}× de ${formatBRL(Math.round(snap.subtotalCents / MAX_INSTALLMENTS))} sem juros`;
 
-    freeProgressEl.hidden = false;
-    freeProgressEl.dataset.unlocked = "true";
-    freeProgressEl.textContent = "🚚 Frete grátis via Correios para todo o Brasil.";
+    if (snap.subtotalCents >= FREE_SHIPPING_MIN_CENTS) {
+      freeProgressEl.hidden = false;
+      freeProgressEl.dataset.unlocked = "true";
+      freeProgressEl.textContent =
+        "🚚 Frete grátis liberado! Cupom PRLOVERS no checkout — 10 % OFF extra.";
+    } else {
+      const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
+      freeProgressEl.hidden = false;
+      freeProgressEl.dataset.unlocked = "false";
+      freeProgressEl.textContent =
+        `Faltam ${formatBRL(missing)} pra liberar frete grátis + cupom PRLOVERS (10 % OFF).`;
+    }
   }
 
   render(snap);
