@@ -190,17 +190,32 @@ export async function ingestTikTokShop(
     result.candidates = eligible.length;
     if (eligible.length === 0) return result;
 
-    // Filtra os que já estão 'synced' no ledger pra evitar refetch caro de detail.
-    const { data: alreadySynced } = await sb
+    // Pula pedidos que já estão resolvidos ou em andamento, pra evitar refetch
+    // caro de detail E reentrância. claimOrder() é a trava real contra duplicação;
+    // isto é defesa em profundidade + economia de chamadas:
+    //   - status='synced'      → já concluído
+    //   - status='processing'  → outro worker está sincronizando agora
+    //   - bling_pedido_id != null → pedido já existe no Bling (mesmo se ledger
+    //                               ficou 'failed' por resposta perdida)
+    const { data: ledgerRows } = await sb
       .from("tiktok_bling_orders")
-      .select("tiktok_order_id, status")
+      .select("tiktok_order_id, status, bling_pedido_id")
       .in("tiktok_order_id", eligible.map((o) => o.id));
-    const syncedSet = new Set(
-      ((alreadySynced ?? []) as Array<{ tiktok_order_id: string; status: string }>)
-        .filter((r) => r.status === "synced")
+    const skipSet = new Set(
+      ((ledgerRows ?? []) as Array<{
+        tiktok_order_id: string;
+        status: string;
+        bling_pedido_id: string | null;
+      }>)
+        .filter(
+          (r) =>
+            r.status === "synced" ||
+            r.status === "processing" ||
+            r.bling_pedido_id != null,
+        )
         .map((r) => r.tiktok_order_id),
     );
-    const todo = eligible.filter((o) => !syncedSet.has(o.id));
+    const todo = eligible.filter((o) => !skipSet.has(o.id));
     result.skipped = eligible.length - todo.length;
     if (todo.length === 0) return result;
 

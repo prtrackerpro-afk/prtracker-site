@@ -123,3 +123,33 @@ export async function createSalesOrder(
   );
   return created;
 }
+
+/**
+ * Look up an existing pedido de venda by its `numeroLoja` (the external order
+ * tag we set when creating it, e.g. `tt-<tiktok_order_id>`).
+ *
+ * Used for Bling-side idempotency: createSalesOrder is a POST, which blingFetch
+ * never retries — so a lost response (timeout after Bling already persisted the
+ * pedido) can leave us thinking it failed. Before creating a new pedido we check
+ * here; if one already carries this numeroLoja, we reuse it instead of minting a
+ * duplicate (which would produce a duplicate NF-e).
+ *
+ * Returns the first pedido whose numeroLoja matches EXACTLY, or null. The exact
+ * match guards against Bling ignoring the filter and returning unrelated rows.
+ */
+export async function findSalesOrderByNumeroLoja(
+  numeroLoja: string,
+  accessToken?: string,
+): Promise<CreateSalesOrderResponse | null> {
+  if (!numeroLoja) return null;
+  const list = await blingFetch<
+    Array<{ id: number; numero?: string; numeroLoja?: string }>
+  >("/pedidos/vendas", {
+    method: "GET",
+    query: { numeroLoja },
+    accessToken,
+  });
+  const rows = Array.isArray(list) ? list : [];
+  const match = rows.find((p) => String(p.numeroLoja ?? "") === numeroLoja);
+  return match ? { id: match.id, numero: match.numero } : null;
+}

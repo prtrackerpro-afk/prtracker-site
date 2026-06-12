@@ -30,7 +30,11 @@ import {
 } from "./oauth";
 import { getOrCreateContact } from "./contacts";
 import { getOrCreateProduct } from "./products";
-import { createSalesOrder, type SalesOrderItemInput } from "./orders";
+import {
+  createSalesOrder,
+  findSalesOrderByNumeroLoja,
+  type SalesOrderItemInput,
+} from "./orders";
 import { BlingApiError } from "./api";
 import {
   createAndEmitNfe,
@@ -165,36 +169,109 @@ function formatError(err: unknown): string {
   return String(err);
 }
 
-interface PersistInitial {
-  alreadyExists: boolean;
-  row: {
-    tiktok_order_id: string;
-    status: string;
-    bling_pedido_id: string | null;
-    bling_pedido_numero: string | null;
-    attempt_count: number;
-  } | null;
+interface LedgerRow {
+  tiktok_order_id: string;
+  status: string;
+  bling_pedido_id: string | null;
+  bling_pedido_numero: string | null;
+  bling_nfe_id: string | null;
+  nfe_status: string | null;
+  attempt_count: number;
 }
 
-async function persistInitial(orderId: string): Promise<PersistInitial> {
-  const sb = getAdminSupabase();
-  const { data: existing } = await sb
-    .from("tiktok_bling_orders")
-    .select(
-      "tiktok_order_id, status, bling_pedido_id, bling_pedido_numero, attempt_count",
-    )
-    .eq("tiktok_order_id", orderId)
-    .maybeSingle();
-  if (existing) return { alreadyExists: true, row: existing as any };
+const LEDGER_COLS =
+  "tiktok_order_id, status, bling_pedido_id, bling_pedido_numero, bling_nfe_id, nfe_status, attempt_count";
 
+// A 'processing' row older than this is treated as a crashed/abandoned claim
+// and may be reclaimed. Well above the Vercel function timeout so we never
+// steal a claim from a run that's still alive.
+const STALE_CLAIM_MS = 10 * 60 * 1000;
+
+type ClaimResult =
+  | { claimed: true; row: LedgerRow }
+  | { claimed: false; reason: "synced" | "in_progress"; row: LedgerRow | null };
+
+/**
+ * Ensure a ledger row exists in 'pending' WITHOUT claiming it. Used only on the
+ * Bling-not-connected path, so the order shows up for a later retry. INSERT ...
+ * ON CONFLICT DO NOTHING — never clobbers an existing processing/synced/failed.
+ */
+async function ensurePendingRow(orderId: string): Promise<void> {
+  const sb = getAdminSupabase();
+  await sb
+    .from("tiktok_bling_orders")
+    .upsert(
+      { tiktok_order_id: orderId, status: "pending", attempt_count: 0 },
+      { onConflict: "tiktok_order_id", ignoreDuplicates: true },
+    );
+}
+
+/**
+ * Atomically claim an order for syncing. Exactly one caller can hold the claim
+ * at a time — this is the fix for the duplicated NF-e: the old SELECT-then-
+ * INSERT let two concurrent runs both proceed.
+ *
+ * Returns claimed=true only if THIS call won the right to process the order:
+ *   - it inserted a fresh row (ON CONFLICT DO NOTHING → only the inserter gets a row), or
+ *   - it transitioned an existing pending/failed row into 'processing', or
+ *   - it reclaimed a stale 'processing' row (crashed prior run).
+ * Otherwise claimed=false with reason 'synced' (already done) or 'in_progress'
+ * (another live worker holds it).
+ */
+async function claimOrder(orderId: string): Promise<ClaimResult> {
+  const sb = getAdminSupabase();
+  const now = new Date().toISOString();
+
+  // 1) Insert the row already claimed. ON CONFLICT DO NOTHING means only the
+  //    caller that actually inserts gets a row back.
   const { data: inserted } = await sb
     .from("tiktok_bling_orders")
-    .insert({ tiktok_order_id: orderId, status: "pending", attempt_count: 0 })
-    .select(
-      "tiktok_order_id, status, bling_pedido_id, bling_pedido_numero, attempt_count",
+    .upsert(
+      { tiktok_order_id: orderId, status: "processing", attempt_count: 0 },
+      { onConflict: "tiktok_order_id", ignoreDuplicates: true },
     )
-    .single();
-  return { alreadyExists: false, row: (inserted as any) ?? null };
+    .select(LEDGER_COLS);
+  if (inserted && inserted.length > 0) {
+    return { claimed: true, row: inserted[0] as LedgerRow };
+  }
+
+  // 2) Row already existed — read its current state.
+  const { data: existing } = await sb
+    .from("tiktok_bling_orders")
+    .select(LEDGER_COLS)
+    .eq("tiktok_order_id", orderId)
+    .maybeSingle();
+  const row = (existing as LedgerRow | null) ?? null;
+  if (row?.status === "synced") {
+    return { claimed: false, reason: "synced", row };
+  }
+
+  // 3) Atomically flip pending|failed → processing. Only one caller wins.
+  const { data: claimed } = await sb
+    .from("tiktok_bling_orders")
+    .update({ status: "processing", updated_at: now })
+    .eq("tiktok_order_id", orderId)
+    .in("status", ["pending", "failed"])
+    .select(LEDGER_COLS);
+  if (claimed && claimed.length > 0) {
+    return { claimed: true, row: claimed[0] as LedgerRow };
+  }
+
+  // 4) Still here → row is 'processing'. Reclaim only if the claim is stale
+  //    (a previous run crashed). A live worker's claim stays untouched.
+  const staleCutoff = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
+  const { data: reclaimed } = await sb
+    .from("tiktok_bling_orders")
+    .update({ status: "processing", updated_at: now })
+    .eq("tiktok_order_id", orderId)
+    .eq("status", "processing")
+    .lt("updated_at", staleCutoff)
+    .select(LEDGER_COLS);
+  if (reclaimed && reclaimed.length > 0) {
+    return { claimed: true, row: reclaimed[0] as LedgerRow };
+  }
+
+  return { claimed: false, reason: "in_progress", row };
 }
 
 export async function syncTikTokOrderToBling(
@@ -207,7 +284,7 @@ export async function syncTikTokOrderToBling(
 
   if (!(await isConnected())) {
     // Não bloqueia — registra pending pra retry depois.
-    await persistInitial(orderId);
+    await ensurePendingRow(orderId);
     return {
       ok: false,
       status: "pending",
@@ -216,16 +293,27 @@ export async function syncTikTokOrderToBling(
   }
 
   const sb = getAdminSupabase();
-  const initial = await persistInitial(orderId);
-  if (initial.alreadyExists && initial.row?.status === "synced") {
+
+  // Atomic claim — only one worker proceeds per order. Closes the concurrent
+  // re-emit race (cron + manual button, overlapping cron windows).
+  const claim = await claimOrder(orderId);
+  if (!claim.claimed) {
+    if (claim.reason === "synced") {
+      return {
+        ok: true,
+        status: "skipped",
+        blingPedidoId: claim.row?.bling_pedido_id ?? undefined,
+        blingPedidoNumero: claim.row?.bling_pedido_numero ?? undefined,
+        message: "already synced — skipping",
+      };
+    }
     return {
       ok: true,
       status: "skipped",
-      blingPedidoId: initial.row.bling_pedido_id ?? undefined,
-      blingPedidoNumero: initial.row.bling_pedido_numero ?? undefined,
-      message: "already synced — skipping",
+      message: "outro worker já está sincronizando este pedido — skipping",
     };
   }
+  const ledger = claim.row;
 
   try {
     const accessToken = await getValidAccessToken();
@@ -287,21 +375,38 @@ export async function syncTikTokOrderToBling(
       `need_upload_invoice: ${order.need_upload_invoice ?? "—"}`,
     ].join("\n");
 
-    const created = await createSalesOrder(
-      {
-        contatoId: contato.id,
-        itens: lines,
-        frete: freightReais > 0 ? freightReais : undefined,
-        numeroLoja: `tt-${orderId}`,
-        lojaId: getEnvInt("BLING_LOJA_TIKTOK_ID") ?? getEnvInt("BLING_LOJA_ID"),
-        depositoId: getEnvInt("BLING_DEPOSITO_ID"),
-        naturezaOperacaoId: getEnvInt("BLING_NATUREZA_OPERACAO_ID"),
-        transportadorNome: "Jadlog 4PL (TikTok Shop)",
-        observacoes: `Pedido TikTok Shop — ${orderId}`,
-        observacoesInternas,
-      },
-      accessToken,
-    );
+    const numeroLoja = `tt-${orderId}`;
+
+    // Bling-side idempotency: createSalesOrder is a POST (never retried). A lost
+    // response — Bling persisted the pedido but we timed out — leaves the ledger
+    // 'failed' with no bling_pedido_id, and the next run would mint a twin (the
+    // duplicate NF-e). Reuse an existing pedido carrying this numeroLoja instead.
+    let created: { id: number | string; numero?: string } | null = null;
+    try {
+      created = await findSalesOrderByNumeroLoja(numeroLoja, accessToken);
+    } catch (lookupErr) {
+      console.warn(
+        `[tiktok-bling-sync] lookup pedido numeroLoja=${numeroLoja} falhou (seguindo p/ criar):`,
+        lookupErr,
+      );
+    }
+    if (!created) {
+      created = await createSalesOrder(
+        {
+          contatoId: contato.id,
+          itens: lines,
+          frete: freightReais > 0 ? freightReais : undefined,
+          numeroLoja,
+          lojaId: getEnvInt("BLING_LOJA_TIKTOK_ID") ?? getEnvInt("BLING_LOJA_ID"),
+          depositoId: getEnvInt("BLING_DEPOSITO_ID"),
+          naturezaOperacaoId: getEnvInt("BLING_NATUREZA_OPERACAO_ID"),
+          transportadorNome: "Jadlog 4PL (TikTok Shop)",
+          observacoes: `Pedido TikTok Shop — ${orderId}`,
+          observacoesInternas,
+        },
+        accessToken,
+      );
+    }
 
     await sb
       .from("tiktok_bling_orders")
@@ -314,20 +419,31 @@ export async function syncTikTokOrderToBling(
         response_payload: { id: created.id, numero: created.numero },
         synced_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        attempt_count: (initial.row?.attempt_count ?? 0) + 1,
+        attempt_count: (ledger.attempt_count ?? 0) + 1,
         error: null,
       })
       .eq("tiktok_order_id", orderId);
 
     // ---- NF-e ----
-    const nfeStatus = await emitAndPersistNfe({
-      orderId,
-      contatoId: contato.id,
-      contatoSnapshot: snapshot,
-      grouped,
-      freightReais,
-      accessToken,
-    });
+    // Status is flipped to 'synced' above (before NF), so any future run short-
+    // circuits at claimOrder and never re-emits. Belt-and-suspenders: if this
+    // claimed row already carried an NF (reclaimed mid-flight), don't re-emit.
+    let nfeStatus: NfeOutcomeStatus;
+    if (
+      ledger.bling_nfe_id &&
+      (ledger.nfe_status === "emitted" || ledger.nfe_status === "pending")
+    ) {
+      nfeStatus = ledger.nfe_status;
+    } else {
+      nfeStatus = await emitAndPersistNfe({
+        orderId,
+        contatoId: contato.id,
+        contatoSnapshot: snapshot,
+        grouped,
+        freightReais,
+        accessToken,
+      });
+    }
 
     return {
       ok: true,
@@ -349,7 +465,7 @@ export async function syncTikTokOrderToBling(
           err instanceof BlingApiError
             ? { status: err.status, type: err.type, fields: err.fields, raw: err.raw }
             : null,
-        attempt_count: (initial.row?.attempt_count ?? 0) + 1,
+        attempt_count: (ledger.attempt_count ?? 0) + 1,
         updated_at: new Date().toISOString(),
       })
       .eq("tiktok_order_id", orderId);
