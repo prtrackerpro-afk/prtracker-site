@@ -1,14 +1,23 @@
 ---
 /**
- * Banner promocional do topo + countdown do cupom de campanha `prlovers`
- * (Dia dos Namorados — 10 % OFF acima de R$ 100, expira 12/06). Frete
- * grátis (PAC, Correios) também é liberado automaticamente no checkout
- * acima de R$ 100 — mesmo threshold.
+ * Banner promocional do topo + countdown do cupom fretegratis.
  *
- * Visual alinhado ao FreteGratisPopup: paleta coral/rosé, hearts Lucide
- * com heartbeat. Não é lime — é a faixa temática de Dia dos Namorados.
+ * Substitui o antigo promo strip estático do Header. Comportamento:
+ *
+ * - Sempre visível como faixa lime no topo (acima do header navy).
+ * - Se o usuário NUNCA viu o pop-up `fretegratis` ainda: mostra
+ *   versão padrão ("CUPOM FRETEGRATIS · FRETE GRÁTIS ACIMA DE R$ 100 ·
+ *   PIX 5 % OFF · 3× SEM JUROS").
+ * - Quando o pop-up é fechado, salva um timestamp em
+ *   `localStorage["prt_fretegratis_started_at"]` e o banner passa a
+ *   mostrar o COUNTDOWN ao vivo: "CUPOM FRETEGRATIS · 01:59:43".
+ * - Quando faltar < 0 ms, removemos o timestamp do localStorage — assim,
+ *   se o usuário voltar mais tarde, o pop-up reaparece e o ciclo
+ *   recomeça. Como ninguém fica online por > 2 h, isso só acontece em
+ *   sessões posteriores.
+ *
+ * O JS é vanilla, embutido no próprio componente. Sem dependências.
  */
-import Heart from "@lucide/astro/icons/heart";
 ---
 
 <aside
@@ -19,14 +28,11 @@ import Heart from "@lucide/astro/icons/heart";
 >
   <div class="container-page fg-banner__inner">
     <div class="fg-banner__lead">
-      <span class="fg-banner__heart fg-banner__heart--beat" aria-hidden="true">
-        <Heart size={14} />
-      </span>
       <span class="fg-banner__tag" aria-hidden="true">CUPOM</span>
-      <strong class="fg-banner__code">PRLOVERS</strong>
+      <strong class="fg-banner__code">FRETEGRATIS</strong>
     </div>
 
-    <span class="fg-banner__copy" data-fg-copy>10 % OFF + FRETE GRÁTIS</span>
+    <span class="fg-banner__copy" data-fg-copy>FRETE GRÁTIS ACIMA DE R$ 100</span>
 
     <div class="fg-banner__countdown" data-fg-countdown hidden>
       <span class="fg-banner__countdown-value" data-fg-countdown-value>02:00:00</span>
@@ -41,23 +47,10 @@ import Heart from "@lucide/astro/icons/heart";
 </aside>
 
 <style>
-  /* Paleta de campanha PRLOVERS (Dia dos Namorados) — alinhada ao
-     FreteGratisPopup. Vive só enquanto a campanha está no ar. */
   .fg-banner {
-    --prlovers-coral: #ff6b8a;
-    --prlovers-coral-soft: #ffd9e2;
-    --prlovers-coral-deep: #d9405f;
-
-    background:
-      linear-gradient(
-        90deg,
-        var(--prlovers-coral-deep) 0%,
-        var(--prlovers-coral) 50%,
-        var(--prlovers-coral-deep) 100%
-      );
-    color: #fff;
-    border-bottom: 1px solid rgb(1 0 42 / 0.25);
-    box-shadow: 0 2px 12px rgb(217 64 95 / 0.25);
+    background: var(--color-brand-lime, #d8ff2c);
+    color: var(--color-brand-navy, #01002a);
+    border-bottom: 1px solid rgb(1 0 42 / 0.15);
   }
   .fg-banner__inner {
     display: grid;
@@ -84,35 +77,22 @@ import Heart from "@lucide/astro/icons/heart";
     gap: 0.45rem;
   }
 
-  .fg-banner__heart {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-  }
-  .fg-banner__heart svg { fill: currentColor; stroke: none; }
-  .fg-banner__heart--beat {
-    animation: fg-banner-heartbeat 1.6s ease-in-out infinite;
-    transform-origin: center;
-  }
-
   .fg-banner__copy {
     grid-area: copy;
     font-weight: 700;
     justify-self: start;
-    color: #fff;
   }
   .fg-banner__copy::before {
     content: "· ";
-    opacity: 0.55;
+    opacity: 0.45;
     margin-right: 0.15em;
   }
 
   .fg-banner__tag {
     display: inline-block;
-    padding: 0.18rem 0.45rem;
+    padding: 0.18rem 0.4rem;
     background: var(--color-brand-navy, #01002a);
-    color: var(--prlovers-coral-soft);
+    color: var(--color-brand-lime, #d8ff2c);
     font-size: 0.66rem;
     letter-spacing: 0.14em;
     line-height: 1;
@@ -121,9 +101,8 @@ import Heart from "@lucide/astro/icons/heart";
   .fg-banner__code {
     font-weight: 900;
     letter-spacing: 0.1em;
-    color: #fff;
   }
-  .fg-banner__sep { opacity: 0.55; }
+  .fg-banner__sep { opacity: 0.45; }
 
   .fg-banner__countdown {
     grid-area: countdown;
@@ -132,10 +111,9 @@ import Heart from "@lucide/astro/icons/heart";
     gap: 0.5rem;
     padding: 0.25rem 0.7rem;
     background: var(--color-brand-navy, #01002a);
-    color: var(--prlovers-coral-soft);
+    color: var(--color-brand-lime, #d8ff2c);
     border-radius: 4px;
     line-height: 1;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
   }
   .fg-banner__countdown-value {
     font-family: var(--font-mono, "JetBrains Mono", monospace);
@@ -153,18 +131,6 @@ import Heart from "@lucide/astro/icons/heart";
     justify-self: end;
     font-weight: 700;
     font-size: 0.74rem;
-    color: #fff;
-  }
-
-  @keyframes fg-banner-heartbeat {
-    0%, 100% { transform: scale(1); }
-    14%      { transform: scale(1.25); }
-    28%      { transform: scale(1); }
-    42%      { transform: scale(1.18); }
-    70%      { transform: scale(1); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .fg-banner__heart--beat { animation: none; }
   }
 
   /* Tablet: ainda em 1 linha (copy cabe), mas esconde secondary */
@@ -190,8 +156,8 @@ import Heart from "@lucide/astro/icons/heart";
       /* Rows explicit pra evitar bug de auto-flow + sticky no iOS. */
       grid-template-rows: auto auto;
       /* Countdown ocupa as 2 linhas — fica verticalmente centralizado
-         entre o "CUPOM PRLOVERS" (linha 1) e o "10 % OFF + FRETE GRÁTIS"
-         (linha 2). */
+         entre o "CUPOM FRETEGRATIS" (linha 1) e o "FRETE GRÁTIS ACIMA
+         DE R$ 100" (linha 2). */
       grid-template-areas:
         "lead countdown"
         "copy countdown";
@@ -227,7 +193,7 @@ import Heart from "@lucide/astro/icons/heart";
 
 <script is:inline>
   (function () {
-    const STORAGE_KEY = "prt_prlovers_started_at";
+    const STORAGE_KEY = "prt_fretegratis_started_at";
     const DURATION_MS = 2 * 60 * 60 * 1000;
 
     function pad(n) { return n.toString().padStart(2, "0"); }
@@ -257,7 +223,7 @@ import Heart from "@lucide/astro/icons/heart";
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
           banner.classList.remove("is-counting");
-          copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
+          copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
           return;
         }
         const remaining = startedAt + DURATION_MS - Date.now();
@@ -266,13 +232,13 @@ import Heart from "@lucide/astro/icons/heart";
           if (timer) { clearInterval(timer); timer = null; }
           countdownEl.hidden = true;
           banner.classList.remove("is-counting");
-          copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
-          document.dispatchEvent(new CustomEvent("prlovers:expired"));
+          copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
+          document.dispatchEvent(new CustomEvent("fretegratis:expired"));
           return;
         }
         countdownEl.hidden = false;
         banner.classList.add("is-counting");
-        copyEl.textContent = "10 % OFF + FRETE GRÁTIS";
+        copyEl.textContent = "FRETE GRÁTIS ACIMA DE R$ 100";
         countdownValueEl.textContent = format(remaining);
       }
 
@@ -286,7 +252,7 @@ import Heart from "@lucide/astro/icons/heart";
       window.addEventListener("storage", function (e) {
         if (e.key === STORAGE_KEY) tick();
       });
-      document.addEventListener("prlovers:started", function () { start(); });
+      document.addEventListener("fretegratis:started", function () { start(); });
     }
 
     if (document.readyState === "loading") {

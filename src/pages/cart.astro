@@ -315,13 +315,13 @@ import ArrowRight from "@lucide/astro/icons/arrow-right";
       freeProgressEl.hidden = false;
       freeProgressEl.dataset.unlocked = "true";
       freeProgressEl.textContent =
-        "🚚 Frete grátis liberado! Cupom PRLOVERS no checkout — 10 % OFF extra.";
+        "🎉 Cupom FRETEGRATIS disponível — aplique no checkout pra frete grátis.";
     } else {
       const missing = FREE_SHIPPING_MIN_CENTS - snap.subtotalCents;
       freeProgressEl.hidden = false;
       freeProgressEl.dataset.unlocked = "false";
       freeProgressEl.textContent =
-        `Faltam ${formatBRL(missing)} pra liberar frete grátis + cupom PRLOVERS (10 % OFF).`;
+        `Faltam ${formatBRL(missing)} pra desbloquear o cupom FRETEGRATIS.`;
     }
   }
 
