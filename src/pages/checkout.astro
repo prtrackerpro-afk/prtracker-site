@@ -578,7 +578,7 @@ import Loader from "@lucide/astro/icons/loader";
   const freteList = document.querySelector<HTMLElement>("[data-frete-list]")!;
   const freteProgressEl = document.querySelector<HTMLElement>("[data-frete-progress]")!;
   // Subtotal mínimo pra frete grátis automático (PAC) + também é o mínimo
-  // do cupom PRLOVERS (10 % OFF).
+  // do cupom FRETEGRATIS.
   const FREE_SHIPPING_MIN_CENTS = 10_000;
   const couponInput = document.querySelector<HTMLInputElement>("#coupon-code")!;
   const couponBtn = document.querySelector<HTMLButtonElement>("[data-coupon-apply]")!;
@@ -801,27 +801,6 @@ import Loader from "@lucide/astro/icons/loader";
     renderFreteList(merged);
   }
   couponBtn.addEventListener("click", applyCoupon);
-
-  // Auto-aplica PRLOVERS (campanha Dia dos Namorados — 10 % OFF) quando
-  // subtotal ≥ R$ 100 e o cliente ainda não digitou cupom próprio. Remove
-  // fricção do "tem cupom, mas eu preciso digitar" — drop ATC→IC tava em
-  // 68% (Pixel maio/2026). Frete grátis é baseline; o cupom é só desconto.
-  const AUTO_COUPON_CODE = "prlovers";
-  let autoCouponTried = false;
-  async function maybeAutoApplyPrlovers() {
-    if (autoCouponTried) return;
-    if (appliedCoupon) return;
-    if (cart.snapshot().subtotalCents < FREE_SHIPPING_MIN_CENTS) return;
-    autoCouponTried = true;
-    couponInput.value = AUTO_COUPON_CODE;
-    await applyCoupon();
-    const result = appliedCoupon as AppliedCoupon | null;
-    if (result && result.code === AUTO_COUPON_CODE) {
-      couponStatus.textContent =
-        "✓ Cupom PRLOVERS aplicado automaticamente · 10 % OFF";
-    }
-  }
-  void maybeAutoApplyPrlovers();
 
   const cpfEl = document.querySelector<HTMLInputElement>("#cpf")!;
   const cepEl = document.querySelector<HTMLInputElement>("#cep")!;
