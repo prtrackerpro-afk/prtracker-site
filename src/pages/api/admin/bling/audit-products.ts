@@ -14,12 +14,12 @@
 import type { APIRoute } from "astro";
 import { listAllProducts, getProduct, type BlingProduct } from "~/lib/bling/products";
 import { isConnected } from "~/lib/bling/oauth";
+import {
+  CANONICAL_IMAGE_BY_SKU,
+  suggestImageByName,
+} from "~/lib/bling/product-images";
 
 export const prerender = false;
-
-const SITE_URL = (
-  import.meta.env.PUBLIC_SITE_URL ?? "https://prtracker.com.br"
-).replace(/\/$/, "");
 
 // SKUs canônicos que o webhook do site cria automaticamente (ver sku-map.ts).
 // Manter sincronizado: se sku-map mudar, este array também.
@@ -42,55 +42,6 @@ const CANONICAL_SITE_SKUS = new Set<string>([
   "ANILHA-5", "ANILHA-2.5", "ANILHA-1.25",
   "ANILHA-MIX",
 ]);
-
-// Sugestão de imagem por canonical SKU (URL pública servida pelo site).
-// O Bling baixa e armazena a imagem dessas URLs quando recebe via
-// midia.imagens.externas.
-const CANONICAL_IMAGE_BY_SKU: Record<string, string> = {
-  "DEADLIFT-SET": `${SITE_URL}/images/products/deadlift-set/hero.jpg`,
-  "BENCH-SET": `${SITE_URL}/images/products/bench-press-set/hero.jpg`,
-  "POWER-SET": `${SITE_URL}/images/products/power-rack-set/hero.jpg`,
-  "MYPR-SET": `${SITE_URL}/images/products/my-pr-set/hero.jpg`,
-  "TEE-MASC": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-P": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-M": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-G": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-GG": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-BABY": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-P": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-M": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-G": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-GG": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "ANILHA-25": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-20": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-15": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-10": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-5": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-2.5": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-1.25": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-MIX": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  // Boards e Runners — pastas têm hero.svg + photo-NN.jpg. Bling baixa
-  // por URL e SVG dá problema; usamos photo-01.jpg em todos.
-  "PRboard-2ex": `${SITE_URL}/images/products/pr-tracker-board-2/photo-01.jpg`,
-  "PRboard-3ex": `${SITE_URL}/images/products/pr-tracker-board-3/photo-01.jpg`,
-  "RPRUNNER-Board": `${SITE_URL}/images/products/meus-rps/photo-01.jpg`,
-  "TEMPO-Runner": `${SITE_URL}/images/products/meus-rps-plaquinha/photo-01.jpg`,
-};
-
-// Heurística pra associar produtos com SKUs não-canônicos a um hero do site
-// pelo nome. Útil pros listings de marketplace/legado tipo "Mini Bench Press"
-// que não usam BENCH-SET mas representam o mesmo produto físico.
-function suggestImageByName(nome: string): string | null {
-  const n = nome.toLowerCase();
-  if (n.includes("deadlift")) return `${SITE_URL}/images/products/deadlift-set/hero.jpg`;
-  if (n.includes("bench")) return `${SITE_URL}/images/products/bench-press-set/hero.jpg`;
-  if (n.includes("power") || n.includes("rack")) return `${SITE_URL}/images/products/power-rack-set/hero.jpg`;
-  if (n.includes("my pr") || n.includes("trofeu") || n.includes("crossfit")) return `${SITE_URL}/images/products/my-pr-set/hero.jpg`;
-  if (n.includes("baby") || (n.includes("camiseta") && n.includes("femin"))) return `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`;
-  if (n.includes("camiseta") || n.includes("masc")) return `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`;
-  if (n.includes("anilha") || n.includes("kit")) return `${SITE_URL}/images/products/anilhas/hero.jpg`;
-  return null;
-}
 
 type AuditCategory = "canonical-site" | "marketplace-legacy" | "unknown";
 

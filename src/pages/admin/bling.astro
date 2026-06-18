@@ -302,6 +302,43 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
       </section>
     )}
 
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Imagens dos produtos</div>
+            <p class="mt-1 text-sm text-navy-200">
+              Backfill em massa: anexa a hero do site em todo produto que está
+              <strong>sem imagem</strong>. O Bling baixa a imagem da URL pública
+              (<code class="text-brand-lime">midia.imagens.externas</code>) — não é
+              upload de arquivo. Idempotente: quem já tem imagem é pulado (não
+              empilha nem sobrescreve foto manual). Pra anexar/forçar 1 produto
+              específico, use a "Auditoria de produtos" acima.
+            </p>
+          </div>
+          <div class="flex flex-col gap-2 items-end">
+            <button
+              id="preview-images-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg border border-brand-lime text-brand-lime hover:bg-brand-lime/10 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+            >
+              Pré-visualizar
+            </button>
+            <button
+              id="sync-images-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50 hidden"
+            >
+              Anexar imagens
+            </button>
+          </div>
+        </div>
+        <div id="sync-images-result" class="mt-4 text-sm text-navy-300">
+          <span class="text-navy-400">Clica em "Pré-visualizar" pra ver quais produtos sem imagem vão receber a hero do site.</span>
+        </div>
+      </section>
+    )}
+
     <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
         <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Sincronizados</div>
@@ -1180,6 +1217,161 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
         } finally {
           syncMarcaBtn.disabled = false;
           syncMarcaBtn.textContent = orig ?? "Aplicar marca";
+        }
+      });
+    }
+
+    // ============================================================
+    // Imagens dos produtos — backfill via /api/admin/bling/sync-images
+    // Preview (dryRun) lista quem está sem imagem e vai receber a hero do
+    // site; "Anexar imagens" faz o PUT nos sem-imagem.
+    // ============================================================
+    const previewImagesBtn = document.getElementById("preview-images-btn") as HTMLButtonElement | null;
+    const syncImagesBtn = document.getElementById("sync-images-btn") as HTMLButtonElement | null;
+    const imagesResult = document.getElementById("sync-images-result");
+
+    if (previewImagesBtn && syncImagesBtn && imagesResult) {
+      type ImageRow = {
+        blingId: number;
+        codigo: string | null;
+        nome: string;
+        imageUrl: string | null;
+        status: string;
+        error?: string;
+      };
+
+      function escapeHtml5(s: string): string {
+        return s.replace(/[&<>"]/g, (c) =>
+          c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+        );
+      }
+
+      function imgStatusBadge(status: string, error?: string): string {
+        switch (status) {
+          case "ok":
+            return '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">ok</span>';
+          case "error":
+            return `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml5(error ?? "")}">erro</span>`;
+          case "skip-has-image":
+            return '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">já tem</span>';
+          case "skip-no-suggestion":
+            return '<span class="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">sem sugestão</span>';
+          default:
+            return '<span class="rounded bg-brand-lime/20 text-brand-lime px-1.5 py-0.5 text-[10px] uppercase tracking-wider">vai anexar</span>';
+        }
+      }
+
+      function renderImagesTable(rows: ImageRow[]): string {
+        const rowsHtml = rows.map((r) => {
+          const codigo = r.codigo
+            ? `<span class="font-mono text-brand-lime">${escapeHtml5(r.codigo)}</span>`
+            : '<span class="text-navy-500">—</span>';
+          const url = r.imageUrl
+            ? `<a href="${escapeHtml5(r.imageUrl)}" target="_blank" rel="noreferrer" class="text-navy-300 underline break-all">${escapeHtml5(r.imageUrl.replace(/^https?:\/\/[^/]+/, ""))}</a>`
+            : '<span class="text-navy-500">—</span>';
+          return `
+            <tr class="hover:bg-navy-700/30">
+              <td class="px-3 py-2">${imgStatusBadge(r.status, r.error)}</td>
+              <td class="px-3 py-2">${codigo}</td>
+              <td class="px-3 py-2 text-navy-200">${escapeHtml5(r.nome)}${r.error ? `<div class="mt-0.5 text-[10px] text-red-300">${escapeHtml5(r.error.slice(0, 200))}</div>` : ""}</td>
+              <td class="px-3 py-2 text-[11px]">${url}</td>
+            </tr>
+          `;
+        }).join("");
+        return `
+          <div class="overflow-x-auto rounded border border-navy-700">
+            <table class="w-full text-sm">
+              <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
+                <tr>
+                  <th class="text-left px-3 py-2">Status</th>
+                  <th class="text-left px-3 py-2">SKU</th>
+                  <th class="text-left px-3 py-2">Nome</th>
+                  <th class="text-left px-3 py-2">Imagem do site</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-navy-700/60">${rowsHtml}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      previewImagesBtn.addEventListener("click", async () => {
+        previewImagesBtn.disabled = true;
+        previewImagesBtn.textContent = "Lendo catálogo…";
+        imagesResult.innerHTML = '<span class="text-navy-400">Lendo produtos do Bling (pode levar alguns segundos)…</span>';
+        syncImagesBtn.classList.add("hidden");
+        try {
+          const res = await fetch("/api/admin/bling/sync-images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dryRun: true }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            imagesResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml5(data.error ?? res.statusText)}</span>`;
+            return;
+          }
+          const planned: ImageRow[] = data.planned ?? [];
+          const hasImage: ImageRow[] = data.skippedHasImage ?? [];
+          const noSug: ImageRow[] = data.skippedNoSuggestion ?? [];
+          const rows = [...planned, ...hasImage, ...noSug];
+          if (rows.length === 0) {
+            imagesResult.innerHTML = '<span class="text-amber-300">Nenhum produto encontrado no Bling.</span>';
+            return;
+          }
+          imagesResult.innerHTML = `
+            <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
+              <span class="rounded bg-navy-700 px-2 py-0.5">${rows.length} produto${rows.length === 1 ? "" : "s"}</span>
+              <span class="rounded bg-brand-lime/20 text-brand-lime px-2 py-0.5">${planned.length} sem imagem (vai anexar)</span>
+              <span class="rounded bg-navy-700 text-navy-300 px-2 py-0.5">${hasImage.length} já tem</span>
+              ${noSug.length ? `<span class="rounded bg-amber-500/20 text-amber-300 px-2 py-0.5">${noSug.length} sem sugestão</span>` : ""}
+            </div>
+            ${renderImagesTable(rows)}
+          `;
+          if (planned.length > 0) {
+            syncImagesBtn.classList.remove("hidden");
+            syncImagesBtn.textContent = `Anexar imagem em ${planned.length} produto${planned.length === 1 ? "" : "s"}`;
+          }
+        } catch (e) {
+          imagesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml5(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          previewImagesBtn.disabled = false;
+          previewImagesBtn.textContent = "Pré-visualizar";
+        }
+      });
+
+      syncImagesBtn.addEventListener("click", async () => {
+        const proceed = window.confirm(
+          "Vai anexar a imagem do site nos produtos que estão sem imagem no Bling.\nConfirma?"
+        );
+        if (!proceed) return;
+        syncImagesBtn.disabled = true;
+        const orig = syncImagesBtn.textContent;
+        syncImagesBtn.textContent = "Anexando…";
+        try {
+          const res = await fetch("/api/admin/bling/sync-images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            imagesResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml5(data.error ?? res.statusText)}</span>` + (imagesResult.innerHTML || "");
+            return;
+          }
+          const applied = data.applied?.length ?? 0;
+          const errors = data.errors?.length ?? 0;
+          const banner = errors === 0
+            ? `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ Imagem anexada em ${applied} produto${applied === 1 ? "" : "s"}. O Bling baixa as imagens em alguns segundos.</div>`
+            : `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} ok, ${errors} erro(s).</div>`;
+          const allRows: ImageRow[] = [...(data.applied ?? []), ...(data.errors ?? [])];
+          imagesResult.innerHTML = banner + renderImagesTable(allRows);
+          syncImagesBtn.classList.add("hidden");
+        } catch (e) {
+          imagesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml5(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          syncImagesBtn.disabled = false;
+          syncImagesBtn.textContent = orig ?? "Anexar imagens";
         }
       });
     }

@@ -9,6 +9,7 @@ import { getAdminSupabase } from "../../../lib/supabase/server";
 import { isEmailConfigured, sendAdminEmail } from "../../../lib/admin/email";
 import { isConnected as isBlingConnected } from "../../../lib/bling/oauth";
 import { syncInfiniteStock } from "../../../lib/bling/estoque";
+import { syncProductImages } from "../../../lib/bling/product-images";
 
 export const prerender = false;
 
@@ -103,6 +104,24 @@ export const GET: APIRoute = async ({ request }) => {
     }
   } catch (e) {
     result.bling_stock = { error: (e as Error).message };
+  }
+
+  // 9) Bling imagens — anexa a hero do site em produtos novos que ficaram sem
+  //    imagem (produção sob demanda cria SKU no Bling sem foto). Idempotente:
+  //    só preenche lacunas (quem já tem imagem é pulado). Pula se desconectado.
+  try {
+    if (await isBlingConnected()) {
+      const imgs = await syncProductImages();
+      result.bling_images = {
+        applied: imgs.applied.length,
+        errors: imgs.errors.length,
+        skippedHasImage: imgs.skippedHasImage.length,
+      };
+    } else {
+      result.bling_images = { skipped: "bling not connected" };
+    }
+  } catch (e) {
+    result.bling_images = { error: (e as Error).message };
   }
 
   // 4) Send email if critical alerts
