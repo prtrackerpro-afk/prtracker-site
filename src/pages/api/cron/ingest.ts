@@ -7,6 +7,8 @@ import { ingestTikTokAds } from "../../../lib/admin/tiktok-ads-ingest";
 import { evaluateAlerts, evaluateBlingPriceDrift } from "../../../lib/admin/alerts-engine";
 import { getAdminSupabase } from "../../../lib/supabase/server";
 import { isEmailConfigured, sendAdminEmail } from "../../../lib/admin/email";
+import { isConnected as isBlingConnected } from "../../../lib/bling/oauth";
+import { syncInfiniteStock } from "../../../lib/bling/estoque";
 
 export const prerender = false;
 
@@ -82,6 +84,25 @@ export const GET: APIRoute = async ({ request }) => {
     result.bling_price_drift = await evaluateBlingPriceDrift();
   } catch (e) {
     result.bling_price_drift = { error: (e as Error).message };
+  }
+
+  // 8) Bling estoque infinito — re-pina o saldo de todo produto físico no teto
+  //    (produção sob demanda). Balanço é idempotente; isso só repõe o que o
+  //    Bling deu baixa nos pedidos do dia. Pula silenciosamente se o Bling
+  //    não está conectado.
+  try {
+    if (await isBlingConnected()) {
+      const stock = await syncInfiniteStock();
+      result.bling_stock = {
+        applied: stock.applied.length,
+        errors: stock.errors.length,
+        target: stock.target,
+      };
+    } else {
+      result.bling_stock = { skipped: "bling not connected" };
+    }
+  } catch (e) {
+    result.bling_stock = { error: (e as Error).message };
   }
 
   // 4) Send email if critical alerts
