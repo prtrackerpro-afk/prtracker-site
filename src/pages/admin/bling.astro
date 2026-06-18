@@ -228,6 +228,80 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
       </section>
     )}
 
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Estoque infinito</div>
+            <p class="mt-1 text-sm text-navy-200">
+              Produção sob demanda → todo produto tem estoque virtualmente
+              infinito. Este botão fixa o saldo de cada produto físico num teto
+              alto (<code class="text-brand-lime">9999</code>) via balanço
+              (<code class="text-brand-lime">POST /estoques</code>,
+              <code class="text-brand-lime">operacao "B"</code>), pra os
+              marketplaces integrados via Bling nunca mostrarem "esgotado".
+              É idempotente — rodar de novo não acumula. Serviços (vale-presente)
+              são ignorados.
+            </p>
+          </div>
+          <div class="flex flex-col gap-2 items-end">
+            <button
+              id="preview-stock-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg border border-brand-lime text-brand-lime hover:bg-brand-lime/10 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+            >
+              Pré-visualizar
+            </button>
+            <button
+              id="sync-stock-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50 hidden"
+            >
+              Fixar estoque
+            </button>
+          </div>
+        </div>
+        <div id="sync-stock-result" class="mt-4 text-sm text-navy-300">
+          <span class="text-navy-400">Clica em "Pré-visualizar" pra ver quais produtos vão receber o balanço antes de aplicar.</span>
+        </div>
+      </section>
+    )}
+
+    {status.connected && (
+      <section class="rounded-xl border border-navy-700 bg-navy-800/40 p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Marca dos produtos</div>
+            <p class="mt-1 text-sm text-navy-200">
+              Carimba a marca <code class="text-brand-lime">PR Tracker</code> em
+              todo produto do Bling (campo <code class="text-brand-lime">marca</code>).
+              Produtos novos já nascem com a marca; este botão é o backfill dos
+              existentes. Idempotente — só atualiza quem está divergente.
+            </p>
+          </div>
+          <div class="flex flex-col gap-2 items-end">
+            <button
+              id="preview-marca-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg border border-brand-lime text-brand-lime hover:bg-brand-lime/10 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+            >
+              Pré-visualizar
+            </button>
+            <button
+              id="sync-marca-btn"
+              type="button"
+              class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50 hidden"
+            >
+              Aplicar marca
+            </button>
+          </div>
+        </div>
+        <div id="sync-marca-result" class="mt-4 text-sm text-navy-300">
+          <span class="text-navy-400">Clica em "Pré-visualizar" pra ver quais produtos vão receber a marca antes de aplicar.</span>
+        </div>
+      </section>
+    )}
+
     <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="rounded-lg border border-navy-700 bg-navy-800/40 p-4">
         <div class="text-[10px] uppercase tracking-[0.18em] text-navy-300">Sincronizados</div>
@@ -818,6 +892,294 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
         } finally {
           syncPricesBtn.disabled = false;
           syncPricesBtn.textContent = orig ?? "Aplicar no Bling";
+        }
+      });
+    }
+
+    // ============================================================
+    // Estoque infinito — balanço (operacao "B") via /api/admin/bling/sync-stock
+    // Preview (dryRun) lista os produtos físicos que vão receber o teto; o
+    // botão "Fixar estoque" aplica de fato.
+    // ============================================================
+    const previewStockBtn = document.getElementById("preview-stock-btn") as HTMLButtonElement | null;
+    const syncStockBtn = document.getElementById("sync-stock-btn") as HTMLButtonElement | null;
+    const stockResult = document.getElementById("sync-stock-result");
+
+    if (previewStockBtn && syncStockBtn && stockResult) {
+      type StockRow = {
+        blingId: number;
+        codigo: string | null;
+        nome: string;
+        target: number;
+        status: string;
+        error?: string;
+      };
+
+      function escapeHtml3(s: string): string {
+        return s.replace(/[&<>"]/g, (c) =>
+          c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+        );
+      }
+
+      function renderStockTable(rows: StockRow[], target: number): string {
+        const rowsHtml = rows.map((r) => {
+          const codigo = r.codigo
+            ? `<span class="font-mono text-brand-lime">${escapeHtml3(r.codigo)}</span>`
+            : '<span class="text-navy-500">—</span>';
+          const statusBadge =
+            r.status === "ok"
+              ? '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">ok</span>'
+              : r.status === "error"
+              ? `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml3(r.error ?? "")}">erro</span>`
+              : '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">vai fixar</span>';
+          return `
+            <tr class="hover:bg-navy-700/30">
+              <td class="px-3 py-2">${statusBadge}</td>
+              <td class="px-3 py-2">${codigo}</td>
+              <td class="px-3 py-2 text-navy-200">${escapeHtml3(r.nome)}${r.error ? `<div class="mt-0.5 text-[10px] text-red-300">${escapeHtml3(r.error.slice(0, 200))}</div>` : ""}</td>
+              <td class="px-3 py-2 text-right font-medium text-brand-lime">${r.target ?? target}</td>
+            </tr>
+          `;
+        }).join("");
+        return `
+          <div class="overflow-x-auto rounded border border-navy-700">
+            <table class="w-full text-sm">
+              <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
+                <tr>
+                  <th class="text-left px-3 py-2">Status</th>
+                  <th class="text-left px-3 py-2">SKU</th>
+                  <th class="text-left px-3 py-2">Nome</th>
+                  <th class="text-right px-3 py-2">Saldo alvo</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-navy-700/60">${rowsHtml}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      previewStockBtn.addEventListener("click", async () => {
+        previewStockBtn.disabled = true;
+        previewStockBtn.textContent = "Lendo catálogo…";
+        stockResult.innerHTML = '<span class="text-navy-400">Buscando produtos do Bling…</span>';
+        syncStockBtn.classList.add("hidden");
+        try {
+          const res = await fetch("/api/admin/bling/sync-stock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dryRun: true }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            stockResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml3(data.error ?? res.statusText)}</span>`;
+            return;
+          }
+          const planned: StockRow[] = data.planned ?? [];
+          if (planned.length === 0) {
+            stockResult.innerHTML = '<span class="text-amber-300">Nenhum produto físico encontrado no Bling.</span>';
+            return;
+          }
+          stockResult.innerHTML = `
+            <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
+              <span class="rounded bg-navy-700 px-2 py-0.5">${planned.length} produto${planned.length === 1 ? "" : "s"} físico${planned.length === 1 ? "" : "s"}</span>
+              <span class="rounded bg-brand-lime/20 text-brand-lime px-2 py-0.5">saldo alvo ${data.target ?? 9999}</span>
+              <span class="rounded bg-navy-700 text-navy-300 px-2 py-0.5">depósito #${data.depositoId ?? "?"}</span>
+              ${data.skippedServices ? `<span class="rounded bg-navy-700 text-navy-300 px-2 py-0.5">${data.skippedServices} serviço(s) ignorado(s)</span>` : ""}
+            </div>
+            ${renderStockTable(planned, data.target ?? 9999)}
+          `;
+          syncStockBtn.classList.remove("hidden");
+          syncStockBtn.textContent = `Fixar estoque em ${data.target ?? 9999} (${planned.length})`;
+        } catch (e) {
+          stockResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml3(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          previewStockBtn.disabled = false;
+          previewStockBtn.textContent = "Pré-visualizar";
+        }
+      });
+
+      syncStockBtn.addEventListener("click", async () => {
+        const proceed = window.confirm(
+          "Vai gravar o saldo (balanço) de todos os produtos físicos no Bling.\nIsso pode propagar pra marketplaces integrados via Bling.\nConfirma?"
+        );
+        if (!proceed) return;
+        syncStockBtn.disabled = true;
+        const orig = syncStockBtn.textContent;
+        syncStockBtn.textContent = "Aplicando…";
+        try {
+          const res = await fetch("/api/admin/bling/sync-stock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            stockResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml3(data.error ?? res.statusText)}</span>` + (stockResult.innerHTML || "");
+            return;
+          }
+          const applied = data.applied?.length ?? 0;
+          const errors = data.errors?.length ?? 0;
+          const banner = errors === 0
+            ? `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ Estoque fixado em ${data.target ?? 9999} para ${applied} produto${applied === 1 ? "" : "s"}.</div>`
+            : `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} ok, ${errors} erro(s).</div>`;
+          const allRows: StockRow[] = [...(data.applied ?? []), ...(data.errors ?? [])];
+          stockResult.innerHTML = banner + renderStockTable(allRows, data.target ?? 9999);
+          syncStockBtn.classList.add("hidden");
+        } catch (e) {
+          stockResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml3(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          syncStockBtn.disabled = false;
+          syncStockBtn.textContent = orig ?? "Fixar estoque";
+        }
+      });
+    }
+
+    // ============================================================
+    // Marca dos produtos — carimba "PR Tracker" via /api/admin/bling/sync-marca
+    // Preview (dryRun) lista quem está sem a marca / divergente; "Aplicar
+    // marca" faz o PUT nos divergentes.
+    // ============================================================
+    const previewMarcaBtn = document.getElementById("preview-marca-btn") as HTMLButtonElement | null;
+    const syncMarcaBtn = document.getElementById("sync-marca-btn") as HTMLButtonElement | null;
+    const marcaResult = document.getElementById("sync-marca-result");
+
+    if (previewMarcaBtn && syncMarcaBtn && marcaResult) {
+      type MarcaRow = {
+        blingId: number;
+        codigo: string | null;
+        nome: string;
+        oldMarca: string | null;
+        newMarca: string;
+        status: string;
+        error?: string;
+      };
+
+      function escapeHtml4(s: string): string {
+        return s.replace(/[&<>"]/g, (c) =>
+          c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+        );
+      }
+
+      function renderMarcaTable(rows: MarcaRow[]): string {
+        const rowsHtml = rows.map((r) => {
+          const codigo = r.codigo
+            ? `<span class="font-mono text-brand-lime">${escapeHtml4(r.codigo)}</span>`
+            : '<span class="text-navy-500">—</span>';
+          const statusBadge =
+            r.status === "ok"
+              ? '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">ok</span>'
+              : r.status === "error"
+              ? `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml4(r.error ?? "")}">erro</span>`
+              : r.status === "no-op"
+              ? '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">já ok</span>'
+              : '<span class="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">vai marcar</span>';
+          const oldM = r.oldMarca
+            ? escapeHtml4(r.oldMarca)
+            : '<span class="text-navy-500">—</span>';
+          return `
+            <tr class="hover:bg-navy-700/30">
+              <td class="px-3 py-2">${statusBadge}</td>
+              <td class="px-3 py-2">${codigo}</td>
+              <td class="px-3 py-2 text-navy-200">${escapeHtml4(r.nome)}${r.error ? `<div class="mt-0.5 text-[10px] text-red-300">${escapeHtml4(r.error.slice(0, 200))}</div>` : ""}</td>
+              <td class="px-3 py-2 text-navy-300">${oldM}</td>
+              <td class="px-3 py-2 font-medium text-brand-lime">${escapeHtml4(r.newMarca)}</td>
+            </tr>
+          `;
+        }).join("");
+        return `
+          <div class="overflow-x-auto rounded border border-navy-700">
+            <table class="w-full text-sm">
+              <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
+                <tr>
+                  <th class="text-left px-3 py-2">Status</th>
+                  <th class="text-left px-3 py-2">SKU</th>
+                  <th class="text-left px-3 py-2">Nome</th>
+                  <th class="text-left px-3 py-2">Marca atual</th>
+                  <th class="text-left px-3 py-2">Marca alvo</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-navy-700/60">${rowsHtml}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      previewMarcaBtn.addEventListener("click", async () => {
+        previewMarcaBtn.disabled = true;
+        previewMarcaBtn.textContent = "Lendo catálogo…";
+        marcaResult.innerHTML = '<span class="text-navy-400">Lendo produtos do Bling (pode levar alguns segundos)…</span>';
+        syncMarcaBtn.classList.add("hidden");
+        try {
+          const res = await fetch("/api/admin/bling/sync-marca", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dryRun: true }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            marcaResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml4(data.error ?? res.statusText)}</span>`;
+            return;
+          }
+          const planned: MarcaRow[] = data.planned ?? [];
+          const noOp: MarcaRow[] = data.noOp ?? [];
+          const rows = [...planned, ...noOp];
+          if (rows.length === 0) {
+            marcaResult.innerHTML = '<span class="text-amber-300">Nenhum produto encontrado no Bling.</span>';
+            return;
+          }
+          marcaResult.innerHTML = `
+            <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
+              <span class="rounded bg-navy-700 px-2 py-0.5">${rows.length} produto${rows.length === 1 ? "" : "s"}</span>
+              <span class="rounded bg-amber-500/20 text-amber-300 px-2 py-0.5">${planned.length} a marcar</span>
+              <span class="rounded bg-green-500/20 text-green-300 px-2 py-0.5">${noOp.length} já ok</span>
+              <span class="rounded bg-brand-lime/20 text-brand-lime px-2 py-0.5">marca "${escapeHtml4(data.marca ?? "PR Tracker")}"</span>
+            </div>
+            ${renderMarcaTable(rows)}
+          `;
+          if (planned.length > 0) {
+            syncMarcaBtn.classList.remove("hidden");
+            syncMarcaBtn.textContent = `Aplicar marca em ${planned.length} produto${planned.length === 1 ? "" : "s"}`;
+          }
+        } catch (e) {
+          marcaResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml4(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          previewMarcaBtn.disabled = false;
+          previewMarcaBtn.textContent = "Pré-visualizar";
+        }
+      });
+
+      syncMarcaBtn.addEventListener("click", async () => {
+        const proceed = window.confirm(
+          "Vai carimbar a marca \"PR Tracker\" nos produtos divergentes do Bling.\nConfirma?"
+        );
+        if (!proceed) return;
+        syncMarcaBtn.disabled = true;
+        const orig = syncMarcaBtn.textContent;
+        syncMarcaBtn.textContent = "Aplicando…";
+        try {
+          const res = await fetch("/api/admin/bling/sync-marca", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            marcaResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml4(data.error ?? res.statusText)}</span>` + (marcaResult.innerHTML || "");
+            return;
+          }
+          const applied = data.applied?.length ?? 0;
+          const errors = data.errors?.length ?? 0;
+          const banner = errors === 0
+            ? `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ Marca "${escapeHtml4(data.marca ?? "PR Tracker")}" aplicada em ${applied} produto${applied === 1 ? "" : "s"}.</div>`
+            : `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} ok, ${errors} erro(s).</div>`;
+          const allRows: MarcaRow[] = [...(data.applied ?? []), ...(data.errors ?? [])];
+          marcaResult.innerHTML = banner + renderMarcaTable(allRows);
+          syncMarcaBtn.classList.add("hidden");
+        } catch (e) {
+          marcaResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml4(e instanceof Error ? e.message : String(e))}</span>`;
+        } finally {
+          syncMarcaBtn.disabled = false;
+          syncMarcaBtn.textContent = orig ?? "Aplicar marca";
         }
       });
     }
