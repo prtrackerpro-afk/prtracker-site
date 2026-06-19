@@ -1254,6 +1254,8 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
             return `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml5(error ?? "")}">erro</span>`;
           case "no-op":
             return '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">já ok</span>';
+          case "not-persisted":
+            return `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml5(error ?? "")}">não salvou</span>`;
           case "skip-has-internal":
             return '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">upload manual</span>';
           case "skip-no-suggestion":
@@ -1365,10 +1367,16 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
           }
           const applied = data.applied?.length ?? 0;
           const errors = data.errors?.length ?? 0;
-          const banner = errors === 0
-            ? `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ URL de imagem setada em ${applied} produto${applied === 1 ? "" : "s"}. Pra aparecer no Bling, a conta precisa estar no modo "URL de imagens".</div>`
-            : `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} ok, ${errors} erro(s).</div>`;
-          const allRows: ImageRow[] = [...(data.applied ?? []), ...(data.errors ?? [])];
+          const notPersisted = data.notPersisted?.length ?? 0;
+          let banner;
+          if (notPersisted > 0) {
+            banner = `<div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 mb-3 text-sm text-red-200">⚠️ O Bling aceitou o PUT mas <strong>não armazenou a imagem</strong> em ${notPersisted} produto${notPersisted === 1 ? "" : "s"} — é limitação da API do Bling (PUT /produtos não grava imagem). <strong>Use Importar via planilha</strong> no Bling: Cadastros → Produtos → Exportar planilha → preencher a coluna de imagem com a URL → Importar.${applied ? ` (${applied} persistiu(ram) de fato.)` : ""}</div>`;
+          } else if (errors === 0) {
+            banner = `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ URL de imagem armazenada e confirmada em ${applied} produto${applied === 1 ? "" : "s"}.</div>`;
+          } else {
+            banner = `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} ok, ${errors} erro(s).</div>`;
+          }
+          const allRows: ImageRow[] = [...(data.applied ?? []), ...(data.notPersisted ?? []), ...(data.errors ?? [])];
           imagesResult.innerHTML = banner + renderImagesTable(allRows);
           syncImagesBtn.classList.add("hidden");
         } catch (e) {

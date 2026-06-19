@@ -116,6 +116,7 @@ export const GET: APIRoute = async ({ request }) => {
         applied: imgs.applied.length,
         errors: imgs.errors.length,
         noOp: imgs.noOp.length,
+        notPersisted: imgs.notPersisted.length,
       };
     } else {
       result.bling_images = { skipped: "bling not connected" };
