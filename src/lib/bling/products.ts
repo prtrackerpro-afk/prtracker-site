@@ -188,6 +188,15 @@ export interface ProductPatch {
   situacao?: "A" | "I";
   marca?: string;
   imagensExternas?: string[]; // URLs públicas que o Bling busca e armazena
+  /** Dimensões da embalagem em cm. Merge com as atuais (preserva unidadeMedida). */
+  dimensoes?: {
+    largura?: number;
+    altura?: number;
+    profundidade?: number;
+    unidadeMedida?: number;
+  };
+  descricaoCurta?: string;
+  descricaoComplementar?: string;
 }
 
 /**
@@ -215,6 +224,15 @@ function buildProductPutBody(
   if (patch.preco != null) body.preco = patch.preco;
   if (patch.situacao != null) body.situacao = patch.situacao;
   if (patch.marca != null) body.marca = patch.marca;
+  if (patch.descricaoCurta != null) body.descricaoCurta = patch.descricaoCurta;
+  if (patch.descricaoComplementar != null)
+    body.descricaoComplementar = patch.descricaoComplementar;
+
+  if (patch.dimensoes) {
+    const cur = (body.dimensoes ?? {}) as Record<string, unknown>;
+    // Merge preserva unidadeMedida já cadastrada; só sobrescreve o que veio.
+    body.dimensoes = { ...cur, ...patch.dimensoes };
+  }
 
   if (patch.imagensExternas) {
     const existingMidia = (body.midia ?? {}) as Record<string, unknown>;
@@ -380,5 +398,97 @@ export async function syncMarca(
     noOp: results.filter((r) => r.status === "no-op"),
     planned: results.filter((r) => r.status === "planned"),
     errors: results.filter((r) => r.status === "error"),
+  };
+}
+
+/** Dimensões (cm) + descrição curta a aplicar num produto, por SKU. */
+export interface DimsDescInput {
+  largura: number;
+  altura: number;
+  profundidade: number;
+  descricao: string;
+}
+
+export interface SyncDimsItemResult {
+  blingId: number;
+  codigo: string | null;
+  nome: string;
+  status: "ok" | "error" | "planned";
+  error?: string;
+}
+
+export interface SyncDimsReport {
+  dryRun: boolean;
+  total: number;
+  applied: SyncDimsItemResult[];
+  planned: SyncDimsItemResult[];
+  errors: SyncDimsItemResult[];
+  /** SKUs do data que não acharam produto no Bling. */
+  missing: string[];
+}
+
+/**
+ * Backfill de dimensões da embalagem (cm) + descrição curta nos produtos do
+ * Bling, casando por `codigo` (SKU). Necessário pro export ao TikTok Shop, que
+ * exige largura/altura/profundidade e descrição preenchidos.
+ *
+ * Idempotente o suficiente: faz PUT preservando o resto via buildProductPutBody.
+ * dryRun=true monta o plano sem chamar o Bling.
+ */
+export async function syncDimensoesDescricao(
+  data: Record<string, DimsDescInput>,
+  opts: { dryRun?: boolean } = {},
+): Promise<SyncDimsReport> {
+  const dryRun = opts.dryRun === true;
+  const all = await listAllProducts();
+  const byCode = new Map<string, BlingProduct>();
+  for (const p of all) if (p.codigo) byCode.set(p.codigo, p);
+
+  const results: SyncDimsItemResult[] = [];
+  const missing: string[] = [];
+
+  for (const [codigo, d] of Object.entries(data)) {
+    const p = byCode.get(codigo);
+    if (!p) {
+      missing.push(codigo);
+      continue;
+    }
+    const base = { blingId: p.id, codigo: p.codigo ?? null, nome: p.nome };
+    if (dryRun) {
+      results.push({ ...base, status: "planned" });
+      continue;
+    }
+    try {
+      const full = await getProduct(p.id);
+      if (!full) {
+        results.push({ ...base, status: "error", error: "produto não encontrado no GET" });
+        continue;
+      }
+      const body = buildProductPutBody(full, {
+        dimensoes: {
+          largura: d.largura,
+          altura: d.altura,
+          profundidade: d.profundidade,
+        },
+        descricaoCurta: d.descricao,
+      });
+      await blingFetch<BlingProduct>(`/produtos/${p.id}`, { method: "PUT", body });
+      results.push({ ...base, status: "ok" });
+    } catch (err) {
+      results.push({
+        ...base,
+        status: "error",
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return {
+    dryRun,
+    total: results.length,
+    applied: results.filter((r) => r.status === "ok"),
+    planned: results.filter((r) => r.status === "planned"),
+    errors: results.filter((r) => r.status === "error"),
+    missing,
   };
 }
