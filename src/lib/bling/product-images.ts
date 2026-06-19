@@ -29,24 +29,24 @@ export const CANONICAL_IMAGE_BY_SKU: Record<string, string> = {
   "BENCH-SET": `${SITE_URL}/images/products/bench-press-set/hero.jpg`,
   "POWER-SET": `${SITE_URL}/images/products/power-rack-set/hero.jpg`,
   "MYPR-SET": `${SITE_URL}/images/products/my-pr-set/hero.jpg`,
-  "TEE-MASC": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-P": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-M": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-G": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-MASC-GG": `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`,
-  "TEE-BABY": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-P": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-M": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-G": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "TEE-BABY-GG": `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`,
-  "ANILHA-25": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-20": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-15": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-10": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-5": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-2.5": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-1.25": `${SITE_URL}/images/products/anilhas/hero.jpg`,
-  "ANILHA-MIX": `${SITE_URL}/images/products/anilhas/hero.jpg`,
+  "TEE-MASC": `${SITE_URL}/images/products/camiseta-masculina/FT-C.jpg`,
+  "TEE-MASC-P": `${SITE_URL}/images/products/camiseta-masculina/FT-C.jpg`,
+  "TEE-MASC-M": `${SITE_URL}/images/products/camiseta-masculina/FT-C.jpg`,
+  "TEE-MASC-G": `${SITE_URL}/images/products/camiseta-masculina/FT-C.jpg`,
+  "TEE-MASC-GG": `${SITE_URL}/images/products/camiseta-masculina/FT-C.jpg`,
+  "TEE-BABY": `${SITE_URL}/images/products/camiseta-feminina-baby-look/FT-C.jpg`,
+  "TEE-BABY-P": `${SITE_URL}/images/products/camiseta-feminina-baby-look/FT-C.jpg`,
+  "TEE-BABY-M": `${SITE_URL}/images/products/camiseta-feminina-baby-look/FT-C.jpg`,
+  "TEE-BABY-G": `${SITE_URL}/images/products/camiseta-feminina-baby-look/FT-C.jpg`,
+  "TEE-BABY-GG": `${SITE_URL}/images/products/camiseta-feminina-baby-look/FT-C.jpg`,
+  "ANILHA-25": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
+  "ANILHA-20": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
+  "ANILHA-15": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
+  "ANILHA-10": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
+  "ANILHA-5": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
+  "ANILHA-2.5": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
+  "ANILHA-1.25": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
+  "ANILHA-MIX": `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`,
   // Boards e Runners — pastas têm hero.svg + photo-NN.jpg. Bling baixa
   // por URL e SVG dá problema; usamos photo-01.jpg em todos.
   "PRboard-2ex": `${SITE_URL}/images/products/pr-tracker-board-2/photo-01.jpg`,
@@ -64,9 +64,9 @@ export function suggestImageByName(nome: string): string | null {
   if (n.includes("bench")) return `${SITE_URL}/images/products/bench-press-set/hero.jpg`;
   if (n.includes("power") || n.includes("rack")) return `${SITE_URL}/images/products/power-rack-set/hero.jpg`;
   if (n.includes("my pr") || n.includes("trofeu") || n.includes("crossfit")) return `${SITE_URL}/images/products/my-pr-set/hero.jpg`;
-  if (n.includes("baby") || (n.includes("camiseta") && n.includes("femin"))) return `${SITE_URL}/images/products/camiseta-feminina-baby-look/hero.jpg`;
-  if (n.includes("camiseta") || n.includes("masc")) return `${SITE_URL}/images/products/camiseta-masculina/hero.jpg`;
-  if (n.includes("anilha") || n.includes("kit")) return `${SITE_URL}/images/products/anilhas/hero.jpg`;
+  if (n.includes("baby") || (n.includes("camiseta") && n.includes("femin"))) return `${SITE_URL}/images/products/camiseta-feminina-baby-look/FT-C.jpg`;
+  if (n.includes("camiseta") || n.includes("masc")) return `${SITE_URL}/images/products/camiseta-masculina/FT-C.jpg`;
+  if (n.includes("anilha") || n.includes("kit")) return `${SITE_URL}/images/products/anilhas/Anilhas_0007_todas-anilhas-clean.jpg`;
   return null;
 }
 
@@ -94,10 +94,13 @@ export interface SyncImagesItemResult {
   codigo: string | null;
   nome: string;
   imageUrl: string | null;
+  /** URL externa que o produto já tinha (pra debug de 404 antigo). */
+  oldImageUrl?: string | null;
   status:
     | "ok"
+    | "no-op"
     | "planned"
-    | "skip-has-image"
+    | "skip-has-internal"
     | "skip-no-suggestion"
     | "error";
   error?: string;
@@ -107,19 +110,26 @@ export interface SyncImagesReport {
   dryRun: boolean;
   total: number;
   applied: SyncImagesItemResult[];
+  noOp: SyncImagesItemResult[];
   planned: SyncImagesItemResult[];
-  skippedHasImage: SyncImagesItemResult[];
+  skippedHasInternal: SyncImagesItemResult[];
   skippedNoSuggestion: SyncImagesItemResult[];
   errors: SyncImagesItemResult[];
 }
 
 /**
- * Backfill de imagens: pra cada produto SEM imagem, anexa a hero do site
- * (URL pública que o Bling baixa). Idempotente — produto que já tem qualquer
- * imagem é pulado (não empilha duplicata nem sobrescreve foto manual).
+ * Garante a URL canônica do site (`midia.imagens.externas`) em todo produto:
+ *   - sem imagem            → seta a hero do site
+ *   - externas != a sugerida → SUBSTITUI (corrige URL antiga/404)
+ *   - externas == a sugerida → no-op (idempotente)
+ *   - tem imagem `interna` (upload manual no Bling) → pula (preserva o manual)
  *
- * Não toca em quem já tem imagem; preenche só as lacunas. Coleta erros
- * por-produto sem abortar o lote.
+ * Importante: o Bling tem uma config de conta "forma de inserir imagens"
+ * (por arquivo vs por URL). Pra essas URLs externas APARECEREM no produto, a
+ * conta precisa estar no modo "URL de imagens". Senão o Bling guarda o link
+ * mas o formulário (modo arquivo) não exibe.
+ *
+ * Coleta erros por-produto sem abortar o lote.
  */
 export async function syncProductImages(
   opts: SyncImagesOptions = {},
@@ -147,31 +157,41 @@ export async function syncProductImages(
       continue;
     }
 
-    // A listagem não traz `midia` — precisa do produto completo pra saber
-    // se já tem imagem.
+    // A listagem não traz `midia` — precisa do produto completo.
     const full = await getProduct(p.id);
     if (!full) {
       results.push({ ...base, status: "error", error: "produto não encontrado" });
       continue;
     }
-    const externas = full.midia?.imagens?.externas ?? [];
+
     const internas = full.midia?.imagens?.internas ?? [];
-    if (externas.length + internas.length > 0) {
-      results.push({ ...base, status: "skip-has-image" });
+    if (internas.length > 0) {
+      // Upload manual no Bling — não mexe.
+      results.push({ ...base, status: "skip-has-internal" });
+      continue;
+    }
+
+    const externas = full.midia?.imagens?.externas ?? [];
+    const oldImageUrl = externas[0]?.link ?? null;
+    const hasSuggested = externas.some((e) => e.link === imageUrl);
+    if (hasSuggested) {
+      results.push({ ...base, oldImageUrl, status: "no-op" });
       continue;
     }
 
     if (dryRun) {
-      results.push({ ...base, status: "planned" });
+      results.push({ ...base, oldImageUrl, status: "planned" });
       continue;
     }
 
     try {
+      // Substitui as externas pela URL canônica (corrige 404 antigo / preenche).
       await updateProduct(p.id, { imagensExternas: [imageUrl] });
-      results.push({ ...base, status: "ok" });
+      results.push({ ...base, oldImageUrl, status: "ok" });
     } catch (err) {
       results.push({
         ...base,
+        oldImageUrl,
         status: "error",
         error: err instanceof Error ? err.message : String(err),
       });
@@ -182,8 +202,9 @@ export async function syncProductImages(
     dryRun,
     total: results.length,
     applied: results.filter((r) => r.status === "ok"),
+    noOp: results.filter((r) => r.status === "no-op"),
     planned: results.filter((r) => r.status === "planned"),
-    skippedHasImage: results.filter((r) => r.status === "skip-has-image"),
+    skippedHasInternal: results.filter((r) => r.status === "skip-has-internal"),
     skippedNoSuggestion: results.filter((r) => r.status === "skip-no-suggestion"),
     errors: results.filter((r) => r.status === "error"),
   };
