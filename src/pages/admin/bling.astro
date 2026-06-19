@@ -308,33 +308,38 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
           <div>
             <div class="text-xs uppercase tracking-[0.18em] text-navy-300">Imagens dos produtos</div>
             <p class="mt-1 text-sm text-navy-200">
-              Backfill em massa: anexa a hero do site em todo produto que está
-              <strong>sem imagem</strong>. O Bling baixa a imagem da URL pública
-              (<code class="text-brand-lime">midia.imagens.externas</code>) — não é
-              upload de arquivo. Idempotente: quem já tem imagem é pulado (não
-              empilha nem sobrescreve foto manual). Pra anexar/forçar 1 produto
-              específico, use a "Auditoria de produtos" acima.
+              A API do Bling <strong>não grava imagem</strong> (o PUT /produtos
+              ignora <code class="text-brand-lime">midia.imagens.externas</code>).
+              Imagem entra pelo <strong>Importar planilha</strong> do Bling
+              (coluna <code class="text-brand-lime">AR — URL Imagens Externas</code>).
+              Este botão gera a lista <strong>SKU → URL</strong> do catálogo atual
+              pra você colar na planilha (ou casar por VLOOKUP).
+            </p>
+            <p class="mt-2 text-[11px] text-navy-400">
+              Importar: perfil → Todas as configurações → Importações de Dados →
+              Importar e Atualizar produtos → operação <strong>Atualizar</strong>.
+              Requer a conta no modo "URL de imagens" (Cadastros → Config. de produtos).
             </p>
           </div>
           <div class="flex flex-col gap-2 items-end">
             <button
-              id="preview-images-btn"
+              id="gen-images-btn"
               type="button"
-              class="inline-flex items-center rounded-lg border border-brand-lime text-brand-lime hover:bg-brand-lime/10 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+              class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50"
             >
-              Pré-visualizar
+              Gerar lista
             </button>
             <button
-              id="sync-images-btn"
+              id="dl-images-csv-btn"
               type="button"
-              class="inline-flex items-center rounded-lg bg-brand-lime text-navy-900 hover:bg-brand-lime/90 px-4 py-2 text-sm font-medium transition disabled:opacity-50 hidden"
+              class="inline-flex items-center rounded-lg border border-brand-lime text-brand-lime hover:bg-brand-lime/10 px-4 py-2 text-sm font-medium transition disabled:opacity-50 hidden"
             >
-              Anexar imagens
+              Baixar CSV
             </button>
           </div>
         </div>
-        <div id="sync-images-result" class="mt-4 text-sm text-navy-300">
-          <span class="text-navy-400">Clica em "Pré-visualizar" pra ver quais produtos sem imagem vão receber a hero do site.</span>
+        <div id="images-result" class="mt-4 text-sm text-navy-300">
+          <span class="text-navy-400">Clica em "Gerar lista" pra montar o mapa SKU → URL do catálogo Bling.</span>
         </div>
       </section>
     )}
@@ -1222,62 +1227,42 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
     }
 
     // ============================================================
-    // Imagens dos produtos — backfill via /api/admin/bling/sync-images
-    // Preview (dryRun) lista quem está sem imagem e vai receber a hero do
-    // site; "Anexar imagens" faz o PUT nos sem-imagem.
+    // Imagens dos produtos — gerador da lista SKU → URL (read-only).
+    // A API do Bling não grava imagem; isto monta o mapa pra colar na
+    // planilha de import (coluna AR "URL Imagens Externas").
     // ============================================================
-    const previewImagesBtn = document.getElementById("preview-images-btn") as HTMLButtonElement | null;
-    const syncImagesBtn = document.getElementById("sync-images-btn") as HTMLButtonElement | null;
-    const imagesResult = document.getElementById("sync-images-result");
+    const genImagesBtn = document.getElementById("gen-images-btn") as HTMLButtonElement | null;
+    const dlImagesCsvBtn = document.getElementById("dl-images-csv-btn") as HTMLButtonElement | null;
+    const imagesResult = document.getElementById("images-result");
 
-    if (previewImagesBtn && syncImagesBtn && imagesResult) {
-      type ImageRow = {
+    if (genImagesBtn && dlImagesCsvBtn && imagesResult) {
+      type ImgRow = {
         blingId: number;
         codigo: string | null;
         nome: string;
         imageUrl: string | null;
-        status: string;
-        error?: string;
       };
 
-      function escapeHtml5(s: string): string {
+      function escapeHtml6(s: string): string {
         return s.replace(/[&<>"]/g, (c) =>
           c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
         );
       }
 
-      function imgStatusBadge(status: string, error?: string): string {
-        switch (status) {
-          case "ok":
-            return '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">ok</span>';
-          case "error":
-            return `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml5(error ?? "")}">erro</span>`;
-          case "no-op":
-            return '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">já ok</span>';
-          case "not-persisted":
-            return `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml5(error ?? "")}">não salvou</span>`;
-          case "skip-has-internal":
-            return '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">upload manual</span>';
-          case "skip-no-suggestion":
-            return '<span class="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">sem sugestão</span>';
-          default:
-            return '<span class="rounded bg-brand-lime/20 text-brand-lime px-1.5 py-0.5 text-[10px] uppercase tracking-wider">vai setar</span>';
-        }
-      }
+      let lastWithUrl: ImgRow[] = [];
 
-      function renderImagesTable(rows: ImageRow[]): string {
-        const rowsHtml = rows.map((r) => {
+      function renderImgTable(withUrl: ImgRow[], withoutUrl: ImgRow[]): string {
+        const rowsHtml = [...withUrl, ...withoutUrl].map((r) => {
           const codigo = r.codigo
-            ? `<span class="font-mono text-brand-lime">${escapeHtml5(r.codigo)}</span>`
+            ? `<span class="font-mono text-brand-lime">${escapeHtml6(r.codigo)}</span>`
             : '<span class="text-navy-500">—</span>';
           const url = r.imageUrl
-            ? `<a href="${escapeHtml5(r.imageUrl)}" target="_blank" rel="noreferrer" class="text-navy-300 underline break-all">${escapeHtml5(r.imageUrl.replace(/^https?:\/\/[^/]+/, ""))}</a>`
-            : '<span class="text-navy-500">—</span>';
+            ? `<a href="${escapeHtml6(r.imageUrl)}" target="_blank" rel="noreferrer" class="text-navy-300 underline break-all">${escapeHtml6(r.imageUrl.replace(/^https?:\/\/[^/]+/, ""))}</a>`
+            : '<span class="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">sem sugestão</span>';
           return `
             <tr class="hover:bg-navy-700/30">
-              <td class="px-3 py-2">${imgStatusBadge(r.status, r.error)}</td>
               <td class="px-3 py-2">${codigo}</td>
-              <td class="px-3 py-2 text-navy-200">${escapeHtml5(r.nome)}${r.error ? `<div class="mt-0.5 text-[10px] text-red-300">${escapeHtml5(r.error.slice(0, 200))}</div>` : ""}</td>
+              <td class="px-3 py-2 text-navy-200">${escapeHtml6(r.nome)}</td>
               <td class="px-3 py-2 text-[11px]">${url}</td>
             </tr>
           `;
@@ -1287,10 +1272,9 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
             <table class="w-full text-sm">
               <thead class="text-[11px] uppercase tracking-wider text-navy-300 border-b border-navy-700">
                 <tr>
-                  <th class="text-left px-3 py-2">Status</th>
                   <th class="text-left px-3 py-2">SKU</th>
                   <th class="text-left px-3 py-2">Nome</th>
-                  <th class="text-left px-3 py-2">Imagem do site</th>
+                  <th class="text-left px-3 py-2">URL da imagem</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-navy-700/60">${rowsHtml}</tbody>
@@ -1299,92 +1283,78 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
         `;
       }
 
-      previewImagesBtn.addEventListener("click", async () => {
-        previewImagesBtn.disabled = true;
-        previewImagesBtn.textContent = "Lendo catálogo…";
-        imagesResult.innerHTML = '<span class="text-navy-400">Lendo produtos do Bling (pode levar alguns segundos)…</span>';
-        syncImagesBtn.classList.add("hidden");
+      genImagesBtn.addEventListener("click", async () => {
+        genImagesBtn.disabled = true;
+        genImagesBtn.textContent = "Lendo catálogo…";
+        imagesResult.innerHTML = '<span class="text-navy-400">Lendo produtos do Bling…</span>';
+        dlImagesCsvBtn.classList.add("hidden");
         try {
-          const res = await fetch("/api/admin/bling/sync-images", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ dryRun: true }),
+          const res = await fetch("/api/admin/bling/image-urls", {
+            headers: { Accept: "application/json" },
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            imagesResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml5(data.error ?? res.statusText)}</span>`;
+            imagesResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml6(data.error ?? res.statusText)}</span>`;
             return;
           }
-          const planned: ImageRow[] = data.planned ?? [];
-          const noOp: ImageRow[] = data.noOp ?? [];
-          const hasInternal: ImageRow[] = data.skippedHasInternal ?? [];
-          const noSug: ImageRow[] = data.skippedNoSuggestion ?? [];
-          const rows = [...planned, ...noOp, ...hasInternal, ...noSug];
-          if (rows.length === 0) {
-            imagesResult.innerHTML = '<span class="text-amber-300">Nenhum produto encontrado no Bling.</span>';
+          const withUrl: ImgRow[] = data.withUrl ?? [];
+          const withoutUrl: ImgRow[] = data.withoutUrl ?? [];
+          lastWithUrl = withUrl;
+          if (withUrl.length + withoutUrl.length === 0) {
+            imagesResult.innerHTML = '<span class="text-amber-300">Nenhum produto no Bling.</span>';
             return;
           }
+          const tsv = withUrl.map((r) => `${r.codigo ?? ""}\t${r.imageUrl ?? ""}`).join("\n");
           imagesResult.innerHTML = `
             <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
-              <span class="rounded bg-navy-700 px-2 py-0.5">${rows.length} produto${rows.length === 1 ? "" : "s"}</span>
-              <span class="rounded bg-brand-lime/20 text-brand-lime px-2 py-0.5">${planned.length} vai setar/corrigir</span>
-              <span class="rounded bg-green-500/20 text-green-300 px-2 py-0.5">${noOp.length} já ok</span>
-              ${hasInternal.length ? `<span class="rounded bg-navy-700 text-navy-300 px-2 py-0.5">${hasInternal.length} upload manual</span>` : ""}
-              ${noSug.length ? `<span class="rounded bg-amber-500/20 text-amber-300 px-2 py-0.5">${noSug.length} sem sugestão</span>` : ""}
+              <span class="rounded bg-navy-700 px-2 py-0.5">${data.total ?? (withUrl.length + withoutUrl.length)} produtos</span>
+              <span class="rounded bg-green-500/20 text-green-300 px-2 py-0.5">${withUrl.length} com URL</span>
+              ${withoutUrl.length ? `<span class="rounded bg-amber-500/20 text-amber-300 px-2 py-0.5">${withoutUrl.length} sem sugestão</span>` : ""}
             </div>
-            ${renderImagesTable(rows)}
+            <div class="mb-3">
+              <div class="text-[11px] text-navy-300 mb-1">Cola numa aba "ref" (col A = código, col B = URL) e usa VLOOKUP na coluna AR da planilha do Bling:</div>
+              <textarea readonly id="img-tsv" class="w-full h-28 text-[11px] font-mono bg-navy-900/60 border border-navy-700 rounded p-2 text-navy-200">${escapeHtml6(tsv)}</textarea>
+              <div class="mt-1 flex items-center gap-2 flex-wrap">
+                <button type="button" id="copy-img-tsv" class="rounded bg-brand-lime/20 hover:bg-brand-lime/40 text-brand-lime px-2 py-1 text-[11px]">Copiar código → URL</button>
+                <code class="text-[11px] text-navy-400">AR2: =SEERRO(PROCV(B2;ref.A:B;2;0);"")</code>
+              </div>
+            </div>
+            ${renderImgTable(withUrl, withoutUrl)}
           `;
-          if (planned.length > 0) {
-            syncImagesBtn.classList.remove("hidden");
-            syncImagesBtn.textContent = `Setar imagem em ${planned.length} produto${planned.length === 1 ? "" : "s"}`;
+          dlImagesCsvBtn.classList.remove("hidden");
+          const copyBtn = document.getElementById("copy-img-tsv");
+          const ta = document.getElementById("img-tsv") as HTMLTextAreaElement | null;
+          if (copyBtn && ta) {
+            copyBtn.addEventListener("click", async () => {
+              try {
+                await navigator.clipboard.writeText(ta.value);
+                copyBtn.textContent = "Copiado ✓";
+                setTimeout(() => (copyBtn.textContent = "Copiar código → URL"), 1500);
+              } catch {
+                ta.select();
+                document.execCommand("copy");
+              }
+            });
           }
         } catch (e) {
-          imagesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml5(e instanceof Error ? e.message : String(e))}</span>`;
+          imagesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml6(e instanceof Error ? e.message : String(e))}</span>`;
         } finally {
-          previewImagesBtn.disabled = false;
-          previewImagesBtn.textContent = "Pré-visualizar";
+          genImagesBtn.disabled = false;
+          genImagesBtn.textContent = "Gerar lista";
         }
       });
 
-      syncImagesBtn.addEventListener("click", async () => {
-        const proceed = window.confirm(
-          "Vai setar a URL da imagem do site nos produtos (preenche os sem imagem e corrige URLs antigas/404). Não mexe em uploads manuais.\n\nLembrete: pras imagens aparecerem, a conta Bling precisa estar no modo \"URL de imagens\".\n\nConfirma?"
-        );
-        if (!proceed) return;
-        syncImagesBtn.disabled = true;
-        const orig = syncImagesBtn.textContent;
-        syncImagesBtn.textContent = "Setando…";
-        try {
-          const res = await fetch("/api/admin/bling/sync-images", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            imagesResult.innerHTML = `<span class="text-red-300">Erro: ${escapeHtml5(data.error ?? res.statusText)}</span>` + (imagesResult.innerHTML || "");
-            return;
-          }
-          const applied = data.applied?.length ?? 0;
-          const errors = data.errors?.length ?? 0;
-          const notPersisted = data.notPersisted?.length ?? 0;
-          let banner;
-          if (notPersisted > 0) {
-            banner = `<div class="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 mb-3 text-sm text-red-200">⚠️ O Bling aceitou o PUT mas <strong>não armazenou a imagem</strong> em ${notPersisted} produto${notPersisted === 1 ? "" : "s"} — é limitação da API do Bling (PUT /produtos não grava imagem). <strong>Use Importar via planilha</strong> no Bling: Cadastros → Produtos → Exportar planilha → preencher a coluna de imagem com a URL → Importar.${applied ? ` (${applied} persistiu(ram) de fato.)` : ""}</div>`;
-          } else if (errors === 0) {
-            banner = `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ URL de imagem armazenada e confirmada em ${applied} produto${applied === 1 ? "" : "s"}.</div>`;
-          } else {
-            banner = `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} ok, ${errors} erro(s).</div>`;
-          }
-          const allRows: ImageRow[] = [...(data.applied ?? []), ...(data.notPersisted ?? []), ...(data.errors ?? [])];
-          imagesResult.innerHTML = banner + renderImagesTable(allRows);
-          syncImagesBtn.classList.add("hidden");
-        } catch (e) {
-          imagesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml5(e instanceof Error ? e.message : String(e))}</span>`;
-        } finally {
-          syncImagesBtn.disabled = false;
-          syncImagesBtn.textContent = orig ?? "Setar imagens";
-        }
+      dlImagesCsvBtn.addEventListener("click", () => {
+        if (lastWithUrl.length === 0) return;
+        const header = "Código;URL Imagens Externas";
+        const lines = lastWithUrl.map((r) => `${r.codigo ?? ""};${r.imageUrl ?? ""}`);
+        const csv = "﻿" + [header, ...lines].join("\r\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "bling-imagens-sku-url.csv";
+        a.click();
+        URL.revokeObjectURL(a.href);
       });
     }
   </script>
