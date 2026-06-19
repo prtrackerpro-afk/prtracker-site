@@ -100,6 +100,7 @@ export interface SyncImagesItemResult {
     | "ok"
     | "no-op"
     | "planned"
+    | "not-persisted"
     | "skip-has-internal"
     | "skip-no-suggestion"
     | "error";
@@ -112,6 +113,8 @@ export interface SyncImagesReport {
   applied: SyncImagesItemResult[];
   noOp: SyncImagesItemResult[];
   planned: SyncImagesItemResult[];
+  /** PUT retornou 200 mas o Bling NÃO armazenou a URL (limitação da API). */
+  notPersisted: SyncImagesItemResult[];
   skippedHasInternal: SyncImagesItemResult[];
   skippedNoSuggestion: SyncImagesItemResult[];
   errors: SyncImagesItemResult[];
@@ -187,7 +190,25 @@ export async function syncProductImages(
     try {
       // Substitui as externas pela URL canônica (corrige 404 antigo / preenche).
       await updateProduct(p.id, { imagensExternas: [imageUrl] });
-      results.push({ ...base, oldImageUrl, status: "ok" });
+      // Verifica de verdade: o PUT /produtos do Bling v3 retorna 200 mas NÃO
+      // persiste midia.imagens.externas (a UI usa outro caminho interno). Sem
+      // re-ler, reportaríamos "ok" mentindo. Confirma lendo o produto de volta.
+      const after = await getProduct(p.id);
+      const stored = (after?.midia?.imagens?.externas ?? [])
+        .map((e) => e.link)
+        .filter((l): l is string => typeof l === "string");
+      if (stored.includes(imageUrl)) {
+        results.push({ ...base, oldImageUrl, status: "ok" });
+      } else {
+        results.push({
+          ...base,
+          oldImageUrl,
+          status: "not-persisted",
+          error:
+            "Bling aceitou o PUT (200) mas não armazenou a URL externa — " +
+            "use Importar via planilha no Bling (a API PUT /produtos não grava imagem).",
+        });
+      }
     } catch (err) {
       results.push({
         ...base,
@@ -204,6 +225,7 @@ export async function syncProductImages(
     applied: results.filter((r) => r.status === "ok"),
     noOp: results.filter((r) => r.status === "no-op"),
     planned: results.filter((r) => r.status === "planned"),
+    notPersisted: results.filter((r) => r.status === "not-persisted"),
     skippedHasInternal: results.filter((r) => r.status === "skip-has-internal"),
     skippedNoSuggestion: results.filter((r) => r.status === "skip-no-suggestion"),
     errors: results.filter((r) => r.status === "error"),
