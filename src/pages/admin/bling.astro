@@ -1252,12 +1252,14 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
             return '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">ok</span>';
           case "error":
             return `<span class="rounded bg-red-500/20 text-red-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider" title="${escapeHtml5(error ?? "")}">erro</span>`;
-          case "skip-has-image":
-            return '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">já tem</span>';
+          case "no-op":
+            return '<span class="rounded bg-green-500/20 text-green-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">já ok</span>';
+          case "skip-has-internal":
+            return '<span class="rounded bg-navy-700 text-navy-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">upload manual</span>';
           case "skip-no-suggestion":
             return '<span class="rounded bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">sem sugestão</span>';
           default:
-            return '<span class="rounded bg-brand-lime/20 text-brand-lime px-1.5 py-0.5 text-[10px] uppercase tracking-wider">vai anexar</span>';
+            return '<span class="rounded bg-brand-lime/20 text-brand-lime px-1.5 py-0.5 text-[10px] uppercase tracking-wider">vai setar</span>';
         }
       }
 
@@ -1312,9 +1314,10 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
             return;
           }
           const planned: ImageRow[] = data.planned ?? [];
-          const hasImage: ImageRow[] = data.skippedHasImage ?? [];
+          const noOp: ImageRow[] = data.noOp ?? [];
+          const hasInternal: ImageRow[] = data.skippedHasInternal ?? [];
           const noSug: ImageRow[] = data.skippedNoSuggestion ?? [];
-          const rows = [...planned, ...hasImage, ...noSug];
+          const rows = [...planned, ...noOp, ...hasInternal, ...noSug];
           if (rows.length === 0) {
             imagesResult.innerHTML = '<span class="text-amber-300">Nenhum produto encontrado no Bling.</span>';
             return;
@@ -1322,15 +1325,16 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
           imagesResult.innerHTML = `
             <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
               <span class="rounded bg-navy-700 px-2 py-0.5">${rows.length} produto${rows.length === 1 ? "" : "s"}</span>
-              <span class="rounded bg-brand-lime/20 text-brand-lime px-2 py-0.5">${planned.length} sem imagem (vai anexar)</span>
-              <span class="rounded bg-navy-700 text-navy-300 px-2 py-0.5">${hasImage.length} já tem</span>
+              <span class="rounded bg-brand-lime/20 text-brand-lime px-2 py-0.5">${planned.length} vai setar/corrigir</span>
+              <span class="rounded bg-green-500/20 text-green-300 px-2 py-0.5">${noOp.length} já ok</span>
+              ${hasInternal.length ? `<span class="rounded bg-navy-700 text-navy-300 px-2 py-0.5">${hasInternal.length} upload manual</span>` : ""}
               ${noSug.length ? `<span class="rounded bg-amber-500/20 text-amber-300 px-2 py-0.5">${noSug.length} sem sugestão</span>` : ""}
             </div>
             ${renderImagesTable(rows)}
           `;
           if (planned.length > 0) {
             syncImagesBtn.classList.remove("hidden");
-            syncImagesBtn.textContent = `Anexar imagem em ${planned.length} produto${planned.length === 1 ? "" : "s"}`;
+            syncImagesBtn.textContent = `Setar imagem em ${planned.length} produto${planned.length === 1 ? "" : "s"}`;
           }
         } catch (e) {
           imagesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml5(e instanceof Error ? e.message : String(e))}</span>`;
@@ -1342,12 +1346,12 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
 
       syncImagesBtn.addEventListener("click", async () => {
         const proceed = window.confirm(
-          "Vai anexar a imagem do site nos produtos que estão sem imagem no Bling.\nConfirma?"
+          "Vai setar a URL da imagem do site nos produtos (preenche os sem imagem e corrige URLs antigas/404). Não mexe em uploads manuais.\n\nLembrete: pras imagens aparecerem, a conta Bling precisa estar no modo \"URL de imagens\".\n\nConfirma?"
         );
         if (!proceed) return;
         syncImagesBtn.disabled = true;
         const orig = syncImagesBtn.textContent;
-        syncImagesBtn.textContent = "Anexando…";
+        syncImagesBtn.textContent = "Setando…";
         try {
           const res = await fetch("/api/admin/bling/sync-images", {
             method: "POST",
@@ -1362,7 +1366,7 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
           const applied = data.applied?.length ?? 0;
           const errors = data.errors?.length ?? 0;
           const banner = errors === 0
-            ? `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ Imagem anexada em ${applied} produto${applied === 1 ? "" : "s"}. O Bling baixa as imagens em alguns segundos.</div>`
+            ? `<div class="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 mb-3 text-sm text-green-200">✅ URL de imagem setada em ${applied} produto${applied === 1 ? "" : "s"}. Pra aparecer no Bling, a conta precisa estar no modo "URL de imagens".</div>`
             : `<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-3 text-sm text-amber-200">⚠️ ${applied} ok, ${errors} erro(s).</div>`;
           const allRows: ImageRow[] = [...(data.applied ?? []), ...(data.errors ?? [])];
           imagesResult.innerHTML = banner + renderImagesTable(allRows);
@@ -1371,7 +1375,7 @@ function splitError(raw: string | null | undefined): { headline: string; rest: s
           imagesResult.innerHTML = `<span class="text-red-300">Falha: ${escapeHtml5(e instanceof Error ? e.message : String(e))}</span>`;
         } finally {
           syncImagesBtn.disabled = false;
-          syncImagesBtn.textContent = orig ?? "Anexar imagens";
+          syncImagesBtn.textContent = orig ?? "Setar imagens";
         }
       });
     }
