@@ -74,6 +74,16 @@ Limite físico: 45 mm de anilhas por lado da barra. Se o cliente passar do limit
 
 Back Squat, Bench Press, Clean, Clean & Jerk, Deadlift, Front Squat, Hang Clean, Hang Power Clean, Overhead Squat, Power Clean, Power Snatch, Push Jerk, Push Press, Shoulder Press, Snatch, Split Jerk, Squat Clean, Squat Snatch, Sumo Deadlift, Thruster.
 
+## PR Tracker Boards (placas-troféu configuráveis, 3 cores: Cobre, Preto ou Rosa)
+
+Placas em PLA premium (impressão 3D) com barras independentes — cada barra é montada com as anilhas do seu PR, como nos sets. Lettering branco em alto relevo. A cor é escolhida na compra e não troca depois. Os exercícios são FIXOS (sem dropdown); quem quer escolher entre 20 exercícios usa o My PR Set.
+
+- **Board LPO — Arranco e Arremesso** — a partir de **R$ 179,90**. Placa 180 × 180 mm, 2 barras dedicadas ao Levantamento de Peso Olímpico, com os nomes em português: Arranco e Arremesso.
+- **Board LPO — Snatch & Clean & Jerk** — a partir de **R$ 179,90**. A mesma placa de 2 barras, com a nomenclatura internacional do CrossFit: Snatch e Clean & Jerk.
+- **PR Board 3 Exercícios** — a partir de **R$ 199,90**. Placa 200 × 200 mm, 3 barras com os grandes da força: Supino, Agachamento e Levantamento Terra (nomes fixos).
+
+As anilhas avulsas e o limite de 45 mm por lado valem igual aos sets.
+
 ## Camisetas
 
 - **Camiseta Masculina** — **R$ 80,00**. Tamanhos P, M, G, GG. Modelagem regular.
