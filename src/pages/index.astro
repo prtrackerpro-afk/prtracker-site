@@ -213,7 +213,7 @@ const jsonLd = [
         <a href="/colecao/pr-trackers" class="line-section__cta">Ver toda a coleção →</a>
       </div>
 
-      <div class="carousel product-carousel product-carousel--3" data-carousel data-carousel-loop data-carousel-default="1">
+      <div class="carousel product-carousel" data-carousel data-carousel-loop data-carousel-default="1">
         <button type="button" class="carousel__nav carousel__nav--prev" aria-label="Produto anterior" data-carousel-prev>
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
         </button>
@@ -972,16 +972,11 @@ const jsonLd = [
     .product-carousel .pc-slide { flex-basis: calc(50% - 0.625rem); }
   }
   @media (min-width: 1024px) {
-    /* Desktop padrão (PR Trackers, 4 cards): cabe tudo sem arrow. */
+    /* Desktop padrão (PR Trackers + Miniaturas, 4 cards): cabe tudo sem arrow. */
     .product-carousel .pc-slide { flex-basis: calc(25% - 0.95rem); }
     .product-carousel .carousel__track { padding: 1rem 0.25rem 1.5rem; }
     .product-carousel .carousel__nav { display: none; }
     .product-carousel .carousel__dots { display: none; }
-  }
-  @media (min-width: 1024px) {
-    /* Miniaturas — 3 cards. Quebrei o flex-basis pra 33% pra ocupar bem
-       a largura sem cards gigantes. */
-    .product-carousel--3 .pc-slide { flex-basis: calc(33.333% - 0.85rem); }
   }
   @media (min-width: 1024px) {
     /* Camisetas (2 items) fit side-by-side without scrolling. */
