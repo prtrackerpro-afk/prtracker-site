@@ -1,0 +1,44 @@
+{
+  "slug": "pr-tracker-board-2-snatch-cj",
+  "title": "Board LPO — Snatch & Clean & Jerk",
+  "tagline": "Snatch e Clean & Jerk. Os dois grandes do LPO.",
+  "category": "pr-trackers",
+  "priceBase": 17990,
+  "priceFrom": true,
+  "shipping": { "weight_g": 460, "length_cm": 24, "width_cm": 22, "height_cm": 6 },
+  "shortDescription": "Placa colorida com 2 barras dedicadas ao LPO: Snatch em cima, Clean & Jerk embaixo. Termos em inglês. 3 cores: Cobre, Preto ou Rosa.",
+  "longDescriptionHtml": "<p>O <strong>Board LPO — Snatch &amp; Clean &amp; Jerk</strong> é dedicado ao universo do Levantamento de Peso Olímpico (LPO), com a nomenclatura internacional do <strong>CrossFit</strong>. A primeira barra é o <strong>Snatch</strong>, a segunda é o <strong>Clean &amp; Jerk</strong> — os dois movimentos mais técnicos da força.</p><p>Cada barra é configurada com as anilhas do seu recorde. Disponível em <strong>3 cores</strong>: Cobre (default, premium e atemporal), Preto (sóbrio, alto contraste) e Rosa (vibrante, estilo monobloco). Lettering branco em alto relevo.</p><p>Prefere os termos em português? Veja o <a href=\"/product/pr-tracker-board-2\">Board LPO — Arranco e Arremesso</a>, a mesma placa com a nomenclatura brasileira do halterofilismo.</p>",
+  "images": [
+    { "src": "/images/products/pr-tracker-board-2-snatch-cj/photo-01.jpg", "alt": "PR Tracker Board LPO Cobre — placa com Snatch e Clean & Jerk", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2-snatch-cj/photo-02.jpg", "alt": "PR Tracker Board LPO — as 3 cores: Cobre, Preto e Rosa (Snatch e Clean & Jerk)", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2-snatch-cj/photo-03.jpg", "alt": "PR Tracker Board LPO Cobre — vista lateral com anilhas", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2-snatch-cj/photo-04.jpg", "alt": "PR Tracker Board LPO Rosa — Snatch e Clean & Jerk", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2-snatch-cj/photo-05.jpg", "alt": "PR Tracker Board LPO Preto — Snatch e Clean & Jerk", "width": 1200, "height": 1600 }
+  ],
+  "specs": [
+    { "label": "Placa", "value": "PLA premium · 180 × 180 mm · 3 cores (Cobre, Preto, Rosa)" },
+    { "label": "Barras", "value": "2 × aço inoxidável usinado · 220 × Ø 5 mm" },
+    { "label": "Anilhas", "value": "Plástico ABS · Ø 42 mm · padrão olímpico" },
+    { "label": "Presilhas", "value": "Aço (mini)" },
+    { "label": "Lettering", "value": "Archivo Black · ALL CAPS em alto relevo · Branco" }
+  ],
+  "faq": [
+    { "question": "Por que Snatch e Clean & Jerk?", "answer": "São os dois movimentos do Levantamento de Peso Olímpico — onde força encontra técnica. Esse Board honra o LPO com a nomenclatura internacional do CrossFit: Snatch na barra de cima, Clean & Jerk na de baixo. Se você prefere os termos em português (Arranco / Arremesso), escolha o Board LPO — Arranco e Arremesso. Quem quer outros exercícios pode escolher o Board 3 Exercícios ou o My PR Set." },
+    { "question": "Qual a diferença pro Board de 3?", "answer": "O de 3 é maior (200 × 200 mm) e traz Supino, Agachamento e Levantamento Terra fixos. O LPO é mais compacto (180 × 180 mm) e dedicado ao Levantamento de Peso Olímpico (Snatch + Clean & Jerk)." },
+    { "question": "Posso trocar a cor depois?", "answer": "Não. A cor é definida na compra (impressão 3D em PLA colorido). Se quiser variar, é só pedir outra unidade da cor diferente." },
+    { "question": "Quanto tempo leva para receber?", "answer": "Despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." }
+  ],
+  "configurator": {
+    "enabled": true,
+    "isAnilhasOnly": false,
+    "hasExerciseSelector": false,
+    "isTripleBarbell": false,
+    "isMeusRPs": false,
+    "isBoard": true,
+    "boardExerciseCount": 2,
+    "boardDefaultExercises": ["Snatch", "Clean & Jerk"],
+    "boardExercisesFixed": true
+  },
+  "featured": true,
+  "priority": 8
+}

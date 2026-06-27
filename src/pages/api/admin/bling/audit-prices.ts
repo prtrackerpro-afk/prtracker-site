@@ -38,6 +38,7 @@ const SLUG_TO_BLING_SKUS: Record<string, string[]> = {
   // não no codigo do produto cadastrado). priceBase do JSON = preço-base
   // sem anilhas, que é o que tem que estar no cadastro Bling.
   "pr-tracker-board-2": ["PRboard-2ex"],
+  "pr-tracker-board-2-snatch-cj": ["PRboard-2ex"],
   "pr-tracker-board-3": ["PRboard-3ex"],
   // PR Runners: preço fechado (não soma anilhas).
   "meus-rps": ["RPRUNNER-Board"],

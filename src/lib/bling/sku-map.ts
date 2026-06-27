@@ -164,10 +164,12 @@ export function explodeLineToBling(item: ItemSku): SkuLine[] {
       return out;
     }
     case "pr-tracker-board-3":
-    case "pr-tracker-board-2": {
-      // SKU única por produto (sem variação por cor). Cor + config dos
-      // exercícios entram no `nome` pra produção saber o que imprimir e
-      // pra NF-e descrever a peça específica vendida.
+    case "pr-tracker-board-2":
+    case "pr-tracker-board-2-snatch-cj": {
+      // SKU única por produto (sem variação por cor). Os dois Boards LPO
+      // (Arranco/Arremesso PT e Snatch/Clean & Jerk EN) são a MESMA peça
+      // física → compartilham a SKU `PRboard-2ex`; só o lettering muda, e
+      // os exercícios já vão no `nome` pra produção saber o que imprimir.
       const codigo = item.slug === "pr-tracker-board-3" ? "PRboard-3ex" : "PRboard-2ex";
       const colorKey = (item.boardColor ?? "cobre").toUpperCase();
       const colorOpt = BOARD_COLORS.find((c) => c.value === (item.boardColor ?? "cobre"));

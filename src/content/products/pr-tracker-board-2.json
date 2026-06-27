@@ -1,15 +1,19 @@
 {
   "slug": "pr-tracker-board-2",
-  "title": "PR Board 2 Exercícios",
+  "title": "Board LPO — Arranco e Arremesso",
   "tagline": "Arranco e Arremesso. Os dois grandes do LPO.",
   "category": "pr-trackers",
   "priceBase": 17990,
   "priceFrom": true,
   "shipping": { "weight_g": 460, "length_cm": 24, "width_cm": 22, "height_cm": 6 },
-  "shortDescription": "Placa colorida com 2 barras dedicadas ao LPO: Arranco (ou Snatch) em cima, Arremesso (ou Clean & Jerk) embaixo. 3 cores: Cobre, Preto ou Rosa.",
-  "longDescriptionHtml": "<p>O <strong>PR Board 2 Exercícios</strong> é dedicado ao universo do Levantamento de Peso Olímpico (LPO). A primeira barra é o <strong>Arranco</strong> (ou <strong>Snatch</strong> em inglês), a segunda é o <strong>Arremesso</strong> (ou <strong>Clean & Jerk</strong>) — você escolhe o termo que prefere ver impresso na placa.</p><p>Cada barra é configurada com as anilhas do seu recorde. Disponível em <strong>3 cores</strong>: Cobre (default, premium e atemporal), Preto (sóbrio, alto contraste) e Rosa (vibrante, estilo monobloco). Lettering branco em alto relevo.</p><p>Para o atleta que vive Arranco e Arremesso. Para o coach que quer presentear um aluno halterofilista. Para qualquer um que respeita os dois movimentos mais técnicos da força.</p>",
+  "shortDescription": "Placa colorida com 2 barras dedicadas ao LPO: Arranco em cima, Arremesso embaixo. Termos em português. 3 cores: Cobre, Preto ou Rosa.",
+  "longDescriptionHtml": "<p>O <strong>Board LPO — Arranco e Arremesso</strong> é dedicado ao universo do Levantamento de Peso Olímpico (LPO), com a nomenclatura em <strong>português</strong>. A primeira barra é o <strong>Arranco</strong>, a segunda é o <strong>Arremesso</strong> — os dois movimentos mais técnicos da força.</p><p>Cada barra é configurada com as anilhas do seu recorde. Disponível em <strong>3 cores</strong>: Cobre (default, premium e atemporal), Preto (sóbrio, alto contraste) e Rosa (vibrante, estilo monobloco). Lettering branco em alto relevo.</p><p>Prefere os termos em inglês? Veja o <a href=\"/product/pr-tracker-board-2-snatch-cj\">Board LPO — Snatch &amp; Clean &amp; Jerk</a>, a mesma placa com a nomenclatura internacional do CrossFit.</p>",
   "images": [
-    { "src": "/images/products/pr-tracker-board-2/photo-01.jpg", "alt": "PR Tracker Board 2 exercícios — placa com Arranco e Arremesso", "width": 1200, "height": 1600 }
+    { "src": "/images/products/pr-tracker-board-2/photo-01.jpg", "alt": "PR Tracker Board LPO Cobre — placa com Arranco e Arremesso", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2/photo-02.jpg", "alt": "PR Tracker Board LPO — as 3 cores: Cobre, Preto e Rosa (Arranco e Arremesso)", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2/photo-03.jpg", "alt": "PR Tracker Board LPO Cobre — vista lateral com anilhas", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2/photo-04.jpg", "alt": "PR Tracker Board LPO Rosa — Arranco e Arremesso", "width": 1200, "height": 1600 },
+    { "src": "/images/products/pr-tracker-board-2/photo-05.jpg", "alt": "PR Tracker Board LPO Preto — Arranco e Arremesso", "width": 1200, "height": 1600 }
   ],
   "specs": [
     { "label": "Placa", "value": "PLA premium · 180 × 180 mm · 3 cores (Cobre, Preto, Rosa)" },
@@ -19,8 +23,8 @@
     { "label": "Lettering", "value": "Archivo Black · ALL CAPS em alto relevo · Branco" }
   ],
   "faq": [
-    { "question": "Por que Arranco e Arremesso?", "answer": "São os dois movimentos do Levantamento de Peso Olímpico — onde força encontra técnica. Esse Board honra o LPO. A primeira barra é Arranco (você pode escolher entre 'Arranco' em PT ou 'Snatch' em EN) e a segunda é Arremesso ('Arremesso' em PT ou 'Clean & Jerk' em EN). Quem quer outros exercícios pode escolher o Board 3 Exercícios ou o My PR Set." },
-    { "question": "Qual a diferença pro Board de 3?", "answer": "O de 3 é maior (200 × 200 mm) e traz Supino, Agachamento e Levantamento Terra fixos. O de 2 é mais compacto (180 × 180 mm) e dedicado ao LPO (Arranco + Arremesso)." },
+    { "question": "Por que Arranco e Arremesso?", "answer": "São os dois movimentos do Levantamento de Peso Olímpico — onde força encontra técnica. Esse Board honra o LPO com a nomenclatura em português: Arranco na barra de cima, Arremesso na de baixo. Se você prefere os termos em inglês (Snatch / Clean & Jerk), escolha o Board LPO — Snatch & Clean & Jerk. Quem quer outros exercícios pode escolher o Board 3 Exercícios ou o My PR Set." },
+    { "question": "Qual a diferença pro Board de 3?", "answer": "O de 3 é maior (200 × 200 mm) e traz Supino, Agachamento e Levantamento Terra fixos. O LPO é mais compacto (180 × 180 mm) e dedicado ao Levantamento de Peso Olímpico (Arranco + Arremesso)." },
     { "question": "Posso trocar a cor depois?", "answer": "Não. A cor é definida na compra (impressão 3D em PLA colorido). Se quiser variar, é só pedir outra unidade da cor diferente." },
     { "question": "Quanto tempo leva para receber?", "answer": "Despachamos em até 2 dias úteis após a confirmação do pagamento + prazo dos Correios (3 a 10 dias conforme região). Enviamos para todo o Brasil com rastreio." }
   ],
@@ -33,10 +37,7 @@
     "isBoard": true,
     "boardExerciseCount": 2,
     "boardDefaultExercises": ["Arranco", "Arremesso"],
-    "boardExerciseChoices": [
-      ["Arranco", "Snatch"],
-      ["Arremesso", "Clean & Jerk"]
-    ]
+    "boardExercisesFixed": true
   },
   "featured": true,
   "priority": 7

@@ -38,9 +38,10 @@ const miniaturasOrder = [
   "my-pr-gym",            // R$ 379,00 (EM BREVE) — gym completo em miniatura
 ] as const;
 const prTrackersOrder = [
-  "my-pr-set",            // R$ 159,00 (peça original da linha)
-  "pr-tracker-board-2",   // R$ 179,90 (LPO Arranco/Arremesso)
-  "pr-tracker-board-3",   // R$ 199,90 (3 ex configuráveis)
+  "my-pr-set",                    // R$ 159,00 (peça original da linha)
+  "pr-tracker-board-2",           // R$ 179,90 (LPO Arranco/Arremesso — PT)
+  "pr-tracker-board-2-snatch-cj", // R$ 179,90 (LPO Snatch/Clean & Jerk — EN)
+  "pr-tracker-board-3",           // R$ 199,90 (3 ex configuráveis)
 ] as const;
 const miniaturas = miniaturasOrder.map(
   (slug) => prTrackersAll.find((p) => p.data.slug === slug)!,

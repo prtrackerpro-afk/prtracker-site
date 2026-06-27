@@ -37,6 +37,11 @@ const PRODUCTS = [
     line: "PR Trackers",
   },
   {
+    slug: "pr-tracker-board-2-snatch-cj",
+    photo: "images/products/pr-tracker-board-2-snatch-cj/photo-01.jpg",
+    line: "PR Trackers",
+  },
+  {
     slug: "pr-tracker-board-3",
     photo: "images/products/pr-tracker-board-3/photo-01.jpg",
     line: "PR Trackers",
@@ -46,6 +51,14 @@ const PRODUCTS = [
 function priceFmt(priceCents) {
   const reais = (priceCents / 100).toFixed(2).replace(".", ",");
   return `R$ ${reais}`;
+}
+
+/** Escape XML so títulos com "&" (ex: "Clean & Jerk") não quebrem o SVG. */
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 async function loadProductMeta(slug) {
@@ -124,7 +137,7 @@ async function genForProduct(product) {
       <text x="64" y="180" fill="#D8FF2C"
         font-family="Impact, 'Arial Narrow', 'Big Shoulders', sans-serif"
         font-weight="900" font-size="22" letter-spacing="4">
-        ${product.line.toUpperCase()}
+        ${esc(product.line.toUpperCase())}
       </text>
 
       <!-- Title em 2 linhas se for muito longo -->
@@ -133,17 +146,17 @@ async function genForProduct(product) {
           ? `<text x="64" y="262" fill="#FFFFFF"
               font-family="Impact, 'Arial Narrow', 'Big Shoulders', sans-serif"
               font-weight="900" font-size="64" letter-spacing="-1">
-              ${title.split(" — ")[0] ?? title}
+              ${esc(title.split(" — ")[0] ?? title)}
             </text>
             <text x="64" y="332" fill="#FFFFFF"
               font-family="Impact, 'Arial Narrow', 'Big Shoulders', sans-serif"
               font-weight="900" font-size="64" letter-spacing="-1">
-              ${title.split(" — ")[1] ?? ""}
+              ${esc(title.split(" — ")[1] ?? "")}
             </text>`
           : `<text x="64" y="300" fill="#FFFFFF"
               font-family="Impact, 'Arial Narrow', 'Big Shoulders', sans-serif"
               font-weight="900" font-size="84" letter-spacing="-2">
-              ${title}
+              ${esc(title)}
             </text>`
       }
 
@@ -151,7 +164,7 @@ async function genForProduct(product) {
       <text x="64" y="430" fill="#FFFFFF"
         font-family="'Outfit', system-ui, sans-serif" font-weight="400"
         font-size="24" opacity="0.85">
-        ${tagline}
+        ${esc(tagline)}
       </text>
 
       <!-- Price (bottom-left, lime) -->

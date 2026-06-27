@@ -45,7 +45,7 @@ export const COLLECTIONS: CollectionMeta[] = [
       "Placas-troféu configuráveis. Escolha o exercício, monte a barra, exiba o número.",
     description:
       "Para quem prefere uma placa-troféu compacta e personalizável. Você escolhe os exercícios (até 20+), a cor (Cobre, Preto ou Rosa nos Boards) e o peso de cada barra. Cada peça vira um registro físico dos seus PRs.",
-    products: ["my-pr-set", "pr-tracker-board-2", "pr-tracker-board-3"],
+    products: ["my-pr-set", "pr-tracker-board-2", "pr-tracker-board-2-snatch-cj", "pr-tracker-board-3"],
   },
   {
     slug: "pr-runners",
