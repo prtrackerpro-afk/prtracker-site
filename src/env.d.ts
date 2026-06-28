@@ -23,6 +23,8 @@ interface ImportMetaEnv {
   readonly BLING_LOJA_ID?: string;
   readonly BLING_DEPOSITO_ID?: string;
   readonly BLING_NATUREZA_OPERACAO_ID?: string;
+  // Bearer token do servidor MCP /api/mcp/bling (connector Claude → Bling).
+  readonly MCP_BLING_TOKEN?: string;
   readonly GROQ_API_KEY?: string;
 }
 
