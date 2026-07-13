@@ -29,7 +29,11 @@ import {
 } from "./oauth";
 import { getOrCreateContact } from "./contacts";
 import { getOrCreateProduct } from "./products";
-import { createSalesOrder, type SalesOrderItemInput } from "./orders";
+import {
+  createSalesOrder,
+  findSalesOrderByNumeroLoja,
+  type SalesOrderItemInput,
+} from "./orders";
 import { explodeLineToBling, type ItemSku, type SkuLine } from "./sku-map";
 import { BlingApiError } from "./api";
 import { createAndEmitNfe, type NfeContatoSnapshot, type NfeOutcomeStatus } from "./nfe";
@@ -66,8 +70,10 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
   // Skip cleanly if the operator hasn't run the OAuth dance yet — webhook
   // shouldn't fail just because Bling isn't configured. Log + persist a
   // 'pending' row so it shows up in /admin/bling for later retry.
+  const externalRefEarly = payment.external_reference ?? `mp-${paymentId}`;
+
   if (!(await isConnected())) {
-    await persistInitial(payment, "pending", "bling not connected");
+    await ensurePendingRow(paymentId, externalRefEarly);
     return {
       ok: false,
       status: "pending",
@@ -75,19 +81,28 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
     };
   }
 
-  // 1) Idempotency lock: INSERT, take the row, claim ownership.
+  // 1) Atomic claim — only one worker proceeds per payment. Closes the
+  //    duplicated-NF race when MP retries a webhook (or webhook + manual retry
+  //    overlap). See claimOrder().
   const sb = getAdminSupabase();
-  const initial = await persistInitial(payment, "pending", null);
-  if (initial.alreadyExists && initial.row?.status === "synced") {
+  const claim = await claimOrder(paymentId, externalRefEarly);
+  if (!claim.claimed) {
+    if (claim.reason === "synced") {
+      return {
+        ok: true,
+        status: "skipped",
+        blingPedidoId: claim.row?.bling_pedido_id ?? undefined,
+        blingPedidoNumero: claim.row?.bling_pedido_numero ?? undefined,
+        message: "already synced — skipping",
+      };
+    }
     return {
       ok: true,
       status: "skipped",
-      blingPedidoId: initial.row.bling_pedido_id ?? undefined,
-      blingPedidoNumero: initial.row.bling_pedido_numero ?? undefined,
-      message: "already synced — skipping",
+      message: "outro worker já está sincronizando este pagamento — skipping",
     };
   }
-  // If status='failed' or 'pending', we let this run proceed (acts as retry).
+  const ledger = claim.row;
 
   try {
     const accessToken = await getValidAccessToken();
@@ -193,23 +208,38 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
       .filter(Boolean)
       .join("\n");
 
-    const created = await createSalesOrder(
-      {
-        contatoId: contato.id,
-        itens: lines,
-        frete: freightCents > 0 ? freightCents / 100 : undefined,
-        descontoValor:
-          totalDiscountCents > 0 ? totalDiscountCents / 100 : undefined,
-        numeroLoja: externalRef,
-        lojaId: getEnvInt("BLING_LOJA_ID"),
-        depositoId: getEnvInt("BLING_DEPOSITO_ID"),
-        naturezaOperacaoId: getEnvInt("BLING_NATUREZA_OPERACAO_ID"),
-        transportadorNome: String(meta.shipping_service_name ?? "") || undefined,
-        observacoes: `Pedido site PR Tracker — ${externalRef}`,
-        observacoesInternas,
-      },
-      accessToken,
-    );
+    // Bling-side idempotency: createSalesOrder is a POST (never retried). A lost
+    // response would otherwise make the next run mint a twin pedido (duplicate
+    // NF-e). Reuse an existing pedido carrying this numeroLoja if present.
+    let created: { id: number | string; numero?: string } | null = null;
+    try {
+      created = await findSalesOrderByNumeroLoja(externalRef, accessToken);
+    } catch (lookupErr) {
+      console.warn(
+        `[bling-sync] lookup pedido numeroLoja=${externalRef} falhou (seguindo p/ criar):`,
+        lookupErr,
+      );
+    }
+    if (!created) {
+      created = await createSalesOrder(
+        {
+          contatoId: contato.id,
+          itens: lines,
+          frete: freightCents > 0 ? freightCents / 100 : undefined,
+          descontoValor:
+            totalDiscountCents > 0 ? totalDiscountCents / 100 : undefined,
+          numeroLoja: externalRef,
+          lojaId: getEnvInt("BLING_LOJA_ID"),
+          depositoId: getEnvInt("BLING_DEPOSITO_ID"),
+          naturezaOperacaoId: getEnvInt("BLING_NATUREZA_OPERACAO_ID"),
+          transportadorNome:
+            String(meta.shipping_service_name ?? "") || undefined,
+          observacoes: `Pedido site PR Tracker — ${externalRef}`,
+          observacoesInternas,
+        },
+        accessToken,
+      );
+    }
 
     // ---- Persist pedido success (nfe fields filled in step below) ----
     await sb
@@ -224,27 +254,35 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
         response_payload: { id: created.id, numero: created.numero },
         synced_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        attempt_count: (initial.row?.attempt_count ?? 0) + 1,
+        attempt_count: (ledger.attempt_count ?? 0) + 1,
         error: null,
       })
       .eq("mp_payment_id", paymentId);
 
     // ---- NF-e emission (decoupled — pedido success is preserved if NF-e fails) ----
-    await emitAndPersistNfe({
-      paymentId,
-      contatoId: contato.id,
-      contatoSnapshot: buildContatoSnapshotFromMeta(meta, {
-        cpf,
-        nome: customerName,
-        email: customerEmail,
-        telefone: customerPhone,
-      }),
-      skuLines,
-      freightCents,
-      totalDiscountCents,
-      externalRef,
-      accessToken,
-    });
+    // Status is 'synced' above (before NF), so any retry short-circuits at
+    // claimOrder and never re-emits. Belt-and-suspenders: skip if this claimed
+    // row already carried an NF.
+    if (
+      !ledger.bling_nfe_id ||
+      (ledger.nfe_status !== "emitted" && ledger.nfe_status !== "pending")
+    ) {
+      await emitAndPersistNfe({
+        paymentId,
+        contatoId: contato.id,
+        contatoSnapshot: buildContatoSnapshotFromMeta(meta, {
+          cpf,
+          nome: customerName,
+          email: customerEmail,
+          telefone: customerPhone,
+        }),
+        skuLines,
+        freightCents,
+        totalDiscountCents,
+        externalRef,
+        accessToken,
+      });
+    }
 
     return {
       ok: true,
@@ -265,7 +303,7 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
           err instanceof BlingApiError
             ? { status: err.status, type: err.type, fields: err.fields, raw: err.raw }
             : null,
-        attempt_count: (initial.row?.attempt_count ?? 0) + 1,
+        attempt_count: (ledger.attempt_count ?? 0) + 1,
         updated_at: new Date().toISOString(),
       })
       .eq("mp_payment_id", paymentId);
@@ -273,15 +311,113 @@ export async function syncOrderToBling(payment: MpPayment): Promise<SyncResult> 
   }
 }
 
-interface PersistInitial {
-  alreadyExists: boolean;
-  row: {
-    mp_payment_id: string;
-    status: string;
-    bling_pedido_id: string | null;
-    bling_pedido_numero: string | null;
-    attempt_count: number;
-  } | null;
+interface LedgerRow {
+  mp_payment_id: string;
+  status: string;
+  bling_pedido_id: string | null;
+  bling_pedido_numero: string | null;
+  bling_nfe_id: string | null;
+  nfe_status: string | null;
+  attempt_count: number;
+}
+
+const LEDGER_COLS =
+  "mp_payment_id, status, bling_pedido_id, bling_pedido_numero, bling_nfe_id, nfe_status, attempt_count";
+
+// A 'processing' row older than this is treated as a crashed/abandoned claim
+// and may be reclaimed. Well above the Vercel function timeout.
+const STALE_CLAIM_MS = 10 * 60 * 1000;
+
+type ClaimResult =
+  | { claimed: true; row: LedgerRow }
+  | { claimed: false; reason: "synced" | "in_progress"; row: LedgerRow | null };
+
+/**
+ * Ensure a ledger row exists in 'pending' WITHOUT claiming it. Used only on the
+ * Bling-not-connected path. INSERT ... ON CONFLICT DO NOTHING — never clobbers
+ * an existing processing/synced/failed row.
+ */
+async function ensurePendingRow(
+  paymentId: string,
+  externalRef: string | null,
+): Promise<void> {
+  const sb = getAdminSupabase();
+  await sb.from("bling_orders").upsert(
+    {
+      mp_payment_id: paymentId,
+      external_reference: externalRef,
+      status: "pending",
+      attempt_count: 0,
+    },
+    { onConflict: "mp_payment_id", ignoreDuplicates: true },
+  );
+}
+
+/**
+ * Atomically claim a payment for syncing. Exactly one caller can hold the claim
+ * at a time — the fix for duplicated NF-e. Mirrors claimOrder() in sync-tiktok.ts.
+ */
+async function claimOrder(
+  paymentId: string,
+  externalRef: string | null,
+): Promise<ClaimResult> {
+  const sb = getAdminSupabase();
+  const now = new Date().toISOString();
+
+  // 1) Insert the row already claimed. ON CONFLICT DO NOTHING → only the
+  //    inserter gets a row back.
+  const { data: inserted } = await sb
+    .from("bling_orders")
+    .upsert(
+      {
+        mp_payment_id: paymentId,
+        external_reference: externalRef,
+        status: "processing",
+        attempt_count: 0,
+      },
+      { onConflict: "mp_payment_id", ignoreDuplicates: true },
+    )
+    .select(LEDGER_COLS);
+  if (inserted && inserted.length > 0) {
+    return { claimed: true, row: inserted[0] as LedgerRow };
+  }
+
+  // 2) Row already existed — read current state.
+  const { data: existing } = await sb
+    .from("bling_orders")
+    .select(LEDGER_COLS)
+    .eq("mp_payment_id", paymentId)
+    .maybeSingle();
+  const row = (existing as LedgerRow | null) ?? null;
+  if (row?.status === "synced") {
+    return { claimed: false, reason: "synced", row };
+  }
+
+  // 3) Atomically flip pending|failed → processing. Only one caller wins.
+  const { data: claimed } = await sb
+    .from("bling_orders")
+    .update({ status: "processing", updated_at: now })
+    .eq("mp_payment_id", paymentId)
+    .in("status", ["pending", "failed"])
+    .select(LEDGER_COLS);
+  if (claimed && claimed.length > 0) {
+    return { claimed: true, row: claimed[0] as LedgerRow };
+  }
+
+  // 4) Row is 'processing'. Reclaim only if stale (crashed prior run).
+  const staleCutoff = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
+  const { data: reclaimed } = await sb
+    .from("bling_orders")
+    .update({ status: "processing", updated_at: now })
+    .eq("mp_payment_id", paymentId)
+    .eq("status", "processing")
+    .lt("updated_at", staleCutoff)
+    .select(LEDGER_COLS);
+  if (reclaimed && reclaimed.length > 0) {
+    return { claimed: true, row: reclaimed[0] as LedgerRow };
+  }
+
+  return { claimed: false, reason: "in_progress", row };
 }
 
 interface EmitNfeArgs {
@@ -525,42 +661,6 @@ export async function emitNfeForExistingOrder(
       .eq("mp_payment_id", paymentId);
     return { ok: false, status: "failed", error: msg };
   }
-}
-
-async function persistInitial(
-  payment: MpPayment,
-  status: "pending",
-  errorReason: string | null,
-): Promise<PersistInitial> {
-  const sb = getAdminSupabase();
-  const paymentId = String(payment.id);
-  const externalRef = payment.external_reference ?? null;
-  // Use UPSERT semantics: insert if not exists; if exists, only bump
-  // updated_at so we have a heartbeat. We don't overwrite an existing
-  // bling_pedido_id or status here.
-  const { data: existing } = await sb
-    .from("bling_orders")
-    .select("mp_payment_id, status, bling_pedido_id, bling_pedido_numero, attempt_count")
-    .eq("mp_payment_id", paymentId)
-    .maybeSingle();
-
-  if (existing) {
-    return { alreadyExists: true, row: existing as any };
-  }
-
-  const { data: inserted } = await sb
-    .from("bling_orders")
-    .insert({
-      mp_payment_id: paymentId,
-      external_reference: externalRef,
-      status,
-      error: errorReason,
-      attempt_count: 0,
-    })
-    .select("mp_payment_id, status, bling_pedido_id, bling_pedido_numero, attempt_count")
-    .single();
-
-  return { alreadyExists: false, row: (inserted as any) ?? null };
 }
 
 function formatError(err: unknown): string {
